@@ -1,0 +1,464 @@
+{
+  "name": "Email Campaign Automation - Production Ready",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0,15,30,45 * * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ],
+      "id": "schedule-trigger",
+      "name": "Every 15 Minutes"
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "url": "={{$env.LEADSUP_API_URL}}/api/campaigns/automation/process-pending",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        300
+      ],
+      "id": "fetch-campaigns",
+      "name": "Fetch Campaigns"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            },
+            {
+              "leftValue": "={{ $json.data && $json.data.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ],
+      "id": "check-has-data",
+      "name": "Has Data?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process campaigns and prepare emails for sending\nconst response = $input.first().json;\nconst campaigns = response.data || [];\n\nif (campaigns.length === 0) {\n  console.log('No campaigns to process');\n  return [];\n}\n\nconst emailsToSend = [];\nconst processedAt = new Date().toISOString();\n\nconsole.log(`Processing ${campaigns.length} campaigns...`);\n\nfor (const campaign of campaigns) {\n  const {\n    id: campaignId,\n    name: campaignName,\n    contacts = [],\n    senders = []\n  } = campaign;\n\n  console.log(`Campaign: ${campaignName} - ${contacts.length} contacts`);\n\n  for (const contact of contacts) {\n    const {\n      id: contactId,\n      email: contactEmail,\n      firstName = 'there',\n      lastName = '',\n      company = '',\n      title = '',\n      nextSequence = {},\n      sender = {},\n      timezoneGroup = 'T1',\n      localTime = ''\n    } = contact;\n\n    // Get sequence details\n    const {\n      id: sequenceId,\n      subject = 'Hello from {{senderName}}',\n      content = 'Hi {{firstName}}, hope you are doing well!',\n      step_number: stepNumber = 1,\n      title: sequenceTitle = 'Email'\n    } = nextSequence;\n\n    // Get sender details\n    const {\n      id: senderId,\n      email: senderEmail,\n      name: senderName = 'Team',\n      sender_type: senderType = 'smtp'\n    } = sender;\n\n    // Personalize content\n    const personalizedSubject = subject\n      .replace(/\\{\\{firstName\\}\\}/g, firstName)\n      .replace(/\\{\\{lastName\\}\\}/g, lastName)\n      .replace(/\\{\\{company\\}\\}/g, company)\n      .replace(/\\{\\{senderName\\}\\}/g, senderName);\n\n    const personalizedContent = content\n      .replace(/\\{\\{firstName\\}\\}/g, firstName)\n      .replace(/\\{\\{lastName\\}\\}/g, lastName)\n      .replace(/\\{\\{company\\}\\}/g, company)\n      .replace(/\\{\\{title\\}\\}/g, title)\n      .replace(/\\{\\{senderName\\}\\}/g, senderName);\n\n    // Add tracking and unsubscribe\n    const unsubscribeUrl = `${$env.LEADSUP_API_URL}/api/campaigns/unsubscribe?contact=${contactId}&campaign=${campaignId}`;\n    const finalContent = `${personalizedContent}\n\n<br><br><hr><small><a href=\"${unsubscribeUrl}\">Unsubscribe</a></small>`;\n\n    emailsToSend.push({\n      // Campaign info\n      campaignId,\n      campaignName,\n      \n      // Contact info\n      contactId,\n      contactEmail,\n      contactFirstName: firstName,\n      contactLastName: lastName,\n      contactCompany: company,\n      contactTitle: title,\n      contactTimezone: timezoneGroup,\n      contactLocalTime: localTime,\n      \n      // Sequence info\n      sequenceId,\n      sequenceTitle,\n      stepNumber,\n      \n      // Email content\n      emailSubject: personalizedSubject,\n      emailContent: finalContent,\n      \n      // Sender info\n      senderId,\n      senderEmail,\n      senderName,\n      senderType,\n      \n      // Meta\n      processedAt,\n      scheduledFor: contact.scheduledFor || processedAt\n    });\n  }\n}\n\nconsole.log(`Prepared ${emailsToSend.length} emails for sending`);\n\n// Return each email as separate item for processing\nreturn emailsToSend.map(email => ({ json: email }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
+      "id": "process-emails",
+      "name": "Process Emails"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.senderType }}",
+                    "rightValue": "gmail",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Gmail"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.senderType }}",
+                    "rightValue": "microsoft365",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Outlook"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.senderType }}",
+                    "rightValue": "smtp",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "SMTP"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "route-by-sender",
+      "name": "Route by Sender"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "sendTo": "={{ $json.contactEmail }}",
+        "subject": "={{ $json.emailSubject }}",
+        "emailType": "html",
+        "message": "={{ $json.emailContent }}",
+        "senderName": "={{ $json.senderName }}",
+        "options": {
+          "replyTo": "={{ $json.senderEmail }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1340,
+        200
+      ],
+      "id": "send-gmail",
+      "name": "Send Gmail",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-oauth-credential",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "sendTo": "={{ $json.contactEmail }}",
+        "subject": "={{ $json.emailSubject }}",
+        "emailType": "html",
+        "message": "={{ $json.emailContent }}",
+        "senderName": "={{ $json.senderName }}"
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2.2,
+      "position": [
+        1340,
+        300
+      ],
+      "id": "send-outlook",
+      "name": "Send Outlook",
+      "credentials": {
+        "microsoftOAuth2Api": {
+          "id": "outlook-oauth-credential",
+          "name": "Microsoft OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.senderEmail }}",
+        "toEmail": "={{ $json.contactEmail }}",
+        "subject": "={{ $json.emailSubject }}",
+        "html": "={{ $json.emailContent }}",
+        "options": {
+          "allowUnauthorizedCerts": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1340,
+        400
+      ],
+      "id": "send-smtp",
+      "name": "Send SMTP",
+      "credentials": {
+        "smtp": {
+          "id": "smtp-credential",
+          "name": "SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "url": "={{$env.LEADSUP_API_URL}}/api/campaigns/automation/update-status",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"campaignId\": \"{{ $json.campaignId }}\",\n  \"contactId\": \"{{ $json.contactId }}\",\n  \"sequenceId\": \"{{ $json.sequenceId }}\",\n  \"status\": \"sent\",\n  \"sentAt\": \"{{ $now }}\",\n  \"senderAccount\": \"{{ $json.senderEmail }}\"\n}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        300
+      ],
+      "id": "update-success",
+      "name": "Update Success"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "url": "={{$env.LEADSUP_API_URL}}/api/campaigns/automation/update-status",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"campaignId\": \"{{ $json.campaignId }}\",\n  \"contactId\": \"{{ $json.contactId }}\",\n  \"sequenceId\": \"{{ $json.sequenceId }}\",\n  \"status\": \"failed\",\n  \"errorMessage\": \"{{ $json.error?.message || $json.error || 'Email sending failed' }}\",\n  \"senderAccount\": \"{{ $json.senderEmail }}\"\n}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        500
+      ],
+      "id": "update-failure",
+      "name": "Update Failure"
+    },
+    {
+      "parameters": {
+        "mode": "passThrough"
+      },
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        900,
+        500
+      ],
+      "id": "no-data",
+      "name": "No Data"
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Fetch Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Has Data?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Data?": {
+      "main": [
+        [
+          {
+            "node": "Process Emails",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Emails": {
+      "main": [
+        [
+          {
+            "node": "Route by Sender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Sender": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Outlook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send SMTP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Send Gmail": {
+      "main": [
+        [
+          {
+            "node": "Update Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Outlook": {
+      "main": [
+        [
+          {
+            "node": "Update Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send SMTP": {
+      "main": [
+        [
+          {
+            "node": "Update Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC",
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all"
+  },
+  "staticData": {},
+  "tags": ["email", "campaign", "automation"],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-09T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -94,6 +94,11 @@ export async function PUT(
 
     console.log(`✅ Campaign "${existingCampaign.name}" status updated: ${existingCampaign.status} → ${status}`)
 
+    // If campaign is being launched (set to Active), trigger n8n automation setup
+    if (status === 'Active' && existingCampaign.status !== 'Active') {
+      await triggerCampaignAutomation(campaignId, updatedCampaign.name)
+    }
+
     // Return success response with updated campaign data
     return NextResponse.json({
       success: true,
@@ -110,5 +115,118 @@ export async function PUT(
   } catch (error) {
     console.error("❌ Error updating campaign status:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+  }
+}
+
+// Helper function to trigger n8n automation when campaign is launched
+async function triggerCampaignAutomation(campaignId: string, campaignName: string) {
+  try {
+    console.log(`🚀 Triggering n8n automation for campaign: ${campaignName}`)
+    
+    // Initialize contacts for this campaign with their sequence schedules
+    await initializeCampaignSequences(campaignId)
+    
+    // Optional: Trigger immediate processing (if you want instant start)
+    // You can uncomment this to trigger n8n immediately instead of waiting for the cron
+    // await triggerN8nWebhook(campaignId)
+    
+    console.log(`✅ Campaign automation initialized for: ${campaignName}`)
+  } catch (error) {
+    console.error('❌ Error triggering campaign automation:', error)
+  }
+}
+
+// Helper function to initialize contact sequences when campaign launches
+async function initializeCampaignSequences(campaignId: string) {
+  try {
+    // Get all contacts for this campaign
+    const { data: contacts } = await supabaseServer
+      .from('contacts')
+      .select('id, email, firstName, lastName')
+      .eq('campaign_id', campaignId)
+      .eq('status', 'active')
+
+    if (!contacts || contacts.length === 0) {
+      console.log('No active contacts found for campaign')
+      return
+    }
+
+    // Get first sequence step for this campaign
+    const { data: firstSequence } = await supabaseServer
+      .from('campaign_sequences')
+      .select('id, timing_days')
+      .eq('campaign_id', campaignId)
+      .eq('sequence_number', 1)
+      .eq('sequence_step', 1)
+      .single()
+
+    if (!firstSequence) {
+      console.log('No first sequence found for campaign')
+      return
+    }
+
+    // Schedule first email for each contact
+    const contactSequences = contacts.map(contact => {
+      const scheduledFor = new Date()
+      // Add timing delay (or send immediately if timing is 0)
+      if (firstSequence.timing_days > 0) {
+        scheduledFor.setDate(scheduledFor.getDate() + firstSequence.timing_days)
+      }
+
+      return {
+        contact_id: contact.id,
+        sequence_id: firstSequence.id,
+        status: 'pending',
+        scheduled_for: scheduledFor.toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    })
+
+    // Insert contact sequences
+    const { error: insertError } = await supabaseServer
+      .from('contact_sequences')
+      .insert(contactSequences)
+
+    if (insertError) {
+      console.error('Error initializing contact sequences:', insertError)
+      throw insertError
+    }
+
+    console.log(`✅ Initialized sequences for ${contacts.length} contacts`)
+  } catch (error) {
+    console.error('Error in initializeCampaignSequences:', error)
+    throw error
+  }
+}
+
+// Optional: Function to trigger n8n webhook immediately
+async function triggerN8nWebhook(campaignId: string) {
+  try {
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL
+    if (!n8nWebhookUrl) {
+      console.log('N8N_WEBHOOK_URL not configured, skipping immediate trigger')
+      return
+    }
+
+    const response = await fetch(n8nWebhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        campaignId,
+        trigger: 'campaign_launched',
+        timestamp: new Date().toISOString()
+      })
+    })
+
+    if (response.ok) {
+      console.log('✅ Successfully triggered n8n webhook')
+    } else {
+      console.error('❌ Failed to trigger n8n webhook:', response.statusText)
+    }
+  } catch (error) {
+    console.error('❌ Error triggering n8n webhook:', error)
   }
 }

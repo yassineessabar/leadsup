@@ -162,33 +162,57 @@ export async function POST(
 async function saveSequences(campaignId: string, sequences: any[]) {
   if (!sequences || sequences.length === 0) return
 
+  console.log(`💾 Saving ${sequences.length} sequences for campaign ${campaignId}`)
+  console.log('📝 Sequence data received:', JSON.stringify(sequences.map(s => ({ 
+    id: s.id, 
+    title: s.title, 
+    subject: s.subject, 
+    sequence: s.sequence, 
+    sequenceStep: s.sequenceStep, 
+    timing: s.timing 
+  })), null, 2))
+
   // Delete existing sequences
-  await supabaseServer
+  const { error: deleteError } = await supabaseServer
     .from("campaign_sequences")
     .delete()
     .eq("campaign_id", campaignId)
+
+  if (deleteError) {
+    console.error("❌ Error deleting existing sequences:", deleteError)
+    throw new Error(`Failed to delete existing sequences: ${deleteError.message}`)
+  }
 
   // Insert new sequences
   const sequenceData = sequences.map((seq: any, index: number) => ({
     campaign_id: campaignId,
     step_number: index + 1,
-    subject: seq.subject || null,
+    subject: seq.subject || `Email ${seq.sequenceStep || index + 1} Subject`,
     content: seq.content || "",
-    timing_days: seq.timing || 1,
+    timing_days: seq.timing || (index === 0 ? 0 : seq.timing || 1),
     variants: seq.variants || 1,
-    outreach_method: seq.outreach_method || "email",
+    outreach_method: seq.outreach_method || seq.type || "email",
     sequence_number: seq.sequence || 1,
-    sequence_step: seq.sequenceStep || 1,
-    title: seq.title || `Email ${index + 1}`
+    sequence_step: seq.sequenceStep || (index + 1),
+    title: seq.title || `Email ${seq.sequenceStep || index + 1}`,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   }))
 
-  const { error: insertError } = await supabaseServer
+  console.log('💽 Data being inserted to database:', JSON.stringify(sequenceData, null, 2))
+
+  const { data: insertedData, error: insertError } = await supabaseServer
     .from("campaign_sequences")
     .insert(sequenceData)
+    .select()
 
   if (insertError) {
+    console.error("❌ Error inserting sequences:", insertError)
     throw new Error(`Failed to save sequences: ${insertError.message}`)
   }
+
+  console.log(`✅ Successfully saved ${sequenceData.length} sequences`)
+  return insertedData
 }
 
 // Helper function to save settings
@@ -340,18 +364,41 @@ async function fetchSequences(campaignId: string) {
     return []
   }
 
+  if (!data || data.length === 0) {
+    console.log("No sequences found for campaign:", campaignId)
+    return []
+  }
+
+  console.log(`📖 Fetched ${data.length} sequences from database for campaign ${campaignId}`)
+  console.log('🔍 Raw database data:', JSON.stringify(data, null, 2))
+
   // Transform database format back to component format
-  return data.map((seq, index) => ({
-    id: index + 1,
+  const transformedSequences = data.map((seq) => ({
+    id: seq.step_number, // Use step_number as frontend ID for consistency
+    type: seq.outreach_method || "email",
     subject: seq.subject || "",
     content: seq.content || "",
-    timing: seq.timing_days || 1,
+    timing: seq.timing_days || (seq.step_number === 1 ? 0 : 1),
     variants: seq.variants || 1,
     sequence: seq.sequence_number || 1,
-    sequenceStep: seq.sequence_step || 1,
-    title: seq.title || `Email ${index + 1}`,
-    outreach_method: seq.outreach_method || "email"
+    sequenceStep: seq.sequence_step || seq.step_number,
+    title: seq.title || `Email ${seq.sequence_step || seq.step_number}`,
+    outreach_method: seq.outreach_method || "email",
+    // Keep database metadata for debugging
+    _dbId: seq.id,
+    _stepNumber: seq.step_number
   }))
+
+  console.log('🔄 Transformed sequences for frontend:', JSON.stringify(transformedSequences.map(s => ({
+    id: s.id,
+    title: s.title,
+    subject: s.subject,
+    timing: s.timing,
+    sequence: s.sequence,
+    sequenceStep: s.sequenceStep
+  })), null, 2))
+
+  return transformedSequences
 }
 
 // Helper function to fetch settings
