@@ -182,6 +182,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [connectedSmtpAccounts, setConnectedSmtpAccounts] = useState([])
   const [selectedSmtpAccount, setSelectedSmtpAccount] = useState(null)
   
+  // Bulk email import state
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false)
+  const [bulkEmailCsvFile, setBulkEmailCsvFile] = useState<File | null>(null)
+  const [bulkImportLoading, setBulkImportLoading] = useState(false)
+  const [bulkImportPreview, setBulkImportPreview] = useState([])
+  
   // Email signature state
   const [firstName, setFirstName] = useState("Loop")
   const [lastName, setLastName] = useState("Review")
@@ -2612,6 +2618,22 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       <div className="text-xs text-gray-500">Other email providers</div>
                     </div>
                   </button>
+                  <div className="border-t border-gray-100 my-1"></div>
+                  <button
+                    className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                    onClick={() => {
+                      setShowConnectDropdown(false)
+                      setShowBulkImportModal(true)
+                    }}
+                  >
+                    <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center">
+                      <Upload className="w-3 h-3 text-purple-600" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-medium">Import bulk emails</div>
+                      <div className="text-xs text-gray-500">Import multiple accounts via CSV</div>
+                    </div>
+                  </button>
                 </div>
               )}
             </div>
@@ -2687,6 +2709,22 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <div className="text-left">
                           <div className="font-medium">Connect with SMTP/IMAP</div>
                           <div className="text-xs text-gray-500">Other email providers</div>
+                        </div>
+                      </button>
+                      <div className="border-t border-gray-100 my-1"></div>
+                      <button
+                        className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                        onClick={() => {
+                          setShowConnectDropdown(false)
+                          setShowBulkImportModal(true)
+                        }}
+                      >
+                        <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center">
+                          <Upload className="w-3 h-3 text-purple-600" />
+                        </div>
+                        <div className="text-left">
+                          <div className="font-medium">Import bulk emails</div>
+                          <div className="text-xs text-gray-500">Import multiple accounts via CSV</div>
                         </div>
                       </button>
                     </div>
@@ -4396,6 +4434,242 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 className="bg-yellow-600 hover:bg-yellow-700"
               >
                 Continue Anyway
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Email Import Modal */}
+      <Dialog open={showBulkImportModal} onOpenChange={setShowBulkImportModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Upload className="w-5 h-5 text-purple-600" />
+              <span>Import Bulk Email Accounts</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800 font-medium mb-2">CSV Format Requirements:</p>
+              <p className="text-xs text-blue-700 mb-2">Your CSV file should contain the following columns:</p>
+              <code className="block bg-white p-2 rounded text-xs text-gray-700 font-mono">
+                email,password,smtp_host,smtp_port,imap_host,imap_port,provider_type
+              </code>
+              <p className="text-xs text-blue-600 mt-2">
+                Provider types: gmail, outlook, yahoo, other
+              </p>
+            </div>
+
+            {/* File Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select CSV File
+              </label>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
+                <div className="space-y-1 text-center">
+                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="flex text-sm text-gray-600">
+                    <label
+                      htmlFor="bulk-email-upload"
+                      className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                    >
+                      <span>Upload a file</span>
+                      <input
+                        id="bulk-email-upload"
+                        name="bulk-email-upload"
+                        type="file"
+                        className="sr-only"
+                        accept=".csv"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            setBulkEmailCsvFile(file)
+                            // Parse CSV for preview
+                            const text = await file.text()
+                            const lines = text.split('\n').filter(line => line.trim())
+                            const headers = lines[0].split(',').map(h => h.trim())
+                            const preview = lines.slice(1, 6).map(line => {
+                              const values = line.split(',').map(v => v.trim())
+                              const account = {}
+                              headers.forEach((header, index) => {
+                                account[header] = values[index] || ''
+                              })
+                              return account
+                            })
+                            setBulkImportPreview(preview)
+                          }
+                        }}
+                      />
+                    </label>
+                    <p className="pl-1">or drag and drop</p>
+                  </div>
+                  <p className="text-xs text-gray-500">CSV files up to 10MB</p>
+                </div>
+              </div>
+              {bulkEmailCsvFile && (
+                <div className="mt-2 flex items-center text-sm text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                  {bulkEmailCsvFile.name}
+                </div>
+              )}
+            </div>
+
+            {/* Preview Table */}
+            {bulkImportPreview.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Preview (First 5 accounts)</h4>
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Provider</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">SMTP Host</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {bulkImportPreview.map((account, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-2 text-sm text-gray-900">{account.email}</td>
+                          <td className="px-4 py-2 text-sm text-gray-600">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              account.provider_type === 'gmail' ? 'bg-blue-100 text-blue-800' :
+                              account.provider_type === 'outlook' ? 'bg-indigo-100 text-indigo-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {account.provider_type || 'other'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-600">{account.smtp_host}</td>
+                          <td className="px-4 py-2 text-sm">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              Ready to import
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {bulkImportPreview.length} accounts will be imported
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowBulkImportModal(false)
+                  setBulkEmailCsvFile(null)
+                  setBulkImportPreview([])
+                }}
+                disabled={bulkImportLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!bulkEmailCsvFile) {
+                    toast({
+                      title: "No file selected",
+                      description: "Please select a CSV file to import",
+                      variant: "destructive"
+                    })
+                    return
+                  }
+
+                  setBulkImportLoading(true)
+                  try {
+                    const text = await bulkEmailCsvFile.text()
+                    const lines = text.split('\n').filter(line => line.trim())
+                    const headers = lines[0].split(',').map(h => h.trim())
+                    
+                    const accounts = lines.slice(1).map(line => {
+                      const values = line.split(',').map(v => v.trim())
+                      const account = {}
+                      headers.forEach((header, index) => {
+                        account[header] = values[index] || ''
+                      })
+                      return account
+                    })
+
+                    // Process each account based on provider type
+                    let successCount = 0
+                    for (const account of accounts) {
+                      if (account.provider_type === 'gmail') {
+                        // Add to Gmail accounts
+                        connectedGmailAccounts.push({
+                          id: Date.now() + Math.random(),
+                          email: account.email,
+                          profile_picture: null,
+                          warmup_status: 'inactive',
+                          health_score: 75,
+                          daily_limit: 50
+                        })
+                        successCount++
+                      } else if (account.provider_type === 'outlook') {
+                        // Add to Microsoft 365 accounts
+                        connectedMicrosoft365Accounts.push({
+                          id: Date.now() + Math.random(),
+                          email: account.email,
+                          profile_picture: null,
+                          health_score: 85,
+                          daily_limit: 50
+                        })
+                        successCount++
+                      } else {
+                        // Add to SMTP accounts
+                        connectedSmtpAccounts.push({
+                          id: Date.now() + Math.random(),
+                          email: account.email,
+                          name: account.email.split('@')[0],
+                          smtp_host: account.smtp_host,
+                          smtp_port: account.smtp_port,
+                          health_score: 75,
+                          daily_limit: 50
+                        })
+                        successCount++
+                      }
+                    }
+
+                    toast({
+                      title: "Import Successful",
+                      description: `Successfully imported ${successCount} email accounts`,
+                    })
+
+                    setShowBulkImportModal(false)
+                    setBulkEmailCsvFile(null)
+                    setBulkImportPreview([])
+                  } catch (error) {
+                    console.error('Error importing accounts:', error)
+                    toast({
+                      title: "Import Failed",
+                      description: "Failed to import email accounts. Please check your CSV format.",
+                      variant: "destructive"
+                    })
+                  } finally {
+                    setBulkImportLoading(false)
+                  }
+                }}
+                disabled={!bulkEmailCsvFile || bulkImportLoading}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {bulkImportLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Import Accounts
+                  </>
+                )}
               </Button>
             </div>
           </div>
