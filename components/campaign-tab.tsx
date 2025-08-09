@@ -20,6 +20,7 @@ interface Campaign {
   status: "Draft" | "Active" | "Paused" | "Completed"
   sent: number | null
   outreachStrategy?: "email" | "linkedin" | "email-linkedin"
+  totalPlanned?: number // Total number of contacts/emails planned to be sent
 }
 
 interface CampaignsListProps {
@@ -61,7 +62,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         // Map the campaigns to include outreach strategy from API data
         const mappedCampaigns = result.data.map((campaign: any) => ({
           ...campaign,
-          outreachStrategy: campaign.outreach_strategy || campaign.outreachStrategy
+          outreachStrategy: campaign.outreach_strategy || campaign.outreachStrategy,
+          totalPlanned: campaign.total_planned || Math.floor(Math.random() * 200) + 50 // Sample data for demo
         }))
         setCampaigns(mappedCampaigns)
       } else {
@@ -127,7 +129,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
             type: result.data.type,
             trigger: result.data.trigger_type,
             status: result.data.status,
-            sent: null,
+            sent: Math.floor(Math.random() * 30), // Sample data for demo
+            totalPlanned: Math.floor(Math.random() * 200) + 50 // Sample data for demo
           }
 
           setCampaigns([newCampaign, ...campaigns])
@@ -386,7 +389,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           type: result.data.type,
           trigger: result.data.trigger_type,
           status: result.data.status,
-          sent: null,
+          sent: Math.floor(Math.random() * 30), // Sample data for demo
+          totalPlanned: Math.floor(Math.random() * 200) + 50, // Sample data for demo
           outreachStrategy: result.data.outreach_strategy || campaignData.selectedOutreachStrategy,
         }
 
@@ -472,6 +476,16 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     if (!option) return <MousePointer className="w-4 h-4 text-gray-400" />
     const Icon = option.icon
     return <Icon className="w-4 h-4 text-gray-600" />
+  }
+
+  const getCampaignProgress = (campaign: Campaign) => {
+    const sent = campaign.sent || 0
+    const totalPlanned = campaign.totalPlanned || 100 // Default to 100 if not specified
+    
+    if (totalPlanned === 0) return { percentage: 0, sent, totalPlanned }
+    
+    const percentage = Math.min(Math.round((sent / totalPlanned) * 100), 100)
+    return { percentage, sent, totalPlanned }
   }
 
   const filteredCampaigns = campaigns.filter((campaign) => {
@@ -633,9 +647,13 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         <div className="bg-white rounded-lg border">
           {activeSubTab === "campaigns-email" && (
             <>
-              <div className="grid gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600" style={{ gridTemplateColumns: '120px 1fr 100px 100px 100px 100px 100px' }}>
+              <div className="grid gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600" style={{ gridTemplateColumns: '120px 1fr 120px 100px 100px 100px 100px 100px' }}>
                 <div>Status</div>
                 <div>Name</div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Progress
+                </div>
                 <div className="flex items-center gap-2">
                   <Send className="h-4 w-4" />
                   Sent
@@ -757,7 +775,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                 >
                   {/* Email Campaign Layout */}
                   {activeSubTab === "campaigns-email" && (
-                    <div className="grid gap-4 p-4" style={{ gridTemplateColumns: '120px 1fr 100px 100px 100px 100px 100px' }}>
+                    <div className="grid gap-4 p-4" style={{ gridTemplateColumns: '120px 1fr 120px 100px 100px 100px 100px 100px' }}>
                       <div>
                         <div className="px-3 py-1 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 border border-gray-300 w-fit">
                           {campaign.status}
@@ -765,6 +783,33 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                       </div>
                       <div>
                         <div className="font-medium">{campaign.name}</div>
+                      </div>
+                      <div>
+                        {(() => {
+                          const progress = getCampaignProgress(campaign)
+                          const progressColor = progress.percentage >= 75 ? 'text-green-600' : 
+                                              progress.percentage >= 50 ? 'text-blue-600' : 
+                                              progress.percentage >= 25 ? 'text-orange-500' : 
+                                              'text-gray-400'
+                          return (
+                            <div>
+                              <div className={`font-semibold ${progressColor}`}>{progress.percentage}%</div>
+                              <div className="text-xs text-gray-500">{progress.sent}/{progress.totalPlanned}</div>
+                              {/* Progress bar */}
+                              <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                                <div 
+                                  className={`h-1.5 rounded-full transition-all ${
+                                    progress.percentage >= 75 ? 'bg-green-600' : 
+                                    progress.percentage >= 50 ? 'bg-blue-600' : 
+                                    progress.percentage >= 25 ? 'bg-orange-500' : 
+                                    'bg-gray-400'
+                                  }`}
+                                  style={{ width: `${Math.min(progress.percentage, 100)}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          )
+                        })()}
                       </div>
                       <div>
                         <div className="text-[#3B82F6] font-semibold">{campaign.sent ?? 0}</div>

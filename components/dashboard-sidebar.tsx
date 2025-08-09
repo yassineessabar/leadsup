@@ -208,9 +208,9 @@ export function DashboardSidebar({
           <div className="space-y-0.5">
             {mainMenuItems.map((item) => {
               const Icon = item.icon
-              const isActive = activeTab === item.id
+              const isActive = activeTab === item.id || (item.id === 'campaigns' && activeTab === 'campaigns-email')
               const hasSubItems = item.subItems && item.subItems.length > 0
-              const isParentActive = hasSubItems && item.subItems.some(subItem => activeTab === subItem.id)
+              const isParentActive = false // Simplified since we're not using dropdowns
 
               return (
                 <div key={item.id}>
@@ -224,8 +224,9 @@ export function DashboardSidebar({
                         : "text-black hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                     )}
                     onClick={() => {
-                      if (hasSubItems && item.id === 'campaigns') {
-                        setCampaignsExpanded(!campaignsExpanded)
+                      if (item.id === 'campaigns') {
+                        // Always navigate directly to email campaigns
+                        onTabChange('campaigns-email')
                       } else {
                         onTabChange(hasSubItems ? item.subItems[0].id : item.id)
                       }
@@ -233,48 +234,9 @@ export function DashboardSidebar({
                     title={isCollapsed ? item.label : undefined}
                   >
                     <Icon className="h-4 w-4" />
-                    {!isCollapsed && (
-                      <>
-                        {item.label}
-                        {hasSubItems && item.id === 'campaigns' && (
-                          <div className="ml-auto">
-                            {campaignsExpanded ? (
-                              <ChevronDown className="h-4 w-4" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4" />
-                            )}
-                          </div>
-                        )}
-                      </>
-                    )}
+                    {!isCollapsed && item.label}
                   </Button>
 
-                  {hasSubItems && item.id === 'campaigns' && campaignsExpanded && !isCollapsed && (
-                    <div className="ml-6 mt-0.5 space-y-0.5">
-                      {item.subItems.map((subItem) => {
-                        const SubIcon = subItem.icon
-                        const isSubActive = activeTab === subItem.id
-
-                        return (
-                          <Button
-                            key={subItem.id}
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              "w-full justify-start gap-3 rounded-lg px-2.5 py-1 h-8 text-sm",
-                              isSubActive
-                                ? "bg-violet-50 text-violet-600 hover:bg-violet-100 dark:bg-violet-900 dark:text-violet-400 dark:hover:bg-violet-800"
-                                : "text-black hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-                            )}
-                            onClick={() => onTabChange(subItem.id)}
-                          >
-                            <SubIcon className="h-3.5 w-3.5" />
-                            {subItem.label}
-                          </Button>
-                        )
-                      })}
-                    </div>
-                  )}
                 </div>
               )
             })}
@@ -447,9 +409,9 @@ export function DashboardSidebar({
         <ul className="space-y-2">
           {mainMenuItems.map((item) => {
             const Icon = item.icon
-            const isActive = activeTab === item.id
+            const isActive = activeTab === item.id || (item.id === 'campaigns' && activeTab === 'campaigns-email')
             const hasSubItems = item.subItems && item.subItems.length > 0
-            const isParentActive = hasSubItems && item.subItems.some(subItem => activeTab === subItem.id)
+            const isParentActive = false // Simplified since we're not using dropdowns
 
             return (
               <li key={item.id}>
@@ -462,8 +424,9 @@ export function DashboardSidebar({
                       : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
                   )}
                   onClick={() => {
-                    if (hasSubItems && item.id === 'campaigns') {
-                      setCampaignsExpanded(!campaignsExpanded)
+                    if (item.id === 'campaigns') {
+                      // Always navigate directly to email campaigns
+                      onTabChange('campaigns-email')
                     } else {
                       onTabChange(hasSubItems ? item.subItems[0].id : item.id)
                     }
@@ -471,44 +434,8 @@ export function DashboardSidebar({
                 >
                   <Icon className="w-5 h-5 mr-3" />
                   <span className="truncate text-sm font-medium">{item.label}</span>
-                  {hasSubItems && item.id === 'campaigns' && (
-                    <div className="ml-auto">
-                      {campaignsExpanded ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </div>
-                  )}
                 </Button>
 
-                {hasSubItems && item.id === 'campaigns' && campaignsExpanded && (
-                  <ul className="ml-6 mt-2 space-y-1">
-                    {item.subItems.map((subItem) => {
-                      const SubIcon = subItem.icon
-                      const isSubActive = activeTab === subItem.id
-
-                      return (
-                        <li key={subItem.id}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={cn(
-                              "w-full justify-start h-8 px-3 transition-all duration-200",
-                              isSubActive
-                                ? "bg-black text-white hover:bg-gray-800"
-                                : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
-                            )}
-                            onClick={() => onTabChange(subItem.id)}
-                          >
-                            <SubIcon className="w-4 h-4 mr-2" />
-                            <span className="truncate text-xs font-medium">{subItem.label}</span>
-                          </Button>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
               </li>
             )
           })}
