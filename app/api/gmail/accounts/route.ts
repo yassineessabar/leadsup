@@ -13,50 +13,21 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Try to get connected Gmail accounts for the user
+    // Try to get connected Gmail accounts for the user from campaign_senders
     console.log('Fetching Gmail accounts for user:', userId)
     
     const { data: accounts, error } = await supabaseServer
-      .from('gmail_accounts')
-      .select('id, email, name, profile_picture, created_at')
+      .from('campaign_senders')
+      .select('id, email, name, profile_picture, created_at, campaign_id, health_score, daily_limit, warmup_status, is_active')
       .eq('user_id', userId)
+      .eq('sender_type', 'email')
+      .eq('is_active', true)
       .order('created_at', { ascending: false })
 
     if (error) {
-      // Check if table doesn't exist
-      if (error.message?.includes('relation "gmail_accounts" does not exist') || 
-          error.message?.includes('relation "public.gmail_accounts" does not exist')) {
-        console.log('Gmail accounts table does not exist. Please run the database migration.')
-        return NextResponse.json(
-          { error: 'Gmail accounts table not found. Database setup required.' },
-          { status: 503 }
-        )
-      }
-      
-      // Check if profile_picture column doesn't exist - fallback to basic query
-      if (error.message?.includes('column gmail_accounts.profile_picture does not exist')) {
-        console.log('Profile picture column not found, falling back to basic query')
-        const { data: accounts, error: fallbackError } = await supabaseServer
-          .from('gmail_accounts')
-          .select('id, email, name, created_at')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-        
-        if (fallbackError) {
-          console.error('Fallback database error:', fallbackError)
-          return NextResponse.json(
-            { error: 'Failed to fetch accounts' },
-            { status: 500 }
-          )
-        }
-        
-        console.log('Found Gmail accounts (no profile pics):', accounts?.length || 0)
-        return NextResponse.json(accounts || [])
-      }
-      
       console.error('Database error:', error)
       return NextResponse.json(
-        { error: 'Failed to fetch accounts' },
+        { error: 'Failed to fetch Gmail accounts from campaign_senders' },
         { status: 500 }
       )
     }

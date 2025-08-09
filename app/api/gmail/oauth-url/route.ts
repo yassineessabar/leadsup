@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
+    // Get request body to check for campaign ID
+    const body = await request.json().catch(() => ({}))
+    const campaignId = body.campaignId
+    
+    // Require campaign ID for Gmail connections
+    if (!campaignId) {
+      return NextResponse.json(
+        { error: 'Campaign ID is required for Gmail connection' },
+        { status: 400 }
+      )
+    }
+    
     // Get environment variables for Google OAuth
     const clientId = process.env.GOOGLE_CLIENT_ID
     const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/gmail/oauth-callback`
@@ -20,6 +32,9 @@ export async function POST(request: NextRequest) {
       'https://www.googleapis.com/auth/userinfo.profile'
     ]
 
+    // Include campaign ID in state
+    const state = `gmail_oauth_${campaignId}`
+
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -27,7 +42,7 @@ export async function POST(request: NextRequest) {
       scope: scopes.join(' '),
       access_type: 'offline',
       prompt: 'consent',
-      state: 'gmail_oauth' // Add state for security
+      state: state // Include campaign ID in state
     })}`
 
     return NextResponse.json({ authUrl })

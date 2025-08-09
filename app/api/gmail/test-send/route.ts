@@ -28,11 +28,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get Gmail account details
+    // Get Gmail account details from campaign_senders
     const { data: account, error: accountError } = await supabaseServer
-      .from('gmail_accounts')
+      .from('campaign_senders')
       .select('*')
       .eq('id', accountId)
+      .eq('sender_type', 'email')
       .single()
 
     if (accountError) {
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
 
         // Update tokens in database
         await supabaseServer
-          .from('gmail_accounts')
+          .from('campaign_senders')
           .update({
             access_token: accessToken,
             expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),

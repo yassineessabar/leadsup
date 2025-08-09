@@ -196,6 +196,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [sendingEndTime, setSendingEndTime] = useState('05:00 PM')
   const [selectedSenderAccounts, setSelectedSenderAccounts] = useState([])
   
+  // Loading states
+  const [isLoadingCampaignData, setIsLoadingCampaignData] = useState(true)
+  const [campaignDataLoaded, setCampaignDataLoaded] = useState(false)
+  
   // Email signature state
   const [firstName, setFirstName] = useState("Loop")
   const [lastName, setLastName] = useState("Review")
@@ -543,8 +547,93 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const saveAll = () => saveCampaignData('all')
   const saveSenders = () => saveCampaignData('senders')
 
-  // Auto-save functionality
+  // Load campaign data on component mount
+  const loadCampaignData = async () => {
+    if (!campaign?.id) return
+    
+    setIsLoadingCampaignData(true)
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/save`)
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        const data = result.data
+        
+        // Load sequences
+        if (data.sequences && data.sequences.length > 0) {
+          setSteps(data.sequences)
+          setActiveStepId(data.sequences[0]?.id || 1)
+        }
+        
+        // Load settings
+        if (data.settings) {
+          setDailyContactsLimit(data.settings.dailyContactsLimit || 35)
+          setDailySequenceLimit(data.settings.dailySequenceLimit || 100)
+          setActiveDays(data.settings.activeDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'])
+          setSendingStartTime(data.settings.sendingStartTime || '08:00 AM')
+          setSendingEndTime(data.settings.sendingEndTime || '05:00 PM')
+          
+          // Load signature data
+          if (data.settings.signature) {
+            setFirstName(data.settings.signature.firstName || 'Loop')
+            setLastName(data.settings.signature.lastName || 'Review')
+            setCompanyName(data.settings.signature.companyName || 'LeadsUp')
+            setCompanyWebsite(data.settings.signature.companyWebsite || 'https://www.leadsup.com')
+            const signatureHtml = data.settings.signature.emailSignature || `<br/><br/>Best regards,<br/><strong>${data.settings.signature.firstName || 'Loop'} ${data.settings.signature.lastName || 'Review'}</strong><br/>${data.settings.signature.companyName || 'LeadsUp'}<br/><a href="${data.settings.signature.companyWebsite || 'https://www.leadsup.com'}" target="_blank">${data.settings.signature.companyWebsite || 'https://www.leadsup.com'}</a>`
+            setEmailSignature(signatureHtml)
+            // Update the signature editor content if it exists
+            if (signatureEditorRef.current) {
+              signatureEditorRef.current.innerHTML = signatureHtml
+            }
+          }
+        }
+        
+        // Load sender accounts
+        if (data.senders) {
+          setSelectedSenderAccounts(data.senders)
+        }
+        
+        // Load scraping settings
+        if (data.scrapingSettings) {
+          setIsScrappingActive(data.scrapingSettings.isActive || false)
+          setScrappingDailyLimit(data.scrapingSettings.dailyLimit || 100)
+          setScrappingIndustry(data.scrapingSettings.industry || '')
+          setScrappingKeyword(data.scrapingSettings.keyword || '')
+          setScrappingLocation(data.scrapingSettings.location || '')
+        }
+        
+        // Load connected accounts
+        if (data.connectedAccounts) {
+          setConnectedGmailAccounts(data.connectedAccounts.gmail || [])
+          setConnectedMicrosoft365Accounts(data.connectedAccounts.microsoft365 || [])
+          setConnectedSmtpAccounts(data.connectedAccounts.smtp || [])
+        }
+        
+        setCampaignDataLoaded(true)
+      }
+    } catch (error) {
+      console.error('Error loading campaign data:', error)
+      toast({
+        title: "Error Loading Data",
+        description: "Failed to load campaign data. Please refresh the page.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsLoadingCampaignData(false)
+    }
+  }
+  
+  // Load data when component mounts or campaign changes
   useEffect(() => {
+    if (campaign?.id && !campaignDataLoaded) {
+      loadCampaignData()
+    }
+  }, [campaign?.id])
+
+  // Auto-save functionality (only after data is loaded)
+  useEffect(() => {
+    if (!campaignDataLoaded) return
+    
     const autoSaveTimer = setTimeout(() => {
       // Auto-save sequences when steps change
       if (steps.length > 0) {
@@ -553,25 +642,28 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }, 5000) // Auto-save after 5 seconds of inactivity
 
     return () => clearTimeout(autoSaveTimer)
-  }, [steps])
+  }, [steps, campaignDataLoaded])
 
   useEffect(() => {
+    if (!campaignDataLoaded) return
+    
     const autoSaveTimer = setTimeout(() => {
       // Auto-save settings when they change
       saveCampaignData('settings')
     }, 3000) // Auto-save after 3 seconds of inactivity
 
     return () => clearTimeout(autoSaveTimer)
-  }, [dailyContactsLimit, dailySequenceLimit, activeDays, sendingStartTime, sendingEndTime, firstName, lastName, companyName, companyWebsite, emailSignature])
+  }, [dailyContactsLimit, dailySequenceLimit, activeDays, sendingStartTime, sendingEndTime, firstName, lastName, companyName, companyWebsite, emailSignature, campaignDataLoaded])
 
   useEffect(() => {
+    if (!campaignDataLoaded) return
+    
     const autoSaveTimer = setTimeout(() => {
-      // Auto-save sender selection when it changes
       saveCampaignData('senders')
     }, 2000) // Auto-save after 2 seconds of inactivity
 
     return () => clearTimeout(autoSaveTimer)
-  }, [selectedSenderAccounts])
+  }, [selectedSenderAccounts, campaignDataLoaded])
 
   const previewSequence = () => {
     setShowPreviewModal(!showPreviewModal)
@@ -747,7 +839,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       // Step 1: Get OAuth URL from backend
       const response = await fetch('/api/gmail/oauth-url', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId: campaign.id })
       })
       
       if (!response.ok) throw new Error('Failed to get OAuth URL')
@@ -1783,7 +1876,31 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   // Disconnect account functions
   const disconnectGmailAccount = async (accountId) => {
-    setConnectedGmailAccounts(prev => prev.filter(acc => acc.id !== accountId))
+    try {
+      // Delete from database
+      const response = await fetch(`/api/campaigns/${campaign.id}/gmail-accounts?accountId=${accountId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Update frontend state
+        setConnectedGmailAccounts(prev => prev.filter(acc => acc.id !== accountId))
+        setSelectedSenderAccounts(prev => prev.filter(id => id !== accountId))
+        
+        toast({
+          title: "Account Disconnected",
+          description: "Gmail account has been removed from this campaign",
+        })
+      } else {
+        throw new Error('Failed to disconnect account')
+      }
+    } catch (error) {
+      toast({
+        title: "Disconnect Failed",
+        description: "Failed to disconnect Gmail account",
+        variant: "destructive"
+      })
+    }
   }
 
   const disconnectMicrosoft365Account = async (accountId) => {
@@ -4367,6 +4484,52 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }
 
+  // Show loading spinner while data is being fetched
+  if (isLoadingCampaignData) {
+    return (
+      <main style={{
+        paddingLeft: '64px',
+        paddingRight: '64px',
+        paddingTop: '32px',
+        backgroundColor: '#FAFBFC',
+        fontFamily: 'Jost, sans-serif',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '16px'
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid #E5E7EB',
+            borderTop: '4px solid #3B82F6',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+          <p style={{
+            color: '#6B7280',
+            fontSize: '16px',
+            fontWeight: '500'
+          }}>
+            Loading campaign data...
+          </p>
+        </div>
+        <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </main>
+    )
+  }
+
   return (
     <main style={{
       paddingLeft: '64px',
@@ -4434,6 +4597,20 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setCampaignDataLoaded(false)
+                loadCampaignData()
+              }}
+              className="text-gray-500 hover:text-gray-700"
+              title="Refresh campaign data"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </Button>
             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
               campaign.status === 'Active' 
                 ? 'bg-green-100 text-green-800'

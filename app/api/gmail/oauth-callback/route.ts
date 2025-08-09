@@ -8,6 +8,19 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get('code')
     const error = searchParams.get('error')
     const state = searchParams.get('state')
+    
+    // Parse state to get campaign ID if provided
+    let campaignId = null
+    try {
+      if (state && state.includes('_')) {
+        const parts = state.split('_')
+        if (parts[0] === 'gmail' && parts[1] === 'oauth' && parts[2]) {
+          campaignId = parts[2] // gmail_oauth_campaignId
+        }
+      }
+    } catch (e) {
+      console.warn('Could not parse campaign ID from state:', state)
+    }
 
     // Check for errors or missing parameters
     if (error) {
@@ -26,7 +39,7 @@ export async function GET(request: NextRequest) {
       `, { headers: { 'Content-Type': 'text/html' } })
     }
 
-    if (!code || state !== 'gmail_oauth') {
+    if (!code || (!state || (!state.startsWith('gmail_oauth')))) {
       return new NextResponse(`
         <html>
           <body>
@@ -139,24 +152,43 @@ export async function GET(request: NextRequest) {
       `, { headers: { 'Content-Type': 'text/html' } })
     }
 
-    // Check if account already exists
+    // Require campaign ID for Gmail connections
+    if (!campaignId) {
+      return new NextResponse(`
+        <html>
+          <body>
+            <script>
+              window.opener.postMessage({
+                type: 'GMAIL_AUTH_ERROR',
+                error: 'Campaign ID is required for Gmail connection'
+              }, window.location.origin);
+              window.close();
+            </script>
+          </body>
+        </html>
+      `, { headers: { 'Content-Type': 'text/html' } })
+    }
+    
+    // Check if account already exists in campaign_senders
     const { data: existingAccount } = await supabaseServer
-      .from('gmail_accounts')
+      .from('campaign_senders')
       .select('id')
+      .eq('campaign_id', campaignId)
       .eq('user_id', userId)
       .eq('email', userInfo.email)
       .single()
 
     if (existingAccount) {
-      // Update existing account
+      // Update existing account in campaign_senders
       const { error: updateError } = await supabaseServer
-        .from('gmail_accounts')
+        .from('campaign_senders')
         .update({
           name: userInfo.name,
           profile_picture: userInfo.picture,
           access_token: tokens.access_token,
           refresh_token: tokens.refresh_token || existingAccount.refresh_token,
           expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+          is_active: true,
           updated_at: new Date().toISOString()
         })
         .eq('id', existingAccount.id)
@@ -168,12 +200,13 @@ export async function GET(request: NextRequest) {
         if (updateError.message?.includes('profile_picture')) {
           console.log('Profile picture column not found, updating without it')
           const { error: fallbackUpdateError } = await supabaseServer
-            .from('gmail_accounts')
+            .from('campaign_senders')
             .update({
               name: userInfo.name,
               access_token: tokens.access_token,
               refresh_token: tokens.refresh_token || existingAccount.refresh_token,
               expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+              is_active: true,
               updated_at: new Date().toISOString()
             })
             .eq('id', existingAccount.id)
@@ -211,10 +244,11 @@ export async function GET(request: NextRequest) {
         }
       }
     } else {
-      // Insert new account
+      // Insert new account into campaign_senders
       const { error: dbError } = await supabaseServer
-        .from('gmail_accounts')
+        .from('campaign_senders')
         .insert({
+          campaign_id: campaignId,
           user_id: userId,
           email: userInfo.email,
           name: userInfo.name,
@@ -222,6 +256,12 @@ export async function GET(request: NextRequest) {
           access_token: tokens.access_token,
           refresh_token: tokens.refresh_token,
           expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+          sender_type: 'email',
+          health_score: 75,
+          daily_limit: 50,
+          warmup_status: 'inactive',
+          is_active: true,
+          is_selected: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
