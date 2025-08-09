@@ -1,0 +1,114 @@
+import { type NextRequest, NextResponse } from "next/server"
+import Stripe from "stripe"
+import { supabase } from "@/lib/supabase"
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-06-20",
+})
+
+// Define price IDs for each plan (should match the main checkout route)
+const PRICE_IDS = {
+  basic: {
+    monthly: "price_1QRbJcRuE1eilp2aDnZNjNM2",
+    yearly: "price_1QRbJcRuE1eilp2aYearlyID"
+  },
+  pro: {
+    monthly: "price_1QRbKRRuE1eilp2aPro79ID",
+    yearly: "price_1QRbKRRuE1eilp2aProYearID"
+  },
+  enterprise: {
+    monthly: "price_1QRbLERuE1eilp2aEnt180ID",
+    yearly: "price_1QRbLERuE1eilp2aEntYearID"
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { sessionId, planName, billingPeriod } = await request.json()
+
+    if (!sessionId) {
+      return NextResponse.json(
+        { success: false, error: "Session ID is required" },
+        { status: 400 }
+      )
+    }
+
+    // Retrieve the setup session
+    const setupSession = await stripe.checkout.sessions.retrieve(sessionId)
+
+    if (!setupSession.customer || !setupSession.setup_intent) {
+      return NextResponse.json(
+        { success: false, error: "Invalid setup session" },
+        { status: 400 }
+      )
+    }
+
+    const customerId = setupSession.customer as string
+    const setupIntent = await stripe.setupIntents.retrieve(setupSession.setup_intent as string)
+    const paymentMethodId = setupIntent.payment_method as string
+
+    // Attach payment method to customer as default
+    await stripe.paymentMethods.attach(paymentMethodId, {
+      customer: customerId,
+    })
+
+    await stripe.customers.update(customerId, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    })
+
+    // Create subscription with 7-day trial
+    const subscription = await stripe.subscriptions.create({
+      customer: customerId,
+      items: [{
+        price: PRICE_IDS[planName as keyof typeof PRICE_IDS]?.[billingPeriod as "monthly" | "yearly"] || "price_1QRbJcRuE1eilp2aDnZNjNM2",
+      }],
+      trial_period_days: 7,
+      default_payment_method: paymentMethodId,
+      metadata: {
+        plan_name: planName || "basic",
+        billing_period: billingPeriod,
+        trial_setup_session: sessionId
+      },
+      expand: ['latest_invoice']
+    })
+
+    // Update user in database
+    const userId = setupSession.metadata?.user_id
+    if (userId) {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscription.id,
+          subscription_type: planName || 'basic',
+          subscription_status: 'trialing',
+          trial_start_date: new Date().toISOString(),
+          trial_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId)
+
+      if (error) {
+        console.error('Error updating user after trial setupconsole.error('Error:', error)
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      subscriptionId: subscription.id,
+      customerId: customerId,
+      status: subscription.status,
+      trialEnd: subscription.trial_end,
+      message: "Trial started successfully - $0 charged today!"
+    })
+
+  } catch (error) {
+    console.error("Error completing trial setup:", error)
+    return NextResponse.json(
+      { success: false, error: "Failed to complete trial setup" },
+      { status: 500 }
+    )
+  }
+}

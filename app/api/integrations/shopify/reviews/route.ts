@@ -1,0 +1,343 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from "next/headers"
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+// Helper function to get user ID from session
+async function getUserIdFromSession(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get("session")?.value
+
+    if (!sessionToken) {
+      return null
+    }
+
+    const { data, error } = await supabase
+      .from("user_sessions")
+      .select("user_id")
+      .eq("session_token", sessionToken)
+      .single()
+
+    if (error || !data) {
+      console.error("Error fetching user from session:", error)
+      return null
+    }
+
+    return data.user_id
+  } catch (error) {
+    console.error("Error in getUserIdFromSession:", error)
+    return null
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const userId = await getUserIdFromSession()
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    // Get the Shopify integration from database
+    const { data: integration, error } = await supabase
+      .from('review_integrations')
+      .select('additional_data')
+      .eq('platform_name', 'shopify')
+      .eq('user_id', userId)
+      .eq('integration_status', 'connected')
+      .single()
+
+    if (error || !integration) {
+      return NextResponse.json(
+        { success: false, error: 'Shopify integration not found or not connected' },
+        { status: 404 }
+      )
+    }
+
+    const additionalData = integration.additional_data as any
+    const accessToken = additionalData.access_token
+    const shopDomain = additionalData.shop_domain
+
+    // Fetch reviews from multiple sources
+    let allReviews = []
+    let reviewSources = []
+
+    try {
+      // Method 1: Try Shopify's built-in Product Reviews app via metafields
+      const metafieldsResponse = await fetch(
+        `https://${shopDomain}/admin/api/2023-10/products.json?limit=10&fields=id,title,metafields`,
+        {
+          headers: {
+            'X-Shopify-Access-Token': accessToken,
+          },
+        }
+      )
+
+      if (metafieldsResponse.ok) {
+        const metafieldsData = await metafieldsResponse.json()
+        reviewSources.push('metafields')
+      }
+
+      // Method 2: Try to fetch reviews via blog posts (some apps store reviews as blog posts)
+      const blogsResponse = await fetch(
+        `https://${shopDomain}/admin/api/2023-10/blogs.json`,
+        {
+          headers: {
+            'X-Shopify-Access-Token': accessToken,
+          },
+        }
+      )
+
+      if (blogsResponse.ok) {
+        const blogsData = await blogsResponse.json()
+        const blogs = blogsData.blogs || []
+
+        for (const blog of blogs) {
+          if (blog.title.toLowerCase().includes('review') || blog.handle.includes('review')) {
+            const articlesResponse = await fetch(
+              `https://${shopDomain}/admin/api/2023-10/blogs/${blog.id}/articles.json?limit=50`,
+              {
+                headers: {
+                  'X-Shopify-Access-Token': accessToken,
+                },
+              }
+            )
+
+            if (articlesResponse.ok) {
+              const articlesData = await articlesResponse.json()
+              const articles = articlesData.articles || []
+
+              articles.forEach(article => {
+                allReviews.push({
+                  id: article.id,
+                  product_title: article.title,
+                  customer_name: article.author || 'Anonymous',
+                  rating: 5, // Default rating, as blog posts don't have ratings
+                  title: article.title,
+                  comment: article.summary || article.content?.substring(0, 200),
+                  created_at: article.created_at,
+                  source: 'blog',
+                  url: article.url
+                })
+              })
+
+              reviewSources.push(`blog:${blog.title}`)
+            }
+          }
+        }
+      }
+
+      // Method 3: Check for common review app data in product metafields
+      const productsResponse = await fetch(
+        `https://${shopDomain}/admin/api/2023-10/products.json?limit=50&fields=id,title,handle`,
+        {
+          headers: {
+            'X-Shopify-Access-Token': accessToken,
+          },
+        }
+      )
+
+      if (productsResponse.ok) {
+        const productsData = await productsResponse.json()
+        const products = productsData.products || []
+
+        for (const product of products.slice(0, 5)) { // Check first 5 products
+          const productMetafieldsResponse = await fetch(
+            `https://${shopDomain}/admin/api/2023-10/products/${product.id}/metafields.json`,
+            {
+              headers: {
+                'X-Shopify-Access-Token': accessToken,
+              },
+            }
+          )
+
+          if (productMetafieldsResponse.ok) {
+            const metafieldsData = await productMetafieldsResponse.json()
+            const metafields = metafieldsData.metafields || []
+
+            // Look for review-related metafields
+            metafields.forEach(metafield => {
+              if (metafield.key.includes('review') ||
+                  metafield.namespace.includes('review') ||
+                  metafield.namespace.includes('judge') ||
+                  metafield.namespace.includes('loox') ||
+                  metafield.namespace.includes('yotpo')) {
+
+                try {
+                  let reviewData = typeof metafield.value === 'string' ?
+                    JSON.parse(metafield.value) : metafield.value
+
+                  if (Array.isArray(reviewData)) {
+                    reviewData.forEach(review => {
+                      allReviews.push({
+                        id: review.id || `${product.id}_${Date.now()}`,
+                        product_id: product.id,
+                        product_title: product.title,
+                        customer_name: review.author || review.name || 'Anonymous',
+                        rating: review.rating || review.stars || 5,
+                        title: review.title || '',
+                        comment: review.body || review.content || review.review,
+                        created_at: review.created_at || review.date,
+                        source: metafield.namespace,
+                        verified: review.verified || false
+                      })
+                    })
+                  }
+
+                  reviewSources.push(`metafield:${metafield.namespace}`)
+                } catch (e) {
+                }
+              }
+            })
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error('Error:', error)
+    }
+
+    // Transform reviews data
+    const reviewData = allReviews.map(review => ({
+      id: review.id,
+      product_id: review.product_id,
+      product_title: review.product_title,
+      customer_name: review.customer_name,
+      customer_email: review.customer_email || '',
+      rating: review.rating,
+      title: review.title || '',
+      comment: review.comment,
+      created_at: review.created_at,
+      source: review.source,
+      verified: review.verified || false,
+      shop_domain: shopDomain,
+      shop_name: additionalData.shop_name
+    }))
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        reviews: reviewData,
+        total_reviews: allReviews.length,
+        review_sources: reviewSources,
+        shop_info: {
+          domain: shopDomain,
+          name: additionalData.shop_name,
+          email: additionalData.shop_email
+        },
+        sync_time: new Date().toISOString()
+      }
+    })
+
+  } catch (error) {
+    console.error('Error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch Shopify data' },
+      { status: 500 }
+    )
+  }
+}
+
+// Helper function to transform Shopify order to review format
+function transformOrderToReview(userId: string, order: any) {
+  const customer = order.customer || {}
+  const customerName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Unknown Customer'
+  const customerEmail = customer.email || ''
+
+  // Extract product names
+  const products = order.line_items?.map((item: any) => item.name).join(', ') || 'Products'
+  const orderValue = parseFloat(order.total_price || '0')
+  const itemCount = order.line_items?.length || 0
+
+  // Create review based on order data
+  const title = `Order #${order.order_number || order.id}`
+  const comment = `Customer purchased ${itemCount} item${itemCount !== 1 ? 's' : ''}: ${products} for $${orderValue}`
+
+  // Default rating based on order status
+  let rating = 3 // Default neutral
+  if (order.financial_status === 'paid' && order.fulfillment_status === 'fulfilled') {
+    rating = 4 // Good experience for completed orders
+  }
+  if (order.cancelled_at) {
+    rating = 2 // Lower rating for cancelled orders
+  }
+
+  return {
+    user_id: userId,
+    customer_name: customerName,
+    customer_email: customerEmail,
+    rating: rating,
+    title: title,
+    comment: comment,
+    platform: 'Shopify',
+    status: 'published',
+    response: null,
+    helpful_count: 0,
+    verified: true,
+    shopify_order_id: order.id?.toString(),
+    shopify_order_number: order.order_number?.toString() || order.id?.toString(),
+    created_at: order.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const userId = await getUserIdFromSession()
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    // Get Shopify integration
+    const { data: integration, error } = await supabase
+      .from('review_integrations')
+      .select('additional_data')
+      .eq('platform_name', 'shopify')
+      .eq('user_id', userId)
+      .eq('integration_status', 'connected')
+      .single()
+
+    if (error || !integration) {
+      return NextResponse.json(
+        { success: false, error: 'Shopify integration not found or not connected' },
+        { status: 404 }
+      )
+    }
+
+    const additionalData = integration.additional_data as any
+    const accessToken = additionalData.access_token
+    const shopDomain = additionalData.shop_domain
+
+    if (!accessToken || !shopDomain) {
+      throw new Error("Missing access token or shop domain in Shopify integration")
+    }
+
+    // For now, just return a message that real review integration is coming soon
+    return NextResponse.json({
+      success: true,
+      data: {
+        message: "Shopify review sync is currently disabled. Real customer review integration (Judge.me, Loox, Shopify Product Reviews) coming soon.",
+        shop_domain: shopDomain,
+        integration_status: "connected",
+        review_apps_supported: ["Judge.me", "Loox", "Shopify Product Reviews", "Yotpo", "Stamped.io"]
+      }
+    })
+
+  } catch (error) {
+    console.error('Error:', error)
+    return NextResponse.json(
+      { success: false, error: error.message || 'Failed to sync Shopify reviews' },
+      { status: 500 }
+    )
+  }
+}

@@ -1,0 +1,87 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+// Use service role for admin operations
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+export async function POST(request: NextRequest) {
+  try {
+    // Get all review links with video testimonial links
+    const { data: reviewLinks, error: fetchError } = await supabaseAdmin
+      .from('review_link')
+      .select('id, links, user_id')
+      .not('links', 'is', null)
+
+    if (fetchError) {
+      console.error('❌ Error fetching review links:', fetchError)
+      return NextResponse.json({ success: false, error: fetchError.message }, { status: 500 })
+    }
+
+    let updatedCount = 0
+    const updates = []
+
+    for (const reviewLink of reviewLinks || []) {
+      if (!reviewLink.links || !Array.isArray(reviewLink.links)) continue
+
+      let hasUpdates = false
+      const updatedLinks = reviewLink.links.map((link: any) => {
+        if (link.platformId === 'video-testimonial') {
+          // Fix button text if it's wrong
+          if (link.buttonText !== 'Upload Video Testimonial') {
+            hasUpdates = true
+            return {
+              ...link,
+              buttonText: 'Upload Video Testimonial',
+              url: link.url === '#video-upload' ? link.url : '#video-upload' // Also ensure URL is correct
+            }
+          }
+        }
+        return link
+      })
+
+      if (hasUpdates) {
+        updates.push({
+          id: reviewLink.id,
+          links: updatedLinks
+        })
+      }
+    }
+
+    // Perform batch updates
+    for (const update of updates) {
+      const { error: updateError } = await supabaseAdmin
+        .from('review_link')
+        .update({
+          links: update.links,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', update.id)
+
+      if (updateError) {
+        console.error('❌ Error updating review link:', updateError)
+      } else {
+        updatedCount++
+        }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Fixed button text for ${updatedCount} review links`,
+      data: {
+        totalChecked: reviewLinks?.length || 0,
+        updated: updatedCount,
+        updates: updates.map(u => ({ id: u.id, linksCount: u.links.length }))
+      }
+    })
+
+  } catch (error) {
+    console.error('Error:', error)
+    return NextResponse.json({
+      success: false,
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}

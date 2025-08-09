@@ -1,0 +1,174 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { CheckCircle, Clock, Crown } from "lucide-react"
+
+export default function TrialSetupSuccessPage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [trialInfo, setTrialInfo] = useState<any>(null)
+
+  const sessionId = searchParams.get('session_id')
+  const planName = searchParams.get('plan')
+  const billingPeriod = searchParams.get('billing')
+
+  useEffect(() => {
+    if (!sessionId) {
+      setError('Invalid session')
+      setIsLoading(false)
+      return
+    }
+
+    const completeTrialSetup = async () => {
+      try {
+        const response = await fetch('/api/stripe/complete-trial-setup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sessionId,
+            planName,
+            billingPeriod
+          })
+        })
+
+        const result = await response.json()
+
+        if (result.success) {
+          setTrialInfo(result)
+        } else {
+          setError(result.error || 'Failed to setup trial')
+        }
+      } catch (error) {
+        console.error('Error:', error)
+        setError('An unexpected error occurred')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    completeTrialSetup()
+  }, [sessionId, planName, billingPeriod])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <h2 className="text-xl font-semibold mb-2">Setting up your trial...</h2>
+            <p className="text-gray-600">This will just take a moment.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-red-600 text-2xl">⚠️</span>
+            </div>
+            <h2 className="text-xl font-semibold mb-2 text-red-900">Setup Failed</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={() => router.push('/upgrade')} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const trialEndDate = trialInfo?.trialEnd ? new Date(trialInfo.trialEnd * 1000) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <Card className="w-full max-w-lg shadow-xl">
+        <CardContent className="p-8 text-center">
+          {/* Success Icon */}
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-12 h-12 text-green-600" />
+          </div>
+
+          {/* Main Heading */}
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            🎉 Trial Started Successfully!
+          </h1>
+
+          <p className="text-gray-600 mb-6">
+            Your 7-day free trial is now active. <strong>$0 was charged today.</strong>
+          </p>
+
+          {/* Trial Info Card */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-center mb-2">
+              <Crown className="w-5 h-5 text-blue-600 mr-2" />
+              <span className="font-semibold text-blue-900">
+                {planName?.charAt(0).toUpperCase() + planName?.slice(1)} Plan Trial
+              </span>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-center text-blue-700">
+                <Clock className="w-4 h-4 mr-1" />
+                <span>7 days of full access</span>
+              </div>
+              <p className="text-blue-600">
+                Trial ends: {trialEndDate.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+            </div>
+          </div>
+
+          {/* What's Next */}
+          <div className="text-left bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-gray-900 mb-2">What happens next?</h3>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>✅ You have immediate access to all {planName} features</li>
+              <li>⏰ Your trial lasts for 7 full days</li>
+              <li>💳 You'll only be charged when your trial ends</li>
+              <li>🔄 Cancel anytime during the trial with no charge</li>
+            </ul>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <Button
+              onClick={() => router.push('/dashboard')}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+            >
+              Start Using Loop →
+            </Button>
+
+            <Button
+              onClick={() => router.push('/upgrade')}
+              variant="outline"
+              className="w-full"
+            >
+              Manage Subscription
+            </Button>
+          </div>
+
+          {/* Footer Note */}
+          <p className="text-xs text-gray-500 mt-4">
+            You can cancel your subscription anytime from your account settings.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

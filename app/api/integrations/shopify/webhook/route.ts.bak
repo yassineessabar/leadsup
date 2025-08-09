@@ -1,0 +1,243 @@
+import { NextRequest, NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
+import crypto from "crypto"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+// Verify Shopify webhook signature
+function verifyShopifyWebhook(body: string, signature: string): boolean {
+  const secret = process.env.SHOPIFY_API_SECRET!
+  const computedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(body)
+    .digest('base64')
+
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(computedSignature)
+  )
+}
+
+// Get user ID from shop domain
+async function getUserFromShopDomain(shopDomain: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from("review_integrations")
+      .select("user_id")
+      .eq("platform_name", "shopify")
+      .eq("integration_status", "connected")
+      .like("additional_data->shop_domain", `%${shopDomain}%`)
+      .single()
+
+    if (error || !data) {
+      console.error(`No user found for shop domain: ${shopDomain}`, error)
+      return null
+    }
+
+    return data.user_id
+  } catch (error) {
+    console.error("Error getting user from shop domain:", error)
+    return null
+  }
+}
+
+// Transform Shopify customer to our customer format
+function transformShopifyCustomer(shopifyCustomer: any, userId: string) {
+  const primaryEmail = shopifyCustomer.email
+  const primaryPhone = shopifyCustomer.phone ||
+                      (shopifyCustomer.addresses && shopifyCustomer.addresses[0]?.phone)
+
+  // Skip customers without email or phone
+  if (!primaryEmail && !primaryPhone) {
+    return null
+  }
+
+  // Determine customer type
+  let customerType = "both"
+  if (primaryEmail && !primaryPhone) customerType = "email"
+  if (primaryPhone && !primaryEmail) customerType = "sms"
+
+  // Create customer name
+  const firstName = shopifyCustomer.first_name || ""
+  const lastName = shopifyCustomer.last_name || ""
+  const customerName = `${firstName} ${lastName}`.trim() || primaryEmail || "Shopify Customer"
+
+  return {
+    user_id: userId,
+    name: customerName,
+    email: primaryEmail || null,
+    phone: primaryPhone || null,
+    type: customerType,
+    status: shopifyCustomer.state === "enabled" ? "active" : "inactive",
+    shopify_customer_id: shopifyCustomer.id.toString(),
+    shopify_created_at: shopifyCustomer.created_at,
+    shopify_updated_at: shopifyCustomer.updated_at,
+    shopify_total_spent: parseFloat(shopifyCustomer.total_spent) || 0,
+    shopify_orders_count: shopifyCustomer.orders_count || 0,
+    shopify_tags: shopifyCustomer.tags || "",
+  }
+}
+
+// POST - Handle Shopify webhooks
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.text()
+    const signature = request.headers.get('X-Shopify-Hmac-Sha256')
+    const topic = request.headers.get('X-Shopify-Topic')
+    const shopDomain = request.headers.get('X-Shopify-Shop-Domain')
+
+    if (!signature) {
+      console.error('Missing Shopify signature')
+      return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
+    }
+
+    // Verify webhook authenticity
+    if (!verifyShopifyWebhook(body, signature)) {
+      console.error('Invalid Shopify webhook signature')
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+    }
+
+    if (!shopDomain) {
+      console.error('Missing shop domain in webhook')
+      return NextResponse.json({ error: 'Missing shop domain' }, { status: 400 })
+    }
+
+    // Get user ID from shop domain
+    const userId = await getUserFromShopDomain(shopDomain)
+    if (!userId) {
+      console.error(`No user found for shop: ${shopDomain}`)
+      return NextResponse.json({ error: 'Shop not found' }, { status: 404 })
+    }
+
+    const webhookData = JSON.parse(body)
+
+    // Handle different webhook topics
+    switch (topic) {
+      case 'customers/create':
+        await handleCustomerCreate(webhookData, userId)
+        break
+
+      case 'customers/update':
+        await handleCustomerUpdate(webhookData, userId)
+        break
+
+      case 'customers/delete':
+        await handleCustomerDelete(webhookData, userId)
+        break
+
+      default:
+        return NextResponse.json({ message: 'Webhook received but not processed' })
+    }
+
+    return NextResponse.json({ success: true, message: 'Webhook processed successfully' })
+
+  } catch (error) {
+    console.error('Shopify webhook error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// Handle customer creation webhook
+async function handleCustomerCreate(customerData: any, userId: string) {
+  try {
+
+    const transformedCustomer = transformShopifyCustomer(customerData, userId)
+
+    if (!transformedCustomer) {
+      return
+    }
+
+    // Insert the new customer
+    const { data, error } = await supabase
+      .from("customers")
+      .insert(transformedCustomer)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error inserting customer:', error)
+      throw error
+    }
+
+    return data
+
+  } catch (error) {
+    console.error('Error handling customer create:', error)
+    throw error
+  }
+}
+
+// Handle customer update webhook
+async function handleCustomerUpdate(customerData: any, userId: string) {
+  try {
+
+    const transformedCustomer = transformShopifyCustomer(customerData, userId)
+
+    if (!transformedCustomer) {
+      return
+    }
+
+    // Update existing customer
+    const { data, error } = await supabase
+      .from("customers")
+      .update({
+        name: transformedCustomer.name,
+        email: transformedCustomer.email,
+        phone: transformedCustomer.phone,
+        type: transformedCustomer.type,
+        status: transformedCustomer.status,
+        shopify_updated_at: transformedCustomer.shopify_updated_at,
+        shopify_total_spent: transformedCustomer.shopify_total_spent,
+        shopify_orders_count: transformedCustomer.shopify_orders_count,
+        shopify_tags: transformedCustomer.shopify_tags,
+        updated_at: new Date().toISOString()
+      })
+      .eq("user_id", userId)
+      .eq("shopify_customer_id", transformedCustomer.shopify_customer_id)
+      .select()
+
+    if (error) {
+      console.error('Error updating customer:', error)
+      throw error
+    }
+
+    return data
+
+  } catch (error) {
+    console.error('Error handling customer update:', error)
+    throw error
+  }
+}
+
+// Handle customer deletion webhook
+async function handleCustomerDelete(customerData: any, userId: string) {
+  try {
+
+    const shopifyCustomerId = customerData.id.toString()
+
+    // Delete the customer
+    const { data, error } = await supabase
+      .from("customers")
+      .delete()
+      .eq("user_id", userId)
+      .eq("shopify_customer_id", shopifyCustomerId)
+      .select()
+
+    if (error) {
+      console.error('Error deleting customer:', error)
+      throw error
+    }
+
+    return data
+
+  } catch (error) {
+    console.error('Error handling customer delete:', error)
+    throw error
+  }
+}

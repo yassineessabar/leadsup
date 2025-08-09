@@ -1,0 +1,259 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useParams, useSearchParams } from "next/navigation"
+import dynamic from "next/dynamic"
+import { ClickTracking } from "@/components/click-tracking"
+
+// Dynamically import the heavy component with loading
+const MobileReviewPreviewDisplay = dynamic(
+  () => import("@/components/mobile-review-preview-display").then(mod => ({ default: mod.MobileReviewPreviewDisplay })),
+  {
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="animate-pulse">
+          <div className="w-24 h-24 bg-gray-200 rounded-full mb-4"></div>
+          <div className="w-48 h-6 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    ),
+    ssr: false
+  }
+)
+
+interface ReviewLinkData {
+  company_name: string
+  company_logo_url: string | null
+  profile_picture_url: string | null
+  bio: string | null
+  primary_color: string
+  secondary_color: string
+  show_powered_by: boolean
+  rating_page_content: string
+  redirect_message: string
+  internal_notification_message: string
+  video_upload_message: string
+  google_review_link: string | null
+  trustpilot_review_link: string | null
+  facebook_review_link: string | null
+  shopify_review_link: string | null
+  enabled_platforms: string[]
+  selected_platforms: string[]
+  background_color: string
+  text_color: string
+  button_text_color: string
+  button_style: string
+  font: string
+  links: any[]
+  header_settings: any
+  initial_view_settings: any
+  negative_settings: any
+  video_upload_settings: any
+  success_settings: any
+}
+
+export default function ReviewPage() {
+  const params = useParams()
+  const searchParams = useSearchParams()
+  const [reviewData, setReviewData] = useState<ReviewLinkData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const reviewId = params.id as string
+  const customerId = searchParams.get('cid') || searchParams.get('customer_id')
+
+  useEffect(() => {
+    const fetchReviewData = async () => {
+      try {
+        setIsLoading(true)
+
+        // Use timestamp to bypass cache and get fresh data
+        const timestamp = Date.now()
+        const response = await fetch(`/api/public/review/${reviewId}?t=${timestamp}`, {
+          // Disable caching to ensure fresh data
+          cache: 'no-store',
+          // Add headers for fresh data
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success && result.data) {
+            setReviewData(result.data)
+          } else {
+            setError("Review link not found")
+          }
+        } else if (response.status === 404) {
+          setError("Review link not found")
+        } else {
+          setError("Failed to load review page")
+        }
+      } catch (error) {
+        console.error('Error:', error)
+        setError("Failed to load review page")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (reviewId) {
+      // Add a small delay to prevent flash of loading state for cached responses
+      const timer = setTimeout(fetchReviewData, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [reviewId])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="w-full max-w-sm mx-auto" style={{ height: '600px' }}>
+          <div className="relative w-full h-full bg-white rounded-[30px] overflow-hidden flex flex-col shadow-2xl border border-gray-100">
+            {/* Skeleton Content */}
+            <div className="flex-1 flex flex-col relative">
+              <div className="flex-1 flex flex-col items-center justify-center p-6 pb-16 animate-pulse">
+                {/* Logo skeleton */}
+                <div className="w-24 h-24 bg-gray-200 rounded-full mb-6"></div>
+                {/* Title skeleton */}
+                <div className="w-48 h-6 bg-gray-200 rounded mb-4"></div>
+                {/* Text skeleton */}
+                <div className="w-64 h-4 bg-gray-200 rounded mb-8"></div>
+                {/* Stars skeleton */}
+                <div className="flex space-x-2 mb-10">
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} className="w-12 h-12 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !reviewData) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Review Link Not Found</h1>
+          <p className="text-gray-600 mb-6">{error || "This review link is not available."}</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center p-6"
+      style={{
+        background: reviewData.background_color || `linear-gradient(135deg, ${reviewData.primary_color}15 0%, ${reviewData.secondary_color}15 100%)`,
+      }}
+    >
+      {/* Track click for all visits - customer and anonymous */}
+      <ClickTracking customerId={customerId} page={`/r/${reviewId}`} />
+
+      <div className="w-full max-w-sm mx-auto" style={{ height: '600px' }}>
+        <MobileReviewPreviewDisplay
+          customerId={customerId}
+          reviewLinkId={reviewId}
+          formData={{
+            companyName: reviewData.company_name,
+            companyLogo: reviewData.company_logo_url,
+            profilePictureUrl: reviewData.profile_picture_url,
+            bio: reviewData.bio,
+            messages: {
+              rating_page_content: reviewData.rating_page_content,
+              redirect_text: reviewData.redirect_message,
+              notification_text: reviewData.internal_notification_message,
+              video_upload_text: reviewData.video_upload_message,
+            },
+            conditionalActions: (() => {
+              // Determine the primary platform based on user's selected platforms first
+              let primaryPlatform = "Google";
+
+              // Debug logging
+
+              // Priority 1: User's selected platforms (from onboarding/setup)
+              if (reviewData.selected_platforms && reviewData.selected_platforms.length > 0) {
+                primaryPlatform = reviewData.selected_platforms[0];
+
+              }
+              // Priority 2: Check configured links
+              else if (reviewData.links && reviewData.links.length > 0) {
+                const firstLink = reviewData.links[0];
+                if (firstLink.platformId) {
+                  primaryPlatform = firstLink.platformId.charAt(0).toUpperCase() + firstLink.platformId.slice(1);
+
+                }
+              }
+              // Priority 3: Fallback to enabled_platforms
+              else if (reviewData.enabled_platforms && reviewData.enabled_platforms.length > 0) {
+                primaryPlatform = reviewData.enabled_platforms[0];
+
+              }
+              // Priority 4: Check which review links are actually configured (not placeholders)
+              else {
+                if (reviewData.trustpilot_review_link && reviewData.trustpilot_review_link !== "https://www.trustpilot.com/review/example.com") {
+                  primaryPlatform = "Trustpilot";
+
+                } else if (reviewData.facebook_review_link && reviewData.facebook_review_link !== "https://www.facebook.com/yourpage/reviews/") {
+                  primaryPlatform = "Facebook";
+
+                } else {
+
+                }
+              }
+
+              return {
+                "1": { type: "notify-email" },
+                "2": { type: "notify-email" },
+                "3": { type: "notify-email" },
+                "4": { type: "redirect", platform: primaryPlatform },
+                "5": { type: "redirect", platform: primaryPlatform },
+              };
+            })(),
+            trustpilotUrl: reviewData.trustpilot_review_link || "",
+            googleUrl: reviewData.google_review_link || "",
+            facebookUrl: reviewData.facebook_review_link || "",
+            shopifyUrl: reviewData.shopify_review_link || "", // Will be empty until DB field is added
+            primaryColor: reviewData.primary_color,
+            secondaryColor: reviewData.secondary_color,
+            enabledPlatforms: reviewData.enabled_platforms,
+            // Add appearance settings
+            backgroundColor: reviewData.background_color,
+            textColor: reviewData.text_color,
+            buttonTextColor: reviewData.button_text_color,
+            buttonStyle: reviewData.button_style,
+            font: reviewData.font,
+            // Add other settings
+            links: reviewData.links,
+            headerSettings: reviewData.header_settings,
+            initialViewSettings: reviewData.initial_view_settings,
+            negativeSettings: reviewData.negative_settings,
+            videoUploadSettings: reviewData.video_upload_settings,
+            successSettings: reviewData.success_settings,
+          }}
+          initialPreviewStep="initial"
+          setCompanyName={() => {}}
+          setCompanyLogo={() => {}}
+          setRatingPageContent={() => {}}
+          setRedirectText={() => {}}
+          setNotificationText={() => {}}
+          setVideoUploadText={() => {}}
+          showPoweredBy={reviewData.show_powered_by}
+          setShowPoweredBy={() => {}}
+          setTrustpilotUrl={() => {}}
+          setGoogleUrl={() => {}}
+          setFacebookUrl={() => {}}
+          setShopifyUrl={() => {}}
+          setEnabledPlatforms={() => {}}
+          isPublicView={true}
+        />
+      </div>
+    </div>
+  )
+}

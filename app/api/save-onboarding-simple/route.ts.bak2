@@ -1,0 +1,428 @@
+import { type NextRequest, NextResponse } from "next/server"
+import { cookies } from "next/headers"
+import { supabase } from "@/lib/supabase"
+
+async function getUserIdFromSession(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get("session")?.value
+
+    if (!sessionToken) {
+      return null
+    }
+
+    const { data: session, error } = await supabase
+      .from("user_sessions")
+      .select("user_id")
+      .eq("session_token", sessionToken)
+      .single()
+
+    if (error || !session) {
+      return null
+    }
+
+    return session.user_id
+  } catch {
+    return null
+  }
+}
+
+async function saveAdditionalData(userId: string, data: any) {
+  )
+
+  const { businessCategory, selectedPlatforms, platformLinks, companyProfile, companyName } = data
+
+  // 1. Business category is already saved to users.store_type in the main function
+  if (businessCategory?.category) {
+    }
+
+  // 2. Save platforms and links to review_link
+  )
+  if (selectedPlatforms && selectedPlatforms.length > 0) {
+    try {
+      const { data: existing, error: fetchError } = await supabase
+        .from("review_link")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (fetchError) {
+        console.error('❌ Error fetching existing review_link:', fetchError)
+      } else {
+        }
+
+      const reviewLinkData = {
+        user_id: userId,
+        company_name: companyName || 'My Company',
+        review_url: `https://loop.review/${(companyName || 'company').toLowerCase().replace(/\s+/g, '')}`,
+        enabled_platforms: selectedPlatforms,
+        updated_at: new Date().toISOString()
+      }
+
+      // Only add these fields if we're creating a new record, not updating
+      if (!existing) {
+        reviewLinkData.review_qr_code = ''
+        reviewLinkData.rating_page_content = 'Thank you for choosing us! Please leave us a review.'
+        reviewLinkData.redirect_message = 'Thank you for your review!'
+        reviewLinkData.internal_notification_message = 'New review received'
+        reviewLinkData.video_upload_message = 'Upload a video review'
+        reviewLinkData.primary_color = '#3B82F6'
+        reviewLinkData.secondary_color = '#1E40AF'
+        reviewLinkData.background_color = '#FFFFFF'
+        reviewLinkData.text_color = '#000000'
+        reviewLinkData.button_text_color = '#FFFFFF'
+        reviewLinkData.button_style = 'rounded'
+        reviewLinkData.font = 'Inter'
+        reviewLinkData.show_badge = true
+        reviewLinkData.links = []
+        reviewLinkData.header_settings = {}
+        reviewLinkData.initial_view_settings = {}
+        reviewLinkData.negative_settings = {}
+        reviewLinkData.video_upload_settings = {}
+      }
+
+      if (existing) {
+        const { data: updateResult, error: updateError } = await supabase
+          .from("review_link")
+          .update(reviewLinkData)
+          .eq("id", existing.id)
+          .select()
+
+        if (updateError) {
+          console.error('❌ Error updating review_link:', updateError)
+        } else {
+          }
+      } else {
+        const { data: insertResult, error: insertError } = await supabase
+          .from("review_link")
+          .insert({ ...reviewLinkData, created_at: new Date().toISOString() })
+          .select()
+
+        if (insertError) {
+          console.error('❌ Error inserting review_link:', insertError)
+        } else {
+          }
+      }
+
+      } catch (error) {
+      console.error('❌ Exception in review link saveconsole.error('Error:', error)
+    }
+  } else {
+    }
+
+  // 3. Save profile picture if provided and update user record
+  let profileImageUrl = null
+
+  if (companyProfile?.profileImage) {
+    try {
+      :', companyProfile.profileImage.length)
+      )
+
+      // Check if it's a data URL (base64 image)
+      if (companyProfile.profileImage.startsWith('data:image/')) {
+        // Extract the base64 data
+        const base64Data = companyProfile.profileImage.split(',')[1]
+        const mimeType = companyProfile.profileImage.split(';')[0].split(':')[1]
+        let fileExtension = mimeType.split('/')[1]
+
+        // Handle SVG files - save as data URL
+        if (mimeType === 'image/svg+xml') {
+          // Save SVG data URL directly to database
+          const { data: svgUpdateResult, error: svgUpdateError } = await supabase
+            .from("users")
+            .update({
+              profile_picture_url: companyProfile.profileImage,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", userId)
+            .select()
+
+          if (svgUpdateError) {
+            console.error('❌ Error saving SVG profile image:', svgUpdateError)
+          } else {
+            }
+
+          return // Skip the upload
+        }
+
+        // Convert base64 to buffer
+        const buffer = Buffer.from(base64Data, 'base64')
+
+        // Generate a unique filename
+        const fileName = `profile-${userId}-${Date.now()}.${fileExtension}`
+
+        // Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('profile-images')
+          .upload(fileName, buffer, {
+            contentType: mimeType,
+            upsert: true
+          })
+
+        if (uploadError) {
+          console.error('❌ Error uploading profile image:', uploadError)
+        } else {
+          // Get the public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('profile-images')
+            .getPublicUrl(fileName)
+
+          // Update user with profile image URL
+          if (publicUrl) {
+            profileImageUrl = publicUrl
+            // Update user record with profile image URL
+            const { error: profileUpdateError } = await supabase
+              .from("users")
+              .update({ profile_picture_url: publicUrl })
+              .eq("id", userId)
+
+            if (profileUpdateError) {
+              console.error('❌ Error updating profile image URL:', profileUpdateError)
+            } else {
+              }
+          }
+        }
+      } else {
+        ')
+      }
+    } catch (error) {
+      console.error('❌ Error handling profile imageconsole.error('Error:', error)
+    }
+  } else {
+    }
+
+  // 4. Save ALL platform links to both review_link and users table
+  : 'null')
+  )
+
+  if (platformLinks && Object.keys(platformLinks).length > 0) {
+    try {
+      // First, save platform links to users table (if the column exists)
+      try {
+        const { error: userPlatformError } = await supabase
+          .from("users")
+          .update({
+            platform_links: platformLinks,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", userId)
+
+        if (userPlatformError) {
+          } else {
+          }
+      } catch (e) {
+        }
+
+      // Then update the review_link with platform links data
+      const { data: existingReviewLink, error: fetchError } = await supabase
+        .from("review_link")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (existingReviewLink) {
+        // Build update data for ALL platform links
+        const updateData = {
+          updated_at: new Date().toISOString()
+        }
+
+        // Add all platform links (handle case variations)
+        if (platformLinks.google || platformLinks.Google) {
+          updateData.google_review_link = platformLinks.google || platformLinks.Google
+          }
+
+        if (platformLinks.facebook || platformLinks.Facebook) {
+          updateData.facebook_review_link = platformLinks.facebook || platformLinks.Facebook
+          }
+
+        if (platformLinks.trustpilot || platformLinks.Trustpilot) {
+          updateData.trustpilot_review_link = platformLinks.trustpilot || platformLinks.Trustpilot
+          }
+
+        // Video Testimonial
+        if (platformLinks['video-testimonial'] || platformLinks['Video Testimonial']) {
+          updateData.video_testimonial_link = platformLinks['video-testimonial'] || platformLinks['Video Testimonial']
+          updateData.video_upload_message = platformLinks['video-testimonial'] || platformLinks['Video Testimonial'] || 'Record a short video testimonial!'
+          }
+
+        // For platforms without dedicated fields, we'll store them in a links array or note them
+        const otherPlatforms = []
+        if (platformLinks.shopify || platformLinks.Shopify) {
+          otherPlatforms.push({ platform: 'shopify', url: platformLinks.shopify || platformLinks.Shopify })
+          }
+        if (platformLinks.amazon || platformLinks.Amazon) {
+          otherPlatforms.push({ platform: 'amazon', url: platformLinks.amazon || platformLinks.Amazon })
+          }
+        if (platformLinks['video-testimonial']) {
+          otherPlatforms.push({ platform: 'video-testimonial', message: platformLinks['video-testimonial'] })
+          }
+
+        // If there are other platforms, add them to the links field
+        if (otherPlatforms.length > 0) {
+          updateData.links = otherPlatforms
+        }
+
+        )
+
+        const { data: updateResult, error: updateError } = await supabase
+          .from("review_link")
+          .update(updateData)
+          .eq("id", existingReviewLink.id)
+          .select()
+
+        if (updateError) {
+          console.error('❌ Error updating review_link with platform links:', updateError)
+        } else {
+          )
+        }
+      } else {
+        }
+
+      } catch (error) {
+      console.error('❌ Exception in platform links saveconsole.error('Error:', error)
+    }
+  } else {
+    }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const userId = await getUserIdFromSession()
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
+    }
+
+    const body = await request.json()
+    )
+    )
+    Object.keys(body).forEach(key => {
+      const value = body[key]
+      if (value && typeof value === 'object') {
+        }`)
+      } else {
+        }
+    })
+
+    const {
+      companyName,
+      companyProfile,
+      businessCategory,
+      selectedPlatforms,
+      platformLinks
+    } = body
+
+    // Update user table data with ALL onboarding information
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    }
+
+    // Company name
+    if (companyName) {
+      updateData.company = companyName
+      } else if (companyProfile?.displayName) {
+      updateData.company = companyProfile.displayName
+      }
+
+    // Business category and description
+    if (businessCategory?.category) {
+      updateData.store_type = businessCategory.category
+      updateData.business_category = businessCategory.category
+      }
+
+    if (businessCategory?.description) {
+      updateData.business_description = businessCategory.description
+      }
+
+    // Selected platforms
+    if (selectedPlatforms && selectedPlatforms.length > 0) {
+      updateData.selected_platforms = selectedPlatforms
+      }
+
+    // Platform links
+    if (platformLinks && Object.keys(platformLinks).length > 0) {
+      updateData.platform_links = platformLinks
+      }
+
+    // Profile information
+    if (companyProfile?.bio) {
+      updateData.bio = companyProfile.bio
+      }
+
+    if (companyProfile?.displayName) {
+      updateData.display_name = companyProfile.displayName
+      }
+
+    // Note: Profile image URL will be set after upload
+    // Template selection can be added here if needed
+
+    .length)
+
+    let userData = null
+
+    if (Object.keys(updateData).length > 1) {
+      const { data: updateResult, error: userError } = await supabase
+        .from("users")
+        .update(updateData)
+        .eq("id", userId)
+        .select()
+        .single()
+
+      if (userError) {
+        console.error("❌ Error updating user:", userError)
+        console.error("❌ Error details:", {
+          message: userError.message,
+          details: userError.details,
+          hint: userError.hint,
+          code: userError.code
+        })
+        return NextResponse.json({
+          success: false,
+          error: userError.message,
+          details: userError.details,
+          code: userError.code
+        }, { status: 500 })
+      }
+
+      userData = updateResult
+      // Additional verification - fetch the user again to confirm the update
+      const { data: verificationData, error: verificationError } = await supabase
+        .from("users")
+        .select("id, email, company, store_type, updated_at")
+        .eq("id", userId)
+        .single()
+
+      if (verificationError) {
+        console.error('❌ Error verifying update:', verificationError)
+      } else {
+        }
+    } else {
+      // Get existing user data
+      const { data: existingUser } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .single()
+      userData = existingUser
+    }
+
+    // Now save additional onboarding data
+    await saveAdditionalData(userId, {
+      businessCategory,
+      selectedPlatforms,
+      platformLinks,
+      companyProfile,
+      companyName: userData?.company
+    })
+
+    return NextResponse.json({ success: true, data: userData })
+
+  } catch (error) {
+    console.error("❌ Error in simple save-onboarding:", error)
+    return NextResponse.json({
+      success: false,
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}

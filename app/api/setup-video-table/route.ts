@@ -1,0 +1,65 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
+
+export async function POST(request: NextRequest) {
+  try {
+    // Check if table exists first
+    const { data: existingRecord, error: checkError } = await supabase
+      .from('video_testimonials')
+      .select('id')
+      .limit(1)
+
+    if (!checkError) {
+      return NextResponse.json({
+        success: true,
+        message: 'Table already exists'
+      })
+    }
+
+    const sql = `
+CREATE TABLE IF NOT EXISTS video_testimonials (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  customer_name VARCHAR(255) NOT NULL,
+  customer_email VARCHAR(255) NOT NULL,
+  customer_id VARCHAR(255),
+  video_url TEXT NOT NULL,
+  video_file_path TEXT NOT NULL,
+  company_name VARCHAR(255),
+  review_link_id UUID,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_video_testimonials_customer_email ON video_testimonials(customer_email);
+CREATE INDEX IF NOT EXISTS idx_video_testimonials_review_link_id ON video_testimonials(review_link_id);
+CREATE INDEX IF NOT EXISTS idx_video_testimonials_created_at ON video_testimonials(created_at);
+
+ALTER TABLE video_testimonials ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public video testimonial uploads" ON video_testimonials
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Business owners can view their video testimonials" ON video_testimonials
+  FOR SELECT USING (
+    review_link_id IN (
+      SELECT id FROM review_link WHERE user_id = auth.uid()
+    )
+  );
+`
+
+    return NextResponse.json({
+      success: false,
+      message: 'Table needs to be created manually',
+      sql: sql,
+      instructions: 'Please run the SQL above in your Supabase SQL Editor'
+    })
+
+  } catch (error) {
+    console.error('Error:', error)
+    return NextResponse.json({
+      success: false,
+      error: 'Setup failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}

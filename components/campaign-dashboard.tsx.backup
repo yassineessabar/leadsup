@@ -1,0 +1,4190 @@
+"use client"
+
+import React, { useState, useEffect } from "react"
+import { Calendar, ChevronDown, Eye, Play, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Card } from "@/components/ui/card"
+import { toast } from "@/hooks/use-toast"
+import { format } from "date-fns"
+import AutomationSettings from "@/components/automation-settings"
+
+interface CampaignDashboardProps {
+  campaign?: {
+    id: number
+    name: string
+    type?: "Sequence" | "SMS"
+    status: "Draft" | "Active" | "Paused" | "Completed"
+  }
+  onBack?: () => void
+  onDelete?: (campaignId: number) => void
+  onStatusUpdate?: (campaignId: number, newStatus: "Draft" | "Active" | "Paused" | "Completed") => void
+  onNameUpdate?: (campaignId: number, newName: string) => void
+  initialTab?: string
+}
+
+export default function CampaignDashboard({ campaign, onBack, onDelete, onStatusUpdate, onNameUpdate, initialTab = "contacts" }: CampaignDashboardProps) {
+  const [activeTab, setActiveTab] = useState(initialTab)
+  
+  // Sequences state
+  const [steps, setSteps] = useState([])
+  const [activeStepId, setActiveStepId] = useState(1)
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [showTestModal, setShowTestModal] = useState(false)
+  const [testModalAccountId, setTestModalAccountId] = useState(null)
+  const [testModalLoading, setTestModalLoading] = useState(false)
+  const [testModalEmail, setTestModalEmail] = useState("")
+  const [testEmail, setTestEmail] = useState("contact@leadsupbase.com")
+  const [testPhone, setTestPhone] = useState("+1 (555) 123-4567")
+  const [variables, setVariables] = useState({
+    companyName: "The Bearded Bakers",
+    firstName: "Joey",
+    randomGreeting: "Hi",
+    randomQuestion: "Want me to send it over?",
+  })
+  
+  // Import contacts state
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importType, setImportType] = useState('leads') // 'leads', 'csv', 'manual'
+  const [selectedLeads, setSelectedLeads] = useState([])
+  const [allLeads, setAllLeads] = useState([])
+  const [manualContact, setManualContact] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    company: ''
+  })
+  const [importLoading, setImportLoading] = useState(false)
+
+  // Gmail OAuth state
+  const [gmailAuthLoading, setGmailAuthLoading] = useState(false)
+  const [connectedEmailAccounts, setConnectedEmailAccounts] = useState([])
+  const [selectedEmailAccount, setSelectedEmailAccount] = useState(null)
+
+  // Microsoft 365 OAuth state
+  const [microsoft365AuthLoading, setMicrosoft365AuthLoading] = useState(false)
+  const [connectedMicrosoft365Accounts, setConnectedMicrosoft365Accounts] = useState([])
+  const [selectedMicrosoft365Account, setSelectedMicrosoft365Account] = useState(null)
+
+  // SMTP/IMAP state
+  const [showSmtpModal, setShowSmtpModal] = useState(false)
+  const [smtpFormData, setSmtpFormData] = useState({
+    name: '',
+    email: '',
+    smtpHost: '',
+    smtpPort: '587',
+    smtpSecure: 'false',
+    smtpUser: '',
+    smtpPassword: '',
+    imapHost: '',
+    imapPort: '993',
+    imapSecure: 'true'
+  })
+  const [smtpLoading, setSmtpLoading] = useState(false)
+  const [showConnectDropdown, setShowConnectDropdown] = useState(false)
+  const [connectedSmtpAccounts, setConnectedSmtpAccounts] = useState([])
+  const [selectedSmtpAccount, setSelectedSmtpAccount] = useState(null)
+  
+  // Gmail API status state
+  const [gmailApiEnabled, setGmailApiEnabled] = useState(null) // null = checking, true = enabled, false = disabled
+  const [checkingApiStatus, setCheckingApiStatus] = useState(false)
+
+  // Contact table state (from LeadsTab)
+  const [contacts, setContacts] = useState([])
+  const [campaigns, setCampaigns] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedContacts, setSelectedContacts] = useState([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalContacts, setTotalContacts] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [showContactImportModal, setShowContactImportModal] = useState(false)
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [csvImportLoading, setCsvImportLoading] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingContact, setEditingContact] = useState({})
+  const [filterCount, setFilterCount] = useState(0)
+  const [showFilters, setShowFilters] = useState(false)
+  const [locationFilter, setLocationFilter] = useState("")
+  const [keywordFilter, setKeywordFilter] = useState("")
+  const [industryFilter, setIndustryFilter] = useState("")
+
+  const pageSize = 20
+
+  // Sequence status colors for contact table
+  const sequenceStatusColors = {
+    'Valid': 'bg-green-100 text-green-800',
+    'Invalid': 'bg-red-100 text-red-800',
+    'Risky': 'bg-yellow-100 text-yellow-800',
+    'Unknown': 'bg-gray-100 text-gray-800',
+    'Disposable': 'bg-orange-100 text-orange-800',
+    'Not found': 'bg-gray-100 text-gray-600',
+    'Skipped': 'bg-blue-100 text-blue-800',
+    'Pending': 'bg-purple-100 text-purple-800'
+  }
+
+  const tabs = [
+    {
+      id: 'contacts',
+      label: 'Contact', 
+      icon: Users,
+      color: 'rgb(37, 99, 235)'
+    },
+    {
+      id: 'sequence',
+      label: 'Sequence',
+      icon: Mail,
+      color: 'rgb(37, 99, 235)'
+    },
+    {
+      id: 'sender',
+      label: 'Sender',
+      icon: Send,
+      color: 'rgb(37, 99, 235)'
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      icon: Settings,
+      color: 'rgb(37, 99, 235)'
+    }
+  ]
+
+  // Sequences functions
+  const addStep = () => {
+    const newStep = {
+      id: steps.length + 1,
+      subject: "",
+      content: "",
+      variants: 1,
+      timing: 1,
+    }
+    setSteps([...steps, newStep])
+    setActiveStepId(newStep.id)
+  }
+
+  const deleteStep = (stepId: number) => {
+    if (steps.length > 1) {
+      const newSteps = steps.filter((step) => step.id !== stepId)
+      setSteps(newSteps)
+      if (stepId === activeStepId) {
+        setActiveStepId(newSteps[0]?.id || 1)
+      }
+    }
+  }
+
+  const selectStep = (stepId: number) => {
+    setActiveStepId(stepId)
+  }
+
+  const addVariant = (stepId: number) => {
+    setSteps(steps.map((step) => (step.id === stepId ? { ...step, variants: step.variants + 1 } : step)))
+  }
+
+  const updateStepContent = (content: string) => {
+    setSteps(steps.map((step) => (step.id === activeStepId ? { ...step, content } : step)))
+  }
+
+  const updateStepSubject = (subject: string) => {
+    setSteps(steps.map((step) => (step.id === activeStepId ? { ...step, subject } : step)))
+  }
+
+  const updateStepTiming = (stepId: number, timing: number) => {
+    setSteps(steps.map((step) => (step.id === stepId ? { ...step, timing } : step)))
+  }
+
+  const saveSequence = async () => {
+    if (!campaign?.id) return
+
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/sequences`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sequences: steps
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: "Sequences Saved",
+          description: "All sequence steps have been saved successfully",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save sequences",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error("Error saving sequences:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save sequences",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const previewSequence = () => {
+    setShowPreviewModal(!showPreviewModal)
+  }
+
+  // Load leads from database
+  const loadLeadsData = async () => {
+    try {
+      const response = await fetch('/api/leads')
+      const result = await response.json()
+      
+      if (result.success) {
+        setAllLeads(result.data || [])
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to load leads data",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error("Error loading leads:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load leads data",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Import contacts from various sources
+  const importContacts = async () => {
+    if (!campaign?.id) return
+
+    setImportLoading(true)
+    
+    try {
+      let contactsToImport = []
+      
+      if (importType === 'leads') {
+        contactsToImport = selectedLeads.map(lead => ({
+          name: lead.name || lead.customer_name,
+          email: lead.email,
+          phone: lead.phone,
+          company: lead.company || lead.business_name,
+          source: 'leads_table'
+        }))
+      } else if (importType === 'csv' && csvFile) {
+        // Handle CSV import
+        const text = await csvFile.text()
+        const lines = text.split('\n')
+        const headers = lines[0].split(',').map(h => h.trim())
+        
+        contactsToImport = lines.slice(1).filter(line => line.trim()).map(line => {
+          const values = line.split(',').map(v => v.trim())
+          const contact = {}
+          headers.forEach((header, index) => {
+            contact[header.toLowerCase()] = values[index] || ''
+          })
+          return {
+            name: contact.name || contact.first_name + ' ' + contact.last_name || '',
+            email: contact.email,
+            phone: contact.phone,
+            company: contact.company,
+            source: 'csv_import'
+          }
+        })
+      } else if (importType === 'manual') {
+        contactsToImport = [{
+          name: manualContact.name,
+          email: manualContact.email,
+          phone: manualContact.phone,
+          company: manualContact.company,
+          source: 'manual_entry'
+        }]
+      }
+
+      const response = await fetch(`/api/campaigns/${campaign.id}/contacts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contacts: contactsToImport,
+          campaignTag: campaign.name
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: "Contacts Imported",
+          description: `Successfully imported ${contactsToImport.length} contacts with "${campaign.name}" tag`,
+        })
+        
+        setShowImportModal(false)
+        setSelectedLeads([])
+        setCsvFile(null)
+        setManualContact({ name: '', email: '', phone: '', company: '' })
+        
+      } else {
+        toast({
+          title: "Import Failed",
+          description: result.error || "Failed to import contacts",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error("Error importing contacts:", error)
+      toast({
+        title: "Error",
+        description: "Failed to import contacts",
+        variant: "destructive"
+      })
+    } finally {
+      setImportLoading(false)
+    }
+  }
+
+  // Handle CSV file selection
+  const handleCsvUpload = (event) => {
+    const file = event.target.files[0]
+    if (file && file.type === 'text/csv') {
+      setCsvFile(file)
+    } else {
+      toast({
+        title: "Invalid File",
+        description: "Please select a valid CSV file",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Open import modal and load leads
+  const openImportModal = () => {
+    setShowImportModal(true)
+    if (importType === 'leads') {
+      loadLeadsData()
+    }
+  }
+
+  const activeStep = steps.find((s) => s.id === activeStepId)
+
+  // Initialize steps with default step if empty
+  useEffect(() => {
+    if (steps.length === 0) {
+      setSteps([{
+        id: 1,
+        subject: "",
+        content: "",
+        variants: 1,
+        timing: 1,
+      }])
+      setActiveStepId(1)
+    }
+  }, [steps.length])
+
+  // Update filter count when filters change
+  useEffect(() => {
+    let count = 0
+    if (locationFilter.trim()) count++
+    if (keywordFilter.trim()) count++
+    if (industryFilter.trim()) count++
+    setFilterCount(count)
+  }, [locationFilter, keywordFilter, industryFilter])
+
+  // Gmail OAuth functions
+  const initiateGmailOAuth = async () => {
+    setGmailAuthLoading(true)
+    
+    try {
+      // Step 1: Get OAuth URL from backend
+      const response = await fetch('/api/gmail/oauth-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (!response.ok) throw new Error('Failed to get OAuth URL')
+      
+      const { authUrl } = await response.json()
+      
+      // Step 2: Open OAuth window
+      const popup = window.open(authUrl, 'gmail-oauth', 'width=500,height=600,scrollbars=yes,resizable=yes')
+      
+      // Step 3: Listen for OAuth callback
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed)
+          setGmailAuthLoading(false)
+          // Refresh connected accounts
+          loadConnectedAccounts()
+        }
+      }, 1000)
+      
+      // Handle message from popup
+      window.addEventListener('message', (event) => {
+        if (event.origin !== window.location.origin) return
+        
+        if (event.data.type === 'GMAIL_AUTH_SUCCESS') {
+          popup.close()
+          clearInterval(checkClosed)
+          setGmailAuthLoading(false)
+          loadConnectedAccounts()
+          
+          toast({
+            title: "Success",
+            description: "Gmail account connected successfully!",
+            variant: "default"
+          })
+        } else if (event.data.type === 'GMAIL_AUTH_ERROR') {
+          popup.close()
+          clearInterval(checkClosed)
+          setGmailAuthLoading(false)
+          
+          toast({
+            title: "Connection Failed",
+            description: event.data.error || "Failed to connect Gmail account",
+            variant: "destructive"
+          })
+        }
+      })
+      
+    } catch (error) {
+      console.error('Gmail OAuth error:', error)
+      setGmailAuthLoading(false)
+      toast({
+        title: "Connection Error",
+        description: "Failed to initiate Gmail connection",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Microsoft 365 OAuth functions
+  const initiateMicrosoft365OAuth = async () => {
+    setMicrosoft365AuthLoading(true)
+    
+    try {
+      // Step 1: Get OAuth URL from backend
+      const response = await fetch('/api/microsoft365/oauth-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (!response.ok) throw new Error('Failed to get OAuth URL')
+      
+      const { authUrl } = await response.json()
+      
+      // Step 2: Open OAuth window
+      const popup = window.open(authUrl, 'microsoft365-oauth', 'width=500,height=600,scrollbars=yes,resizable=yes')
+      
+      // Step 3: Listen for OAuth callback
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed)
+          setMicrosoft365AuthLoading(false)
+          // Refresh connected accounts
+          loadConnectedMicrosoft365Accounts()
+        }
+      }, 1000)
+      
+      // Handle message from popup
+      window.addEventListener('message', (event) => {
+        if (event.origin !== window.location.origin) return
+        
+        if (event.data.type === 'MICROSOFT365_AUTH_SUCCESS') {
+          popup.close()
+          clearInterval(checkClosed)
+          setMicrosoft365AuthLoading(false)
+          loadConnectedMicrosoft365Accounts()
+          
+          toast({
+            title: "Success",
+            description: "Microsoft 365 account connected successfully!",
+            variant: "default"
+          })
+        } else if (event.data.type === 'MICROSOFT365_AUTH_ERROR') {
+          popup.close()
+          clearInterval(checkClosed)
+          setMicrosoft365AuthLoading(false)
+          
+          toast({
+            title: "Connection Failed",
+            description: event.data.error || "Failed to connect Microsoft 365 account",
+            variant: "destructive"
+          })
+        }
+      })
+      
+    } catch (error) {
+      console.error('Microsoft 365 OAuth error:', error)
+      setMicrosoft365AuthLoading(false)
+      toast({
+        title: "Connection Error",
+        description: "Failed to initiate Microsoft 365 connection",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Load connected Microsoft 365 accounts
+  const loadConnectedMicrosoft365Accounts = async () => {
+    try {
+      const response = await fetch('/api/microsoft365/accounts')
+      if (response.ok) {
+        const accounts = await response.json()
+        setConnectedMicrosoft365Accounts(accounts)
+      }
+    } catch (error) {
+      console.error('Failed to load connected Microsoft 365 accounts:', error)
+    }
+  }
+
+  // SMTP/IMAP functions
+  const openSmtpModal = () => {
+    setShowSmtpModal(true)
+  }
+
+  const loadConnectedSmtpAccounts = async () => {
+    try {
+      const response = await fetch('/api/smtp/accounts')
+      if (response.ok) {
+        const accounts = await response.json()
+        setConnectedSmtpAccounts(accounts)
+      }
+    } catch (error) {
+      console.error('Failed to load connected SMTP accounts:', error)
+    }
+  }
+
+  const handleSmtpFormChange = (field, value) => {
+    setSmtpFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const validateSmtpConnection = async () => {
+    setSmtpLoading(true)
+    try {
+      const response = await fetch('/api/smtp/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          smtpHost: smtpFormData.smtpHost,
+          smtpPort: smtpFormData.smtpPort,
+          smtpSecure: smtpFormData.smtpSecure,
+          smtpUser: smtpFormData.smtpUser,
+          smtpPassword: smtpFormData.smtpPassword
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Connection Successful",
+          description: "SMTP connection validated successfully!",
+          variant: "default"
+        })
+      } else {
+        toast({
+          title: "Connection Failed", 
+          description: data.error || "Failed to validate SMTP connection",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Validation Error",
+        description: "Failed to validate SMTP connection",
+        variant: "destructive"
+      })
+    } finally {
+      setSmtpLoading(false)
+    }
+  }
+
+  const saveSmtpAccount = async () => {
+    if (!smtpFormData.name.trim() || !smtpFormData.email.trim() || 
+        !smtpFormData.smtpHost.trim() || !smtpFormData.smtpUser.trim() || 
+        !smtpFormData.smtpPassword.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setSmtpLoading(true)
+    try {
+      const response = await fetch('/api/smtp/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(smtpFormData)
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Account Connected",
+          description: "SMTP account connected successfully!",
+          variant: "default"
+        })
+        setShowSmtpModal(false)
+        setSmtpFormData({
+          name: '',
+          email: '',
+          smtpHost: '',
+          smtpPort: '587',
+          smtpSecure: 'false',
+          smtpUser: '',
+          smtpPassword: '',
+          imapHost: '',
+          imapPort: '993',
+          imapSecure: 'true'
+        })
+        loadConnectedSmtpAccounts()
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: data.error || "Failed to connect SMTP account",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Connection Error",
+        description: "Failed to connect SMTP account",
+        variant: "destructive"
+      })
+    } finally {
+      setSmtpLoading(false)
+    }
+  }
+
+  const testSmtpConnection = (accountId) => {
+    const account = connectedSmtpAccounts.find(acc => acc.id === accountId)
+    setTestModalAccountId(accountId)
+    setTestModalEmail(testEmail)
+    setShowTestModal(true)
+  }
+
+  const sendTestSmtpEmail = async () => {
+    if (!testModalEmail.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please enter an email address to send the test to.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setTestModalLoading(true)
+    try {
+      const response = await fetch('/api/smtp/test-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          accountId: testModalAccountId,
+          to: testModalEmail,
+          subject: 'Test Email from LeadsUp',
+          body: '<h2>Test Email</h2><p>This is a test email to verify your SMTP integration is working correctly.</p><p>If you received this email, your SMTP connection is working properly!</p>'
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        toast({
+          title: "Test Successful",
+          description: `Test email sent successfully to ${testModalEmail}!`,
+          variant: "default"
+        })
+        setTestEmail(testModalEmail)
+        setShowTestModal(false)
+        setTestModalEmail("")
+        setTestModalAccountId(null)
+      } else {
+        throw new Error(data.error || 'Failed to send test email')
+      }
+    } catch (error) {
+      console.error('Test email error:', error)
+      toast({
+        title: "Test Failed",
+        description: error.message || "Failed to send test email. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setTestModalLoading(false)
+    }
+  }
+
+  // Delete campaign function
+  const handleDeleteCampaign = () => {
+    if (!campaign?.id) return
+    
+    const confirmed = window.confirm(
+      `Are you sure you want to delete the campaign "${campaign.name}"? This action cannot be undone.`
+    )
+    
+    if (confirmed && onDelete) {
+      onDelete(campaign.id)
+    }
+  }
+
+  // Load connected email accounts
+  const loadConnectedAccounts = async () => {
+    try {
+      const response = await fetch('/api/gmail/accounts')
+      if (response.ok) {
+        const accounts = await response.json()
+        setConnectedEmailAccounts(accounts)
+      }
+    } catch (error) {
+      console.error('Failed to load connected accounts:', error)
+    }
+  }
+
+  // Open test modal
+  const testGmailConnection = (accountId) => {
+    const account = connectedEmailAccounts.find(acc => acc.id === accountId)
+    setTestModalAccountId(accountId)
+    setTestModalEmail(testEmail) // Pre-fill with saved test email
+    setShowTestModal(true)
+  }
+
+  // Send test email
+  const sendTestEmail = async () => {
+    if (!testModalEmail.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please enter an email address to send the test to.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setTestModalLoading(true)
+    try {
+      const response = await fetch('/api/gmail/test-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          accountId: testModalAccountId,
+          to: testModalEmail,
+          subject: 'Test Email from LeadsUp',
+          body: '<h2>Test Email</h2><p>This is a test email to verify your Gmail integration is working correctly.</p><p>If you received this email, your Gmail connection is working properly!</p>'
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        toast({
+          title: "Test Successful",
+          description: `Test email sent successfully to ${testModalEmail}!`,
+          variant: "default"
+        })
+        setTestEmail(testModalEmail) // Save for next time
+        setShowTestModal(false)
+        setTestModalEmail("")
+        setTestModalAccountId(null)
+      } else {
+        throw new Error(data.error || 'Failed to send test email')
+      }
+    } catch (error) {
+      console.error('Test email error:', error)
+      toast({
+        title: "Test Failed",
+        description: error.message || "Failed to send test email. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setTestModalLoading(false)
+    }
+  }
+
+  // Test Microsoft 365 connection
+  const testMicrosoft365Connection = (accountId) => {
+    const account = connectedMicrosoft365Accounts.find(acc => acc.id === accountId)
+    setTestModalAccountId(accountId)
+    setTestModalEmail(testEmail) // Pre-fill with saved test email
+    setShowTestModal(true)
+  }
+
+  // Determine if the current test modal account is Gmail, Microsoft 365, or SMTP
+  const getCurrentTestAccountType = () => {
+    if (connectedEmailAccounts.find(acc => acc.id === testModalAccountId)) {
+      return 'gmail'
+    }
+    if (connectedMicrosoft365Accounts.find(acc => acc.id === testModalAccountId)) {
+      return 'microsoft365'
+    }
+    if (connectedSmtpAccounts.find(acc => acc.id === testModalAccountId)) {
+      return 'smtp'
+    }
+    return null
+  }
+
+  // Generic test email function that calls the appropriate service
+  const sendTestEmailGeneric = async () => {
+    const accountType = getCurrentTestAccountType()
+    if (accountType === 'gmail') {
+      await sendTestEmail()
+    } else if (accountType === 'microsoft365') {
+      await sendTestMicrosoft365Email()
+    } else if (accountType === 'smtp') {
+      await sendTestSmtpEmail()
+    }
+  }
+
+  // Send test email via Microsoft 365
+  const sendTestMicrosoft365Email = async () => {
+    if (!testModalEmail.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please enter an email address to send the test to.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setTestModalLoading(true)
+    try {
+      const response = await fetch('/api/microsoft365/test-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          accountId: testModalAccountId,
+          to: testModalEmail,
+          subject: 'Test Email from LeadsUp',
+          body: '<h2>Test Email</h2><p>This is a test email to verify your Microsoft 365 integration is working correctly.</p><p>If you received this email, your Microsoft 365 connection is working properly!</p>'
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        toast({
+          title: "Test Successful",
+          description: `Test email sent successfully to ${testModalEmail}!`,
+          variant: "default"
+        })
+        setTestEmail(testModalEmail) // Save for next time
+        setShowTestModal(false)
+        setTestModalEmail("")
+        setTestModalAccountId(null)
+      } else {
+        throw new Error(data.error || 'Failed to send test email')
+      }
+    } catch (error) {
+      console.error('Test email error:', error)
+      toast({
+        title: "Test Failed",
+        description: error.message || "Failed to send test email. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setTestModalLoading(false)
+    }
+  }
+
+  // Contact table functions (from LeadsTab)
+  const fetchContacts = async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (searchQuery) params.append('search', searchQuery)
+      params.append('limit', pageSize.toString())
+      params.append('offset', ((currentPage - 1) * pageSize).toString())
+
+      const response = await fetch(`/api/contacts?${params.toString()}`)
+      const data = await response.json()
+      
+      if (data.contacts) {
+        setContacts(data.contacts)
+        setTotalContacts(data.total)
+        setHasMore(data.hasMore)
+      }
+    } catch (error) {
+      console.error('Error fetching contacts:', error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch contacts",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchCampaigns = async () => {
+    try {
+      const response = await fetch('/api/campaigns')
+      const data = await response.json()
+      
+      if (data.success && data.data) {
+        setCampaigns(data.data)
+      } else {
+        setCampaigns([])
+      }
+    } catch (error) {
+      console.error('Error fetching campaigns:', error)
+      setCampaigns([])
+    }
+  }
+
+  const handleCampaignAssignment = async (campaignId) => {
+    if (selectedContacts.length === 0) return
+
+    try {
+      const selectedCampaign = campaigns.find(c => c.id.toString() === campaignId)
+      if (!selectedCampaign) return
+
+      const updatePromises = selectedContacts.map(contactId => {
+        const contact = contacts.find(c => c.id === contactId)
+        if (!contact) return Promise.resolve()
+
+        const existingTags = contact.tags || ''
+        const newTag = selectedCampaign.name
+        const updatedTags = existingTags 
+          ? (existingTags.includes(newTag) ? existingTags : `${existingTags}, ${newTag}`)
+          : newTag
+
+        return fetch(`/api/contacts/${contactId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tags: updatedTags })
+        })
+      })
+
+      await Promise.all(updatePromises)
+
+      toast({
+        title: "Campaign Assignment",
+        description: `${selectedContacts.length} contacts assigned to campaign "${selectedCampaign.name}"`
+      })
+
+      setSelectedContacts([])
+      fetchContacts()
+    } catch (error) {
+      console.error('Error assigning contacts to campaign:', error)
+      toast({
+        title: "Error",
+        description: "Failed to assign contacts to campaign",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleSelectContact = (contactId) => {
+    setSelectedContacts(prev => 
+      prev.includes(contactId) 
+        ? prev.filter(id => id !== contactId)
+        : [...prev, contactId]
+    )
+  }
+
+  const handleSelectAll = () => {
+    if (selectedContacts.length === contacts.length) {
+      setSelectedContacts([])
+    } else {
+      setSelectedContacts(contacts.map(contact => contact.id))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Are you sure you want to delete ${selectedContacts.length} selected contacts?`)) return
+
+    try {
+      const deletePromises = selectedContacts.map(contactId =>
+        fetch(`/api/contacts/${contactId}`, { method: 'DELETE' })
+      )
+
+      await Promise.all(deletePromises)
+
+      toast({
+        title: "Contacts deleted",
+        description: `${selectedContacts.length} contacts have been deleted successfully`
+      })
+
+      setSelectedContacts([])
+      fetchContacts()
+    } catch (error) {
+      console.error('Error deleting contacts:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete contacts",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleExportCSV = () => {
+    const contactsToExport = selectedContacts.length > 0 
+      ? contacts.filter(contact => selectedContacts.includes(contact.id))
+      : contacts
+
+    const headers = ['First Name', 'Last Name', 'Sequence', 'Title', 'Company', 'Industry', 'Location', 'LinkedIn', 'Tags', 'Sequence Status', 'Privacy', 'Notes']
+    const csvContent = [
+      headers.join(','),
+      ...contactsToExport.map(contact => [
+        contact.first_name || '',
+        contact.last_name || '',
+        contact.email || '',
+        contact.title || '',
+        contact.company || '',
+        contact.industry || '',
+        contact.location || '',
+        contact.linkedin || '',
+        contact.tags || '',
+        contact.email_status || '',
+        contact.privacy || '',
+        contact.note || ''
+      ].map(field => `"${field.replace(/"/g, '""')}"`).join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `contacts-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    toast({
+      title: "Export completed",
+      description: `${contactsToExport.length} contacts exported successfully`
+    })
+  }
+
+  const handleCsvImport = async () => {
+    if (!csvFile) return
+
+    setCsvImportLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', csvFile)
+
+      const response = await fetch('/api/contacts/import', {
+        method: 'POST',
+        body: formData
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Import successful",
+          description: `${result.imported} contacts imported successfully${result.errors ? ` (${result.total - result.imported} failed)` : ''}`
+        })
+        
+        // Close modal and refresh contacts
+        setShowContactImportModal(false)
+        setCsvFile(null)
+        fetchContacts()
+      } else {
+        throw new Error(result.error || 'Import failed')
+      }
+    } catch (error) {
+      console.error('CSV import error:', error)
+      toast({
+        title: "Import failed",
+        description: error.message || "Failed to import contacts from CSV",
+        variant: "destructive"
+      })
+    } finally {
+      setCsvImportLoading(false)
+    }
+  }
+
+  const handleEditContact = (contact) => {
+    setEditingContact(contact)
+    setShowEditModal(true)
+  }
+
+  const saveContact = async () => {
+    try {
+      const isEditing = editingContact.id
+      const method = isEditing ? 'PATCH' : 'POST'
+      const url = isEditing ? `/api/contacts/${editingContact.id}` : '/api/contacts'
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingContact)
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: isEditing ? "Contact updated" : "Contact added",
+          description: `Contact has been ${isEditing ? 'updated' : 'added'} successfully`
+        })
+        
+        setShowEditModal(false)
+        setEditingContact({})
+        fetchContacts()
+      } else {
+        throw new Error(data.error || 'Failed to save contact')
+      }
+    } catch (error) {
+      console.error('Error saving contact:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save contact",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const getInitials = (firstName, lastName) => {
+    const first = firstName?.charAt(0)?.toUpperCase() || ''
+    const last = lastName?.charAt(0)?.toUpperCase() || ''
+    return first + last || '??'
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    const today = new Date()
+    const diffTime = Math.abs(today.getTime() - date.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    
+    if (diffDays < 7) {
+      return `${diffDays} days ago`
+    }
+    return formattedDate
+  }
+
+  const getTagsArray = (tags) => {
+    if (!tags) return []
+    return tags.split(',').map(tag => tag.trim()).filter(Boolean)
+  }
+
+  // Gmail API status functions
+  const checkGmailApiStatus = async () => {
+    setCheckingApiStatus(true)
+    try {
+      const response = await fetch('/api/gmail/api-status')
+      const data = await response.json()
+      
+      if (response.ok) {
+        setGmailApiEnabled(data.enabled)
+      } else {
+        setGmailApiEnabled(false)
+      }
+    } catch (error) {
+      console.error('Failed to check Gmail API status:', error)
+      setGmailApiEnabled(false)
+    } finally {
+      setCheckingApiStatus(false)
+    }
+  }
+
+  const enableGmailApi = () => {
+    const projectId = '529005365476' // Your Google Cloud project ID
+    const gmailApiUrl = `https://console.developers.google.com/apis/api/gmail.googleapis.com/overview?project=${projectId}`
+    
+    window.open(gmailApiUrl, '_blank')
+    
+    toast({
+      title: "Enable Gmail API",
+      description: "Please enable the Gmail API in the opened tab, then click 'Refresh Status' to check again.",
+      variant: "default"
+    })
+  }
+
+  // Load connected accounts on mount and check API status
+  useEffect(() => {
+    loadConnectedAccounts()
+    loadConnectedMicrosoft365Accounts()
+    loadConnectedSmtpAccounts()
+    checkGmailApiStatus()
+  }, [])
+
+  // Contact table useEffect hooks
+  useEffect(() => {
+    fetchContacts()
+  }, [currentPage])
+
+  useEffect(() => {
+    fetchCampaigns()
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentPage(1)
+      fetchContacts()
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'settings':
+        return (
+          <div style={{ 
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            boxShadow: '0 4px 20px rgba(37, 99, 235, 0.08)',
+            marginBottom: '24px'
+          }}>
+            
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '24px'
+            }}>
+
+              {/* Daily Contacts Limit */}
+              <div>
+                <label style={{
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  color: '#000000',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  marginBottom: '8px',
+                  fontFamily: 'Jost, sans-serif'
+                }}>
+                  Daily Contacts Limit
+                  <a 
+                    href="https://emelia.io/hub/how-many-people-to-connect-per-day-in-cold-mailing" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    style={{
+                      color: '#000000',
+                      textDecoration: 'none',
+                      fontSize: '12px',
+                      opacity: '0.8'
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgb(37, 99, 235)" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="m9,9 0,0a3,3 0 0,1 6,0c0,2-3,3-3,3"/>
+                      <path d="m9 17h.01"/>
+                    </svg>
+                  </a>
+                </label>
+                <input 
+                  type="number" 
+                  defaultValue="35"
+                  style={{
+                    backgroundColor: '#FAFBFC',
+                    border: '2px solid #E5E7EB',
+                    borderRadius: '12px',
+                    padding: '12px 16px',
+                    width: '280px',
+                    height: '48px',
+                    fontFamily: 'Jost, sans-serif',
+                    fontSize: '14px',
+                    color: '#000000',
+                    fontWeight: '500',
+                    textAlign: 'center',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                    outline: 'none'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'rgb(37, 99, 235)'
+                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#E5E7EB'
+                    e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'
+                  }}
+                />
+              </div>
+
+              {/* Daily Sequence Limit */}
+              <div>
+                <label style={{
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  color: '#000000',
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontFamily: 'Jost, sans-serif'
+                }}>
+                  Daily Sequence Limit
+                </label>
+                <input 
+                  type="number" 
+                  defaultValue="100"
+                  style={{
+                    backgroundColor: '#FAFBFC',
+                    border: '2px solid #E5E7EB',
+                    borderRadius: '12px',
+                    padding: '12px 16px',
+                    width: '280px',
+                    height: '48px',
+                    fontFamily: 'Jost, sans-serif',
+                    fontSize: '14px',
+                    color: '#000000',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                    outline: 'none'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'rgb(37, 99, 235)'
+                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#E5E7EB'
+                    e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'
+                  }}
+                />
+              </div>
+
+              {/* Sending Schedule */}
+              <div>
+                <label style={{
+                  fontWeight: '600',
+                  fontSize: '16px',
+                  color: '#000000',
+                  display: 'block',
+                  marginBottom: '16px',
+                  fontFamily: 'Jost, sans-serif'
+                }}>
+                  Sending Schedule
+                </label>
+                
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr auto',
+                  gap: '24px',
+                  alignItems: 'start'
+                }}>
+                  {/* Sending Days */}
+                  <div>
+                    <h4 style={{
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: '#000000',
+                      marginBottom: '12px',
+                      fontFamily: 'Jost, sans-serif'
+                    }}>
+                      Active Days
+                    </h4>
+                    <div style={{
+                      display: 'flex',
+                      gap: '8px',
+                      flexWrap: 'wrap'
+                    }}>
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
+                        const isWeekday = index < 5
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            style={{
+                              backgroundColor: isWeekday ? 'rgb(37, 99, 235)' : '#F3F4F6',
+                              color: isWeekday ? 'white' : '#6B7280',
+                              border: isWeekday ? '2px solid rgb(37, 99, 235)' : '2px solid #E5E7EB',
+                              borderRadius: '10px',
+                              padding: '8px 12px',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              fontFamily: 'Jost, sans-serif',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              minWidth: '40px',
+                              textAlign: 'center',
+                              boxShadow: isWeekday ? '0 4px 12px rgba(37, 99, 235, 0.3)' : '0 2px 4px rgba(0,0,0,0.05)'
+                            }}
+                            onClick={(e) => {
+                              const isCurrentlyActive = e.currentTarget.style.backgroundColor === 'rgb(37, 99, 235)'
+                              if (isCurrentlyActive) {
+                                e.currentTarget.style.backgroundColor = '#F3F4F6'
+                                e.currentTarget.style.color = '#6B7280'
+                                e.currentTarget.style.borderColor = '#E5E7EB'
+                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)'
+                              } else {
+                                e.currentTarget.style.backgroundColor = 'rgb(37, 99, 235)'
+                                e.currentTarget.style.color = 'white'
+                                e.currentTarget.style.borderColor = 'rgb(37, 99, 235)'
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)'
+                              }
+                            }}
+                          >
+                            {day}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Time Range */}
+                  <div style={{ minWidth: '300px' }}>
+                    <h4 style={{
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: '#000000',
+                      marginBottom: '12px',
+                      fontFamily: 'Jost, sans-serif'
+                    }}>
+                      Sending Hours
+                    </h4>
+                    <div style={{
+                      display: 'flex',
+                      gap: '12px',
+                      alignItems: 'center'
+                    }}>
+                      <button 
+                        type="button"
+                        style={{
+                          backgroundColor: '#FAFBFC',
+                          border: '2px solid #E5E7EB',
+                          borderRadius: '12px',
+                          padding: '12px 16px',
+                          fontSize: '14px',
+                          fontFamily: 'Jost, sans-serif',
+                          color: '#000000',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          minWidth: '100px',
+                          transition: 'all 0.2s ease',
+                          fontWeight: '500'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.borderColor = 'rgb(37, 99, 235)'
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)'
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.borderColor = '#E5E7EB'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      >
+                        <span>08:00 AM</span>
+                        <ChevronDown size={16} style={{ color: 'rgb(37, 99, 235)' }} />
+                      </button>
+                      
+                      <span style={{ 
+                        color: '#6B7280',
+                        fontSize: '14px',
+                        fontFamily: 'Jost, sans-serif',
+                        fontWeight: '500'
+                      }}>
+                        to
+                      </span>
+                      
+                      <button 
+                        type="button"
+                        style={{
+                          backgroundColor: '#FAFBFC',
+                          border: '2px solid #E5E7EB',
+                          borderRadius: '12px',
+                          padding: '12px 16px',
+                          fontSize: '14px',
+                          fontFamily: 'Jost, sans-serif',
+                          color: '#000000',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          minWidth: '100px',
+                          transition: 'all 0.2s ease',
+                          fontWeight: '500'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.borderColor = 'rgb(37, 99, 235)'
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)'
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.borderColor = '#E5E7EB'
+                          e.currentTarget.style.boxShadow = 'none'
+                        }}
+                      >
+                        <span>05:00 PM</span>
+                        <ChevronDown size={16} style={{ color: 'rgb(37, 99, 235)' }} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Smart Rules & Tracking */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '32px'
+              }}>
+                {/* Stop Sending Rules */}
+                <div style={{
+                  backgroundColor: 'rgba(37, 99, 235, 0.03)',
+                  borderRadius: '16px',
+                  padding: '20px',
+                  border: '1px solid rgba(37, 99, 235, 0.1)'
+                }}>
+                  <h4 style={{
+                    fontWeight: '700',
+                    fontSize: '16px',
+                    color: '#000000',
+                    marginBottom: '16px',
+                    fontFamily: 'Jost, sans-serif',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    Auto-Stop Rules
+                  </h4>
+                  <p style={{
+                    fontSize: '13px',
+                    color: '#6B7280',
+                    marginBottom: '16px',
+                    fontFamily: 'Jost, sans-serif',
+                    lineHeight: '1.4'
+                  }}>
+                    Automatically stop sending sequences when:
+                  </p>
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}>
+                    {[
+                      { label: 'Contact replies', checked: true },
+                      { label: 'Link is clicked', checked: false },
+                      { label: 'Sequence is opened', checked: false }
+                    ].map((option) => (
+                      <label
+                        key={option.label}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontFamily: 'Jost, sans-serif',
+                          color: '#000000',
+                          fontWeight: '500'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          defaultChecked={option.checked}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            accentColor: 'rgb(37, 99, 235)',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tracking Settings */}
+                <div style={{
+                  backgroundColor: 'rgba(37, 99, 235, 0.03)',
+                  borderRadius: '16px',
+                  padding: '20px',
+                  border: '1px solid rgba(37, 99, 235, 0.1)'
+                }}>
+                  <h4 style={{
+                    fontWeight: '700',
+                    fontSize: '16px',
+                    color: '#000000',
+                    marginBottom: '16px',
+                    fontFamily: 'Jost, sans-serif',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    Analytics & Tracking
+                  </h4>
+                  <p style={{
+                    fontSize: '13px',
+                    color: '#6B7280',
+                    marginBottom: '16px',
+                    fontFamily: 'Jost, sans-serif',
+                    lineHeight: '1.4'
+                  }}>
+                    Track engagement and performance:
+                  </p>
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}>
+                    {[
+                      { label: 'Blacklist unsubscribers', checked: false },
+                      { label: 'Track sequence opens', checked: true },
+                      { label: 'Track link clicks', checked: true }
+                    ].map((option) => (
+                      <div
+                        key={option.label}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          fontSize: '14px',
+                          fontFamily: 'Jost, sans-serif',
+                          color: '#000000',
+                          fontWeight: '500'
+                        }}
+                      >
+                        <span>{option.label}</span>
+                        <button
+                          type="button"
+                          role="switch"
+                          style={{
+                            backgroundColor: option.checked ? 'rgb(37, 99, 235)' : '#E5E7EB',
+                            border: 'none',
+                            borderRadius: '12px',
+                            padding: '2px',
+                            width: '44px',
+                            height: '24px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            position: 'relative'
+                          }}
+                          onClick={(e) => {
+                            const isOn = e.currentTarget.style.backgroundColor === 'rgb(37, 99, 235)'
+                            e.currentTarget.style.backgroundColor = isOn ? '#E5E7EB' : 'rgb(37, 99, 235)'
+                            const knob = e.currentTarget.firstChild
+                            if (knob && knob.style) {
+                              knob.style.transform = isOn ? 'translateX(0)' : 'translateX(20px)'
+                            }
+                          }}
+                        >
+                          <div
+                            style={{
+                              backgroundColor: 'white',
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '10px',
+                              transform: option.checked ? 'translateX(20px)' : 'translateX(0)',
+                              transition: 'transform 0.2s ease',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                            }}
+                          />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{
+                display: 'flex',
+                gap: '16px',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                paddingTop: '24px',
+                borderTop: '1px solid rgba(37, 99, 235, 0.1)'
+              }}>
+                <button 
+                  type="button"
+                  style={{
+                    backgroundColor: '#F3F4F6',
+                    color: '#6B7280',
+                    border: '2px solid #E5E7EB',
+                    borderRadius: '12px',
+                    padding: '12px 24px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    fontFamily: 'Jost, sans-serif',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = '#E5E7EB'
+                    e.currentTarget.style.color = '#374151'
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = '#F3F4F6'
+                    e.currentTarget.style.color = '#6B7280'
+                  }}
+                >
+                  <X size={16} />
+                  Reset to Default
+                </button>
+                
+                <button 
+                  type="button"
+                  style={{
+                    background: 'linear-gradient(135deg, rgb(37, 99, 235) 0%, rgb(59, 130, 246) 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '12px 32px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    fontFamily: 'Jost, sans-serif',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)'
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.5)'
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)'
+                  }}
+                >
+                  <Check size={16} />
+                  Save Campaign Settings
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'sender':
+        const totalAccounts = connectedEmailAccounts.length + connectedMicrosoft365Accounts.length + connectedSmtpAccounts.length
+        const connectedAccounts = [...connectedEmailAccounts, ...connectedMicrosoft365Accounts, ...connectedSmtpAccounts]
+        
+        return (
+          <div className="w-full bg-gray-50 min-h-screen">
+            {/* Header */}
+            <div className="bg-white border-b border-gray-200">
+              <div className="px-6 py-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Connected Accounts</h1>
+                    <p className="text-gray-600 mt-1">Manage your email accounts for sequence campaigns</p>
+                  </div>
+                  <div className="relative">
+                    <Button
+                      variant="default"
+                      className="flex items-center space-x-2 text-white bg-blue-600 hover:bg-blue-700"
+                      onClick={() => setShowConnectDropdown(!showConnectDropdown)}
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Connect Account</span>
+                    </Button>
+                    
+                    {/* Connect Account Dropdown */}
+                    {showConnectDropdown && (
+                      <div className="absolute right-0 top-12 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                        <button
+                          className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => {
+                            setShowConnectDropdown(false)
+                            initiateGmailOAuth()
+                          }}
+                        >
+                          <div className="w-5 h-5">
+                            <img 
+                              src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png" 
+                              alt="Gmail" 
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                          <div className="text-left">
+                            <div className="font-medium">Connect a Gmail account</div>
+                            <div className="text-xs text-gray-500">Google workspace email</div>
+                          </div>
+                        </button>
+                        <button
+                          className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => {
+                            setShowConnectDropdown(false)
+                            initiateMicrosoft365OAuth()
+                          }}
+                        >
+                          <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center">
+                            <Mail className="w-3 h-3 text-white" />
+                          </div>
+                          <div className="text-left">
+                            <div className="font-medium">Connect a Microsoft 365 account</div>
+                            <div className="text-xs text-gray-500">Outlook & Office 365</div>
+                          </div>
+                        </button>
+                        <button
+                          className="w-full flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => {
+                            setShowConnectDropdown(false)
+                            openSmtpModal()
+                          }}
+                        >
+                          <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center">
+                            <Mail className="w-3 h-3 text-orange-600" />
+                          </div>
+                          <div className="text-left">
+                            <div className="font-medium">Connect with SMTP/IMAP</div>
+                            <div className="text-xs text-gray-500">Other email providers</div>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Total Accounts</p>
+                        <p className="text-2xl font-bold text-gray-900">{totalAccounts}</p>
+                      </div>
+                      <Mail className="w-8 h-8 text-gray-400" />
+                    </div>
+                  </div>
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Gmail</p>
+                        <p className="text-2xl font-bold text-gray-900">{connectedEmailAccounts.length}</p>
+                      </div>
+                      <div className="w-8 h-8">
+                        <img 
+                          src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png" 
+                          alt="Gmail" 
+                          className="w-full h-full object-contain opacity-60"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Microsoft 365</p>
+                        <p className="text-2xl font-bold text-gray-900">{connectedMicrosoft365Accounts.length}</p>
+                      </div>
+                      <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                        <Mail className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">SMTP/IMAP</p>
+                        <p className="text-2xl font-bold text-gray-900">{connectedSmtpAccounts.length}</p>
+                      </div>
+                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                        <Mail className="w-4 h-4 text-orange-600" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Accounts Table */}
+            <div className="px-6 py-6">
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                {/* Table Header */}
+                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center">
+                    <div className="flex-1 flex items-center space-x-2 text-gray-500 text-sm font-medium">
+                      <User className="w-4 h-4" />
+                      <span>Account</span>
+                    </div>
+                    <div className="w-32 flex items-center justify-center text-gray-500 text-sm font-medium">
+                      <Cog className="w-4 h-4" />
+                      <span className="ml-1">Provider</span>
+                    </div>
+                    <div className="w-32 flex items-center justify-center text-gray-500 text-sm font-medium">
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="ml-1">Status</span>
+                    </div>
+                    <div className="w-32 flex items-center justify-center text-gray-500 text-sm font-medium">
+                      <Settings className="w-4 h-4" />
+                      <span className="ml-1">Actions</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table Body */}
+                <div className="divide-y divide-gray-200">
+                  {connectedAccounts.length === 0 ? (
+                    <div className="px-6 py-12 text-center">
+                      <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <Mail className="w-6 h-6 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No accounts connected</h3>
+                      <p className="text-gray-500 mb-4">Connect your first email account to start sending sequences.</p>
+                      <Button 
+                        onClick={() => setShowConnectDropdown(true)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Connect Account
+                      </Button>
+                    </div>
+                  ) : (
+                    connectedAccounts.map((account, index) => {
+                      let accountType = ''
+                      let providerIcon = null
+                      let providerColor = ''
+                      
+                      if (connectedEmailAccounts.find(acc => acc.id === account.id)) {
+                        accountType = 'Gmail'
+                        providerIcon = (
+                          <img 
+                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png" 
+                            alt="Gmail" 
+                            className="w-5 h-5 object-contain"
+                          />
+                        )
+                        providerColor = 'bg-red-500'
+                      } else if (connectedMicrosoft365Accounts.find(acc => acc.id === account.id)) {
+                        accountType = 'Microsoft 365'
+                        providerIcon = <Mail className="w-4 h-4 text-white" />
+                        providerColor = 'bg-blue-600'
+                      } else {
+                        accountType = 'SMTP'
+                        providerIcon = <Mail className="w-4 h-4 text-orange-600" />
+                        providerColor = 'bg-orange-100'
+                      }
+                      
+                      return (
+                        <div key={account.id || index} className="px-6 py-4 hover:bg-gray-50">
+                          <div className="flex items-center">
+                            
+                            {/* Account Info */}
+                            <div className="flex-1 flex items-center space-x-4">
+                              <div className="flex items-center space-x-3">
+                                <div className={`w-10 h-10 ${providerColor} rounded-lg flex items-center justify-center`}>
+                                  {providerIcon}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900">{account.email || account.name}</p>
+                                  <p className="text-sm text-gray-500">{accountType}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Provider */}
+                            <div className="w-32 flex justify-center">
+                              <div className="text-sm text-gray-600">{accountType}</div>
+                            </div>
+
+                            {/* Status */}
+                            <div className="w-32 flex justify-center">
+                              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-50">
+                                <CheckCircle className="w-5 h-5 text-green-500" />
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="w-32 flex justify-center space-x-2">
+                              <Button 
+                                variant="ghost"
+                                size="sm" 
+                                className="p-2 hover:bg-blue-100 transition-colors"
+                                onClick={() => {
+                                  if (connectedEmailAccounts.find(acc => acc.id === account.id)) {
+                                    testGmailConnection(account.id)
+                                  } else if (connectedMicrosoft365Accounts.find(acc => acc.id === account.id)) {
+                                    testMicrosoft365Connection(account.id)
+                                  } else {
+                                    testSmtpConnection(account.id)
+                                  }
+                                }}
+                              >
+                                <Zap className="w-4 h-4 text-blue-600" />
+                              </Button>
+                              <Button 
+                                variant="ghost"
+                                size="sm" 
+                                className="p-2 hover:bg-red-100 transition-colors"
+                                onClick={() => {
+                                  // Delete functionality will be implemented
+                                  const confirmed = window.confirm(`Are you sure you want to delete ${account.email || account.name}?`)
+                                  if (confirmed) {
+                                    // Handle delete
+                                    if (connectedEmailAccounts.find(acc => acc.id === account.id)) {
+                                      // Delete Gmail account
+                                      setConnectedEmailAccounts(prev => prev.filter(acc => acc.id !== account.id))
+                                    } else if (connectedMicrosoft365Accounts.find(acc => acc.id === account.id)) {
+                                      // Delete Microsoft 365 account
+                                      setConnectedMicrosoft365Accounts(prev => prev.filter(acc => acc.id !== account.id))
+                                    } else {
+                                      // Delete SMTP account
+                                      setConnectedSmtpAccounts(prev => prev.filter(acc => acc.id !== account.id))
+                                    }
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Click outside to close dropdown */}
+            {showConnectDropdown && (
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setShowConnectDropdown(false)}
+              />
+            )}
+        );
+                    }}>
+                      
+                      {/* Gmail */}
+                      <div style={{
+                        borderColor: 'rgb(226, 232, 240)',
+                        boxSizing: 'border-box',
+                        display: 'block'
+                      }}>
+                        <div 
+                          onClick={initiateGmailOAuth}
+                          style={{
+                          fontSize: '14px',
+                          lineHeight: '20px',
+                          textAlign: 'center',
+                          padding: '16px',
+                          borderColor: gmailAuthLoading ? 'rgb(37, 99, 235)' : 'rgb(226, 232, 240)',
+                          borderWidth: '1px',
+                          borderRadius: '6px',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          flexDirection: 'column',
+                          cursor: gmailAuthLoading ? 'not-allowed' : 'pointer',
+                          maxWidth: '176px',
+                          height: '142px',
+                          display: 'flex',
+                          border: `1px solid ${gmailAuthLoading ? 'rgb(37, 99, 235)' : 'rgb(226, 232, 240)'}`,
+                          boxSizing: 'border-box',
+                          opacity: gmailAuthLoading ? 0.6 : 1,
+                          transition: 'all 0.2s ease'
+                        }}>
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png" alt="Gmail" style={{
+                            width: '2.5rem',
+                            marginBottom: '8px',
+                            borderColor: 'rgb(226, 232, 240)',
+                            height: 'auto',
+                            maxWidth: '100%',
+                            display: 'block',
+                            verticalAlign: 'middle',
+                            border: '0px solid rgb(226, 232, 240)',
+                            boxSizing: 'border-box'
+                          }} />
+                          <div style={{
+                            borderColor: 'rgb(226, 232, 240)',
+                            boxSizing: 'border-box',
+                            display: 'block'
+                          }}>
+                            {gmailAuthLoading ? 'Connecting...' : 'Connect a Gmail account'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Microsoft 365 */}
+                      <div style={{
+                        borderColor: 'rgb(226, 232, 240)',
+                        boxSizing: 'border-box',
+                        display: 'block'
+                      }}>
+                        <div 
+                          onClick={initiateMicrosoft365OAuth}
+                          style={{
+                          fontSize: '14px',
+                          lineHeight: '20px',
+                          textAlign: 'center',
+                          padding: '16px',
+                          borderColor: microsoft365AuthLoading ? 'rgb(37, 99, 235)' : 'rgb(226, 232, 240)',
+                          borderWidth: '1px',
+                          borderRadius: '6px',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          flexDirection: 'column',
+                          cursor: microsoft365AuthLoading ? 'not-allowed' : 'pointer',
+                          maxWidth: '176px',
+                          height: '142px',
+                          display: 'flex',
+                          border: `1px solid ${microsoft365AuthLoading ? 'rgb(37, 99, 235)' : 'rgb(226, 232, 240)'}`,
+                          boxSizing: 'border-box',
+                          opacity: microsoft365AuthLoading ? 0.6 : 1,
+                          transition: 'all 0.2s ease'
+                        }}>
+                          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEcAAABWCAYAAACdOoshAAAAAXNSR0IArs4c6QAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAR6ADAAQAAAABAAAAVgAAAACqq37jAAAE3ElEQVR4Ae2cXU7bQBDHx4l5aSuVSpTX5gbNYwuVyg3gBklPAEfgCBwh3MCcAEdqaR/NDcIrRSKorfpAEvc/Jks3wRniZP1BGEvBG896d+eXmdm1xY5HT+i4/kCNgU+tOKY2ht0njzprAzp584N6eajh5dGoyzavm7Q+fEm7I6IDz6NmWtuAFUGREOfjzTOK0uoscq2ycK62AMSjPQBpZ1EMgHpQKnABqlJwLreoCRitmBIojSxQ0uoyKFwPazEFG2d0klZHulY6HHab21fUIsSRWW4jKZBB1gesIAuo0uBcbcNC4DZQjj9FH310GHqAVf+DgB4huKcchcJht8EMsw8LYSDrKeMp61KQBip3ODz93vq0C7fh2aZRlvYZ+g0R8wJeIuQCx0y/cJs2BrWTYWBVqtr1XY7GTL+D6rnNQmouDSdZtdZpn6dfWEojF1NcSLXlb1oIjnEbXrXCSpo8jFWCYrBmgsNuE9eoPRhPv6sIxIDh86NwzKoVptGG61Rp+rX1yKWcCqei028XBMLxh2Gc8p88jwk4ZtXKbpO4TFl+E9MFlI7w4SftcPpJ++enYpYHPneEAbR41VqW26D/c4aB556wPqIwr/czWa2MLecUYIo+uugw9IYU1f8Cxoxnm6IHNd3fhFtNCx19v8GjQ4iAnrjJ269J3HDUdL7NuIeDeAH35HcoIdZB0XS8yFcdt60vDYfjBYNg66jjdWVV4oULTEvD2fyW/l7XxeDKbqNW9gCq3L/CEX4dhaNwBAKCSC1H4QgEBJFajsIRCAgitRyFIxAQRGo5CkcgIIjUchSOQEAQqeUoHIGAIFLLUTgCAUGklqNwBAKCSC1H4QgEBJFajsIRCAgitRyFIxAQRGo5CkcgIIjUchSOQEAQqeUoHIGAIFLLUTgCAUGklqNwBAKCSC1H4QgEBJFaTo5wboS2n7xoMcvBv/B7I/ri/6bGkycgKJD1P9i72OlytPGdAqHNlRHNBQf7G47XhnS4Svsa5vkFZ8Ph3XJI3gPXOarqfqh5FFymzgM4410wR0ip0lmm4VW49x4Ouw527HWwCyZcBcVc6MBwuv6A2s8tnswDz8e2wp2rj7R3uU2HsJx345tCPmO6juI69f1fdP4c487E1tckDcML7BJG1gGw+cyA7AOuFwFgH7vyIgTrPnLO9FC359/SRZGWN946fWqPLYdydwKO3cE4gQdvp+Z0Ue9t2awy4PVQtwd5H58I9/bxPYqHdONyr2fpcGwAnLIBS+l2kkbqv+vZVbKUw3Hlu7N3NwFkcd1KwbE15/g0qiXZ2PZw/bUtc1F+4Lom7lmuW1k4NgBkRTHWtGtfz7PMrov22V2befaDtrszY06Wjk0gR9JDzss1V3zK0n5Jdd3AsQefBHIfsx3nD10+PtlNF112D8fW4D6Q3y0NnMcnuy/XZbjvsRO3mmdgViBvzVO/lDpxkqIz9IcU8LqtMDhGWROfxsuCwgK56X/qfAMLCWojZJpMycZSOBx7cIssNO37FykDRpJ7A0lIOo8tTEuFYyvHoIY1OnC00LSbJkwOnNH23l0mhbO/VQaOPURe5OEX5seWRReaorvYfUnlSsKxB8yBPHkQ9pDfVDr4pT/iB+oGrhIYVR6O4WEC+dRCswuXCczsYuo+6zPHJ4aVN4R/dR6Ox+emyfEAAAAASUVORK5CYII=" alt="" style={{
+                            width: '2.5rem',
+                            marginBottom: '8px',
+                            borderColor: 'rgb(226, 232, 240)',
+                            height: 'auto',
+                            maxWidth: '100%',
+                            display: 'block',
+                            verticalAlign: 'middle',
+                            border: '0px solid rgb(226, 232, 240)',
+                            boxSizing: 'border-box'
+                          }} />
+                          <div style={{
+                            borderColor: 'rgb(226, 232, 240)',
+                            boxSizing: 'border-box',
+                            display: 'block'
+                          }}>
+{microsoft365AuthLoading ? 'Connecting...' : 'Connect a Microsoft 365 account'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* SMTP/IMAP */}
+                      <div style={{
+                        borderColor: 'rgb(226, 232, 240)',
+                        boxSizing: 'border-box',
+                        display: 'block'
+                      }}>
+                        <div 
+                          onClick={openSmtpModal}
+                          style={{
+                          fontSize: '14px',
+                          lineHeight: '20px',
+                          textAlign: 'center',
+                          padding: '16px',
+                          borderColor: 'rgb(226, 232, 240)',
+                          borderWidth: '1px',
+                          borderRadius: '6px',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          flexDirection: 'column',
+                          cursor: 'pointer',
+                          maxWidth: '176px',
+                          height: '142px',
+                          display: 'flex',
+                          border: '1px solid rgb(226, 232, 240)',
+                          boxSizing: 'border-box',
+                          transition: 'all 0.2s ease'
+                        }}>
+                          <div style={{
+                            marginBottom: '8px',
+                            borderColor: 'rgb(226, 232, 240)',
+                            border: '0px solid rgb(226, 232, 240)',
+                            boxSizing: 'border-box',
+                            display: 'block'
+                          }}>
+                            <svg width="31.126" height="38.407" viewBox="0 0 31.126 38.407" style={{
+                              display: 'inline',
+                              verticalAlign: 'baseline',
+                              borderColor: 'rgb(226, 232, 240)',
+                              border: '0px solid rgb(226, 232, 240)',
+                              boxSizing: 'border-box'
+                            }}>
+                              <g transform="translate(1 1)">
+                                <path d="M24.2,3H9.641A3.641,3.641,0,0,0,6,6.641V35.766a3.641,3.641,0,0,0,3.641,3.641H31.485a3.641,3.641,0,0,0,3.641-3.641V13.922Z" transform="translate(-6 -3)" fill="none" stroke="#f5bb65" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                                <path d="M21,3V13.922H31.922" transform="translate(-2.796 -3)" fill="none" stroke="#f5bb65" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                                <path d="M26.563,19.5H12" transform="translate(-4.719 0.524)" fill="none" stroke="#f5bb65" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                                <path d="M26.563,25.5H12" transform="translate(-4.719 1.805)" fill="none" stroke="#f5bb65" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                                <path d="M15.641,13.5H12" transform="translate(-4.719 -0.757)" fill="none" stroke="#f5bb65" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                              </g>
+                            </svg>
+                          </div>
+                          <div style={{
+                            borderColor: 'rgb(226, 232, 240)',
+                            boxSizing: 'border-box',
+                            display: 'block'
+                          }}>
+                            Connect with SMTP/IMAP
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Connected Email Accounts Section */}
+                  {connectedEmailAccounts.length > 0 && (
+                    <div style={{ marginTop: '32px' }}>
+                      <h3 style={{
+                        fontWeight: '600',
+                        fontSize: '18px',
+                        lineHeight: '28px',
+                        textAlign: 'center',
+                        marginBottom: '16px',
+                        color: 'rgb(55, 65, 81)'
+                      }}>
+                        Connected Sequence Accounts
+                      </h3>
+                      
+                      <div style={{
+                        maxWidth: '896px',
+                        margin: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                      }}>
+                        {connectedEmailAccounts.map((account, index) => (
+                          <div key={account.id || index} style={{
+                            padding: '16px',
+                            border: selectedEmailAccount?.id === account.id ? 
+                              '2px solid rgb(37, 99, 235)' : '1px solid rgb(226, 232, 240)',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            backgroundColor: selectedEmailAccount?.id === account.id ? 
+                              'rgba(37, 99, 235, 0.05)' : 'white',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onClick={() => setSelectedEmailAccount(account)}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                backgroundColor: 'rgb(37, 99, 235)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                overflow: 'hidden'
+                              }}>
+                                {account.profile_picture ? (
+                                  <img 
+                                    src={account.profile_picture} 
+                                    alt={`${account.name || account.email} profile`}
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      objectFit: 'cover'
+                                    }}
+                                  />
+                                ) : (
+                                  account.email ? account.email.charAt(0).toUpperCase() : 'G'
+                                )}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: '500', fontSize: '14px', color: 'rgb(55, 65, 81)' }}>
+                                  {account.email || 'Gmail Account'}
+                                </div>
+                                <div style={{ fontSize: '12px', color: 'rgb(107, 114, 128)' }}>
+                                  Connected via Gmail
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  testGmailConnection(account.id)
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  backgroundColor: 'rgb(34, 197, 94)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontWeight: '500'
+                                }}
+                              >
+                                Test
+                              </button>
+                              
+                              {selectedEmailAccount?.id === account.id && (
+                                <div style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  backgroundColor: 'rgb(37, 99, 235)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  fontWeight: '500'
+                                }}>
+                                  Selected
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* Microsoft 365 Connected Accounts */}
+                        {connectedMicrosoft365Accounts.map((account, index) => (
+                          <div key={account.id || index} style={{
+                            padding: '16px',
+                            border: selectedMicrosoft365Account?.id === account.id ? 
+                              '2px solid rgb(37, 99, 235)' : '1px solid rgb(226, 232, 240)',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            backgroundColor: selectedMicrosoft365Account?.id === account.id ? 
+                              'rgba(37, 99, 235, 0.05)' : 'white',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onClick={() => setSelectedMicrosoft365Account(account)}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                backgroundColor: 'rgb(255, 103, 31)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                overflow: 'hidden'
+                              }}>
+                                {account.email ? account.email.charAt(0).toUpperCase() : 'M'}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: '500', fontSize: '14px', color: 'rgb(55, 65, 81)' }}>
+                                  {account.email || 'Microsoft 365 Account'}
+                                </div>
+                                <div style={{ fontSize: '12px', color: 'rgb(107, 114, 128)' }}>
+                                  Connected via Microsoft 365
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  testMicrosoft365Connection(account.id)
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  backgroundColor: 'rgb(34, 197, 94)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontWeight: '500'
+                                }}
+                              >
+                                Test
+                              </button>
+                              
+                              {selectedMicrosoft365Account?.id === account.id && (
+                                <div style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  backgroundColor: 'rgb(37, 99, 235)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  fontWeight: '500'
+                                }}>
+                                  Selected
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* SMTP Connected Accounts */}
+                        {connectedSmtpAccounts.map((account, index) => (
+                          <div key={account.id || index} style={{
+                            padding: '16px',
+                            border: selectedSmtpAccount?.id === account.id ? 
+                              '2px solid rgb(37, 99, 235)' : '1px solid rgb(226, 232, 240)',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            backgroundColor: selectedSmtpAccount?.id === account.id ? 
+                              'rgba(37, 99, 235, 0.05)' : 'white',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onClick={() => setSelectedSmtpAccount(account)}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                backgroundColor: 'rgb(245, 187, 101)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                overflow: 'hidden'
+                              }}>
+                                {account.email ? account.email.charAt(0).toUpperCase() : 'S'}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: '500', fontSize: '14px', color: 'rgb(55, 65, 81)' }}>
+                                  {account.name || account.email}
+                                </div>
+                                <div style={{ fontSize: '12px', color: 'rgb(107, 114, 128)' }}>
+                                  Connected via SMTP ({account.smtp_host}:{account.smtp_port})
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  testSmtpConnection(account.id)
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  backgroundColor: 'rgb(34, 197, 94)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontWeight: '500'
+                                }}
+                              >
+                                Test
+                              </button>
+                              
+                              {selectedSmtpAccount?.id === account.id && (
+                                <div style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  backgroundColor: 'rgb(37, 99, 235)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  fontWeight: '500'
+                                }}>
+                                  Selected
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+        );
+      
+      case 'contacts':
+        return (
+          <div className={`min-h-screen bg-white ${selectedContacts.length > 0 ? 'pb-20' : ''}`}>
+            {/* Header */}
+            <div className="border-b border-gray-200 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <User className="w-5 h-5 text-gray-400" />
+                    <span className="text-lg font-medium text-gray-900">All contacts</span>
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-600">
+                      {totalContacts}
+                    </Badge>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="Search name, sequence, company..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 w-64 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="border-gray-200 text-gray-700 hover:bg-gray-50"
+                    onClick={() => setShowFilters(!showFilters)}
+                  >
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filters
+                    {filterCount > 0 && (
+                      <Badge className="ml-2 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                        {filterCount}
+                      </Badge>
+                    )}
+                  </Button>
+                  
+                  <Button 
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => setShowContactImportModal(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Import CSV
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Filters Panel */}
+            {showFilters && (
+              <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                <div className="text-sm font-medium text-gray-700 mb-3">Scraping Criteria Filters</div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-gray-600">
+                      <MapPin className="inline w-3 h-3 mr-1" />
+                      Location
+                    </label>
+                    <Input
+                      placeholder="e.g. New York, San Francisco, Remote"
+                      value={locationFilter}
+                      onChange={(e) => setLocationFilter(e.target.value)}
+                      className="text-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-gray-600">
+                      <Search className="inline w-3 h-3 mr-1" />
+                      Keyword
+                    </label>
+                    <Input
+                      placeholder="e.g. founder, CEO, developer"
+                      value={keywordFilter}
+                      onChange={(e) => setKeywordFilter(e.target.value)}
+                      className="text-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-gray-600">
+                      <Building2 className="inline w-3 h-3 mr-1" />
+                      Industry
+                    </label>
+                    <Input
+                      placeholder="e.g. Technology, Healthcare, Finance"
+                      value={industryFilter}
+                      onChange={(e) => setIndustryFilter(e.target.value)}
+                      className="text-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                {filterCount > 0 && (
+                  <div className="flex justify-end mt-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setLocationFilter("")
+                        setKeywordFilter("")
+                        setIndustryFilter("")
+                      }}
+                      className="text-gray-600 border-gray-300 hover:bg-gray-100"
+                    >
+                      Clear all filters
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="w-12 px-4 py-3">
+                      <Checkbox
+                        checked={selectedContacts.length === contacts.length && contacts.length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Full name
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Sequence
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Sequence Status
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Job title
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Company
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Industry
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Location
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      LinkedIn
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tags
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Privacy
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Added
+                    </th>
+                    <th className="w-12 px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={13} className="px-4 py-8 text-center text-gray-500">
+                        Loading contacts...
+                      </td>
+                    </tr>
+                  ) : contacts.length === 0 ? (
+                    <tr>
+                      <td colSpan={13} className="px-4 py-8 text-center text-gray-500">
+                        No contacts found
+                      </td>
+                    </tr>
+                  ) : (
+                    contacts.map((contact) => (
+                      <tr key={contact.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-4">
+                          <Checkbox
+                            checked={selectedContacts.includes(contact.id)}
+                            onCheckedChange={() => handleSelectContact(contact.id)}
+                          />
+                        </td>
+                        
+                        <td className="px-4 py-4">
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback className="bg-gray-100 text-gray-600 text-xs">
+                                {getInitials(contact.first_name, contact.last_name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-gray-900">
+                              {contact.first_name} {contact.last_name}
+                            </span>
+                          </div>
+                        </td>
+                        
+                        <td className="px-4 py-4 text-sm text-blue-600">
+                          {contact.email ? (
+                            <a href={`mailto:${contact.email}`} className="hover:underline">
+                              {contact.email}
+                            </a>
+                          ) : (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="border-blue-200 text-blue-600 hover:bg-blue-50 text-xs"
+                            >
+                              FIND EMAIL
+                            </Button>
+                          )}
+                        </td>
+                        
+                        <td className="px-4 py-4">
+                          {contact.email_status && (
+                            <Badge className={`text-xs ${sequenceStatusColors[contact.email_status] || 'bg-gray-100 text-gray-800'}`}>
+                              {contact.email_status}
+                            </Badge>
+                          )}
+                        </td>
+                        
+                        <td className="px-4 py-4 text-sm text-gray-600 max-w-xs">
+                          <div className="truncate" title={contact.title}>
+                            {contact.title || "-"}
+                          </div>
+                        </td>
+                        
+                        <td className="px-4 py-4">
+                          <div className="flex items-center space-x-2">
+                            <Building2 className="w-4 h-4 text-gray-400" />
+                            <span className="text-sm text-gray-900 truncate max-w-32">
+                              {contact.company || "-"}
+                            </span>
+                          </div>
+                        </td>
+                        
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {contact.industry || "-"}
+                        </td>
+                        
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {contact.location ? (
+                            <div className="flex items-center space-x-1">
+                              <MapPin className="w-3 h-3 text-gray-400" />
+                              <span>{contact.location}</span>
+                            </div>
+                          ) : "-"}
+                        </td>
+                        
+                        <td className="px-4 py-4">
+                          {contact.linkedin ? (
+                            <a 
+                              href={contact.linkedin} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-700"
+                            >
+                              <Linkedin className="w-4 h-4" />
+                            </a>
+                          ) : "-"}
+                        </td>
+                        
+                        <td className="px-4 py-4">
+                          {contact.tags ? (
+                            <div className="flex flex-wrap gap-1">
+                              {getTagsArray(contact.tags).slice(0, 2).map((tag, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                              {getTagsArray(contact.tags).length > 2 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{getTagsArray(contact.tags).length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          ) : "-"}
+                        </td>
+                        
+                        <td className="px-4 py-4">
+                          {contact.privacy && contact.privacy !== 'Normal' && (
+                            <Badge className="bg-orange-100 text-orange-800 text-xs">
+                              {contact.privacy}
+                            </Badge>
+                          )}
+                        </td>
+                        
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          <div>
+                            <div>{formatDate(contact.created_at)}</div>
+                          </div>
+                        </td>
+                        
+                        <td className="px-4 py-4">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-gray-400 hover:text-gray-600"
+                            onClick={() => handleEditContact(contact)}
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Selection Bar - appears when contacts are selected */}
+            {selectedContacts.length > 0 && (
+              <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 shadow-lg">
+                <div className="flex items-center justify-between max-w-7xl mx-auto">
+                  <div className="flex items-center space-x-4">
+                    <button 
+                      onClick={() => setSelectedContacts([])}
+                      className="text-sm text-red-600 hover:text-red-700 flex items-center"
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Clear selection
+                    </button>
+                    <button 
+                      onClick={handleSelectAll}
+                      className="text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      Select all
+                    </button>
+                    <span className="text-sm text-gray-600">
+                      {selectedContacts.length} selected.
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Select onValueChange={handleCampaignAssignment}>
+                      <SelectTrigger className="w-auto min-w-32">
+                        <Users2 className="w-4 h-4 mr-2" />
+                        <SelectValue placeholder={campaigns.length > 0 ? "Assign to Campaign" : "No campaigns found"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {campaigns.length > 0 ? (
+                          campaigns.map((campaign) => (
+                            <SelectItem key={campaign.id} value={campaign.id.toString()}>
+                              {campaign.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-campaigns" disabled>
+                            No campaigns available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Button variant="outline" size="sm" className="text-gray-700 border-gray-300" onClick={handleExportCSV}>
+                      <Download className="w-4 h-4 mr-2" />
+                      Export as CSV
+                    </Button>
+                    
+                    <Button variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50" onClick={handleBulkDelete}>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Regular Footer - only show when no contacts selected */}
+            {selectedContacts.length === 0 && (
+              <div className="border-t border-gray-200 px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-500">
+                    {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalContacts)} of {totalContacts}
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      className="text-gray-600"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    
+                    <div className="flex items-center space-x-1">
+                      {[...Array(Math.min(5, Math.ceil(totalContacts / pageSize)))].map((_, index) => (
+                        <Button 
+                          key={index + 1}
+                          variant="outline" 
+                          size="sm" 
+                          className={currentPage === index + 1 ? "bg-blue-50 border-blue-200 text-blue-600" : "text-gray-600"}
+                          onClick={() => setCurrentPage(index + 1)}
+                        >
+                          {index + 1}
+                        </Button>
+                      ))}
+                    </div>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-gray-600"
+                      disabled={!hasMore}
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      
+      case 'sequence':
+        return (
+          <div className="min-h-screen bg-gray-50">
+            <div className="max-w-7xl mx-auto p-6">
+              <div className="grid gap-6 grid-cols-12">
+                {/* Left Sidebar - Sequence Steps */}
+                <div className="col-span-3">
+                  <div className="space-y-4">
+                    {steps.map((step, index) => (
+                      <div key={step.id}>
+                        {/* Step Card */}
+                        <Card
+                          className={`p-4 cursor-pointer ${step.id === activeStepId ? "border-2 border-purple-500" : "border border-gray-200"}`}
+                          onClick={() => selectStep(step.id)}
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-medium text-gray-900">Step {step.id}</h3>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-gray-400 hover:text-red-500"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                deleteStep(step.id)
+                              }}
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </Button>
+                          </div>
+                          <div className="bg-gray-50 p-3 rounded border text-gray-500 text-sm mb-4">
+                            <div className="font-medium text-gray-700 mb-1">
+                              Subject: {step.subject || (step.id === 1 ? "Empty subject" : "Previous sequence's subject")}
+                            </div>
+                            <div className="text-xs text-gray-500 line-clamp-2">
+                              {step.content ? step.content.substring(0, 80) + "..." : "No content yet"}
+                            </div>
+                          </div>
+                          {step.id === 1 && (
+                            <Button
+                              variant="outline"
+                              className="w-full text-purple-600 border-gray-200 bg-transparent"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                addVariant(step.id)
+                              }}
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add variant ({step.variants})
+                            </Button>
+                          )}
+                        </Card>
+
+                        {/* Timing Control */}
+                        {index < steps.length - 1 && (
+                          <div className="flex items-center space-x-2 text-sm text-gray-700 px-2 py-2">
+                            <span>Send next message in</span>
+                            <Input
+                              type="number"
+                              value={step.timing}
+                              onChange={(e) => updateStepTiming(step.id, Number.parseInt(e.target.value) || 1)}
+                              className="w-16 h-8 text-center"
+                            />
+                            <span>Days</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Add Step Button */}
+                    <Button
+                      variant="outline"
+                      className="w-full text-purple-600 border-gray-200 bg-transparent"
+                      onClick={addStep}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add step
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Main Content */}
+                <div className="col-span-9">
+                  <Card className="p-6">
+                    <div className="space-y-6">
+                      {/* Subject Line */}
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex space-x-6">
+                            <button className="text-gray-900 font-medium border-b-2 border-gray-900 pb-1">Subject</button>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-purple-600 bg-transparent"
+                              onClick={previewSequence}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              Preview
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                toast({ title: "AI Assistant", description: "AI writing assistant activated" })
+                              }
+                            >
+                              <Zap className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <Input
+                          placeholder="Leave empty to use previous step's subject"
+                          value={activeStep?.subject || ""}
+                          onChange={(e) => updateStepSubject(e.target.value)}
+                          className="border-gray-200"
+                        />
+                      </div>
+
+                      {/* Sequence Editor */}
+                      <div>
+                        <Textarea
+                          placeholder="Start typing here..."
+                          value={activeStep?.content || ""}
+                          onChange={(e) => updateStepContent(e.target.value)}
+                          className="min-h-[300px] text-base border-gray-200 resize-none"
+                        />
+                      </div>
+
+                      {/* Toolbar */}
+                      <div className="flex items-center justify-between pt-4 border-t">
+                        <Button className="bg-purple-600 hover:bg-purple-700" onClick={saveSequence}>
+                          Save
+                          <ChevronDown className="w-4 h-4 ml-1" />
+                        </Button>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => toast({ title: "Image", description: "Image upload coming soon" })}
+                          >
+                            <div className="w-4 h-4 border border-gray-400"></div>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => toast({ title: "Table", description: "Table insertion coming soon" })}
+                          >
+                            <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
+                              <div className="bg-gray-400"></div>
+                              <div className="bg-gray-400"></div>
+                              <div className="bg-gray-400"></div>
+                              <div className="bg-gray-400"></div>
+                            </div>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => toast({ title: "Variables", description: "Dynamic variables coming soon" })}
+                          >
+                            <Zap className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => toast({ title: "Text Formatting", description: "Text formatting options" })}
+                          >
+                            <span className="text-sm font-bold">A</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => toast({ title: "Emoji", description: "Emoji picker coming soon" })}
+                          >
+                            <div className="w-4 h-4 rounded-full bg-gray-400"></div>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => toast({ title: "Link", description: "Link insertion coming soon" })}
+                          >
+                            <div className="w-4 h-4 border-b-2 border-gray-400"></div>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => toast({ title: "More Options", description: "Additional formatting options" })}
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => toast({ title: "HTML", description: "HTML editor coming soon" })}
+                          >
+                            <div className="w-4 h-4 font-mono text-xs">{"<>"}</div>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Preview Modal Popup */}
+              {showPreviewModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-lg w-full max-w-6xl h-[80vh] flex overflow-hidden shadow-2xl">
+                    {/* Left Panel - Test Contact */}
+                    <div className="w-1/3 bg-gray-50 p-6 border-r">
+                      <div className="flex items-center space-x-2 mb-6">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                          />
+                        </svg>
+                        <h3 className="text-lg font-semibold">Test Sequence</h3>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-2">Send from:</label>
+                          <Select defaultValue="contact@leadsupb...">
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="contact@leadsupb...">contact@leadsupb...</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div>
+                            <div className="text-sm font-medium text-gray-700 mb-2">firstName</div>
+                            <Input 
+                              value={variables.firstName}
+                              onChange={(e) => setVariables({...variables, firstName: e.target.value})}
+                              className="text-sm" 
+                            />
+                          </div>
+
+                          <div>
+                            <div className="text-sm font-medium text-gray-700 mb-2">companyName</div>
+                            <Input 
+                              value={variables.companyName}
+                              onChange={(e) => setVariables({...variables, companyName: e.target.value})}
+                              className="text-sm" 
+                            />
+                          </div>
+
+                          <div>
+                            <div className="text-sm font-medium text-gray-700 mb-2">randomQuestion</div>
+                            <Input 
+                              value={variables.randomQuestion}
+                              onChange={(e) => setVariables({...variables, randomQuestion: e.target.value})}
+                              className="text-sm" 
+                            />
+                          </div>
+
+                          <div>
+                            <div className="text-sm font-medium text-gray-700 mb-2">randomGreeting</div>
+                            <Input 
+                              value={variables.randomGreeting}
+                              onChange={(e) => setVariables({...variables, randomGreeting: e.target.value})}
+                              className="text-sm" 
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Panel - Message Preview */}
+                    <div className="flex-1 p-6 flex flex-col">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center">
+                            <div className="w-3 h-3 rounded-full bg-white"></div>
+                          </div>
+                          <h3 className="text-xl font-semibold">Sequence Preview</h3>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => setShowPreviewModal(false)}>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </Button>
+                      </div>
+
+                      <div className="space-y-4 mb-6">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-gray-600">Send to:</span>
+                          <div className="flex items-center bg-gray-100 rounded-full px-3 py-1">
+                            <span className="text-sm">{testEmail}</span>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 ml-2">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </Button>
+                          </div>
+                          <Input
+                            placeholder="Enter email address"
+                            className="flex-1"
+                            value={testEmail}
+                            onChange={(e) => setTestEmail(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="flex items-center space-x-3">
+                          <span className="text-gray-600">Subject:</span>
+                          <span className="font-medium">
+                            {activeStep?.subject || "Quiet customers? I've got something."}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Message Content */}
+                      <div className="bg-gray-50 rounded-lg p-6 mb-6 flex-1 overflow-y-auto">
+                        <div className="space-y-4 text-gray-900">
+                          <p>Hi {variables.firstName},</p>
+                          
+                          {activeStep?.content ? (
+                            <div className="whitespace-pre-wrap">
+                              {activeStep.content
+                                .replace(/\{\{firstName\}\}/g, variables.firstName)
+                                .replace(/\{\{companyName\}\}/g, variables.companyName)
+                                .replace(/\{\{randomQuestion\}\}/g, variables.randomQuestion)
+                                .replace(/\{\{randomGreeting\}\}/g, variables.randomGreeting)
+                              }
+                            </div>
+                          ) : (
+                            <>
+                              <p>
+                                Really impressed with what you're building at {variables.companyName}, it genuinely stands
+                                out.
+                              </p>
+                              <p>
+                                But as you grow, what people say online isn't just noise: it's influence! And with 94%
+                                of consumers saying a single bad review can turn them away, the stakes are high.
+                              </p>
+                              <p>The challenge? Happy customers don't speak up... angry ones do, and fast.</p>
+                              <p>That's why we built Loop Review to help businesses in retail & hospitality to:</p>
+                              <p>- Turns happy buyers into 5⭐ & Captures video testimonials</p>
+                              <p>- Redirects negative reviews privately to your support team for resolution</p>
+                              <p>{variables.randomQuestion}</p>
+                              <p>
+                                Best regards,<br />
+                                Your Loop Review Team
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex justify-end space-x-3">
+                        <Button
+                          variant="outline"
+                          className="text-purple-600 bg-transparent"
+                          onClick={() =>
+                            toast({
+                              title: "Deliverability Check",
+                              description: "Checking sequence deliverability...",
+                            })
+                          }
+                        >
+                          Check Deliverability Score
+                        </Button>
+                        <Button
+                          className="bg-purple-600 hover:bg-purple-700"
+                          onClick={() => {
+                            const message = `Test sequence sent to ${testEmail}`
+                            toast({ 
+                              title: "Test Sequence Sent", 
+                              description: message 
+                            })
+                            setShowPreviewModal(false)
+                          }}
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                            />
+                          </svg>
+                          Send test sequence
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      
+      default:
+        return null;
+    }
+  }
+
+  return (
+    <main style={{
+      paddingLeft: '64px',
+      paddingRight: '64px',
+      paddingTop: '32px',
+      backgroundColor: '#FAFBFC',
+      fontFamily: 'Jost, sans-serif',
+      minHeight: '100vh'
+    }}>
+      {/* Header with Campaign Info */}
+      <div style={{
+        gap: '12px',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        display: 'flex',
+        marginBottom: '24px'
+      }}>
+        <h1 style={{
+          fontWeight: 600,
+          fontSize: '36px',
+          lineHeight: '40px',
+          gap: '16px',
+          alignItems: 'center',
+          display: 'flex',
+          color: '#1F2937',
+          margin: '0'
+        }}>
+          {onBack && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onBack}
+              style={{
+                padding: '8px',
+                borderRadius: '8px',
+                marginRight: '8px',
+                color: 'rgb(37, 99, 235)',
+                hover: 'rgba(37, 99, 235, 0.1)'
+              }}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </Button>
+          )}
+          {campaign?.name || 'Campaign'} 
+          <Badge style={{
+            backgroundColor: '#8E8E8E',
+            color: 'white',
+            fontSize: '14px',
+            padding: '4px 12px'
+          }}>
+            Draft
+          </Badge>
+        </h1>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button style={{
+            background: 'linear-gradient(135deg, rgb(37, 99, 235) 0%, rgb(59, 130, 246) 100%)',
+            border: 'none',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontWeight: '500'
+          }}>
+            <Play size={16} style={{ marginRight: '8px' }} />
+            Run Campaign
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" style={{
+                borderColor: '#E5E7EB',
+                padding: '8px'
+              }}>
+                <MoreHorizontal size={20} color="#F07B5C" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => handleDeleteCampaign()}
+                className="text-red-600 hover:text-red-800"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Campaign
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Horizontal Tab Navigation */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '16px 16px 0 0',
+        borderBottom: '1px solid #E5E7EB',
+        marginBottom: '0'
+      }}>
+        <nav style={{ 
+          padding: '0 32px',
+          display: 'flex',
+          gap: '0'
+        }}>
+          {tabs.map((tab) => {
+            const Icon = tab.icon
+            const isActive = activeTab === tab.id
+            
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '16px 24px',
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  color: isActive ? tab.color : '#6B7280',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  fontSize: '14px',
+                  fontWeight: isActive ? '600' : '400',
+                  borderBottom: `3px solid ${isActive ? tab.color : 'transparent'}`,
+                  borderRadius: '0',
+                  position: 'relative'
+                }}
+              >
+                <Icon size={18} />
+                <span>{tab.label}</span>
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+
+      {/* Main Content Area */}
+      <div style={{
+        backgroundColor: '#FAFBFC',
+        minHeight: 'calc(100vh - 200px)'
+      }}>
+        {renderTabContent()}
+      </div>
+
+      {/* Contact Import Modal */}
+      <Dialog open={showContactImportModal} onOpenChange={setShowContactImportModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-medium text-gray-900">
+              Import Contacts from CSV
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* File Upload */}
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <div className="text-sm text-gray-600 mb-2">
+                  {csvFile ? csvFile.name : 'Choose CSV file to upload'}
+                </div>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                  className="hidden"
+                  id="csv-upload"
+                />
+                <label
+                  htmlFor="csv-upload"
+                  className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Choose File
+                </label>
+              </div>
+
+              {/* CSV Format Help */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-blue-800 mb-2">CSV Format Requirements:</h4>
+                <ul className="text-xs text-blue-700 space-y-1">
+                  <li>• First row must contain column headers</li>
+                  <li>• Supported columns: First Name, Last Name, Sequence, Company, Title, Industry, Location, LinkedIn, Tags, Notes</li>
+                  <li>• At minimum, include either Sequence OR both First Name and Last Name</li>
+                  <li>• Use comma separation, quotes for text with commas</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Import Actions */}
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowContactImportModal(false)
+                  setCsvFile(null)
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCsvImport}
+                disabled={!csvFile || csvImportLoading}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {csvImportLoading ? (
+                  <><div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>Importing...</>
+                ) : (
+                  'Import Contacts'
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Contact Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingContact.id ? 'Edit Contact' : 'Add New Contact'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div>
+              <label className="text-sm font-medium">First Name</label>
+              <Input
+                value={editingContact.first_name || ''}
+                onChange={(e) => setEditingContact({...editingContact, first_name: e.target.value})}
+                placeholder="First name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Last Name</label>
+              <Input
+                value={editingContact.last_name || ''}
+                onChange={(e) => setEditingContact({...editingContact, last_name: e.target.value})}
+                placeholder="Last name"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="text-sm font-medium">Sequence</label>
+              <Input
+                type="email"
+                value={editingContact.email || ''}
+                onChange={(e) => setEditingContact({...editingContact, email: e.target.value})}
+                placeholder="sequence@example.com"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Sequence Status</label>
+              <Select 
+                value={editingContact.email_status || 'Unknown'} 
+                onValueChange={(value) => setEditingContact({...editingContact, email_status: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(sequenceStatusColors).map(status => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Privacy</label>
+              <Select 
+                value={editingContact.privacy || 'Normal'} 
+                onValueChange={(value) => setEditingContact({...editingContact, privacy: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Normal">Normal</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Restricted">Restricted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <label className="text-sm font-medium">Job Title</label>
+              <Input
+                value={editingContact.title || ''}
+                onChange={(e) => setEditingContact({...editingContact, title: e.target.value})}
+                placeholder="Job title"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Company</label>
+              <Input
+                value={editingContact.company || ''}
+                onChange={(e) => setEditingContact({...editingContact, company: e.target.value})}
+                placeholder="Company name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Industry</label>
+              <Input
+                value={editingContact.industry || ''}
+                onChange={(e) => setEditingContact({...editingContact, industry: e.target.value})}
+                placeholder="Industry"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="text-sm font-medium">Location</label>
+              <Input
+                value={editingContact.location || ''}
+                onChange={(e) => setEditingContact({...editingContact, location: e.target.value})}
+                placeholder="City, Country"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="text-sm font-medium">LinkedIn</label>
+              <Input
+                value={editingContact.linkedin || ''}
+                onChange={(e) => setEditingContact({...editingContact, linkedin: e.target.value})}
+                placeholder="https://linkedin.com/in/username"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="text-sm font-medium">Tags</label>
+              <Input
+                value={editingContact.tags || ''}
+                onChange={(e) => setEditingContact({...editingContact, tags: e.target.value})}
+                placeholder="tag1, tag2, tag3"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="text-sm font-medium">Notes</label>
+              <Textarea
+                value={editingContact.note || ''}
+                onChange={(e) => setEditingContact({...editingContact, note: e.target.value})}
+                placeholder="Additional notes about this contact"
+                rows={3}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowEditModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveContact}>
+              {editingContact.id ? 'Save Changes' : 'Add Contact'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Email Modal */}
+      {showTestModal && (
+        <>
+          <style>{`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+          <div style={{
+          position: 'fixed',
+          inset: '0',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: '50',
+          padding: '16px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '0',
+            maxWidth: '480px',
+            width: '100%',
+            boxShadow: '0 4px 20px rgba(37, 99, 235, 0.08)',
+            border: '1px solid rgba(37, 99, 235, 0.1)',
+            overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '32px 32px 24px 32px',
+              borderBottom: '1px solid rgba(37, 99, 235, 0.1)'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '8px'
+              }}>
+                <h3 style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  margin: '0',
+                  color: '#1F2937',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgb(37, 99, 235)" strokeWidth="2">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                      <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                  </div>
+Test Sequence Connection
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowTestModal(false)
+                    setTestModalEmail("")
+                    setTestModalAccountId(null)
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#6B7280',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#F3F4F6'
+                    e.target.style.color = '#374151'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'transparent'
+                    e.target.style.color = '#6B7280'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <p style={{
+                margin: '0',
+                color: '#6B7280',
+                fontSize: '14px'
+              }}>
+Send a test sequence to verify your sequence integration is working correctly
+              </p>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '32px' }}>
+              {/* Account Info */}
+              <div style={{
+                backgroundColor: 'rgba(37, 99, 235, 0.02)',
+                border: '1px solid rgba(37, 99, 235, 0.1)',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '24px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <img 
+                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png" 
+                    alt="Gmail"
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: '500', fontSize: '14px', color: '#1F2937' }}>
+                      {connectedEmailAccounts.find(acc => acc.id === testModalAccountId)?.email || 'Gmail Account'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                      Connected Gmail account
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Input */}
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#1F2937',
+                  marginBottom: '8px'
+                }}>
+                  Send test sequence to:
+                </label>
+                <input
+                  type="email"
+                  placeholder="Enter recipient email address"
+                  value={testModalEmail}
+                  onChange={(e) => setTestModalEmail(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease',
+                    fontFamily: 'inherit',
+                    backgroundColor: 'white'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'rgb(37, 99, 235)'}
+                  onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
+                />
+              </div>
+
+              {/* Test Email Preview */}
+              <div style={{
+                backgroundColor: '#FAFBFC',
+                border: '1px solid #E5E7EB',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '32px'
+              }}>
+                <div style={{
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  color: '#6B7280',
+                  marginBottom: '8px'
+                }}>
+                  Test sequence content:
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  marginBottom: '4px',
+                  color: '#1F2937'
+                }}>
+                  Subject: Test Sequence from LeadsUp
+                </div>
+                <div style={{
+                  fontSize: '13px',
+                  color: '#6B7280',
+                  lineHeight: '1.4'
+                }}>
+                  This test sequence will verify that your Gmail integration is working correctly.
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowTestModal(false)
+                    setTestModalEmail("")
+                    setTestModalAccountId(null)
+                  }}
+                  disabled={testModalLoading}
+                  style={{
+                    padding: '12px 20px',
+                    border: '1px solid #E5E7EB',
+                    backgroundColor: 'white',
+                    color: '#6B7280',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: testModalLoading ? 'not-allowed' : 'pointer',
+                    opacity: testModalLoading ? '0.6' : '1',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!testModalLoading) {
+                      e.target.style.backgroundColor = '#FAFBFC'
+                      e.target.style.borderColor = '#D1D5DB'
+                      e.target.style.color = '#374151'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!testModalLoading) {
+                      e.target.style.backgroundColor = 'white'
+                      e.target.style.borderColor = '#E5E7EB'
+                      e.target.style.color = '#6B7280'
+                    }
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+onClick={sendTestEmailGeneric}
+                  disabled={testModalLoading || !testModalEmail.trim()}
+                  style={{
+                    padding: '12px 20px',
+                    backgroundColor: (!testModalEmail.trim() || testModalLoading) 
+                      ? '#9CA3AF' 
+                      : 'rgb(37, 99, 235)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: (testModalLoading || !testModalEmail.trim()) ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    minWidth: '140px',
+                    justifyContent: 'center'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!testModalLoading && testModalEmail.trim()) {
+                      e.target.style.backgroundColor = 'rgb(29, 78, 216)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!testModalLoading && testModalEmail.trim()) {
+                      e.target.style.backgroundColor = 'rgb(37, 99, 235)'
+                    }
+                  }}
+                >
+                  {testModalLoading ? (
+                    <>
+                      <svg 
+                        width="16" 
+                        height="16" 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2"
+                        style={{ animation: 'spin 1s linear infinite' }}
+                      >
+                        <path d="M21 12a9 9 0 11-6.219-8.56"/>
+                      </svg>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                      </svg>
+                      Send Test Sequence
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        </>
+      )}
+
+      {/* SMTP Configuration Modal */}
+      {showSmtpModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Connect SMTP/IMAP Account</h3>
+              <button
+                onClick={() => setShowSmtpModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="p-6 space-y-4">
+              {/* Account Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Display Name *
+                  </label>
+                  <Input
+                    value={smtpFormData.name}
+                    onChange={(e) => handleSmtpFormChange('name', e.target.value)}
+                    placeholder="My Email Account"
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address *
+                  </label>
+                  <Input
+                    type="email"
+                    value={smtpFormData.email}
+                    onChange={(e) => handleSmtpFormChange('email', e.target.value)}
+                    placeholder="your@email.com"
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              {/* SMTP Settings */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-gray-900 mb-3">SMTP Settings (Outgoing Mail)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      SMTP Host *
+                    </label>
+                    <Input
+                      value={smtpFormData.smtpHost}
+                      onChange={(e) => handleSmtpFormChange('smtpHost', e.target.value)}
+                      placeholder="smtp.gmail.com"
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      SMTP Port *
+                    </label>
+                    <select
+                      value={smtpFormData.smtpPort}
+                      onChange={(e) => handleSmtpFormChange('smtpPort', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="587">587 (STARTTLS)</option>
+                      <option value="465">465 (SSL/TLS)</option>
+                      <option value="25">25 (Plain)</option>
+                      <option value="2525">2525 (Alternative)</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Username *
+                    </label>
+                    <Input
+                      value={smtpFormData.smtpUser}
+                      onChange={(e) => handleSmtpFormChange('smtpUser', e.target.value)}
+                      placeholder="username or email"
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Password *
+                    </label>
+                    <Input
+                      type="password"
+                      value={smtpFormData.smtpPassword}
+                      onChange={(e) => handleSmtpFormChange('smtpPassword', e.target.value)}
+                      placeholder="password"
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* IMAP Settings (Optional) */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-gray-900 mb-3">IMAP Settings (Optional - Incoming Mail)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      IMAP Host
+                    </label>
+                    <Input
+                      value={smtpFormData.imapHost}
+                      onChange={(e) => handleSmtpFormChange('imapHost', e.target.value)}
+                      placeholder="imap.gmail.com"
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      IMAP Port
+                    </label>
+                    <select
+                      value={smtpFormData.imapPort}
+                      onChange={(e) => handleSmtpFormChange('imapPort', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="993">993 (SSL/TLS)</option>
+                      <option value="143">143 (STARTTLS)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Common Provider Settings */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h5 className="font-medium text-gray-900 mb-2">Common Provider Settings</h5>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <div><strong>Gmail:</strong> smtp.gmail.com:587, imap.gmail.com:993</div>
+                  <div><strong>Outlook:</strong> smtp-mail.outlook.com:587, outlook.office365.com:993</div>
+                  <div><strong>Yahoo:</strong> smtp.mail.yahoo.com:587, imap.mail.yahoo.com:993</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-between items-center p-6 border-t bg-gray-50">
+              <Button
+                variant="outline"
+                onClick={validateSmtpConnection}
+                disabled={smtpLoading || !smtpFormData.smtpHost || !smtpFormData.smtpUser || !smtpFormData.smtpPassword}
+                className="flex items-center gap-2"
+              >
+                {smtpLoading ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Testing...
+                  </>
+                ) : (
+                  'Test Connection'
+                )}
+              </Button>
+              
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowSmtpModal(false)}
+                  disabled={smtpLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={saveSmtpAccount}
+                  disabled={smtpLoading}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {smtpLoading ? 'Connecting...' : 'Connect Account'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  )
+}
