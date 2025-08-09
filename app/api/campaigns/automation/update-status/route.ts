@@ -1,8 +1,43 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase"
 
+// Basic Auth helper function
+function validateBasicAuth(request: NextRequest): boolean {
+  const authHeader = request.headers.get('authorization')
+  
+  if (!authHeader || !authHeader.startsWith('Basic ')) {
+    return false
+  }
+  
+  try {
+    const base64Credentials = authHeader.split(' ')[1]
+    const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii')
+    const [username, password] = credentials.split(':')
+    
+    // Check against environment variables
+    const expectedUsername = process.env.N8N_API_USERNAME || 'admin'
+    const expectedPassword = process.env.N8N_API_PASSWORD || 'password'
+    
+    return username === expectedUsername && password === expectedPassword
+  } catch (error) {
+    return false
+  }
+}
+
 // POST - Update email sending status after n8n processes
 export async function POST(request: NextRequest) {
+  // Validate authentication
+  if (!validateBasicAuth(request)) {
+    return NextResponse.json(
+      { success: false, error: 'Authentication required' },
+      { 
+        status: 401,
+        headers: {
+          'WWW-Authenticate': 'Basic realm="n8n API"'
+        }
+      }
+    )
+  }
   try {
     const body = await request.json()
     const { 
