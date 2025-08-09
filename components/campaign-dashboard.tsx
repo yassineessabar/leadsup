@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { Calendar, ChevronDown, Eye, Play, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,6 +49,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [activeStepId, setActiveStepId] = useState(1)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [showTestModal, setShowTestModal] = useState(false)
+  const [showCodeView, setShowCodeView] = useState(false)
+  const editorRef = useRef<HTMLDivElement>(null)
   const [testModalAccountId, setTestModalAccountId] = useState(null)
   const [testModalLoading, setTestModalLoading] = useState(false)
   const [testModalEmail, setTestModalEmail] = useState("")
@@ -211,6 +213,121 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   const updateStepContent = (content: string) => {
     setSteps(steps.map((step) => (step.id === activeStepId ? { ...step, content } : step)))
+  }
+
+  const insertVariableIntoContent = (variable: string) => {
+    const activeStep = steps.find(s => s.id === activeStepId)
+    if (!activeStep) return
+    
+    const currentContent = activeStep.content || ''
+    const newContent = currentContent + variable
+    updateStepContent(newContent)
+  }
+
+  const applyFormatting = (command: string, value?: string) => {
+    if (!editorRef.current || showCodeView) return
+    
+    editorRef.current.focus()
+    document.execCommand(command, false, value)
+    
+    // Update content after formatting
+    const htmlContent = editorRef.current.innerHTML
+    updateStepContent(htmlContent)
+  }
+
+  const formatBold = () => applyFormatting('bold')
+  const formatItalic = () => applyFormatting('italic')
+  const formatUnderline = () => applyFormatting('underline')
+  
+  const insertLink = () => {
+    if (!editorRef.current || showCodeView) return
+    
+    editorRef.current.focus()
+    
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+    
+    const range = selection.getRangeAt(0)
+    const selectedText = range.toString()
+    
+    const url = prompt('Enter the URL:', 'https://')
+    if (!url) return
+    
+    // If there's selected text, use it as link text
+    if (selectedText) {
+      const linkElement = document.createElement('a')
+      linkElement.href = url
+      linkElement.textContent = selectedText
+      linkElement.target = '_blank'
+      linkElement.rel = 'noopener noreferrer'
+      
+      range.deleteContents()
+      range.insertNode(linkElement)
+    } else {
+      // If no text selected, create link with URL as text
+      const linkElement = document.createElement('a')
+      linkElement.href = url
+      linkElement.textContent = url
+      linkElement.target = '_blank'
+      linkElement.rel = 'noopener noreferrer'
+      
+      range.insertNode(linkElement)
+    }
+    
+    // Clear selection and update content
+    selection.removeAllRanges()
+    updateStepContent(editorRef.current.innerHTML)
+  }
+
+  const toggleCodeView = () => {
+    setShowCodeView(!showCodeView)
+  }
+
+  const formatCode = () => {
+    if (!editorRef.current || showCodeView) return
+    
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      const selectedText = range.toString()
+      
+      if (selectedText) {
+        const codeElement = document.createElement('code')
+        codeElement.style.backgroundColor = '#f3f4f6'
+        codeElement.style.padding = '2px 4px'
+        codeElement.style.borderRadius = '3px'
+        codeElement.style.fontFamily = 'monospace'
+        codeElement.textContent = selectedText
+        range.deleteContents()
+        range.insertNode(codeElement)
+        
+        // Clear selection
+        selection.removeAllRanges()
+        
+        // Update content
+        updateStepContent(editorRef.current.innerHTML)
+      }
+    }
+  }
+
+  const insertVariableIntoEditor = (variable: string) => {
+    if (!editorRef.current || showCodeView) return
+    
+    editorRef.current.focus()
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      const textNode = document.createTextNode(variable)
+      range.insertNode(textNode)
+      
+      // Move cursor after inserted text
+      range.setStartAfter(textNode)
+      range.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+    
+    updateStepContent(editorRef.current.innerHTML)
   }
 
   const updateStepSubject = (subject: string) => {
@@ -3198,16 +3315,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   <Eye className="w-4 h-4 mr-2" />
                                   Preview
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setShowTestModal(true)
-                                  }}
-                                >
-                                  <Send className="w-4 h-4 mr-2" />
-                                  Test Email
-                                </Button>
                               </div>
                             </div>
                             
@@ -3215,20 +3322,54 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             <div className="border border-gray-300 rounded-lg overflow-hidden">
                               {/* Toolbar */}
                               <div className="border-b border-gray-200 px-3 py-2 bg-gray-50 flex items-center space-x-2">
-                                <Button variant="ghost" size="sm">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={formatBold}
+                                  title="Bold (**text**)"
+                                  disabled={showCodeView}
+                                  className={showCodeView ? "opacity-50 cursor-not-allowed" : ""}
+                                >
                                   <Bold className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={formatItalic}
+                                  title="Italic (*text*)"
+                                  disabled={showCodeView}
+                                  className={showCodeView ? "opacity-50 cursor-not-allowed" : ""}
+                                >
                                   <Italic className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={formatUnderline}
+                                  title="Underline (<u>text</u>)"
+                                  disabled={showCodeView}
+                                  className={showCodeView ? "opacity-50 cursor-not-allowed" : ""}
+                                >
                                   <Underline className="w-4 h-4" />
                                 </Button>
                                 <div className="border-l border-gray-300 h-4 mx-2"></div>
-                                <Button variant="ghost" size="sm">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={insertLink}
+                                  title="Insert Link"
+                                  disabled={showCodeView}
+                                  className={showCodeView ? "opacity-50 cursor-not-allowed" : ""}
+                                >
                                   <Link className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={toggleCodeView}
+                                  title={showCodeView ? "Switch to Rich Text View" : "Switch to HTML Code View"}
+                                  className={showCodeView ? "bg-blue-100 text-blue-600" : ""}
+                                >
                                   <Code className="w-4 h-4" />
                                 </Button>
                                 <div className="flex-1"></div>
@@ -3238,34 +3379,96 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               </div>
                               
                               {/* Content Editor */}
-                              <Textarea
-                                value={activeStep.content || ''}
-                                onChange={(e) => updateStepContent(e.target.value)}
-                                placeholder="Hi {{firstName}},
-
-I hope this email finds you well! I wanted to reach out because...
-
-Best regards,
-{{senderName}}"
-                                className="min-h-[300px] border-0 focus:ring-0 focus:outline-none resize-none"
-                              />
+                              {showCodeView ? (
+                                // HTML Source View
+                                <Textarea
+                                  value={activeStep.content || 'Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because...<br/><br/>Best regards,<br/>{{senderName}}'}
+                                  onChange={(e) => updateStepContent(e.target.value)}
+                                  className="min-h-[300px] p-4 border-0 focus:ring-0 focus:outline-none resize-none text-sm font-mono leading-relaxed bg-gray-50"
+                                  placeholder="HTML source code..."
+                                />
+                              ) : (
+                                // Rich Text View
+                                <div
+                                  ref={editorRef}
+                                  contentEditable
+                                  onInput={(e) => {
+                                    const htmlContent = e.currentTarget.innerHTML
+                                    updateStepContent(htmlContent)
+                                  }}
+                                  onKeyDown={(e) => {
+                                    // Handle Enter key to insert <br> instead of <div>
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault()
+                                      const selection = window.getSelection()
+                                      if (selection && selection.rangeCount > 0) {
+                                        const range = selection.getRangeAt(0)
+                                        const br = document.createElement('br')
+                                        range.insertNode(br)
+                                        range.setStartAfter(br)
+                                        range.collapse(true)
+                                        selection.removeAllRanges()
+                                        selection.addRange(range)
+                                      }
+                                    }
+                                  }}
+                                  className="min-h-[300px] p-4 border-0 focus:ring-0 focus:outline-none resize-none text-sm leading-relaxed"
+                                  style={{
+                                    whiteSpace: 'pre-wrap',
+                                    wordWrap: 'break-word'
+                                  }}
+                                  data-step-id={activeStepId}
+                                  suppressContentEditableWarning={true}
+                                >
+                                  {activeStep.content ? (
+                                    <span dangerouslySetInnerHTML={{ __html: activeStep.content }} />
+                                  ) : (
+                                    <>
+                                      Hi {'{{firstName}}'}, <br/><br/>
+                                      I hope this email finds you well! I wanted to reach out because...<br/><br/>
+                                      Best regards,<br/>
+                                      {'{{senderName}}'}
+                                    </>
+                                  )}
+                                </div>
+                              )}
                             </div>
                             
                             {/* Variable Helpers */}
                             <div className="mt-2 flex flex-wrap gap-2">
-                              <Badge variant="outline" className="cursor-pointer text-xs">
+                              <Badge 
+                                variant="outline" 
+                                className="cursor-pointer text-xs hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                                onClick={() => insertVariableIntoEditor('{{firstName}}')}
+                              >
                                 {'{{firstName}}'}
                               </Badge>
-                              <Badge variant="outline" className="cursor-pointer text-xs">
+                              <Badge 
+                                variant="outline" 
+                                className="cursor-pointer text-xs hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                                onClick={() => insertVariableIntoEditor('{{lastName}}')}
+                              >
                                 {'{{lastName}}'}
                               </Badge>
-                              <Badge variant="outline" className="cursor-pointer text-xs">
+                              <Badge 
+                                variant="outline" 
+                                className="cursor-pointer text-xs hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                                onClick={() => insertVariableIntoEditor('{{company}}')}
+                              >
                                 {'{{company}}'}
                               </Badge>
-                              <Badge variant="outline" className="cursor-pointer text-xs">
+                              <Badge 
+                                variant="outline" 
+                                className="cursor-pointer text-xs hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                                onClick={() => insertVariableIntoEditor('{{email}}')}
+                              >
                                 {'{{email}}'}
                               </Badge>
-                              <Badge variant="outline" className="cursor-pointer text-xs">
+                              <Badge 
+                                variant="outline" 
+                                className="cursor-pointer text-xs hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                                onClick={() => insertVariableIntoEditor('{{senderName}}')}
+                              >
                                 {'{{senderName}}'}
                               </Badge>
                             </div>
@@ -3339,16 +3542,47 @@ Best regards,
                       ?.replace(/\{\{senderName\}\}/g, `${firstName} ${lastName}`)
                     
                     return (
-                      <div className="border border-gray-300 rounded-lg overflow-hidden">
-                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                          <div className="text-sm">
-                            <span className="text-gray-600">Subject:</span>{' '}
-                            <span className="font-medium">{previewSubject || 'No subject'}</span>
+                      <div className="space-y-4">
+                        <div className="border border-gray-300 rounded-lg overflow-hidden">
+                          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                            <div className="text-sm">
+                              <span className="text-gray-600">Subject:</span>{' '}
+                              <span className="font-medium">{previewSubject || 'No subject'}</span>
+                            </div>
+                          </div>
+                          <div className="p-4 bg-white">
+                            <div className="whitespace-pre-wrap text-sm text-gray-900">
+                              {previewContent || 'No content'}
+                            </div>
                           </div>
                         </div>
-                        <div className="p-4 bg-white">
-                          <div className="whitespace-pre-wrap text-sm text-gray-900">
-                            {previewContent || 'No content'}
+                        
+                        {/* Test Email Section */}
+                        <div className="border-t border-gray-200 pt-4">
+                          <h4 className="text-sm font-medium text-gray-700 mb-3">Send Test Email</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm text-gray-600 mb-1">
+                                Test Email Address
+                              </label>
+                              <Input
+                                type="email"
+                                value={testModalEmail}
+                                onChange={(e) => setTestModalEmail(e.target.value)}
+                                placeholder="test@example.com"
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="flex justify-end">
+                              <Button
+                                onClick={sendTestEmailGeneric}
+                                disabled={testModalLoading || !testModalEmail.trim()}
+                                size="sm"
+                              >
+                                <Send className="w-4 h-4 mr-2" />
+                                {testModalLoading ? 'Sending...' : 'Send Test'}
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
