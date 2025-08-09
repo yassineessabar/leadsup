@@ -279,14 +279,52 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   ]
 
   // Sequences functions
-  const addStep = () => {
+  const addStep = (sequenceNumber?: number) => {
+    // If no sequence specified, determine based on existing steps
+    let targetSequence = sequenceNumber || 1
+    let targetTiming = 1
+    let targetSequenceStep = 1
+    
+    if (sequenceNumber) {
+      // Find the existing steps in this sequence to determine timing and sequence step
+      const existingStepsInSequence = steps.filter(s => s.sequence === sequenceNumber)
+      if (existingStepsInSequence.length > 0) {
+        // Get the highest timing and sequence step in this sequence
+        const maxTiming = Math.max(...existingStepsInSequence.map(s => s.timing))
+        const maxSequenceStep = Math.max(...existingStepsInSequence.map(s => s.sequenceStep))
+        
+        targetTiming = maxTiming + 1
+        targetSequenceStep = maxSequenceStep + 1
+      } else if (sequenceNumber === 2) {
+        // If adding to sequence 2 and it doesn't exist, start after sequence 1
+        const seq1Steps = steps.filter(s => s.sequence === 1)
+        const maxSeq1Timing = seq1Steps.length > 0 ? Math.max(...seq1Steps.map(s => s.timing)) : 0
+        targetTiming = maxSeq1Timing + 7 // Default 7 day gap
+        targetSequenceStep = 1
+      }
+    } else {
+      // Legacy behavior - add to the end
+      const maxId = steps.length > 0 ? Math.max(...steps.map(s => s.id)) : 0
+      targetSequence = steps.length > 0 ? steps[steps.length - 1].sequence : 1
+      targetTiming = steps.length > 0 ? Math.max(...steps.map(s => s.timing)) + 1 : 0
+      targetSequenceStep = steps.filter(s => s.sequence === targetSequence).length + 1
+    }
+
+    // Get the subject from existing steps in the same sequence
+    const existingSequenceSteps = steps.filter(s => s.sequence === targetSequence)
+    const sequenceSubject = existingSequenceSteps.length > 0 ? existingSequenceSteps[0].subject : ""
+
     const newStep = {
-      id: steps.length + 1,
-      subject: "",
+      id: Math.max(...steps.map(s => s.id), 0) + 1,
+      subject: sequenceSubject,
       content: "",
       variants: 1,
-      timing: 1,
+      timing: targetTiming,
+      sequence: targetSequence,
+      sequenceStep: targetSequenceStep,
+      title: `Email ${targetSequenceStep}`
     }
+    
     setSteps([...steps, newStep])
     setActiveStepId(newStep.id)
   }
@@ -298,6 +336,45 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       if (stepId === activeStepId) {
         setActiveStepId(newSteps[0]?.id || 1)
       }
+    }
+  }
+
+  const deleteSequence = (sequenceNumber: number) => {
+    const sequenceSteps = steps.filter(step => step.sequence === sequenceNumber)
+    if (sequenceSteps.length > 0) {
+      // Remove all steps in this sequence
+      const newSteps = steps.filter(step => step.sequence !== sequenceNumber)
+      
+      if (newSteps.length > 0) {
+        setSteps(newSteps)
+        // If active step was in deleted sequence, switch to first remaining step
+        if (sequenceSteps.some(step => step.id === activeStepId)) {
+          setActiveStepId(newSteps[0].id)
+        }
+      }
+    }
+  }
+
+  const updateGap = (newGap: number) => {
+    const seq1Steps = steps.filter(s => s.sequence === 1)
+    const seq2Steps = steps.filter(s => s.sequence === 2)
+    
+    if (seq1Steps.length > 0 && seq2Steps.length > 0) {
+      const seq1End = Math.max(...seq1Steps.map(s => s.timing))
+      const newSeq2Start = seq1End + newGap
+      
+      // Update all sequence 2 steps to maintain their relative timing but with new gap
+      const seq2MinTiming = Math.min(...seq2Steps.map(s => s.timing))
+      const timingOffset = newSeq2Start - seq2MinTiming
+      
+      const updatedSteps = steps.map(step => {
+        if (step.sequence === 2) {
+          return { ...step, timing: step.timing + timingOffset }
+        }
+        return step
+      })
+      
+      setSteps(updatedSteps)
     }
   }
 
@@ -3776,35 +3853,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </div>
               <div className="flex items-center space-x-3">
                 <Button 
-                  variant="outline"
-                  className="border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                  onClick={() => {
-                    const currentGap = (steps.find(s => s.sequence === 2)?.timing || 98) - 8
-                    const newGap = prompt('Enter gap between sequences (in days):', currentGap.toString())
-                    if (newGap && !isNaN(parseInt(newGap))) {
-                      const gapDays = parseInt(newGap)
-                      // Update all Sequence 2 emails to maintain their relative spacing
-                      const seq2Steps = steps.filter(s => s.sequence === 2)
-                      const seq2Base = seq2Steps[0]?.timing - (seq2Steps[0]?.timing - 8)
-                      seq2Steps.forEach((step, index) => {
-                        const newTiming = 8 + gapDays + (index * 4) // 8 days for Seq 1 + gap + relative position
-                        updateStepTiming(step.id, newTiming)
-                      })
-                    }
-                  }}
-                >
-                  <Clock className="w-4 h-4 mr-2" />
-                  Configure Gap
-                </Button>
-                <Button 
-                  onClick={addStep} 
-                  variant="outline"
-                  className="border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Email
-                </Button>
-                <Button 
                   onClick={saveAll} 
                   className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
                 >
@@ -3818,214 +3866,261 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               {/* Sequence Timeline Sidebar */}
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                  <div className="flex items-center space-x-2 mb-6">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    <h3 className="font-semibold text-gray-900">Campaign Timeline</h3>
-                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-6">Campaign Timeline</h3>
                   
                   {/* Sequence 1 */}
                   <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4 p-3 bg-blue-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
-                          <div className="w-2 h-2 bg-white rounded-full"></div>
-                        </div>
-                        <div>
-                          <span className="text-sm font-semibold text-blue-900">Sequence 1</span>
-                          <div className="text-xs text-blue-700">Initial Outreach</div>
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-blue-900 mb-2">Initial Outreach</h4>
+                        <div className="text-xs text-gray-500 flex items-center space-x-2">
+                          <span>Subject: "{steps.find(s => s.sequence === 1)?.subject || 'No subject'}"</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-4 w-4 p-0 text-blue-600 hover:bg-blue-100"
+                            onClick={() => {
+                              const newSubject = prompt('Enter subject line for Initial Outreach sequence:', steps.find(s => s.sequence === 1)?.subject || '')
+                              if (newSubject !== null) updateSequenceSubject(1, newSubject)
+                            }}
+                            title="Edit sequence subject"
+                          >
+                            <Edit2 className="h-2.5 w-2.5" />
+                          </Button>
                         </div>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
-                        onClick={() => {
-                          const newSubject = prompt('Enter subject line for Sequence 1:', steps.find(s => s.sequence === 1)?.subject || '')
-                          if (newSubject) updateSequenceSubject(1, newSubject)
-                        }}
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="text-xs text-gray-600 mb-4 px-3 py-2 bg-gray-50 rounded-md">
-                      <span className="font-medium">Subject:</span> "{steps.find(s => s.sequence === 1)?.subject || 'No subject'}"
+                      <div className="flex items-center space-x-1">
+                        {steps.filter(s => s.sequence === 2).length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-red-600 hover:bg-red-100 opacity-70 hover:opacity-100"
+                            onClick={() => deleteSequence(1)}
+                            title="Delete entire sequence"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {steps.filter(step => step.sequence === 1).map((step, index) => (
-                        <div key={step.id} className="relative">
+                        <div key={step.id} className="relative group">
                           <div
                             onClick={() => selectStep(step.id)}
-                            className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                            className={`p-4 rounded-lg cursor-pointer transition-all ${
                               activeStepId === step.id
-                                ? 'border-blue-400 bg-blue-50 shadow-sm'
-                                : 'border-gray-100 hover:border-blue-200 hover:bg-blue-25'
+                                ? 'bg-blue-50 border-l-4 border-blue-500'
+                                : 'bg-gray-50 hover:bg-blue-25'
                             }`}
                           >
-                            <div className="flex items-center space-x-3">
-                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
-                                activeStepId === step.id
-                                  ? 'bg-blue-600 text-white'
-                                  : 'bg-white border-2 border-gray-200 text-gray-600'
-                              }`}>
-                                {step.sequenceStep}
-                              </div>
+                            <div className="flex items-center justify-between">
                               <div>
-                                <div className={`text-sm font-medium ${
+                                <div className={`font-medium ${
                                   activeStepId === step.id ? 'text-blue-900' : 'text-gray-900'
                                 }`}>
                                   {step.title}
                                 </div>
-                                <div className="text-xs text-gray-500 font-medium">
-                                  {step.timing === 0 ? 'Send immediately' : `Send on day ${step.timing}`}
+                                <div className="text-sm text-gray-500 mt-1">
+                                  {step.timing === 0 ? 'Send immediately' : `Day ${step.timing}`}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {/* Hover Actions */}
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                  {steps.filter(s => s.sequence === 1).length > 1 && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 text-red-600 hover:bg-red-100"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        deleteStep(step.id)
+                                      }}
+                                      title="Remove this email"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                                  activeStepId === step.id
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-300 text-gray-600'
+                                }`}>
+                                  {step.sequenceStep}
                                 </div>
                               </div>
                             </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="opacity-0 group-hover:opacity-100 hover:bg-white"
-                                >
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem 
-                                  onClick={() => deleteStep(step.id)}
-                                  className="text-red-600"
-                                  disabled={steps.length === 1}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete Email
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
                           </div>
-                          {index < steps.filter(s => s.sequence === 1).length - 1 && (
-                            <div className="flex justify-center my-2">
-                              <div className="w-px h-4 bg-blue-200"></div>
-                            </div>
-                          )}
                         </div>
                       ))}
+                      
+                      {/* Add Email Button for Sequence 1 */}
+                      <div className="mt-4 flex justify-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300"
+                          onClick={() => addStep(1)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Email
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Dynamic Gap Indicator */}
-                  <div className="flex items-center justify-center my-8">
-                    <div className="text-center">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="flex-1 border-t-2 border-dashed border-gray-300"></div>
-                        <div className="px-4 py-2 bg-gray-100 rounded-full">
-                          <Clock className="w-4 h-4 text-gray-500 mx-auto mb-1" />
-                          <span className="text-sm font-medium text-gray-700">
-                            {(() => {
-                              const seq1End = Math.max(...steps.filter(s => s.sequence === 1).map(s => s.timing))
-                              const seq2Start = Math.min(...steps.filter(s => s.sequence === 2).map(s => s.timing))
-                              const gap = seq2Start - seq1End
-                              return `${gap} Days`
-                            })()}
-                          </span>
+                  {/* Gap Indicator - only show if both sequences exist */}
+                  {steps.filter(s => s.sequence === 1).length > 0 && steps.filter(s => s.sequence === 2).length > 0 && (
+                    <div 
+                      className="text-center my-6 py-4 border-t border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors group"
+                      onClick={() => {
+                        const seq1End = Math.max(...steps.filter(s => s.sequence === 1).map(s => s.timing))
+                        const seq2Start = Math.min(...steps.filter(s => s.sequence === 2).map(s => s.timing))
+                        const currentGap = seq2Start - seq1End
+                        const newGap = prompt(`Enter waiting period (days):`, currentGap.toString())
+                        if (newGap && !isNaN(parseInt(newGap)) && parseInt(newGap) >= 0) {
+                          updateGap(parseInt(newGap))
+                        }
+                      }}
+                      title="Click to edit waiting period"
+                    >
+                      <div className="flex items-center justify-center space-x-2">
+                        <Clock className="h-4 w-4 text-gray-500 group-hover:text-blue-600" />
+                        <div className="text-sm text-gray-600 group-hover:text-blue-600">
+                          {(() => {
+                            const seq1End = Math.max(...steps.filter(s => s.sequence === 1).map(s => s.timing))
+                            const seq2Start = Math.min(...steps.filter(s => s.sequence === 2).map(s => s.timing))
+                            const gap = seq2Start - seq1End
+                            return `${gap} day waiting period`
+                          })()}
                         </div>
-                        <div className="flex-1 border-t-2 border-dashed border-gray-300"></div>
+                        <Edit2 className="h-3 w-3 text-gray-400 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
-                      <div className="text-xs text-gray-500 font-medium">Waiting Period</div>
+                      <div className="text-xs text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        Click to edit
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Sequence 2 */}
-                  <div>
-                    <div className="flex items-center justify-between mb-4 p-3 bg-green-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-4 h-4 bg-green-600 rounded-full flex items-center justify-center">
-                          <div className="w-2 h-2 bg-white rounded-full"></div>
-                        </div>
-                        <div>
-                          <span className="text-sm font-semibold text-green-900">Sequence 2</span>
-                          <div className="text-xs text-green-700">Follow-up Outreach</div>
-                        </div>
-                      </div>
-                      <Button 
-                        variant="ghost" 
+                  {/* Add Sequence 2 button - only show if sequence 2 doesn't exist */}
+                  {steps.filter(s => s.sequence === 2).length === 0 && (
+                    <div className="text-center my-6 py-4 border-t border-gray-200">
+                      <Button
+                        variant="outline"
                         size="sm"
-                        className="text-green-700 hover:text-green-900 hover:bg-green-100"
-                        onClick={() => {
-                          const newSubject = prompt('Enter subject line for Sequence 2:', steps.find(s => s.sequence === 2)?.subject || '')
-                          if (newSubject) updateSequenceSubject(2, newSubject)
-                        }}
+                        className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
+                        onClick={() => addStep(2)}
                       >
-                        <Edit2 className="w-4 h-4" />
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Follow-up Sequence
                       </Button>
                     </div>
-                    <div className="text-xs text-gray-600 mb-4 px-3 py-2 bg-gray-50 rounded-md">
-                      <span className="font-medium">Subject:</span> "{steps.find(s => s.sequence === 2)?.subject || 'No subject'}"
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {steps.filter(step => step.sequence === 2).map((step, index) => (
-                        <div key={step.id} className="relative">
-                          <div
-                            onClick={() => selectStep(step.id)}
-                            className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                              activeStepId === step.id
-                                ? 'border-green-400 bg-green-50 shadow-sm'
-                                : 'border-gray-100 hover:border-green-200 hover:bg-green-25'
-                            }`}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
-                                activeStepId === step.id
-                                  ? 'bg-green-600 text-white'
-                                  : 'bg-white border-2 border-gray-200 text-gray-600'
-                              }`}>
-                                {step.sequenceStep}
-                              </div>
-                              <div>
-                                <div className={`text-sm font-medium ${
-                                  activeStepId === step.id ? 'text-green-900' : 'text-gray-900'
-                                }`}>
-                                  {step.title}
-                                </div>
-                                <div className="text-xs text-gray-500 font-medium">
-                                  Send on day {step.timing}
-                                </div>
-                              </div>
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="opacity-0 group-hover:opacity-100 hover:bg-white"
-                                >
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem 
-                                  onClick={() => deleteStep(step.id)}
-                                  className="text-red-600"
-                                  disabled={steps.length === 1}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete Email
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                  )}
+
+                  {/* Sequence 2 - only show if it has steps */}
+                  {steps.filter(s => s.sequence === 2).length > 0 && (
+                    <div>
+                      <div className="mb-4 flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium text-green-900 mb-2">Follow-up Outreach</h4>
+                          <div className="text-xs text-gray-500 flex items-center space-x-2">
+                            <span>Subject: "{steps.find(s => s.sequence === 2)?.subject || 'No subject'}"</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-4 w-4 p-0 text-green-600 hover:bg-green-100"
+                              onClick={() => {
+                                const newSubject = prompt('Enter subject line for Follow-up sequence:', steps.find(s => s.sequence === 2)?.subject || '')
+                                if (newSubject !== null) updateSequenceSubject(2, newSubject)
+                              }}
+                              title="Edit sequence subject"
+                            >
+                              <Edit2 className="h-2.5 w-2.5" />
+                            </Button>
                           </div>
-                          {index < steps.filter(s => s.sequence === 2).length - 1 && (
-                            <div className="flex justify-center my-2">
-                              <div className="w-px h-4 bg-green-200"></div>
-                            </div>
-                          )}
                         </div>
-                      ))}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-red-600 hover:bg-red-100 opacity-70 hover:opacity-100"
+                          onClick={() => deleteSequence(2)}
+                          title="Delete entire sequence"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {steps.filter(step => step.sequence === 2).map((step, index) => (
+                          <div key={step.id} className="relative group">
+                            <div
+                              onClick={() => selectStep(step.id)}
+                              className={`p-4 rounded-lg cursor-pointer transition-all ${
+                                activeStepId === step.id
+                                  ? 'bg-green-50 border-l-4 border-green-500'
+                                  : 'bg-gray-50 hover:bg-green-25'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className={`font-medium ${
+                                    activeStepId === step.id ? 'text-green-900' : 'text-gray-900'
+                                  }`}>
+                                    {step.title}
+                                  </div>
+                                  <div className="text-sm text-gray-500 mt-1">
+                                    Day {step.timing}
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  {/* Hover Actions */}
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                                    {steps.filter(s => s.sequence === 2).length > 1 && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0 text-red-600 hover:bg-red-100"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          deleteStep(step.id)
+                                        }}
+                                        title="Remove this email"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                                    activeStepId === step.id
+                                      ? 'bg-green-500 text-white'
+                                      : 'bg-gray-300 text-gray-600'
+                                  }`}>
+                                    {step.sequenceStep}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* Add Email Button for Sequence 2 */}
+                        <div className="mt-4 flex justify-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
+                            onClick={() => addStep(2)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Email
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -4040,24 +4135,20 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
                         {/* Step Header */}
                         <div className="border-b border-gray-100 p-6">
-                          <div className="flex items-start justify-between mb-6">
-                            <div className="flex items-center space-x-4">
-                              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                activeStep.sequence === 1 ? 'bg-blue-100' : 'bg-green-100'
-                              }`}>
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold text-white ${
-                                  activeStep.sequence === 1 ? 'bg-blue-600' : 'bg-green-600'
-                                }`}>
-                                  {activeStep.sequenceStep}
-                                </div>
-                              </div>
-                              <div>
-                                <h3 className="text-xl font-semibold text-gray-900">
-                                  {activeStep.title}
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                  Sequence {activeStep.sequence} • {activeStep.sequence === 1 ? 'Initial Outreach' : 'Follow-up Outreach'}
-                                </p>
+                          <div className="flex items-center space-x-3 mb-6">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${
+                              activeStep.sequence === 1 ? 'bg-blue-600' : 'bg-green-600'
+                            }`}>
+                              {activeStep.sequenceStep}
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                {activeStep.title}
+                              </h3>
+                              <div className="flex items-center space-x-2 text-sm text-gray-500">
+                                <span>{activeStep.sequence === 1 ? 'Initial Outreach' : 'Follow-up Outreach'}</span>
+                                <span>•</span>
+                                <span>{activeStep.timing === 0 ? 'Send immediately' : `Day ${activeStep.timing}`}</span>
                               </div>
                             </div>
                           </div>
@@ -4066,17 +4157,17 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-gray-800 mb-3">
-                                📧 Email Subject Line
+                                📧 Sequence Subject Line
                               </label>
                               <Input
                                 value={activeStep.subject || ''}
                                 onChange={(e) => updateSequenceSubject(activeStep.sequence, e.target.value)}
-                                placeholder={`Enter subject for Sequence ${activeStep.sequence}...`}
+                                placeholder={`Enter subject for ${activeStep.sequence === 1 ? 'Initial Outreach' : 'Follow-up'} sequence...`}
                                 className="w-full h-11 text-sm border-gray-200 focus:border-blue-400 focus:ring-blue-400"
                               />
                               <p className="text-xs text-gray-500 mt-2 flex items-center space-x-1">
                                 <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
-                                <span>Shared across all emails in Sequence {activeStep.sequence}</span>
+                                <span>Shared across all emails in the {activeStep.sequence === 1 ? 'Initial Outreach' : 'Follow-up'} sequence</span>
                               </p>
                             </div>
                             <div>
@@ -4123,42 +4214,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             </div>
                           </div>
 
-                          {/* Sequence Information */}
-                          <div className={`mt-6 p-4 rounded-xl border-2 ${
-                            activeStep.sequence === 1 
-                              ? 'bg-blue-50 border-blue-200' 
-                              : 'bg-green-50 border-green-200'
-                          }`}>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-3">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                  activeStep.sequence === 1 ? 'bg-blue-600' : 'bg-green-600'
-                                }`}>
-                                  <span className="text-white text-sm font-semibold">{activeStep.sequenceStep}</span>
-                                </div>
-                                <div>
-                                  <div className={`text-sm font-semibold ${
-                                    activeStep.sequence === 1 ? 'text-blue-900' : 'text-green-900'
-                                  }`}>
-                                    {activeStep.title}
-                                  </div>
-                                  <div className={`text-xs ${
-                                    activeStep.sequence === 1 ? 'text-blue-700' : 'text-green-700'
-                                  }`}>
-                                    {activeStep.sequence === 1 ? 'Initial Outreach' : 'Follow-up Outreach'}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className={`text-right text-xs font-medium ${
-                                activeStep.sequence === 1 ? 'text-blue-800' : 'text-green-800'
-                              }`}>
-                                {activeStep.sequence === 1 
-                                  ? `${activeStep.timing === 0 ? 'Send immediately' : `Send on day ${activeStep.timing}`}`
-                                  : `Send on day ${activeStep.timing}`
-                                }
-                              </div>
-                            </div>
-                          </div>
                         </div>
 
                         {/* Email Editor */}
