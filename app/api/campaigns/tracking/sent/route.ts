@@ -52,43 +52,132 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('📧 Received tracking request body:', JSON.stringify(body, null, 2))
-    console.log('📧 Body keys:', Object.keys(body))
     
-    // Support multiple parameter name formats
-    const campaignId = body.campaignId || body.campaign_id || body.CampaignId
-    const contactId = body.contactId || body.contact_id || body.prospect_id || body.prospectId || body.ContactId
-    const sequenceId = body.sequenceId || body.sequence_id || body.SequenceId
-    const messageId = body.messageId || body.message_id || body.MessageId
-    const sentAt = body.sentAt || body.sent_at || body.SentAt
-    const status = body.status || body.Status || 'sent'
-    const errorMessage = body.errorMessage || body.error_message || body.ErrorMessage
-    const senderType = body.senderType || body.sender_type || body.SenderType
-
-    console.log('📧 Extracted parameters:', {
-      campaignId,
-      contactId,
-      sequenceId,
-      messageId,
-      sentAt,
-      status,
-      senderType,
-      errorMessage
+    // Log everything for debugging
+    console.log('🔍 === DEBUGGING EMAIL TRACKING REQUEST ===')
+    console.log('📧 Full request body:', JSON.stringify(body, null, 2))
+    console.log('📧 Body type:', typeof body)
+    console.log('📧 Body keys:', Object.keys(body))
+    console.log('📧 Body values:', Object.values(body))
+    
+    // Log each potential field name and its value
+    console.log('🔍 Field Analysis:')
+    const potentialFields = [
+      'campaignId', 'campaign_id', 'CampaignId', 'Campaign_Id', 'CAMPAIGN_ID',
+      'contactId', 'contact_id', 'ContactId', 'Contact_Id', 'CONTACT_ID',
+      'prospect_id', 'prospectId', 'ProspectId', 'Prospect_Id', 'PROSPECT_ID',
+      'sequenceId', 'sequence_id', 'SequenceId', 'Sequence_Id', 'SEQUENCE_ID',
+      'messageId', 'message_id', 'MessageId', 'Message_Id', 'MESSAGE_ID',
+      'status', 'Status', 'STATUS',
+      'sentAt', 'sent_at', 'SentAt', 'Sent_At', 'SENT_AT'
+    ]
+    
+    potentialFields.forEach(field => {
+      if (body.hasOwnProperty(field)) {
+        console.log(`   ✓ ${field}: ${JSON.stringify(body[field])}`)
+      }
     })
+    
+    // Support extensive parameter name variations
+    function findValue(patterns) {
+      for (const pattern of patterns) {
+        if (body[pattern] !== undefined && body[pattern] !== null && body[pattern] !== '') {
+          return body[pattern]
+        }
+      }
+      return null
+    }
+    
+    const campaignId = findValue([
+      'campaignId', 'campaign_id', 'CampaignId', 'Campaign_Id', 'CAMPAIGN_ID',
+      'campaignID', 'campaign_ID', 'CampaignID'
+    ])
+    
+    const contactId = findValue([
+      'contactId', 'contact_id', 'ContactId', 'Contact_Id', 'CONTACT_ID',
+      'contactID', 'contact_ID', 'ContactID',
+      'prospect_id', 'prospectId', 'ProspectId', 'Prospect_Id', 'PROSPECT_ID',
+      'prospectID', 'prospect_ID', 'ProspectID',
+      'userId', 'user_id', 'UserId', 'User_Id', 'USER_ID',
+      'recipientId', 'recipient_id', 'RecipientId'
+    ])
+    
+    const sequenceId = findValue([
+      'sequenceId', 'sequence_id', 'SequenceId', 'Sequence_Id', 'SEQUENCE_ID',
+      'sequenceID', 'sequence_ID', 'SequenceID',
+      'stepId', 'step_id', 'StepId', 'Step_Id', 'STEP_ID'
+    ])
+    
+    const messageId = findValue([
+      'messageId', 'message_id', 'MessageId', 'Message_Id', 'MESSAGE_ID',
+      'messageID', 'message_ID', 'MessageID',
+      'emailId', 'email_id', 'EmailId', 'Email_Id', 'EMAIL_ID'
+    ])
+    
+    const sentAt = findValue([
+      'sentAt', 'sent_at', 'SentAt', 'Sent_At', 'SENT_AT',
+      'timestamp', 'Timestamp', 'TIMESTAMP',
+      'createdAt', 'created_at', 'CreatedAt', 'Created_At', 'CREATED_AT'
+    ])
+    
+    const status = findValue([
+      'status', 'Status', 'STATUS',
+      'state', 'State', 'STATE'
+    ]) || 'sent'
+    
+    const errorMessage = findValue([
+      'errorMessage', 'error_message', 'ErrorMessage', 'Error_Message', 'ERROR_MESSAGE',
+      'error', 'Error', 'ERROR',
+      'failureReason', 'failure_reason', 'FailureReason'
+    ])
+    
+    const senderType = findValue([
+      'senderType', 'sender_type', 'SenderType', 'Sender_Type', 'SENDER_TYPE',
+      'provider', 'Provider', 'PROVIDER',
+      'service', 'Service', 'SERVICE'
+    ])
 
-    // Validate required fields
-    if (!campaignId || !contactId || !sequenceId) {
+    console.log('📧 Extracted parameters:')
+    console.log('   campaignId:', campaignId)
+    console.log('   contactId:', contactId) 
+    console.log('   sequenceId:', sequenceId)
+    console.log('   messageId:', messageId)
+    console.log('   sentAt:', sentAt)
+    console.log('   status:', status)
+    console.log('   senderType:', senderType)
+    console.log('   errorMessage:', errorMessage)
+
+    // Validate required fields with detailed debugging
+    const missingFields = []
+    if (!campaignId) missingFields.push('campaignId')
+    if (!contactId) missingFields.push('contactId') 
+    if (!sequenceId) missingFields.push('sequenceId')
+    
+    if (missingFields.length > 0) {
       console.error('❌ Missing required fields:', { 
+        missingFields,
         campaignId: !!campaignId, 
         contactId: !!contactId, 
         sequenceId: !!sequenceId,
-        availableKeys: Object.keys(body)
+        availableKeys: Object.keys(body),
+        bodyContent: body
       })
+      
+      // Create a helpful response that shows what we found
       return NextResponse.json({ 
         success: false, 
-        error: 'Missing required fields: campaignId, contactId, sequenceId',
-        received: Object.keys(body),
-        expected: ['campaignId (or campaign_id)', 'contactId (or contact_id/prospect_id)', 'sequenceId (or sequence_id)']
+        error: `Missing required fields: ${missingFields.join(', ')}`,
+        debug: {
+          received: Object.keys(body),
+          bodyContent: body,
+          extracted: { campaignId, contactId, sequenceId },
+          missingFields,
+          supportedFieldNames: {
+            campaignId: ['campaignId', 'campaign_id', 'CampaignId', 'Campaign_Id', 'CAMPAIGN_ID'],
+            contactId: ['contactId', 'contact_id', 'prospect_id', 'prospectId', 'userId', 'user_id'],
+            sequenceId: ['sequenceId', 'sequence_id', 'stepId', 'step_id']
+          }
+        }
       }, { status: 400 })
     }
 
