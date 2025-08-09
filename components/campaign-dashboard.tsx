@@ -188,6 +188,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [bulkImportLoading, setBulkImportLoading] = useState(false)
   const [bulkImportPreview, setBulkImportPreview] = useState([])
   
+  // Campaign settings state
+  const [dailyContactsLimit, setDailyContactsLimit] = useState(35)
+  const [dailySequenceLimit, setDailySequenceLimit] = useState(100)
+  const [activeDays, setActiveDays] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'])
+  const [sendingStartTime, setSendingStartTime] = useState('08:00 AM')
+  const [sendingEndTime, setSendingEndTime] = useState('05:00 PM')
+  const [selectedSenderAccounts, setSelectedSenderAccounts] = useState([])
+  
   // Email signature state
   const [firstName, setFirstName] = useState("Loop")
   const [lastName, setLastName] = useState("Review")
@@ -431,44 +439,139 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
 
-  const saveSequence = async () => {
+  // Comprehensive campaign save function
+  const saveCampaignData = async (dataType = 'all') => {
     if (!campaign?.id) return
 
     try {
-      const response = await fetch(`/api/campaigns/${campaign.id}/sequences`, {
+      const campaignData = {
+        // Campaign basic info
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        
+        // Sequences
+        sequences: steps,
+        
+        // Settings
+        settings: {
+          dailyContactsLimit,
+          dailySequenceLimit,
+          activeDays,
+          sendingStartTime,
+          sendingEndTime,
+          signature: {
+            firstName,
+            lastName,
+            companyName,
+            companyWebsite,
+            emailSignature
+          }
+        },
+        
+        // Sender accounts
+        senderAccounts: selectedSenderAccounts,
+        
+        // Connected accounts for reference
+        connectedAccounts: {
+          gmail: connectedGmailAccounts,
+          microsoft365: connectedMicrosoft365Accounts,
+          smtp: connectedSmtpAccounts
+        },
+        
+        // Scraping settings
+        scraping: {
+          isActive: isScrappingActive,
+          dailyLimit: scrappingDailyLimit,
+          industry: scrappingIndustry,
+          keyword: scrappingKeyword,
+          location: scrappingLocation
+        }
+      }
+
+      const response = await fetch(`/api/campaigns/${campaign.id}/save`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          sequences: steps
+          campaignData,
+          saveType: dataType
         }),
       })
 
       const result = await response.json()
 
       if (result.success) {
-        setHasSequenceSaved(true)
+        // Update saved states
+        if (dataType === 'all' || dataType === 'sequences') {
+          setHasSequenceSaved(true)
+        }
+        if (dataType === 'all' || dataType === 'settings') {
+          setHasSettingsSaved(true)
+        }
+        
+        const saveTypeText = dataType === 'all' ? 'Campaign Data' : 
+                            dataType === 'sequences' ? 'Sequences' :
+                            dataType === 'settings' ? 'Settings' :
+                            dataType === 'senders' ? 'Sender Selection' : 'Data'
+                            
         toast({
-          title: "Sequences Saved",
-          description: "All sequence steps have been saved successfully",
+          title: `${saveTypeText} Saved`,
+          description: `${saveTypeText} have been saved successfully`,
         })
       } else {
         toast({
-          title: "Error",
-          description: result.error || "Failed to save sequences",
+          title: "Save Failed",
+          description: result.error || "Failed to save campaign data",
           variant: "destructive"
         })
       }
     } catch (error) {
-      console.error("Error saving sequences:", error)
+      console.error("Error saving campaign:", error)
       toast({
         title: "Error",
-        description: "Failed to save sequences",
+        description: "Failed to save campaign data",
         variant: "destructive"
       })
     }
   }
+
+  // Individual save functions for backward compatibility
+  const saveSequence = () => saveCampaignData('sequences')
+  const saveSettings = () => saveCampaignData('settings')
+  const saveAll = () => saveCampaignData('all')
+  const saveSenders = () => saveCampaignData('senders')
+
+  // Auto-save functionality
+  useEffect(() => {
+    const autoSaveTimer = setTimeout(() => {
+      // Auto-save sequences when steps change
+      if (steps.length > 0) {
+        saveCampaignData('sequences')
+      }
+    }, 5000) // Auto-save after 5 seconds of inactivity
+
+    return () => clearTimeout(autoSaveTimer)
+  }, [steps])
+
+  useEffect(() => {
+    const autoSaveTimer = setTimeout(() => {
+      // Auto-save settings when they change
+      saveCampaignData('settings')
+    }, 3000) // Auto-save after 3 seconds of inactivity
+
+    return () => clearTimeout(autoSaveTimer)
+  }, [dailyContactsLimit, dailySequenceLimit, activeDays, sendingStartTime, sendingEndTime, firstName, lastName, companyName, companyWebsite, emailSignature])
+
+  useEffect(() => {
+    const autoSaveTimer = setTimeout(() => {
+      // Auto-save sender selection when it changes
+      saveCampaignData('senders')
+    }, 2000) // Auto-save after 2 seconds of inactivity
+
+    return () => clearTimeout(autoSaveTimer)
+  }, [selectedSenderAccounts])
 
   const previewSequence = () => {
     setShowPreviewModal(!showPreviewModal)
@@ -1748,7 +1851,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 </label>
                 <input 
                   type="number" 
-                  defaultValue="35"
+                  value={dailyContactsLimit}
+                  onChange={(e) => setDailyContactsLimit(parseInt(e.target.value) || 35)}
                   style={{
                     backgroundColor: '#FAFBFC',
                     border: '2px solid #E5E7EB',
@@ -1790,7 +1894,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 </label>
                 <input 
                   type="number" 
-                  defaultValue="100"
+                  value={dailySequenceLimit}
+                  onChange={(e) => setDailySequenceLimit(parseInt(e.target.value) || 100)}
                   style={{
                     backgroundColor: '#FAFBFC',
                     border: '2px solid #E5E7EB',
@@ -1854,15 +1959,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       flexWrap: 'wrap'
                     }}>
                       {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
-                        const isWeekday = index < 5
+                        const isActive = activeDays.includes(day)
                         return (
                           <button
                             key={day}
                             type="button"
                             style={{
-                              backgroundColor: isWeekday ? 'rgb(37, 99, 235)' : '#F3F4F6',
-                              color: isWeekday ? 'white' : '#6B7280',
-                              border: isWeekday ? '2px solid rgb(37, 99, 235)' : '2px solid #E5E7EB',
+                              backgroundColor: isActive ? 'rgb(37, 99, 235)' : '#F3F4F6',
+                              color: isActive ? 'white' : '#6B7280',
+                              border: isActive ? '2px solid rgb(37, 99, 235)' : '2px solid #E5E7EB',
                               borderRadius: '10px',
                               padding: '8px 12px',
                               fontSize: '13px',
@@ -1872,20 +1977,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               transition: 'all 0.2s ease',
                               minWidth: '40px',
                               textAlign: 'center',
-                              boxShadow: isWeekday ? '0 4px 12px rgba(37, 99, 235, 0.3)' : '0 2px 4px rgba(0,0,0,0.05)'
+                              boxShadow: isActive ? '0 4px 12px rgba(37, 99, 235, 0.3)' : '0 2px 4px rgba(0,0,0,0.05)'
                             }}
-                            onClick={(e) => {
-                              const isCurrentlyActive = e.currentTarget.style.backgroundColor === 'rgb(37, 99, 235)'
-                              if (isCurrentlyActive) {
-                                e.currentTarget.style.backgroundColor = '#F3F4F6'
-                                e.currentTarget.style.color = '#6B7280'
-                                e.currentTarget.style.borderColor = '#E5E7EB'
-                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)'
+                            onClick={() => {
+                              if (isActive) {
+                                setActiveDays(prev => prev.filter(d => d !== day))
                               } else {
-                                e.currentTarget.style.backgroundColor = 'rgb(37, 99, 235)'
-                                e.currentTarget.style.color = 'white'
-                                e.currentTarget.style.borderColor = 'rgb(37, 99, 235)'
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)'
+                                setActiveDays(prev => [...prev, day])
                               }
                             }}
                           >
@@ -1912,8 +2010,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       gap: '12px',
                       alignItems: 'center'
                     }}>
-                      <button 
-                        type="button"
+                      <select 
+                        value={sendingStartTime}
+                        onChange={(e) => setSendingStartTime(e.target.value)}
                         style={{
                           backgroundColor: '#FAFBFC',
                           border: '2px solid #E5E7EB',
@@ -1923,26 +2022,30 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           fontFamily: 'Jost, sans-serif',
                           color: '#000000',
                           cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '8px',
-                          minWidth: '100px',
+                          minWidth: '120px',
                           transition: 'all 0.2s ease',
-                          fontWeight: '500'
+                          fontWeight: '500',
+                          outline: 'none'
                         }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.borderColor = 'rgb(37, 99, 235)'
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)'
+                        onFocus={(e) => {
+                          e.target.style.borderColor = 'rgb(37, 99, 235)'
+                          e.target.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)'
                         }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.borderColor = '#E5E7EB'
-                          e.currentTarget.style.boxShadow = 'none'
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#E5E7EB'
+                          e.target.style.boxShadow = 'none'
                         }}
                       >
-                        <span>08:00 AM</span>
-                        <ChevronDown size={16} style={{ color: 'rgb(37, 99, 235)' }} />
-                      </button>
+                        {Array.from({ length: 24 }, (_, i) => {
+                          const hour = i.toString().padStart(2, '0')
+                          const ampm = i >= 12 ? 'PM' : 'AM'
+                          const displayHour = i === 0 ? '12' : i > 12 ? (i - 12).toString().padStart(2, '0') : hour
+                          const time = `${displayHour}:00 ${ampm}`
+                          return (
+                            <option key={time} value={time}>{time}</option>
+                          )
+                        })}
+                      </select>
                       
                       <span style={{ 
                         color: '#6B7280',
@@ -1953,8 +2056,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         to
                       </span>
                       
-                      <button 
-                        type="button"
+                      <select 
+                        value={sendingEndTime}
+                        onChange={(e) => setSendingEndTime(e.target.value)}
                         style={{
                           backgroundColor: '#FAFBFC',
                           border: '2px solid #E5E7EB',
@@ -1964,26 +2068,30 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           fontFamily: 'Jost, sans-serif',
                           color: '#000000',
                           cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '8px',
-                          minWidth: '100px',
+                          minWidth: '120px',
                           transition: 'all 0.2s ease',
-                          fontWeight: '500'
+                          fontWeight: '500',
+                          outline: 'none'
                         }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.borderColor = 'rgb(37, 99, 235)'
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)'
+                        onFocus={(e) => {
+                          e.target.style.borderColor = 'rgb(37, 99, 235)'
+                          e.target.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)'
                         }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.borderColor = '#E5E7EB'
-                          e.currentTarget.style.boxShadow = 'none'
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#E5E7EB'
+                          e.target.style.boxShadow = 'none'
                         }}
                       >
-                        <span>05:00 PM</span>
-                        <ChevronDown size={16} style={{ color: 'rgb(37, 99, 235)' }} />
-                      </button>
+                        {Array.from({ length: 24 }, (_, i) => {
+                          const hour = i.toString().padStart(2, '0')
+                          const ampm = i >= 12 ? 'PM' : 'AM'
+                          const displayHour = i === 0 ? '12' : i > 12 ? (i - 12).toString().padStart(2, '0') : hour
+                          const time = `${displayHour}:00 ${ampm}`
+                          return (
+                            <option key={time} value={time}>{time}</option>
+                          )
+                        })}
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -2534,14 +2642,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     e.currentTarget.style.transform = 'translateY(0)'
                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)'
                   }}
-                  onClick={() => {
-                    // Save settings logic
-                    setHasSettingsSaved(true)
-                    toast({
-                      title: "Settings Saved",
-                      description: "Campaign settings have been saved successfully",
-                    })
-                  }}
+                  onClick={saveSettings}
                 >
                   <Check size={16} />
                   Save Campaign Settings
@@ -2783,14 +2884,42 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
               {/* Accounts Table */}
               <div className="bg-white rounded-lg shadow">
-                <div className="px-6 py-4 border-b border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                   <h3 className="text-lg font-medium text-gray-900">Connected Accounts</h3>
+                  {selectedSenderAccounts.length > 0 && (
+                    <div className="flex items-center space-x-3">
+                      <span className="text-sm text-gray-600">
+                        {selectedSenderAccounts.length} account{selectedSenderAccounts.length > 1 ? 's' : ''} selected for this campaign
+                      </span>
+                      <Button
+                        size="sm"
+                        onClick={saveSenders}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        Save Sender Selection
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                            checked={selectedSenderAccounts.length === allConnectedAccounts.length && allConnectedAccounts.length > 0}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedSenderAccounts(allConnectedAccounts.map(acc => acc.id))
+                              } else {
+                                setSelectedSenderAccounts([])
+                              }
+                            }}
+                          />
+                        </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activity</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Health Score</th>
@@ -2807,6 +2936,20 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         
                         return (
                           <tr key={account.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <input 
+                                type="checkbox" 
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                                checked={selectedSenderAccounts.includes(account.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedSenderAccounts(prev => [...prev, account.id])
+                                  } else {
+                                    setSelectedSenderAccounts(prev => prev.filter(id => id !== account.id))
+                                  }
+                                }}
+                              />
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
                                 <div className="flex-shrink-0 h-10 w-10">
@@ -3545,11 +3688,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   Add Email
                 </Button>
                 <Button 
-                  onClick={saveSequence} 
+                  onClick={saveAll} 
                   className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
                 >
                   <Send className="w-4 h-4 mr-2" />
-                  Save Campaign
+                  Save All Campaign Data
                 </Button>
               </div>
             </div>
