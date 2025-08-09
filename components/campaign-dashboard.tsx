@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
-import { Calendar, ChevronDown, Eye, Play, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart } from "lucide-react"
+import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -36,6 +36,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   // Campaign name editing state
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(campaign?.name || "")
+  
+  // Track if settings have been saved
+  const [hasSettingsSaved, setHasSettingsSaved] = useState(false)
+  const [hasSequenceSaved, setHasSequenceSaved] = useState(false)
   
   // Scrapping functionality state
   const [isScrappingActive, setIsScrappingActive] = useState(false)
@@ -120,6 +124,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [showTestModal, setShowTestModal] = useState(false)
   const [showCodeView, setShowCodeView] = useState(false)
+  const [showLaunchValidationModal, setShowLaunchValidationModal] = useState(false)
+  const [launchValidationErrors, setLaunchValidationErrors] = useState([])
   const editorRef = useRef<HTMLDivElement>(null)
   const [testModalAccountId, setTestModalAccountId] = useState(null)
   const [testModalLoading, setTestModalLoading] = useState(false)
@@ -179,6 +185,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   // Email signature state
   const [firstName, setFirstName] = useState("Loop")
   const [lastName, setLastName] = useState("Review")
+  const [companyName, setCompanyName] = useState("LeadsUp")
+  const [companyWebsite, setCompanyWebsite] = useState("https://www.leadsup.com")
+  const [emailSignature, setEmailSignature] = useState(`<br/><br/>Best regards,<br/><strong>${firstName} ${lastName}</strong><br/>${companyName}<br/><a href="${companyWebsite}" target="_blank">${companyWebsite}</a>`)
+  const signatureEditorRef = useRef<HTMLDivElement>(null)
   
   // Daily limit warning state
   const [showDailyLimitWarning, setShowDailyLimitWarning] = useState(false)
@@ -432,6 +442,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const result = await response.json()
 
       if (result.success) {
+        setHasSequenceSaved(true)
         toast({
           title: "Sequences Saved",
           description: "All sequence steps have been saved successfully",
@@ -968,6 +979,104 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     
     if (confirmed && onDelete) {
       onDelete(campaign.id)
+    }
+  }
+
+  // Launch/Pause campaign function
+  const handleLaunchPauseCampaign = () => {
+    if (!campaign?.id) return
+    
+    // If campaign is Draft, validate before launching
+    if (campaign.status === 'Draft') {
+      // Check if required conditions are met
+      const hasConnectedAccount = allConnectedAccounts.length > 0
+      const hasContacts = totalContacts > 0
+      const errors = []
+      
+      if (!hasConnectedAccount) {
+        errors.push({
+          title: "No Email Account Connected",
+          description: "Connect at least one email account to send campaigns.",
+          action: () => {
+            setShowLaunchValidationModal(false)
+            setActiveTab('sender')
+          },
+          buttonText: "Go to Sender Settings"
+        })
+      }
+      
+      if (!hasContacts) {
+        errors.push({
+          title: "No Contacts Added",
+          description: "Add at least one contact to your campaign.",
+          action: () => {
+            setShowLaunchValidationModal(false)
+            setActiveTab('contacts')
+          },
+          buttonText: "Add Contacts"
+        })
+      }
+      
+      if (!hasSettingsSaved) {
+        errors.push({
+          title: "Settings Not Saved",
+          description: "Save your campaign settings before launching.",
+          action: () => {
+            setShowLaunchValidationModal(false)
+            setActiveTab('settings')
+          },
+          buttonText: "Go to Settings"
+        })
+      }
+      
+      if (!hasSequenceSaved) {
+        errors.push({
+          title: "Sequence Not Saved",
+          description: "Save your email sequence before launching.",
+          action: () => {
+            setShowLaunchValidationModal(false)
+            setActiveTab('sequence')
+          },
+          buttonText: "Go to Sequence"
+        })
+      }
+      
+      // If there are validation errors, show the modal
+      if (errors.length > 0) {
+        setLaunchValidationErrors(errors)
+        setShowLaunchValidationModal(true)
+        return
+      }
+      
+      // Launch the campaign
+      if (onStatusUpdate) {
+        onStatusUpdate(campaign.id, 'Active')
+        toast({
+          title: "Campaign Launched",
+          description: `Campaign "${campaign.name}" is now active.`,
+          variant: "default"
+        })
+      }
+    } else if (campaign.status === 'Active') {
+      // Pause the campaign
+      if (onStatusUpdate) {
+        onStatusUpdate(campaign.id, 'Paused')
+        toast({
+          title: "Campaign Paused",
+          description: `Campaign "${campaign.name}" has been paused.`,
+          variant: "default"
+        })
+      }
+    } else if (campaign.status === 'Paused') {
+      // Resume the campaign
+      if (onStatusUpdate) {
+        onStatusUpdate(campaign.id, 'Active')
+        toast({
+          title: "Campaign Resumed",
+          description: `Campaign "${campaign.name}" is now active again.`,
+          variant: "default"
+        })
+      }
     }
   }
 
@@ -1910,7 +2019,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   </h3>
                 </div>
 
-                {/* Name Fields */}
+                {/* Name and Company Fields */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr',
@@ -1931,7 +2040,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     <input
                       type="text"
                       value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
+                      onChange={(e) => {
+                        setFirstName(e.target.value)
+                        // Update signature with new name
+                        const updatedSignature = emailSignature.replace(
+                          /<strong>.*?<\/strong>/,
+                          `<strong>${e.target.value} ${lastName}</strong>`
+                        )
+                        setEmailSignature(updatedSignature)
+                      }}
                       style={{
                         width: '100%',
                         height: '48px',
@@ -1969,7 +2086,91 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     <input
                       type="text"
                       value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
+                      onChange={(e) => {
+                        setLastName(e.target.value)
+                        // Update signature with new name
+                        const updatedSignature = emailSignature.replace(
+                          /<strong>.*?<\/strong>/,
+                          `<strong>${firstName} ${e.target.value}</strong>`
+                        )
+                        setEmailSignature(updatedSignature)
+                      }}
+                      style={{
+                        width: '100%',
+                        height: '48px',
+                        padding: '0 16px',
+                        fontSize: '16px',
+                        border: '2px solid #E5E7EB',
+                        borderRadius: '12px',
+                        backgroundColor: '#FAFBFC',
+                        fontFamily: 'Jost, sans-serif',
+                        fontWeight: '500',
+                        transition: 'all 0.2s ease',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = 'rgb(37, 99, 235)'
+                        e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#E5E7EB'
+                        e.target.style.boxShadow = 'none'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#6B7280',
+                      marginBottom: '8px',
+                      fontFamily: 'Jost, sans-serif'
+                    }}>
+                      Company
+                    </label>
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: '48px',
+                        padding: '0 16px',
+                        fontSize: '16px',
+                        border: '2px solid #E5E7EB',
+                        borderRadius: '12px',
+                        backgroundColor: '#FAFBFC',
+                        fontFamily: 'Jost, sans-serif',
+                        fontWeight: '500',
+                        transition: 'all 0.2s ease',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = 'rgb(37, 99, 235)'
+                        e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#E5E7EB'
+                        e.target.style.boxShadow = 'none'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#6B7280',
+                      marginBottom: '8px',
+                      fontFamily: 'Jost, sans-serif'
+                    }}>
+                      Website
+                    </label>
+                    <input
+                      type="text"
+                      value={companyWebsite}
+                      onChange={(e) => setCompanyWebsite(e.target.value)}
                       style={{
                         width: '100%',
                         height: '48px',
@@ -2014,19 +2215,32 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     backgroundColor: 'white'
                   }}>
                     {/* Signature Content */}
-                    <div style={{
-                      padding: '32px',
-                      minHeight: '400px',
-                      backgroundColor: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <div style={{ textAlign: 'center', color: '#9CA3AF' }}>
-                        <p style={{ fontSize: '18px', marginBottom: '8px' }}>Your signature will appear here</p>
-                        <p style={{ fontSize: '14px' }}>Use the formatting tools below to create your signature</p>
-                      </div>
-                    </div>
+                    <div 
+                      ref={signatureEditorRef}
+                      contentEditable
+                      suppressContentEditableWarning
+                      style={{
+                        padding: '32px',
+                        minHeight: '200px',
+                        backgroundColor: 'white',
+                        fontSize: '14px',
+                        lineHeight: '1.6',
+                        color: '#374151',
+                        fontFamily: 'Arial, sans-serif',
+                        outline: 'none'
+                      }}
+                      dangerouslySetInnerHTML={{ __html: emailSignature }}
+                      onInput={(e) => {
+                        const target = e.currentTarget
+                        setEmailSignature(target.innerHTML)
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.backgroundColor = '#FAFBFC'
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white'
+                      }}
+                    />
                     
                     {/* Formatting Toolbar */}
                     <div style={{
@@ -2039,6 +2253,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     }}>
                       <button
                         type="button"
+                        onClick={() => {
+                          document.execCommand('bold', false)
+                          if (signatureEditorRef.current) {
+                            setEmailSignature(signatureEditorRef.current.innerHTML)
+                          }
+                        }}
                         style={{
                           width: '32px',
                           height: '32px',
@@ -2058,6 +2278,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       </button>
                       <button
                         type="button"
+                        onClick={() => {
+                          document.execCommand('italic', false)
+                          if (signatureEditorRef.current) {
+                            setEmailSignature(signatureEditorRef.current.innerHTML)
+                          }
+                        }}
                         style={{
                           width: '32px',
                           height: '32px',
@@ -2077,6 +2303,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       </button>
                       <button
                         type="button"
+                        onClick={() => {
+                          document.execCommand('underline', false)
+                          if (signatureEditorRef.current) {
+                            setEmailSignature(signatureEditorRef.current.innerHTML)
+                          }
+                        }}
                         style={{
                           width: '32px',
                           height: '32px',
@@ -2134,6 +2366,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       </button>
                       <button
                         type="button"
+                        onClick={() => {
+                          const url = prompt('Enter URL:', 'https://')
+                          if (url) {
+                            document.execCommand('createLink', false, url)
+                            if (signatureEditorRef.current) {
+                              setEmailSignature(signatureEditorRef.current.innerHTML)
+                            }
+                          }
+                        }}
                         style={{
                           width: '32px',
                           height: '32px',
@@ -2249,6 +2490,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     e.currentTarget.style.backgroundColor = '#F3F4F6'
                     e.currentTarget.style.color = '#6B7280'
                   }}
+                  onClick={() => {
+                    const defaultSignature = `<br/><br/>Best regards,<br/><strong>${firstName} ${lastName}</strong><br/>${companyName}<br/><a href="${companyWebsite}" target="_blank">${companyWebsite}</a>`
+                    setEmailSignature(defaultSignature)
+                    if (signatureEditorRef.current) {
+                      signatureEditorRef.current.innerHTML = defaultSignature
+                    }
+                  }}
                 >
                   <X size={16} />
                   Reset to Default
@@ -2279,6 +2527,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   onMouseOut={(e) => {
                     e.currentTarget.style.transform = 'translateY(0)'
                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)'
+                  }}
+                  onClick={() => {
+                    // Save settings logic
+                    setHasSettingsSaved(true)
+                    toast({
+                      title: "Settings Saved",
+                      description: "Campaign settings have been saved successfully",
+                    })
                   }}
                 >
                   <Check size={16} />
@@ -3223,6 +3479,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <div className="flex items-center space-x-3">
                 <Button 
                   variant="outline"
+                  className="border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                   onClick={() => {
                     const currentGap = (steps.find(s => s.sequence === 2)?.timing || 98) - 8
                     const newGap = prompt('Enter gap between sequences (in days):', currentGap.toString())
@@ -3241,79 +3498,100 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <Clock className="w-4 h-4 mr-2" />
                   Configure Gap
                 </Button>
-                <Button onClick={addStep} variant="outline">
+                <Button 
+                  onClick={addStep} 
+                  variant="outline"
+                  className="border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                >
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Step
+                  Add Email
                 </Button>
-                <Button onClick={saveSequence} className="bg-blue-600 hover:bg-blue-700">
+                <Button 
+                  onClick={saveSequence} 
+                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
+                >
                   <Send className="w-4 h-4 mr-2" />
-                  Save Sequence
+                  Save Campaign
                 </Button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
               {/* Sequence Timeline Sidebar */}
               <div className="lg:col-span-1">
-                <div className="bg-white rounded-lg border border-gray-200 p-4">
-                  <h3 className="font-medium text-gray-900 mb-4">Email Sequence Timeline</h3>
+                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                  <div className="flex items-center space-x-2 mb-6">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    <h3 className="font-semibold text-gray-900">Campaign Timeline</h3>
+                  </div>
                   
                   {/* Sequence 1 */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-                        <span className="text-sm font-medium text-gray-900">Sequence 1</span>
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4 p-3 bg-blue-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
+                          <div className="w-2 h-2 bg-white rounded-full"></div>
+                        </div>
+                        <div>
+                          <span className="text-sm font-semibold text-blue-900">Sequence 1</span>
+                          <div className="text-xs text-blue-700">Initial Outreach</div>
+                        </div>
                       </div>
                       <Button 
                         variant="ghost" 
                         size="sm"
+                        className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
                         onClick={() => {
                           const newSubject = prompt('Enter subject line for Sequence 1:', steps.find(s => s.sequence === 1)?.subject || '')
                           if (newSubject) updateSequenceSubject(1, newSubject)
                         }}
                       >
-                        <Edit2 className="w-3 h-3" />
+                        <Edit2 className="w-4 h-4" />
                       </Button>
                     </div>
-                    <div className="text-xs text-gray-500 mb-3 pl-5">
-                      Subject: "{steps.find(s => s.sequence === 1)?.subject || 'No subject'}"
+                    <div className="text-xs text-gray-600 mb-4 px-3 py-2 bg-gray-50 rounded-md">
+                      <span className="font-medium">Subject:</span> "{steps.find(s => s.sequence === 1)?.subject || 'No subject'}"
                     </div>
                     
-                    <div className="space-y-2 pl-5">
+                    <div className="space-y-3">
                       {steps.filter(step => step.sequence === 1).map((step, index) => (
                         <div key={step.id} className="relative">
                           <div
                             onClick={() => selectStep(step.id)}
-                            className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors ${
+                            className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                               activeStepId === step.id
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-gray-200 hover:border-gray-300'
+                                ? 'border-blue-400 bg-blue-50 shadow-sm'
+                                : 'border-gray-100 hover:border-blue-200 hover:bg-blue-25'
                             }`}
                           >
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium ${
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
                                 activeStepId === step.id
                                   ? 'bg-blue-600 text-white'
-                                  : 'bg-gray-100 text-gray-600'
+                                  : 'bg-white border-2 border-gray-200 text-gray-600'
                               }`}>
                                 {step.sequenceStep}
                               </div>
                               <div>
-                                <div className={`text-xs font-medium ${
+                                <div className={`text-sm font-medium ${
                                   activeStepId === step.id ? 'text-blue-900' : 'text-gray-900'
                                 }`}>
                                   {step.title}
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                  {step.timing === 0 ? 'Immediate' : `Day ${step.timing}`}
+                                <div className="text-xs text-gray-500 font-medium">
+                                  {step.timing === 0 ? 'Send immediately' : `Send on day ${step.timing}`}
                                 </div>
                               </div>
                             </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
-                                  <MoreHorizontal className="w-3 h-3" />
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="opacity-0 group-hover:opacity-100 hover:bg-white"
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
@@ -3322,14 +3600,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   className="text-red-600"
                                   disabled={steps.length === 1}
                                 >
-                                  <Trash2 className="w-3 h-3 mr-2" />
-                                  Delete
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete Email
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
                           {index < steps.filter(s => s.sequence === 1).length - 1 && (
-                            <div className="w-px h-3 bg-gray-300 ml-2.5 my-1"></div>
+                            <div className="flex justify-center my-2">
+                              <div className="w-px h-4 bg-blue-200"></div>
+                            </div>
                           )}
                         </div>
                       ))}
@@ -3337,75 +3617,94 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   </div>
 
                   {/* Dynamic Gap Indicator */}
-                  <div className="flex items-center space-x-2 mb-6 pl-5">
-                    <div className="flex-1 border-t border-dashed border-gray-400"></div>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      {(() => {
-                        const seq1End = Math.max(...steps.filter(s => s.sequence === 1).map(s => s.timing))
-                        const seq2Start = Math.min(...steps.filter(s => s.sequence === 2).map(s => s.timing))
-                        const gap = seq2Start - seq1End
-                        return `${gap} days gap`
-                      })()}
-                    </span>
-                    <div className="flex-1 border-t border-dashed border-gray-400"></div>
+                  <div className="flex items-center justify-center my-8">
+                    <div className="text-center">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <div className="flex-1 border-t-2 border-dashed border-gray-300"></div>
+                        <div className="px-4 py-2 bg-gray-100 rounded-full">
+                          <Clock className="w-4 h-4 text-gray-500 mx-auto mb-1" />
+                          <span className="text-sm font-medium text-gray-700">
+                            {(() => {
+                              const seq1End = Math.max(...steps.filter(s => s.sequence === 1).map(s => s.timing))
+                              const seq2Start = Math.min(...steps.filter(s => s.sequence === 2).map(s => s.timing))
+                              const gap = seq2Start - seq1End
+                              return `${gap} Days`
+                            })()}
+                          </span>
+                        </div>
+                        <div className="flex-1 border-t-2 border-dashed border-gray-300"></div>
+                      </div>
+                      <div className="text-xs text-gray-500 font-medium">Waiting Period</div>
+                    </div>
                   </div>
 
                   {/* Sequence 2 */}
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-                        <span className="text-sm font-medium text-gray-900">Sequence 2</span>
+                    <div className="flex items-center justify-between mb-4 p-3 bg-green-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-4 h-4 bg-green-600 rounded-full flex items-center justify-center">
+                          <div className="w-2 h-2 bg-white rounded-full"></div>
+                        </div>
+                        <div>
+                          <span className="text-sm font-semibold text-green-900">Sequence 2</span>
+                          <div className="text-xs text-green-700">Follow-up Outreach</div>
+                        </div>
                       </div>
                       <Button 
                         variant="ghost" 
                         size="sm"
+                        className="text-green-700 hover:text-green-900 hover:bg-green-100"
                         onClick={() => {
                           const newSubject = prompt('Enter subject line for Sequence 2:', steps.find(s => s.sequence === 2)?.subject || '')
                           if (newSubject) updateSequenceSubject(2, newSubject)
                         }}
                       >
-                        <Edit2 className="w-3 h-3" />
+                        <Edit2 className="w-4 h-4" />
                       </Button>
                     </div>
-                    <div className="text-xs text-gray-500 mb-3 pl-5">
-                      Subject: "{steps.find(s => s.sequence === 2)?.subject || 'No subject'}"
+                    <div className="text-xs text-gray-600 mb-4 px-3 py-2 bg-gray-50 rounded-md">
+                      <span className="font-medium">Subject:</span> "{steps.find(s => s.sequence === 2)?.subject || 'No subject'}"
                     </div>
                     
-                    <div className="space-y-2 pl-5">
+                    <div className="space-y-3">
                       {steps.filter(step => step.sequence === 2).map((step, index) => (
                         <div key={step.id} className="relative">
                           <div
                             onClick={() => selectStep(step.id)}
-                            className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors ${
+                            className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                               activeStepId === step.id
-                                ? 'border-green-500 bg-green-50'
-                                : 'border-gray-200 hover:border-gray-300'
+                                ? 'border-green-400 bg-green-50 shadow-sm'
+                                : 'border-gray-100 hover:border-green-200 hover:bg-green-25'
                             }`}
                           >
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium ${
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
                                 activeStepId === step.id
                                   ? 'bg-green-600 text-white'
-                                  : 'bg-gray-100 text-gray-600'
+                                  : 'bg-white border-2 border-gray-200 text-gray-600'
                               }`}>
                                 {step.sequenceStep}
                               </div>
                               <div>
-                                <div className={`text-xs font-medium ${
+                                <div className={`text-sm font-medium ${
                                   activeStepId === step.id ? 'text-green-900' : 'text-gray-900'
                                 }`}>
                                   {step.title}
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                  Day {step.timing}
+                                <div className="text-xs text-gray-500 font-medium">
+                                  Send on day {step.timing}
                                 </div>
                               </div>
                             </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
-                                  <MoreHorizontal className="w-3 h-3" />
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="opacity-0 group-hover:opacity-100 hover:bg-white"
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
@@ -3414,14 +3713,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   className="text-red-600"
                                   disabled={steps.length === 1}
                                 >
-                                  <Trash2 className="w-3 h-3 mr-2" />
-                                  Delete
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete Email
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
                           {index < steps.filter(s => s.sequence === 2).length - 1 && (
-                            <div className="w-px h-3 bg-gray-300 ml-2.5 my-1"></div>
+                            <div className="flex justify-center my-2">
+                              <div className="w-px h-4 bg-green-200"></div>
+                            </div>
                           )}
                         </div>
                       ))}
@@ -3438,42 +3739,51 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     if (!activeStep) return null
                     
                     return (
-                      <div className="bg-white rounded-lg border border-gray-200">
+                      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
                         {/* Step Header */}
-                        <div className="border-b border-gray-200 p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <div>
-                              <h3 className="text-lg font-medium text-gray-900">
-                                Step {steps.findIndex(s => s.id === activeStepId) + 1}
-                              </h3>
-                              <p className="text-gray-600">Configure email content and timing</p>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="outline">
-                                {activeStep.variants} variant{activeStep.variants > 1 ? 's' : ''}
-                              </Badge>
+                        <div className="border-b border-gray-100 p-6">
+                          <div className="flex items-start justify-between mb-6">
+                            <div className="flex items-center space-x-4">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                activeStep.sequence === 1 ? 'bg-blue-100' : 'bg-green-100'
+                              }`}>
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold text-white ${
+                                  activeStep.sequence === 1 ? 'bg-blue-600' : 'bg-green-600'
+                                }`}>
+                                  {activeStep.sequenceStep}
+                                </div>
+                              </div>
+                              <div>
+                                <h3 className="text-xl font-semibold text-gray-900">
+                                  {activeStep.title}
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                  Sequence {activeStep.sequence} • {activeStep.sequence === 1 ? 'Initial Outreach' : 'Follow-up Outreach'}
+                                </p>
+                              </div>
                             </div>
                           </div>
                           
                           {/* Step Configuration */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Email Subject (Shared with Sequence {activeStep.sequence})
+                              <label className="block text-sm font-semibold text-gray-800 mb-3">
+                                📧 Email Subject Line
                               </label>
                               <Input
                                 value={activeStep.subject || ''}
                                 onChange={(e) => updateSequenceSubject(activeStep.sequence, e.target.value)}
                                 placeholder={`Enter subject for Sequence ${activeStep.sequence}...`}
-                                className="w-full"
+                                className="w-full h-11 text-sm border-gray-200 focus:border-blue-400 focus:ring-blue-400"
                               />
-                              <p className="text-xs text-gray-500 mt-1">
-                                This subject line will be used for all emails in Sequence {activeStep.sequence}
+                              <p className="text-xs text-gray-500 mt-2 flex items-center space-x-1">
+                                <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
+                                <span>Shared across all emails in Sequence {activeStep.sequence}</span>
                               </p>
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                {activeStep.sequence === 1 ? 'Delay from Previous' : 'Total Days from Start'}
+                              <label className="block text-sm font-semibold text-gray-800 mb-3">
+                                ⏰ {activeStep.sequence === 1 ? 'Send Delay' : 'Send Schedule'}
                               </label>
                               {activeStep.sequence === 1 ? (
                                 <Select
@@ -3485,28 +3795,30 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                     updateStepTiming(activeStep.id, baseTime + newTiming)
                                   }}
                                 >
-                                  <SelectTrigger>
+                                  <SelectTrigger className="h-11 border-gray-200 focus:border-blue-400 focus:ring-blue-400">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="0">Immediately</SelectItem>
-                                    <SelectItem value="3">3 days after</SelectItem>
-                                    <SelectItem value="4">4 days after</SelectItem>
-                                    <SelectItem value="5">5 days after</SelectItem>
-                                    <SelectItem value="7">1 week after</SelectItem>
+                                    <SelectItem value="0">📨 Send immediately</SelectItem>
+                                    <SelectItem value="3">📅 3 days after</SelectItem>
+                                    <SelectItem value="4">📅 4 days after</SelectItem>
+                                    <SelectItem value="5">📅 5 days after</SelectItem>
+                                    <SelectItem value="7">📅 1 week after</SelectItem>
                                   </SelectContent>
                                 </Select>
                               ) : (
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                   <Input
                                     type="number"
                                     value={activeStep.timing}
                                     onChange={(e) => updateStepTiming(activeStep.id, parseInt(e.target.value) || 0)}
                                     min="90"
-                                    className="w-full"
+                                    className="w-full h-11 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
+                                    placeholder="Days from start"
                                   />
-                                  <p className="text-xs text-gray-500">
-                                    Days from campaign start (min 90 for Sequence 2)
+                                  <p className="text-xs text-gray-500 flex items-center space-x-1">
+                                    <span className="w-1 h-1 bg-green-400 rounded-full"></span>
+                                    <span>Minimum 90 days for follow-up sequence</span>
                                   </p>
                                 </div>
                               )}
@@ -3514,18 +3826,37 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           </div>
 
                           {/* Sequence Information */}
-                          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center space-x-4 text-sm">
-                              <div className="flex items-center space-x-1">
-                                <div className={`w-3 h-3 rounded-full ${activeStep.sequence === 1 ? 'bg-blue-600' : 'bg-green-600'}`}></div>
-                                <span className="font-medium">Sequence {activeStep.sequence}</span>
-                                <span className="text-gray-500">•</span>
-                                <span className="text-gray-600">{activeStep.title}</span>
+                          <div className={`mt-6 p-4 rounded-xl border-2 ${
+                            activeStep.sequence === 1 
+                              ? 'bg-blue-50 border-blue-200' 
+                              : 'bg-green-50 border-green-200'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                  activeStep.sequence === 1 ? 'bg-blue-600' : 'bg-green-600'
+                                }`}>
+                                  <span className="text-white text-sm font-semibold">{activeStep.sequenceStep}</span>
+                                </div>
+                                <div>
+                                  <div className={`text-sm font-semibold ${
+                                    activeStep.sequence === 1 ? 'text-blue-900' : 'text-green-900'
+                                  }`}>
+                                    {activeStep.title}
+                                  </div>
+                                  <div className={`text-xs ${
+                                    activeStep.sequence === 1 ? 'text-blue-700' : 'text-green-700'
+                                  }`}>
+                                    {activeStep.sequence === 1 ? 'Initial Outreach' : 'Follow-up Outreach'}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="text-gray-500">
+                              <div className={`text-right text-xs font-medium ${
+                                activeStep.sequence === 1 ? 'text-blue-800' : 'text-green-800'
+                              }`}>
                                 {activeStep.sequence === 1 
-                                  ? `${activeStep.timing === 0 ? 'Sent immediately' : `Sent on day ${activeStep.timing}`}`
-                                  : `Sent on day ${activeStep.timing} (after ${activeStep.timing - 8}-day gap)`
+                                  ? `${activeStep.timing === 0 ? 'Send immediately' : `Send on day ${activeStep.timing}`}`
+                                  : `Send on day ${activeStep.timing}`
                                 }
                               </div>
                             </div>
@@ -3705,6 +4036,26 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                 onClick={() => insertVariableIntoEditor('{{senderName}}')}
                               >
                                 {'{{senderName}}'}
+                              </Badge>
+                              <Badge 
+                                variant="outline" 
+                                className="cursor-pointer text-xs hover:bg-gray-100 hover:border-gray-400 transition-colors bg-gray-50"
+                                onClick={() => {
+                                  // Insert the signature at the end of the current content
+                                  const currentContent = activeStep?.content || ''
+                                  const signatureWithVariables = emailSignature.replace(
+                                    /<strong>.*?<\/strong>/,
+                                    '<strong>{{senderName}}</strong>'
+                                  )
+                                  const newContent = currentContent + signatureWithVariables
+                                  updateStepContent(newContent)
+                                  if (editorRef.current) {
+                                    editorRef.current.innerHTML = newContent
+                                  }
+                                }}
+                              >
+                                <FileText className="w-3 h-3 mr-1 inline" />
+                                Insert Signature
                               </Badge>
                             </div>
                           </div>
@@ -3913,6 +4264,22 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             }`}>
               {campaign.status}
             </span>
+            {campaign.status !== 'Completed' && (
+              <Button
+                variant={campaign.status === 'Draft' ? 'default' : 'outline'}
+                size="sm"
+                onClick={handleLaunchPauseCampaign}
+                className={campaign.status === 'Draft' ? '' : campaign.status === 'Active' ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'}
+              >
+                {campaign.status === 'Draft' ? (
+                  <><Play className="w-4 h-4 mr-1" /> Launch</>
+                ) : campaign.status === 'Active' ? (
+                  <><Pause className="w-4 h-4 mr-1" /> Pause</>
+                ) : (
+                  <><Play className="w-4 h-4 mr-1" /> Resume</>
+                )}
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -4029,6 +4396,54 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 className="bg-yellow-600 hover:bg-yellow-700"
               >
                 Continue Anyway
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Launch Validation Modal */}
+      <Dialog open={showLaunchValidationModal} onOpenChange={setShowLaunchValidationModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-500" />
+              <span>Campaign Not Ready</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Please complete the following steps before launching your campaign:
+            </p>
+            <div className="space-y-3">
+              {launchValidationErrors.map((error, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <X className="w-3 h-3 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900 text-sm">{error.title}</h4>
+                      <p className="text-xs text-gray-600 mt-1">{error.description}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
+                        onClick={error.action}
+                      >
+                        {error.buttonText}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                onClick={() => setShowLaunchValidationModal(false)}
+              >
+                Close
               </Button>
             </div>
           </div>
