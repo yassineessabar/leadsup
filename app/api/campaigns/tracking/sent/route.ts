@@ -52,25 +52,43 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('📧 Received tracking request body:', body)
+    console.log('📧 Received tracking request body:', JSON.stringify(body, null, 2))
+    console.log('📧 Body keys:', Object.keys(body))
     
-    const {
+    // Support multiple parameter name formats
+    const campaignId = body.campaignId || body.campaign_id || body.CampaignId
+    const contactId = body.contactId || body.contact_id || body.prospect_id || body.prospectId || body.ContactId
+    const sequenceId = body.sequenceId || body.sequence_id || body.SequenceId
+    const messageId = body.messageId || body.message_id || body.MessageId
+    const sentAt = body.sentAt || body.sent_at || body.SentAt
+    const status = body.status || body.Status || 'sent'
+    const errorMessage = body.errorMessage || body.error_message || body.ErrorMessage
+    const senderType = body.senderType || body.sender_type || body.SenderType
+
+    console.log('📧 Extracted parameters:', {
       campaignId,
       contactId,
       sequenceId,
       messageId,
       sentAt,
-      status = 'sent',
-      errorMessage,
-      senderType
-    } = body
+      status,
+      senderType,
+      errorMessage
+    })
 
     // Validate required fields
     if (!campaignId || !contactId || !sequenceId) {
-      console.error('❌ Missing required fields:', { campaignId, contactId, sequenceId })
+      console.error('❌ Missing required fields:', { 
+        campaignId: !!campaignId, 
+        contactId: !!contactId, 
+        sequenceId: !!sequenceId,
+        availableKeys: Object.keys(body)
+      })
       return NextResponse.json({ 
         success: false, 
-        error: 'Missing required fields: campaignId, contactId, sequenceId' 
+        error: 'Missing required fields: campaignId, contactId, sequenceId',
+        received: Object.keys(body),
+        expected: ['campaignId (or campaign_id)', 'contactId (or contact_id/prospect_id)', 'sequenceId (or sequence_id)']
       }, { status: 400 })
     }
 
@@ -83,66 +101,125 @@ export async function POST(request: NextRequest) {
       errorMessage
     })
 
-    // For now, create a simple email tracking table or use a different approach
-    // Let's create a simple email_tracking table to store this information
-    
+    // Try to use prospect_sequence_progress table first, then fallback
     try {
-      // Insert into email_tracking table (we'll create this table structure)
-      const trackingData = {
-        campaign_id: campaignId,
-        contact_id: contactId,
-        sequence_id: sequenceId,
-        status,
-        sent_at: sentAt || new Date().toISOString(),
-        message_id: messageId,
-        created_at: new Date().toISOString()
-      }
-      
-      // Add error message if status is failed
-      if (status === 'failed' && errorMessage) {
-        trackingData.error_message = errorMessage
-      }
-      
-      if (senderType) {
-        trackingData.sender_type = senderType
-      }
-
-      // Try to insert into email_tracking table
-      const { data: result, error: insertError } = await supabaseServer
-        .from('email_tracking')
-        .insert(trackingData)
-        .select()
+      // Check if tracking record exists
+      const { data: existing, error: checkError } = await supabaseServer
+        .from('prospect_sequence_progress')
+        .select('id')
+        .eq('campaign_id', campaignId)
+        .eq('prospect_id', contactId)
+        .eq('sequence_id', sequenceId)
         .single()
 
-      if (insertError) {
-        console.error('Error inserting tracking record:', insertError)
-        
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows
         // If table doesn't exist, create a fallback solution
-        if (insertError.code === '42P01') { // Table does not exist
-          console.log('📝 email_tracking table does not exist, logging to console for now')
-          console.log('📧 Email tracking data:', trackingData)
+        if (checkError.code === '42P01') {
+          console.log('📝 prospect_sequence_progress table does not exist')
+          console.log('📧 Email tracking data (fallback logging):', {
+            campaignId,
+            contactId,
+            sequenceId,
+            status,
+            sentAt: sentAt || new Date().toISOString(),
+            messageId,
+            senderType,
+            errorMessage
+          })
           
           return NextResponse.json({
             success: true,
-            message: 'Email tracking logged (table will be created soon)',
-            data: trackingData
+            message: 'Email tracking logged (table needs to be created)',
+            data: { campaignId, contactId, sequenceId, status },
+            note: 'Run the SQL script: create-prospect-sequence-progress-table.sql'
           })
         }
         
-        return NextResponse.json({ success: false, error: insertError.message }, { status: 500 })
+        console.error('Error checking existing record:', checkError)
+        return NextResponse.json({ success: false, error: checkError.message }, { status: 500 })
       }
-      
-      console.log('✅ Created email tracking record:', result)
-      
-      // Update campaign statistics (optional)
-      const { error: statsError } = await supabaseServer
-        .rpc('increment_campaign_sent_count', { 
-          campaign_id_param: campaignId 
-        })
 
-      if (statsError) {
-        console.warn('Could not update campaign stats:', statsError)
-        // Don't fail the request if stats update fails
+      let result
+
+      if (existing) {
+        // Update existing record
+        const updateData = {
+          status,
+          sent_at: sentAt || new Date().toISOString(),
+          message_id: messageId,
+          updated_at: new Date().toISOString()
+        }
+        
+        if (status === 'failed' && errorMessage) {
+          updateData.error_message = errorMessage
+        }
+        
+        if (senderType) {
+          updateData.sender_type = senderType
+        }
+
+        const { data, error } = await supabaseServer
+          .from('prospect_sequence_progress')
+          .update(updateData)
+          .eq('id', existing.id)
+          .select()
+          .single()
+
+        if (error) {
+          console.error('Error updating tracking:', error)
+          return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+        }
+        
+        result = data
+        console.log('✅ Updated existing tracking record')
+      } else {
+        // Create new tracking record
+        const insertData = {
+          campaign_id: campaignId,
+          prospect_id: contactId,
+          sequence_id: sequenceId,
+          status,
+          sent_at: sentAt || new Date().toISOString(),
+          message_id: messageId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+        
+        if (status === 'failed' && errorMessage) {
+          insertData.error_message = errorMessage
+        }
+        
+        if (senderType) {
+          insertData.sender_type = senderType
+        }
+
+        const { data, error } = await supabaseServer
+          .from('prospect_sequence_progress')
+          .insert(insertData)
+          .select()
+          .single()
+
+        if (error) {
+          console.error('Error creating tracking:', error)
+          return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+        }
+        
+        result = data
+        console.log('✅ Created new tracking record')
+      }
+
+      // Update campaign statistics (optional)
+      try {
+        const { error: statsError } = await supabaseServer
+          .rpc('increment_campaign_sent_count', { 
+            campaign_id_param: campaignId 
+          })
+
+        if (statsError) {
+          console.warn('Could not update campaign stats:', statsError)
+        }
+      } catch (statsError) {
+        console.warn('Campaign stats function not available:', statsError)
       }
 
       return NextResponse.json({
@@ -150,9 +227,9 @@ export async function POST(request: NextRequest) {
         data: result,
         message: 'Email tracking updated successfully'
       })
-      
+
     } catch (trackingError) {
-      console.error('Error with email tracking:', trackingError)
+      console.error('Error with prospect_sequence_progress table:', trackingError)
       
       // Fallback: just log the tracking data
       console.log('📧 Email tracking data (fallback logging):', {
@@ -169,7 +246,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Email tracking logged successfully (fallback mode)',
-        data: { campaignId, contactId, sequenceId, status }
+        data: { campaignId, contactId, sequenceId, status },
+        note: 'Database table may need to be created'
       })
     }
 
