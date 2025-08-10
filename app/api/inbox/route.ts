@@ -13,11 +13,18 @@ export async function GET(request: Request) {
     const accountEmail = searchParams.get('account')
     const searchQuery = searchParams.get('search')
     const tab = searchParams.get('tab') || 'primary'
+    const campaignId = searchParams.get('campaign_id')
+    const folder = searchParams.get('folder')
+    const channel = searchParams.get('channel')
+    const startDate = searchParams.get('start_date')
 
-    // Build query
+    // Build query with campaign information
     let query = supabase
       .from('inbox_emails')
-      .select('*')
+      .select(`
+        *,
+        campaigns!inner(id, name, type, status)
+      `)
       .order('created_at', { ascending: false })
 
     // Apply filters
@@ -31,6 +38,24 @@ export async function GET(request: Request) {
 
     if (searchQuery) {
       query = query.or(`subject.ilike.%${searchQuery}%,sender.ilike.%${searchQuery}%,preview.ilike.%${searchQuery}%`)
+    }
+
+    if (campaignId) {
+      query = query.eq('campaign_id', campaignId)
+    }
+
+    if (folder) {
+      query = query.eq('folder', folder)
+    } else {
+      query = query.eq('folder', 'inbox') // Default to inbox folder
+    }
+
+    if (channel) {
+      query = query.eq('channel', channel)
+    }
+
+    if (startDate) {
+      query = query.gte('created_at', startDate)
     }
 
     if (tab === 'primary') {
@@ -48,50 +73,65 @@ export async function GET(request: Request) {
         const sampleEmails = [
         {
           id: 1,
-          sender: "customerservice@colesgroup.com.au",
-          subject: "Quiet customers? I've got something.",
-          preview: "Stop sending anti Ombudsman Brookes Mobile: 0410 151...",
+          sender: "john.doe@example.com",
+          subject: "Re: Your proposal looks interesting",
+          preview: "Thanks for reaching out. I would love to schedule a call...",
           date: new Date().toISOString(),
           is_read: false,
           has_attachment: false,
           is_important: false,
-          is_out_of_office: true,
-          status: "lead",
+          is_out_of_office: false,
+          status: "interested",
           is_primary: true,
           to_email: "contact@leadsupbase.com",
-          content: "Thank you for contacting us. This is a sample email content.",
-          created_at: new Date().toISOString()
+          content: "Hi there,\n\nThanks for reaching out with your proposal. It looks very interesting and I would love to learn more.\n\nCould we schedule a 15-minute call sometime this week?\n\nBest regards,\nJohn Doe",
+          created_at: new Date().toISOString(),
+          campaign_id: 1,
+          campaign_name: "Welcome Series",
+          sequence_step: 2,
+          folder: "inbox",
+          channel: "email"
         },
         {
           id: 2,
-          sender: "shannon.latty@carat.com",
-          subject: "Re: Automatic reply: Ads ON THE MOVE -",
-          preview: "Hi Shannon, Thank you for engaging with us in 2024. We hop...",
+          sender: "sarah.wilson@company.com",
+          subject: "Meeting scheduled for next week",
+          preview: "Perfect! I have added the meeting to my calendar...",
           date: new Date().toISOString(),
           is_read: true,
           has_attachment: false,
           is_important: false,
-          status_label: "Stratus x Uboard",
-          status: "interested",
+          status_label: "Follow-up Campaign",
+          status: "meeting-booked",
           is_primary: true,
           to_email: "contact@leadsupbase.com",
-          content: "Hi Shannon, Thank you for engaging with us in 2024. We hope to continue our partnership.",
-          created_at: new Date().toISOString()
+          content: "Perfect!\n\nI have added the meeting to my calendar for Tuesday at 2 PM. Looking forward to discussing how we can work together.\n\nBest,\nSarah Wilson",
+          created_at: new Date().toISOString(),
+          campaign_id: 2,
+          campaign_name: "Follow-up Campaign",
+          sequence_step: 3,
+          folder: "inbox",
+          channel: "email"
         },
         {
           id: 3,
-          sender: "genevieve.marshall@scbcity.n...",
-          subject: "RE: Ads ON THE MOVE - City of Canterbury Bankstown x Uboard",
-          preview: "Hi Genevieve, Thank you for engaging with us in 2024. We h...",
+          sender: "mike.brown@business.co",
+          subject: "Follow-up on our conversation", 
+          preview: "Hi, following up on our call yesterday. The pricing looks good...",
           date: new Date().toISOString(),
-          is_read: true,
+          is_read: false,
           has_attachment: false,
           is_important: true,
-          status: "meeting-booked",
+          status: "meeting-completed",
           is_primary: true,
-          to_email: "contact@leadsupdirect.co",
-          content: "Hi Genevieve, Thank you for engaging with us in 2024. We have scheduled a meeting to discuss further.",
-          created_at: new Date().toISOString()
+          to_email: "contact@leadsupbase.com",
+          content: "Hi,\n\nFollowing up on our call yesterday. The pricing looks good and the timeline works for us.\n\nLet me check with my team and I will get back to you by Friday.\n\nThanks!\nMike Brown",
+          created_at: new Date().toISOString(),
+          campaign_id: 1,
+          campaign_name: "Welcome Series",
+          sequence_step: 4,
+          folder: "inbox",
+          channel: "email"
         },
         {
           id: 4,

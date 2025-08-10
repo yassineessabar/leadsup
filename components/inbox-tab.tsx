@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Search, MoreHorizontal, Reply, Forward, Archive, Trash2, Star, ChevronDown, Zap, Mail, BookOpen, MoreVertical, Send, X } from 'lucide-react'
+import { Search, MoreHorizontal, Reply, Forward, Archive, Trash2, Star, ChevronDown, Zap, Mail, BookOpen, MoreVertical, Send, X, Filter, Calendar, Users, MessageSquare, AlertTriangle } from 'lucide-react'
 
 interface Email {
   id: number
@@ -31,6 +31,16 @@ interface Email {
   to_email?: string
   content?: string
   is_primary?: boolean
+  campaign_id?: number
+  campaign_name?: string
+  sequence_step?: number
+}
+
+interface Campaign {
+  id: number
+  name: string
+  type: string
+  status: string
 }
 
 const statusConfig = {
@@ -58,7 +68,7 @@ export default function InboxPage() {
   const [selectedEmails, setSelectedEmails] = useState<number[]>([])
   const [activeTab, setActiveTab] = useState("primary")
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedStatus, setSelectedStatus] = useState("lead")
+  const [selectedStatus, setSelectedStatus] = useState("")
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [replyDialog, setReplyDialog] = useState(false)
@@ -66,17 +76,52 @@ export default function InboxPage() {
   const [replyContent, setReplyContent] = useState("")
   const [forwardTo, setForwardTo] = useState("")
   const [forwardContent, setForwardContent] = useState("")
+  
+  // Campaign-related state
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null)
+  const [selectedFolder, setSelectedFolder] = useState("inbox")
+  const [dateRange, setDateRange] = useState("30")
+  const [channelFilter, setChannelFilter] = useState("")
+  
   const { toast } = useToast()
 
-  // Fetch emails from API
+  // Fetch campaigns from API
+  const fetchCampaigns = async () => {
+    try {
+      const response = await fetch('/api/campaigns', {
+        credentials: 'include'
+      })
+      const result = await response.json()
+      
+      if (result.success) {
+        setCampaigns(result.data)
+      }
+    } catch (error) {
+      console.error('Error fetching campaigns:', error)
+    }
+  }
+
+  // Fetch emails from API with campaign filtering
   const fetchEmails = async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
       if (selectedStatus) params.append('status', selectedStatus)
       if (selectedAccount) params.append('account', selectedAccount)
+      if (selectedCampaign) params.append('campaign_id', selectedCampaign)
       if (searchQuery) params.append('search', searchQuery)
+      if (selectedFolder !== 'inbox') params.append('folder', selectedFolder)
+      if (channelFilter) params.append('channel', channelFilter)
       params.append('tab', activeTab)
+      
+      // Date range filter
+      if (dateRange !== 'custom') {
+        const days = parseInt(dateRange)
+        const startDate = new Date()
+        startDate.setDate(startDate.getDate() - days)
+        params.append('start_date', startDate.toISOString())
+      }
 
       const response = await fetch(`/api/inbox?${params.toString()}`)
       const data = await response.json()
@@ -147,8 +192,12 @@ export default function InboxPage() {
   }
 
   useEffect(() => {
+    fetchCampaigns()
+  }, [])
+
+  useEffect(() => {
     fetchEmails()
-  }, [selectedStatus, selectedAccount, searchQuery, activeTab])
+  }, [selectedStatus, selectedAccount, selectedCampaign, searchQuery, activeTab, selectedFolder, channelFilter, dateRange])
 
   const handleEmailSelect = async (email: Email) => {
     setSelectedEmail(email)
@@ -323,87 +372,122 @@ export default function InboxPage() {
     <div className="h-screen bg-white flex">
       {/* Left Sidebar */}
       <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        {/* Status Section */}
-        <div className="p-4">
-          <div className="text-sm font-medium text-gray-700 mb-3">Status</div>
-          
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              placeholder="Search"
-              className="pl-10 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          
-          <div className="space-y-1 mb-4">
-            {Object.entries(statusConfig).map(([key, config]) => (
+        {/* Folders Section */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="text-sm font-medium text-gray-700 mb-3">Folders</div>
+          <div className="space-y-1">
+            {[
+              { name: 'Inbox', key: 'inbox', icon: Mail, count: 24 },
+              { name: 'Sent', key: 'sent', icon: Send, count: 12 },
+              { name: 'Drafts', key: 'drafts', icon: BookOpen, count: 3 },
+              { name: 'Scheduled', key: 'scheduled', icon: Calendar, count: 8 },
+              { name: 'Archived', key: 'archived', icon: Archive, count: 156 },
+              { name: 'Spam', key: 'spam', icon: AlertTriangle, count: 5 },
+              { name: 'Trash', key: 'trash', icon: Trash2, count: 0 }
+            ].map((folder, index) => (
               <button
-                key={key}
-                onClick={() => setSelectedStatus(key)}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  selectedStatus === key 
-                    ? `${config.bg} ${config.color} font-medium` 
-                    : 'text-gray-600 hover:bg-gray-50'
+                key={index}
+                onClick={() => setSelectedFolder(folder.key)}
+                className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left rounded-lg transition-colors ${
+                  selectedFolder === folder.key 
+                    ? 'bg-blue-50 text-blue-700 font-medium' 
+                    : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                <Zap className={`w-4 h-4 ${config.color}`} />
-                <span>{config.label}</span>
+                <div className="flex items-center space-x-3">
+                  <folder.icon className="w-4 h-4" />
+                  <span>{folder.name}</span>
+                </div>
+                {folder.count > 0 && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    selectedFolder === folder.key 
+                      ? 'bg-blue-100 text-blue-700' 
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {folder.count}
+                  </span>
+                )}
               </button>
             ))}
-            
-            <button 
-              onClick={() => setSelectedStatus('')}
-              className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-            >
-              <MoreVertical className="w-4 h-4 text-gray-400" />
-              <span>All Status</span>
-            </button>
-          </div>
-          
-          <Button 
-            variant="secondary" 
-            className="w-full justify-start bg-gray-100 text-gray-900 hover:bg-gray-200 mb-3"
-            onClick={() => {
-              setSelectedStatus('')
-              setSelectedAccount(null)
-            }}
-          >
-            All Campaigns
-          </Button>
-          
-          <div className="text-sm font-medium text-gray-700 mb-2">Uploads</div>
-          <div className="text-sm text-gray-600 mb-4 pl-2">
-            Loop D1 - retail & hospitality - sydney
           </div>
         </div>
 
-        {/* All Inboxes Section */}
-        <div className="px-4 pb-4">
-          <div className="text-sm font-medium text-gray-700 mb-3">All Inboxes</div>
+        {/* Filters Section */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="text-sm font-medium text-gray-700 mb-3">Filters</div>
           
-          <div className="relative mb-3">
+          {/* Campaign Filter */}
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-gray-700 mb-2">Campaign</label>
+            <select 
+              value={selectedCampaign || ''}
+              onChange={(e) => setSelectedCampaign(e.target.value || null)}
+              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Campaigns</option>
+              {campaigns.map(campaign => (
+                <option key={campaign.id} value={campaign.id.toString()}>
+                  {campaign.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-gray-700 mb-2">Lead Status</label>
+            <select 
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Statuses</option>
+              {Object.entries(statusConfig).map(([key, config]) => (
+                <option key={key} value={key}>{config.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date Range Filter */}
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-gray-700 mb-2">Date Range</label>
+            <select 
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="custom">Custom range</option>
+            </select>
+          </div>
+
+          {/* Channel Filter */}
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-gray-700 mb-2">Channel</label>
+            <select 
+              value={channelFilter}
+              onChange={(e) => setChannelFilter(e.target.value)}
+              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Channels</option>
+              <option value="email">Email</option>
+              <option value="sms">SMS</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Search Section */}
+        <div className="p-4">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search"
+              placeholder="Search messages..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500"
             />
-          </div>
-          
-          <div className="space-y-1">
-            {emailAccounts.map((account, index) => (
-              <div 
-                key={index} 
-                onClick={() => setSelectedAccount(account)}
-                className={`text-sm py-1 px-2 rounded cursor-pointer transition-colors ${
-                  selectedAccount === account 
-                    ? 'bg-blue-100 text-blue-700 font-medium' 
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {account}
-              </div>
-            ))}
           </div>
         </div>
 
@@ -520,9 +604,18 @@ export default function InboxPage() {
                         {email.subject}
                       </div>
                       
-                      {statusLabel && (
-                        <div className="text-xs text-gray-500 mb-1">
-                          {statusLabel}
+                      {(statusLabel || email.campaign_name) && (
+                        <div className="flex items-center space-x-2 mb-1">
+                          {email.campaign_name && (
+                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                              {email.campaign_name}
+                            </span>
+                          )}
+                          {statusLabel && (
+                            <span className="text-xs text-gray-500">
+                              {statusLabel}
+                            </span>
+                          )}
                         </div>
                       )}
                       
@@ -619,7 +712,20 @@ export default function InboxPage() {
               
               <div className="text-sm text-gray-600 mt-2">
                 <div>From: {selectedEmail.sender}</div>
-                <div>to: {selectedEmail.to_email || emailAccounts[0]}</div>
+                <div>To: {selectedEmail.to_email || emailAccounts[0]}</div>
+                {selectedEmail.campaign_name && (
+                  <div className="flex items-center space-x-2 mt-1">
+                    <span>Campaign:</span>
+                    <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                      {selectedEmail.campaign_name}
+                    </span>
+                    {selectedEmail.sequence_step && (
+                      <span className="text-xs text-gray-500">
+                        Step {selectedEmail.sequence_step}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

@@ -182,6 +182,9 @@ export async function POST(request: NextRequest) {
       // Don't fail campaign creation if schedule fails
     }
 
+    // Auto-attach default sender account if user has existing campaigns with senders
+    await attachDefaultSenderAccount(userId, campaign.id)
+
     // Return the created campaign with sequences and schedules
     const campaignWithData = {
       ...campaign,
@@ -194,6 +197,142 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("❌ Error creating campaign:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+  }
+}
+
+/**
+ * Auto-attach default sender account to new campaign
+ * Rules:
+ * - Only attach if user has existing campaigns with senders
+ * - Use most recently used/linked sender account
+ * - Create campaign_senders record linking sender to new campaign
+ */
+async function attachDefaultSenderAccount(userId: string, newCampaignId: string) {
+  try {
+    console.log(`🔗 Checking for default sender account for user ${userId}, campaign ${newCampaignId}`)
+
+    // Find the most recently used sender account from user's existing campaigns
+    // Check Gmail accounts first
+    const { data: recentGmailSender, error: gmailError } = await supabaseServer
+      .from("campaign_senders")
+      .select(`
+        id,
+        email,
+        name,
+        access_token,
+        refresh_token,
+        sender_type,
+        auth_type,
+        daily_limit,
+        updated_at,
+        created_at
+      `)
+      .eq("user_id", userId)
+      .eq("sender_type", "email")
+      .eq("is_active", true)
+      .neq("campaign_id", newCampaignId) // Don't include the new campaign
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .single()
+
+    // If no Gmail sender found, check Microsoft 365 accounts
+    let defaultSenderData = null
+    if (gmailError || !recentGmailSender) {
+      const { data: recentM365Sender } = await supabaseServer
+        .from("microsoft365_accounts")
+        .select("*")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .single()
+
+      if (recentM365Sender) {
+        defaultSenderData = {
+          user_id: userId,
+          campaign_id: newCampaignId,
+          email: recentM365Sender.email,
+          name: recentM365Sender.name,
+          access_token: recentM365Sender.access_token,
+          refresh_token: recentM365Sender.refresh_token,
+          sender_type: "email",
+          auth_type: "microsoft365",
+          daily_limit: 50, // Default daily limit
+          is_active: true,
+          is_selected: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      }
+    } else {
+      // Use the recent Gmail sender as template for new campaign
+      defaultSenderData = {
+        user_id: userId,
+        campaign_id: newCampaignId,
+        email: recentGmailSender.email,
+        name: recentGmailSender.name,
+        access_token: recentGmailSender.access_token,
+        refresh_token: recentGmailSender.refresh_token,
+        sender_type: recentGmailSender.sender_type,
+        auth_type: recentGmailSender.auth_type,
+        daily_limit: recentGmailSender.daily_limit || 50,
+        is_active: true,
+        is_selected: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    }
+
+    // If no SMTP accounts found, check SMTP accounts
+    if (!defaultSenderData) {
+      const { data: recentSmtpSender } = await supabaseServer
+        .from("smtp_accounts")
+        .select("*")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .single()
+
+      if (recentSmtpSender) {
+        defaultSenderData = {
+          user_id: userId,
+          campaign_id: newCampaignId,
+          email: recentSmtpSender.email,
+          name: recentSmtpSender.name,
+          smtp_host: recentSmtpSender.smtp_host,
+          smtp_port: recentSmtpSender.smtp_port,
+          smtp_secure: recentSmtpSender.smtp_secure,
+          smtp_user: recentSmtpSender.smtp_user,
+          smtp_password: recentSmtpSender.smtp_password,
+          sender_type: "email",
+          auth_type: "smtp",
+          daily_limit: 50,
+          is_active: true,
+          is_selected: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      }
+    }
+
+    if (defaultSenderData) {
+      // Insert the default sender account for the new campaign
+      const { error: insertError } = await supabaseServer
+        .from("campaign_senders")
+        .insert(defaultSenderData)
+
+      if (insertError) {
+        console.error("❌ Error attaching default sender account:", insertError)
+        // Don't fail campaign creation if sender attachment fails
+      } else {
+        console.log(`✅ Successfully attached default sender account ${defaultSenderData.email} to campaign ${newCampaignId}`)
+      }
+    } else {
+      console.log(`ℹ️ No existing sender accounts found for user ${userId} - skipping default sender attachment`)
+    }
+
+  } catch (error) {
+    console.error("❌ Error in attachDefaultSenderAccount:", error)
+    // Don't fail campaign creation if sender attachment fails
   }
 }
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Search, Plus, MoreHorizontal, Play, Mail, MessageSquare, Users, MousePointer, UserPlus, Trash2, Eye, UserCheck, Send, Reply, TrendingUp, TrendingDown, UserX, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,6 +29,7 @@ interface CampaignsListProps {
 }
 
 export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
+  const searchParams = useSearchParams()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createStep, setCreateStep] = useState(1) // 1: Name, 2: Type & Trigger
   const [newCampaignName, setNewCampaignName] = useState("My Campaign")
@@ -89,6 +91,20 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   useEffect(() => {
     fetchCampaigns()
   }, [])
+
+  // Check for campaign ID and subtab in URL params to auto-open campaign dashboard
+  useEffect(() => {
+    const campaignId = searchParams.get('campaignId')
+    const subtab = searchParams.get('subtab')
+    
+    if (campaignId && campaigns.length > 0) {
+      const campaign = campaigns.find(c => c.id.toString() === campaignId)
+      if (campaign) {
+        setSelectedCampaign(campaign)
+        setCurrentView("dashboard")
+      }
+    }
+  }, [searchParams, campaigns])
 
   // Listen for create campaign event from sidebar
   useEffect(() => {
@@ -508,8 +524,11 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   })
 
   if (currentView === "dashboard" && selectedCampaign) {
-    // Always start on contacts tab when clicking on a campaign
-    const initialTab = "contacts"
+    // Check URL params for specific tab, otherwise default to contacts
+    const subtab = searchParams.get('subtab')
+    const initialTab = subtab && ['contacts', 'sequence', 'sender', 'inbox', 'settings'].includes(subtab) 
+      ? subtab 
+      : "contacts"
     
     return (
       <CampaignDashboard 

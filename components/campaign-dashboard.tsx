@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
-import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart, ExternalLink } from "lucide-react"
+import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart, ExternalLink, Inbox, Archive, Reply, Forward } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -235,6 +235,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [locationFilter, setLocationFilter] = useState("")
   const [keywordFilter, setKeywordFilter] = useState("")
   const [industryFilter, setIndustryFilter] = useState("")
+
 
   const pageSize = 20
 
@@ -2008,6 +2009,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     })
   }
 
+
   // Load connected accounts on mount and check API status
   useEffect(() => {
     loadConnectedAccounts()
@@ -2032,6 +2034,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }, 500)
     return () => clearTimeout(timer)
   }, [searchQuery])
+
 
   // Combine all connected accounts for sender tab
   const allConnectedAccounts = [
@@ -4166,6 +4169,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
           </div>
         );
+
 
       default:
         return null;
