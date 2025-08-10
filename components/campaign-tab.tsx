@@ -523,15 +523,49 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           setCampaigns(campaigns.filter(campaign => campaign.id !== campaignId))
           setCurrentView("list")
         }}
-        onStatusUpdate={(campaignId, newStatus) => {
-          // Update the campaign status in local state
-          setCampaigns(campaigns.map(campaign => 
-            campaign.id === campaignId 
-              ? { ...campaign, status: newStatus }
-              : campaign
-          ))
-          // Also update the selected campaign
-          setSelectedCampaign(prev => prev ? { ...prev, status: newStatus } : prev)
+        onStatusUpdate={async (campaignId, newStatus) => {
+          try {
+            // Make API call to update status in database
+            const response = await fetch(`/api/campaigns/${campaignId}/status`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ status: newStatus })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+              // Update the campaign status in local state only after successful API call
+              setCampaigns(campaigns.map(campaign => 
+                campaign.id === campaignId 
+                  ? { ...campaign, status: newStatus }
+                  : campaign
+              ))
+              // Also update the selected campaign
+              setSelectedCampaign(prev => prev ? { ...prev, status: newStatus } : prev)
+              
+              toast({
+                title: "Campaign Updated",
+                description: `Campaign status changed to ${newStatus}`,
+                variant: "default"
+              })
+            } else {
+              toast({
+                title: "Update Failed",
+                description: result.error || "Failed to update campaign status",
+                variant: "destructive"
+              })
+            }
+          } catch (error) {
+            console.error('Error updating campaign status:', error);
+            toast({
+              title: "Update Failed",
+              description: "Network error occurred while updating campaign",
+              variant: "destructive"
+            })
+          }
         }}
         onNameUpdate={(campaignId, newName) => {
           // Update the campaign name in local state
