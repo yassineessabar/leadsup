@@ -231,7 +231,9 @@ export default function HelpPage() {
                     <Link
                       key={index}
                       href={article.href}
-                      className="duration-250 group/article flex flex-row justify-between gap-2 py-2 no-underline transition ease-linear sm:rounded-lg sm:py-3 rounded-lg px-3" onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(87, 140, 255, 0.05)'; e.currentTarget.style.color = 'rgb(87, 140, 255)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'inherit'; }}"
+                      className="duration-250 group/article flex flex-row justify-between gap-2 py-2 no-underline transition ease-linear sm:rounded-lg sm:py-3 rounded-lg px-3"
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(87, 140, 255, 0.05)'; e.currentTarget.style.color = 'rgb(87, 140, 255)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'inherit'; }}
                     >
                       <div className="flex flex-col p-0">
                         <span className="m-0 text-md text-gray-900 font-regular">

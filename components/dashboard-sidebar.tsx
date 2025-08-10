@@ -127,7 +127,7 @@ export function DashboardSidebar({
   ]
 
   const toolsMenuItems = [
-    // Removed integrations tab
+    { id: "integrations", label: "Integrations", icon: Plug }
   ]
 
   // Removed settings menu item - now accessed via company button

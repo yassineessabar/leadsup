@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
-import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart, ExternalLink, Inbox, Archive, Reply, Forward } from "lucide-react"
+import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart, ExternalLink, Inbox, Archive, Reply, Forward, Rocket } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -47,6 +47,19 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [scrappingIndustry, setScrappingIndustry] = useState("")
   const [scrappingKeyword, setScrappingKeyword] = useState("")
   const [scrappingLocation, setScrappingLocation] = useState("")
+  
+  // Delete confirmation state
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean
+    type: 'sequence' | 'step'
+    item: { id: number; name?: string } | null
+    onConfirm: (() => void) | null
+  }>({
+    isOpen: false,
+    type: 'sequence',
+    item: null,
+    onConfirm: null
+  })
   
   // Sequences state - Preset 6-email structure
   const [steps, setSteps] = useState(() => [
@@ -335,6 +348,21 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   const deleteStep = (stepId: number) => {
+    const stepToDelete = steps.find(step => step.id === stepId)
+    if (!stepToDelete) return
+    
+    setDeleteConfirm({
+      isOpen: true,
+      type: 'step',
+      item: { 
+        id: stepId, 
+        name: stepToDelete.subject || `Step ${stepToDelete.sequence}-${stepToDelete.sequenceStep}`
+      },
+      onConfirm: () => confirmDeleteStep(stepId)
+    })
+  }
+  
+  const confirmDeleteStep = (stepId: number) => {
     if (steps.length > 1) {
       const newSteps = steps.filter((step) => step.id !== stepId)
       setSteps(newSteps)
@@ -342,9 +370,25 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         setActiveStepId(newSteps[0]?.id || 1)
       }
     }
+    setDeleteConfirm({ isOpen: false, type: 'step', item: null, onConfirm: null })
   }
 
   const deleteSequence = (sequenceNumber: number) => {
+    const sequenceSteps = steps.filter(step => step.sequence === sequenceNumber)
+    if (sequenceSteps.length === 0) return
+    
+    setDeleteConfirm({
+      isOpen: true,
+      type: 'sequence',
+      item: { 
+        id: sequenceNumber, 
+        name: `Sequence ${sequenceNumber} (${sequenceSteps.length} email${sequenceSteps.length > 1 ? 's' : ''})`
+      },
+      onConfirm: () => confirmDeleteSequence(sequenceNumber)
+    })
+  }
+  
+  const confirmDeleteSequence = (sequenceNumber: number) => {
     const sequenceSteps = steps.filter(step => step.sequence === sequenceNumber)
     if (sequenceSteps.length > 0) {
       // Remove all steps in this sequence
@@ -358,6 +402,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         }
       }
     }
+    setDeleteConfirm({ isOpen: false, type: 'sequence', item: null, onConfirm: null })
   }
 
   const updateGap = (newGap: number) => {
@@ -2938,69 +2983,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </div>
             </div>
 
-            {/* Scrapping Configuration */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Contact Scrapping</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
-                  <Input
-                    placeholder="e.g., Technology, Healthcare"
-                    value={scrappingIndustry}
-                    onChange={(e) => setScrappingIndustry(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Keyword</label>
-                  <Input
-                    placeholder="e.g., CEO, Marketing Manager"
-                    value={scrappingKeyword}
-                    onChange={(e) => setScrappingKeyword(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                  <Input
-                    placeholder="e.g., New York, California"
-                    value={scrappingLocation}
-                    onChange={(e) => setScrappingLocation(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Daily Limit</label>
-                  <Input
-                    type="number"
-                    value={scrappingDailyLimit}
-                    onChange={(e) => setScrappingDailyLimit(parseInt(e.target.value) || 100)}
-                    min="1"
-                    max="1000"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-center">
-                {isScrappingActive ? (
-                  <Button 
-                    onClick={handleStopScrapping} 
-                    variant="outline"
-                    className="text-red-600 hover:text-red-700 border-red-300"
-                    size="lg"
-                  >
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-red-600 border-t-transparent mr-2"></div>
-                    Stop Scrapping
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={handleStartScrapping} 
-                    className="bg-green-600 hover:bg-green-700"
-                    size="lg"
-                  >
-                    <Target className="w-5 h-5 mr-2" />
-                    Start Scrapping
-                  </Button>
-                )}
-              </div>
-            </div>
-
             {/* Search and Filters */}
             <div className="bg-white rounded-lg border border-gray-200 mb-6">
               <div className="p-4 border-b border-gray-200">
@@ -3212,6 +3194,69 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Scrapping Configuration */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Contact Scrapping</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
+                  <Input
+                    placeholder="e.g., Technology, Healthcare"
+                    value={scrappingIndustry}
+                    onChange={(e) => setScrappingIndustry(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Keyword</label>
+                  <Input
+                    placeholder="e.g., CEO, Marketing Manager"
+                    value={scrappingKeyword}
+                    onChange={(e) => setScrappingKeyword(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                  <Input
+                    placeholder="e.g., New York, California"
+                    value={scrappingLocation}
+                    onChange={(e) => setScrappingLocation(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Daily Limit</label>
+                  <Input
+                    type="number"
+                    value={scrappingDailyLimit}
+                    onChange={(e) => setScrappingDailyLimit(parseInt(e.target.value) || 100)}
+                    min="1"
+                    max="1000"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-center">
+                {isScrappingActive ? (
+                  <Button 
+                    onClick={handleStopScrapping} 
+                    variant="outline"
+                    className="text-red-600 hover:text-red-700 border-red-300"
+                    size="lg"
+                  >
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-red-600 border-t-transparent mr-2"></div>
+                    Stop Scrapping
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={handleStartScrapping} 
+                    className="bg-green-600 hover:bg-green-700"
+                    size="lg"
+                  >
+                    <Target className="w-5 h-5 mr-2" />
+                    Start Scrapping
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Import Modal */}
@@ -4244,12 +4289,22 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   return (
-    <main style={{
-      paddingLeft: '64px',
-      paddingRight: '64px',
-      paddingTop: '32px',
-      backgroundColor: '#FAFBFC',
-      fontFamily: 'Jost, sans-serif',
+    <>
+      <style jsx>{`
+        @keyframes vibrate {
+          0% { transform: translateX(0); }
+          25% { transform: translateX(-1px); }
+          50% { transform: translateX(1px); }
+          75% { transform: translateX(-1px); }
+          100% { transform: translateX(0); }
+        }
+      `}</style>
+      <main style={{
+        paddingLeft: '64px',
+        paddingRight: '64px',
+        paddingTop: '32px',
+        backgroundColor: '#FAFBFC',
+        fontFamily: 'Jost, sans-serif',
       minHeight: '100vh'
     }}>
       {/* Campaign Header */}
@@ -4342,10 +4397,19 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 variant={campaign.status === 'Draft' ? 'default' : 'outline'}
                 size="sm"
                 onClick={handleLaunchPauseCampaign}
-                className={campaign.status === 'Draft' ? '' : campaign.status === 'Active' ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'}
+                className={campaign.status === 'Draft' 
+                  ? 'animate-pulse bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg transform hover:scale-105 transition-all duration-200' 
+                  : campaign.status === 'Active' 
+                    ? 'text-yellow-600 hover:text-yellow-700' 
+                    : 'text-green-600 hover:text-green-700'
+                }
+                style={campaign.status === 'Draft' ? {
+                  background: 'linear-gradient(135deg, rgb(87, 140, 255) 0%, rgb(67, 120, 235) 100%)',
+                  animation: 'vibrate 0.5s ease-in-out infinite alternate'
+                } : undefined}
               >
                 {campaign.status === 'Draft' ? (
-                  <><Play className="w-4 h-4 mr-1" /> Launch</>
+                  <><Rocket className="w-4 h-4 mr-1" /> Launch</>
                 ) : campaign.status === 'Active' ? (
                   <><Pause className="w-4 h-4 mr-1" /> Pause</>
                 ) : (
@@ -4980,6 +5044,49 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && setDeleteConfirm({ isOpen: false, type: 'sequence', item: null, onConfirm: null })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              {deleteConfirm.type === 'sequence' ? 'Delete Sequence' : 'Delete Email'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-700 mb-4">
+              Are you sure you want to delete <span className="font-semibold">{deleteConfirm.item?.name}</span>?
+            </p>
+            {deleteConfirm.type === 'sequence' && (
+              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+                This will permanently delete the entire sequence and all its emails. This action cannot be undone.
+              </p>
+            )}
+            {deleteConfirm.type === 'step' && (
+              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+                This will permanently delete this email from the sequence. This action cannot be undone.
+              </p>
+            )}
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm({ isOpen: false, type: 'sequence', item: null, onConfirm: null })}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteConfirm.onConfirm?.()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete {deleteConfirm.type === 'sequence' ? 'Sequence' : 'Email'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
+    </>
   )
 }

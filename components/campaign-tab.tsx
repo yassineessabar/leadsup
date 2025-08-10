@@ -16,7 +16,7 @@ import AddCampaignPopup from "./add-campaign-popup"
 interface Campaign {
   id: string | number
   name: string
-  type: "Email" | "SMS"
+  type: "Email"
   trigger: "New Client"
   status: "Draft" | "Active" | "Paused" | "Completed"
   sent: number | null
@@ -33,7 +33,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createStep, setCreateStep] = useState(1) // 1: Name, 2: Type & Trigger
   const [newCampaignName, setNewCampaignName] = useState("My Campaign")
-  const [newCampaignType, setNewCampaignType] = useState<"Email" | "SMS">("Email")
+  const [newCampaignType, setNewCampaignType] = useState<"Email">("Email")
   const [newCampaignTrigger, setNewCampaignTrigger] = useState("New Client")
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -608,16 +608,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Campaigns</h1>
-            {activeSubTab && activeSubTab !== "campaigns" && (
-              <div className="flex items-center space-x-2">
-                <span className="text-gray-400">•</span>
-                <span className="text-lg text-gray-600">
-                  {activeSubTab === "campaigns-email" && "Email Only"}
-                  {activeSubTab === "campaigns-linkedin" && "LinkedIn Only"}  
-                  {activeSubTab === "campaigns-multi-channel" && "Multi-Channel"}
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Controls */}
@@ -661,7 +651,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                 <SelectContent>
                   <SelectItem value="all">All types</SelectItem>
                   <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="sms">SMS</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={setSortBy}>
@@ -1083,9 +1072,9 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     <label className="block text-sm font-medium text-gray-700">Campaign Type</label>
                     <RadioGroup
                       value={newCampaignType}
-                      onValueChange={(value) => setNewCampaignType(value as "Email" | "SMS")}
+                      onValueChange={(value) => setNewCampaignType(value as "Email")}
                     >
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50">
                           <RadioGroupItem value="Email" id="email" />
                           <Label htmlFor="email" className="flex items-center space-x-3 cursor-pointer">
@@ -1093,16 +1082,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                             <div>
                               <div className="font-medium">Email Campaign</div>
                               <div className="text-sm text-gray-500">Send email sequences</div>
-                            </div>
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50">
-                          <RadioGroupItem value="SMS" id="sms" />
-                          <Label htmlFor="sms" className="flex items-center space-x-3 cursor-pointer">
-                            <MessageSquare className="w-5 h-5 text-green-600" />
-                            <div>
-                              <div className="font-medium">SMS Campaign</div>
-                              <div className="text-sm text-gray-500">Send text messages</div>
                             </div>
                           </Label>
                         </div>
