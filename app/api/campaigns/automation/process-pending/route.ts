@@ -215,9 +215,16 @@ export async function GET(request: NextRequest) {
         // Calculate local time for contact
         const contactLocalHour = (currentUTCHour + timezoneOffset + 24) % 24
         
+        console.log(`🕐 Timezone debug for ${contact.email_address}: UTC=${currentUTCHour}, offset=${timezoneOffset}, local=${contactLocalHour}:${currentMinute}`)
+        
         // Parse sending hours from settings (handle 12-hour format)
         function parseTimeToHour(timeStr) {
           if (!timeStr) return null;
+          
+          // Handle "12:00 AM" specifically
+          if (timeStr.toLowerCase().trim() === '12:00 am') {
+            return 0;
+          }
           
           const timeParts = timeStr.toLowerCase().match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/);
           if (!timeParts) return null;
@@ -234,17 +241,31 @@ export async function GET(request: NextRequest) {
           return hour;
         }
         
-        const startHour = parseTimeToHour(settings.sending_start_time) || 9;
-        const endHour = parseTimeToHour(settings.sending_end_time) || 17;
+        const startHour = parseTimeToHour(settings.sending_start_time) ?? 9;
+        const endHour = parseTimeToHour(settings.sending_end_time) ?? 17;
         
-        // Check if it's within sending hours for this contact's timezone
-        // For 11:59 PM, endHour should be 24 (next day) to include 23:xx
-        const effectiveEndHour = endHour === 23 && settings.sending_end_time?.includes('11:59') ? 24 : endHour
-        const isWithinSendingHours = contactLocalHour >= startHour && contactLocalHour < effectiveEndHour
+        console.log(`🕒 Sending hours debug: start="${settings.sending_start_time}" -> ${startHour}, end="${settings.sending_end_time}" -> ${endHour}`)
         
-        if (!isWithinSendingHours) {
-          console.log(`⏰ Skipping contact ${contact.email_address} - Local time ${contactLocalHour}:00 not within ${startHour}:00-${effectiveEndHour}:00`)
-          continue
+        // Handle 24-hour sending window: 12:00 AM to 12:00 AM means all day
+        let isWithinSendingHours = false;
+        
+        if (startHour === 0 && endHour === 0) {
+          // 12:00 AM to 12:00 AM = send all day (24 hours)
+          isWithinSendingHours = true;
+          console.log(`✅ Contact ${contact.email_address} - 24-hour sending window (always allowed)`)
+        } else if (startHour === endHour) {
+          // Same start/end hour = no sending window
+          isWithinSendingHours = false;
+          console.log(`❌ Contact ${contact.email_address} - Invalid sending window: ${startHour}:00 to ${endHour}:00`)
+        } else {
+          // Normal time window
+          const effectiveEndHour = endHour === 23 && settings.sending_end_time?.includes('11:59') ? 24 : endHour
+          isWithinSendingHours = contactLocalHour >= startHour && contactLocalHour < effectiveEndHour
+          
+          if (!isWithinSendingHours) {
+            console.log(`⏰ Skipping contact ${contact.email_address} - Local time ${contactLocalHour}:00 not within ${startHour}:00-${effectiveEndHour}:00`)
+            continue
+          }
         }
         
         // Check prospect sequence progress to determine next step
