@@ -1,0 +1,728 @@
+{
+  "name": "Multi-Sender Email Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leadsup-webhook",
+        "options": {
+          "noResponseBody": false
+        }
+      },
+      "id": "429f544e-3b8d-4e8b-b3b7-5591f0092347",
+      "name": "Webhook Start",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -1632,
+        96
+      ],
+      "webhookId": "6a198051-0fc6-402e-a9a1-6f3c326dd1b9"
+    },
+    {
+      "parameters": {
+        "url": "https://app.leadsup.io/api/campaigns/automation/process-pending",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "867f7689-e8a0-4fab-8a02-ec395d5573d2",
+      "name": "Get Pending Emails",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1408,
+        96
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "L9UUJ3ZXyeG75s0W",
+          "name": "Unnamed credential 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform the API response to extract individual contacts\nconst response = $input.first().json;\nconsole.log('📧 Raw API Response:', JSON.stringify(response, null, 2));\n\nif (!response.success || !response.data || !Array.isArray(response.data) || response.data.length === 0) {\n  console.log('❌ No campaign data found');\n  return [];\n}\n\nconst campaignData = response.data[0]; // Get first campaign\nconst contacts = campaignData.contacts || [];\n\nif (contacts.length === 0) {\n  console.log('❌ No contacts found in campaign');\n  return [];\n}\n\n// Transform each contact into email format for n8n\nconst emailsToSend = contacts.map(contact => {\n  const sequence = contact.nextSequence;\n  const sender = contact.sender;\n  \n  // Replace template variables in subject and content\n  let subject = sequence.subject\n    .replace(/{{firstName}}/g, contact.firstName)\n    .replace(/{{lastName}}/g, contact.lastName)\n    .replace(/{{company}}/g, contact.company)\n    .replace(/{{title}}/g, contact.title)\n    .replace(/{{senderName}}/g, sender.name);\n    \n  let content = sequence.content\n    .replace(/{{firstName}}/g, contact.firstName)\n    .replace(/{{lastName}}/g, contact.lastName)\n    .replace(/{{company}}/g, contact.company)\n    .replace(/{{title}}/g, contact.title)\n    .replace(/{{senderName}}/g, sender.name);\n\n  return {\n    // Email details\n    email: contact.email,\n    subject: subject,\n    body: content.replace(/\\n/g, '<br>'), // Convert newlines to HTML\n    \n    // Sender details\n    sender_email: sender.email,\n    sender_name: sender.name,\n    \n    // Tracking IDs\n    campaign_id: campaignData.id,\n    contact_id: contact.id,\n    sequence_id: sequence.id,\n    \n    // Additional data\n    firstName: contact.firstName,\n    lastName: contact.lastName,\n    company: contact.company,\n    title: contact.title,\n    scheduledFor: contact.scheduledFor\n  };\n});\n\nconsole.log(`✅ Prepared ${emailsToSend.length} emails to send`);\nconsole.log('📧 Sender distribution:', emailsToSend.reduce((acc, email) => {\n  acc[email.sender_email] = (acc[email.sender_email] || 0) + 1;\n  return acc;\n}, {}));\n\nreturn emailsToSend;"
+      },
+      "id": "3fb913e9-5dd7-4c96-bb9e-bd379dca9d68",
+      "name": "Transform Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-emails",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8bedce30-b56f-48f3-8853-da18e47bd6aa",
+      "name": "Check Has Emails",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "sender1",
+              "leftValue": "={{ $json.sender_email }}",
+              "rightValue": "essabar.yassine@gmail.com",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "sender2", 
+              "leftValue": "={{ $json.sender_email }}",
+              "rightValue": "anthoy2327@gmail.com",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "sender3",
+              "leftValue": "={{ $json.sender_email }}",
+              "rightValue": "ecomm2405@gmail.com", 
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sender-switch-node",
+      "name": "Route by Sender",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -752,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "replyTo": "={{ $json.sender_email }}"
+        }
+      },
+      "id": "gmail-sender-1",
+      "name": "Gmail Sender 1 (essabar.yassine)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -528,
+        -80
+      ],
+      "webhookId": "gmail-1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IOTDtRgindkH9yFZ",
+          "name": "Gmail essabar.yassine"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "replyTo": "={{ $json.sender_email }}"
+        }
+      },
+      "id": "gmail-sender-2", 
+      "name": "Gmail Sender 2 (anthoy2327)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -528,
+        96
+      ],
+      "webhookId": "gmail-2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NEED-TO-CREATE-2",
+          "name": "Gmail anthoy2327"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "replyTo": "={{ $json.sender_email }}"
+        }
+      },
+      "id": "gmail-sender-3",
+      "name": "Gmail Sender 3 (ecomm2405)",
+      "type": "n8n-nodes-base.gmail", 
+      "typeVersion": 2.1,
+      "position": [
+        -528,
+        272
+      ],
+      "webhookId": "gmail-3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NEED-TO-CREATE-3", 
+          "name": "Gmail ecomm2405"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "email-success",
+              "leftValue": "={{ $json.id ? true : false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-gmail-success-1",
+      "name": "Check Gmail Success 1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "email-success",
+              "leftValue": "={{ $json.id ? true : false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-gmail-success-2",
+      "name": "Check Gmail Success 2", 
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "email-success",
+              "leftValue": "={{ $json.id ? true : false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-gmail-success-3",
+      "name": "Check Gmail Success 3",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.leadsup.io/api/campaigns/tracking/sent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=campaign_id",
+              "value": "={{ $('Transform Data').item.json.campaign_id }}"
+            },
+            {
+              "name": "=contact_id",
+              "value": "={{ $('Transform Data').item.json.contact_id }}"
+            },
+            {
+              "name": "=sequence_id",
+              "value": "={{ $('Transform Data').item.json.sequence_id }}"
+            },
+            {
+              "name": "message_id",
+              "value": "={{ $('Gmail Sender 1 (essabar.yassine)').item.json.id || $('Gmail Sender 2 (anthoy2327)').item.json.id || $('Gmail Sender 3 (ecomm2405)').item.json.id }}"
+            },
+            {
+              "name": "status",
+              "value": "sent"
+            },
+            {
+              "name": "sent_at",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "sender_type",
+              "value": "gmail"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "track-success-unified",
+      "name": "Track Email Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        96
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "L9UUJ3ZXyeG75s0W",
+          "name": "Unnamed credential 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.leadsup.io/api/campaigns/tracking/sent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "campaign_id",
+              "value": "={{ $('Transform Data').item.json.campaign_id }}"
+            },
+            {
+              "name": "contact_id",
+              "value": "={{ $('Transform Data').item.json.contact_id }}"
+            },
+            {
+              "name": "sequence_id",
+              "value": "={{ $('Transform Data').item.json.sequence_id }}"
+            },
+            {
+              "name": "status",
+              "value": "failed"
+            },
+            {
+              "name": "error_message", 
+              "value": "={{ $json.error ? JSON.stringify($json.error) : 'Email sending failed' }}"
+            },
+            {
+              "name": "sent_at",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "sender_type",
+              "value": "gmail"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "track-failure-unified",
+      "name": "Track Email Failure",
+      "type": "n8n-nodes-base.httpRequest", 
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        240
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "L9UUJ3ZXyeG75s0W",
+          "name": "Unnamed credential 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log successful email with sender info\nconst emailData = $('Transform Data').item.json;\nconst gmailResponse = $json;\n\nconsole.log('✅ SUCCESS:', {\n  to: emailData.email,\n  subject: emailData.subject,\n  sender: emailData.sender_email,\n  messageId: gmailResponse.id,\n  campaign_id: emailData.campaign_id\n});\n\nreturn [{ success: true, email: emailData.email, sender: emailData.sender_email, messageId: gmailResponse.id }];"
+      },
+      "id": "log-success-unified",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log failed email with sender info\nconst emailData = $('Transform Data').item.json;\nconst errorData = $json;\n\nconsole.log('❌ FAILURE:', {\n  to: emailData.email,\n  subject: emailData.subject,\n  sender: emailData.sender_email,\n  error: errorData,\n  campaign_id: emailData.campaign_id\n});\n\nreturn [{\n  json: { success: false, email: emailData.email, sender: emailData.sender_email, error: errorData }\n}];"
+      },
+      "id": "log-failure-unified",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log('ℹ️ No emails found to send');\nreturn [{ message: 'No emails found' }];"
+      },
+      "id": "221a170d-a1f1-4757-8249-9fd210dbac6e",
+      "name": "Log No Emails",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "91a60c5b-1595-43ad-8420-46b31cfc90a4",
+      "name": "Rate Limit",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -752,
+        112
+      ],
+      "webhookId": "e1d7b975-2c89-44b2-a417-b1b80e6dc950"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Start": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Emails": {
+      "main": [
+        [
+          {
+            "node": "Transform Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Data": {
+      "main": [
+        [
+          {
+            "node": "Check Has Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Has Emails": {
+      "main": [
+        [
+          {
+            "node": "Route by Sender",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log No Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Sender": {
+      "main": [
+        [
+          {
+            "node": "Gmail Sender 1 (essabar.yassine)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail Sender 2 (anthoy2327)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail Sender 3 (ecomm2405)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Sender 1 (essabar.yassine)": {
+      "main": [
+        [
+          {
+            "node": "Check Gmail Success 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Sender 2 (anthoy2327)": {
+      "main": [
+        [
+          {
+            "node": "Check Gmail Success 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Sender 3 (ecomm2405)": {
+      "main": [
+        [
+          {
+            "node": "Check Gmail Success 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Gmail Success 1": {
+      "main": [
+        [
+          {
+            "node": "Track Email Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Track Email Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Gmail Success 2": {
+      "main": [
+        [
+          {
+            "node": "Track Email Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Track Email Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Gmail Success 3": {
+      "main": [
+        [
+          {
+            "node": "Track Email Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Track Email Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Track Email Success": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Track Email Failure": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "multi-sender-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "065faa0a6780ab7c9ceb75177e404297e46f853c365658e4c18940d6cc0c298c"
+  },
+  "tags": [
+    {
+      "createdAt": "2025-08-10T00:00:00.000Z",
+      "updatedAt": "2025-08-10T00:00:00.000Z",
+      "id": "multi-sender-tag",
+      "name": "Multi-Sender Email"
+    }
+  ]
+}

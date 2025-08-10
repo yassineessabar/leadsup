@@ -1,0 +1,622 @@
+{
+  "name": "Dynamic Multi-Sender Email Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leadsup-webhook",
+        "options": {
+          "noResponseBody": false
+        }
+      },
+      "id": "webhook-start",
+      "name": "Webhook Start",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -1632,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://app.leadsup.io/api/campaigns/automation/process-pending",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "get-pending-emails",
+      "name": "Get Pending Emails",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1408,
+        96
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "L9UUJ3ZXyeG75s0W",
+          "name": "Unnamed credential 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform the API response to extract individual contacts\nconst response = $input.first().json;\nconsole.log('📧 Raw API Response:', JSON.stringify(response, null, 2));\n\nif (!response.success || !response.data || !Array.isArray(response.data) || response.data.length === 0) {\n  console.log('❌ No campaign data found');\n  return [];\n}\n\nconst campaignData = response.data[0]; // Get first campaign\nconst contacts = campaignData.contacts || [];\n\nif (contacts.length === 0) {\n  console.log('❌ No contacts found in campaign');\n  return [];\n}\n\n// Transform each contact into email format for n8n\nconst emailsToSend = contacts.map(contact => {\n  const sequence = contact.nextSequence;\n  const sender = contact.sender;\n  \n  // Replace template variables in subject and content\n  let subject = sequence.subject\n    .replace(/{{firstName}}/g, contact.firstName)\n    .replace(/{{lastName}}/g, contact.lastName)\n    .replace(/{{company}}/g, contact.company)\n    .replace(/{{title}}/g, contact.title)\n    .replace(/{{senderName}}/g, sender.name);\n    \n  let content = sequence.content\n    .replace(/{{firstName}}/g, contact.firstName)\n    .replace(/{{lastName}}/g, contact.lastName)\n    .replace(/{{company}}/g, contact.company)\n    .replace(/{{title}}/g, contact.title)\n    .replace(/{{senderName}}/g, sender.name);\n\n  return {\n    // Email details\n    email: contact.email,\n    subject: subject,\n    body: content.replace(/\\n/g, '<br>'),\n    \n    // Sender details\n    sender_email: sender.email,\n    sender_name: sender.name,\n    \n    // Tracking IDs\n    campaign_id: campaignData.id,\n    contact_id: contact.id,\n    sequence_id: sequence.id,\n    \n    // Additional data\n    firstName: contact.firstName,\n    lastName: contact.lastName,\n    company: contact.company,\n    title: contact.title,\n    scheduledFor: contact.scheduledFor\n  };\n});\n\nconsole.log(`✅ Prepared ${emailsToSend.length} emails to send`);\nconsole.log('📧 Sender distribution:', emailsToSend.reduce((acc, email) => {\n  acc[email.sender_email] = (acc[email.sender_email] || 0) + 1;\n  return acc;\n}, {}));\n\nreturn emailsToSend;"
+      },
+      "id": "transform-data",
+      "name": "Transform Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-emails",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-has-emails",
+      "name": "Check Has Emails",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://app.leadsup.io/api/campaigns/senders/credentials",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "sender_email",
+              "value": "={{ $json.sender_email }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "get-sender-credential",
+      "name": "Get Sender Credential",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -752,
+        96
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "L9UUJ3ZXyeG75s0W",
+          "name": "Unnamed credential 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge original email data with credential info\nconst emailData = $('Transform Data').item.json;\nconst credentialResponse = $input.first().json;\n\nconsole.log('🔐 Credential lookup for:', emailData.sender_email);\nconsole.log('🔐 Credential response:', credentialResponse);\n\nif (!credentialResponse.success || !credentialResponse.credential_id) {\n  console.log(`❌ No credential found for ${emailData.sender_email}`);\n  return [{\n    ...emailData,\n    credential_error: true,\n    error_message: `No OAuth credential configured for ${emailData.sender_email}`\n  }];\n}\n\nreturn [{\n  ...emailData,\n  n8n_credential_id: credentialResponse.credential_id,\n  credential_name: credentialResponse.credential_name\n}];"
+      },
+      "id": "merge-credential-data",
+      "name": "Merge Credential Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-credential",
+              "leftValue": "={{ $json.credential_error ? false : true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-has-credential",
+      "name": "Check Has Credential",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "replyTo": "={{ $json.sender_email }}"
+        }
+      },
+      "id": "send-email-dynamic",
+      "name": "Send Email (Dynamic)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -80,
+        16
+      ],
+      "credentials": {
+        "gmailOAuth2": "={{ $json.n8n_credential_id }}"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "email-success",
+              "leftValue": "={{ $json.id ? true : false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-gmail-success",
+      "name": "Check Gmail Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        144,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.leadsup.io/api/campaigns/tracking/sent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=campaign_id",
+              "value": "={{ $('Merge Credential Data').item.json.campaign_id }}"
+            },
+            {
+              "name": "=contact_id",
+              "value": "={{ $('Merge Credential Data').item.json.contact_id }}"
+            },
+            {
+              "name": "=sequence_id",
+              "value": "={{ $('Merge Credential Data').item.json.sequence_id }}"
+            },
+            {
+              "name": "message_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "status",
+              "value": "sent"
+            },
+            {
+              "name": "sent_at",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "sender_type",
+              "value": "gmail"
+            },
+            {
+              "name": "sender_email",
+              "value": "={{ $('Merge Credential Data').item.json.sender_email }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "track-success",
+      "name": "Track Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        -64
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "L9UUJ3ZXyeG75s0W",
+          "name": "Unnamed credential 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.leadsup.io/api/campaigns/tracking/sent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "campaign_id",
+              "value": "={{ $('Merge Credential Data').item.json.campaign_id }}"
+            },
+            {
+              "name": "contact_id",
+              "value": "={{ $('Merge Credential Data').item.json.contact_id }}"
+            },
+            {
+              "name": "sequence_id",
+              "value": "={{ $('Merge Credential Data').item.json.sequence_id }}"
+            },
+            {
+              "name": "status",
+              "value": "failed"
+            },
+            {
+              "name": "error_message",
+              "value": "={{ $json.error ? JSON.stringify($json.error) : 'Email sending failed' }}"
+            },
+            {
+              "name": "sent_at",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "sender_type",
+              "value": "gmail"
+            },
+            {
+              "name": "sender_email",
+              "value": "={{ $('Merge Credential Data').item.json.sender_email }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "track-failure",
+      "name": "Track Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        96
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "L9UUJ3ZXyeG75s0W",
+          "name": "Unnamed credential 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.leadsup.io/api/campaigns/tracking/sent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "campaign_id",
+              "value": "={{ $json.campaign_id }}"
+            },
+            {
+              "name": "contact_id",
+              "value": "={{ $json.contact_id }}"
+            },
+            {
+              "name": "sequence_id",
+              "value": "={{ $json.sequence_id }}"
+            },
+            {
+              "name": "status",
+              "value": "failed"
+            },
+            {
+              "name": "error_message",
+              "value": "={{ $json.error_message }}"
+            },
+            {
+              "name": "sent_at",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "sender_type",
+              "value": "gmail"
+            },
+            {
+              "name": "sender_email",
+              "value": "={{ $json.sender_email }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "track-credential-error",
+      "name": "Track Credential Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        176
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "L9UUJ3ZXyeG75s0W",
+          "name": "Unnamed credential 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log('ℹ️ No emails found to send');\nreturn [{ message: 'No emails found' }];"
+      },
+      "id": "log-no-emails",
+      "name": "Log No Emails",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "rate-limit",
+      "name": "Rate Limit",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -752,
+        176
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Start": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Emails": {
+      "main": [
+        [
+          {
+            "node": "Transform Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Data": {
+      "main": [
+        [
+          {
+            "node": "Check Has Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Has Emails": {
+      "main": [
+        [
+          {
+            "node": "Get Sender Credential",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log No Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sender Credential": {
+      "main": [
+        [
+          {
+            "node": "Merge Credential Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Credential Data": {
+      "main": [
+        [
+          {
+            "node": "Check Has Credential",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Has Credential": {
+      "main": [
+        [
+          {
+            "node": "Send Email (Dynamic)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Track Credential Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email (Dynamic)": {
+      "main": [
+        [
+          {
+            "node": "Check Gmail Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Gmail Success": {
+      "main": [
+        [
+          {
+            "node": "Track Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Track Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "dynamic-sender-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

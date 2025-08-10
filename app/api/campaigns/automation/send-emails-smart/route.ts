@@ -23,6 +23,77 @@ function validateBasicAuth(request: NextRequest): boolean {
   }
 }
 
+// Timezone configurations
+const TIMEZONE_CONFIG = {
+  'T1': { name: 'America/New_York', offset: -5, description: 'Eastern Time' },
+  'T2': { name: 'America/Chicago', offset: -6, description: 'Central Time' },
+  'T3': { name: 'Europe/London', offset: 0, description: 'Europe Time' },
+  'T4': { name: 'Asia/Singapore', offset: 8, description: 'Asia Time' }
+}
+
+// Check if current time is within business hours for a timezone
+function isWithinBusinessHours(timezoneGroup: string): boolean {
+  const config = TIMEZONE_CONFIG[timezoneGroup as keyof typeof TIMEZONE_CONFIG]
+  if (!config) return false
+
+  const now = new Date()
+  const utcHours = now.getUTCHours()
+  const localHours = (utcHours + config.offset + 24) % 24
+
+  // Business hours: 9 AM to 5 PM local time
+  return localHours >= 9 && localHours <= 17
+}
+
+// Get next available sender for a campaign (with rotation and daily limits)
+async function getNextAvailableSender(campaignId: string) {
+  try {
+    // Get all active senders for this campaign, ordered by rotation priority and last used
+    const { data: senders, error } = await supabaseServer
+      .from('campaign_senders')
+      .select(`
+        id, email, name, access_token, refresh_token, app_password, auth_type,
+        rotation_priority, last_used_at, emails_sent_today, daily_limit
+      `)
+      .eq('campaign_id', campaignId)
+      .eq('is_active', true)
+      .order('rotation_priority', { ascending: true })
+      .order('last_used_at', { ascending: true, nullsFirst: true })
+
+    if (error || !senders || senders.length === 0) {
+      throw new Error(`No active senders found for campaign ${campaignId}`)
+    }
+
+    // Find sender who hasn't hit daily limit
+    const availableSender = senders.find(sender => 
+      (sender.emails_sent_today || 0) < (sender.daily_limit || 50)
+    )
+
+    if (!availableSender) {
+      throw new Error('All senders have reached their daily email limits')
+    }
+
+    // Update sender's last_used_at and increment emails_sent_today
+    const today = new Date().toISOString().split('T')[0]
+    const { error: updateError } = await supabaseServer
+      .from('campaign_senders')
+      .update({ 
+        last_used_at: new Date().toISOString(),
+        emails_sent_today: (availableSender.emails_sent_today || 0) + 1
+      })
+      .eq('id', availableSender.id)
+
+    if (updateError) {
+      console.error('Failed to update sender rotation data:', updateError)
+    }
+
+    return availableSender
+
+  } catch (error) {
+    console.error('❌ Error getting next available sender:', error)
+    throw error
+  }
+}
+
 // Send email via Gmail API (OAuth2) or SMTP (App Passwords)
 async function sendEmail(senderData: any, mailOptions: any) {
   console.log(`📧 Sending email via ${senderData.auth_type === 'oauth2' ? 'Gmail API' : 'SMTP'} for ${senderData.email}`)
@@ -103,76 +174,6 @@ async function sendEmail(senderData: any, mailOptions: any) {
   }
 }
 
-// Timezone configurations
-const TIMEZONE_CONFIG = {
-  'T1': { name: 'America/New_York', offset: -5, description: 'Eastern Time' },
-  'T2': { name: 'America/Chicago', offset: -6, description: 'Central Time' },
-  'T3': { name: 'Europe/London', offset: 0, description: 'Europe Time' },
-  'T4': { name: 'Asia/Singapore', offset: 8, description: 'Asia Time' }
-}
-
-// Check if current time is within business hours for a timezone
-function isWithinBusinessHours(timezoneGroup: string): boolean {
-  const config = TIMEZONE_CONFIG[timezoneGroup as keyof typeof TIMEZONE_CONFIG]
-  if (!config) return false
-
-  const now = new Date()
-  const utcHours = now.getUTCHours()
-  const localHours = (utcHours + config.offset + 24) % 24
-
-  // Business hours: 9 AM to 5 PM local time
-  return localHours >= 9 && localHours <= 17
-}
-
-// Get next available sender for a campaign (with rotation and daily limits)
-async function getNextAvailableSender(campaignId: string) {
-  try {
-    // Get all active senders for this campaign, ordered by rotation priority and last used
-    const { data: senders, error } = await supabaseServer
-      .from('campaign_senders')
-      .select(`
-        id, email, name, access_token, refresh_token, app_password, auth_type,
-        rotation_priority, last_used_at, emails_sent_today, daily_limit
-      `)
-      .eq('campaign_id', campaignId)
-      .eq('is_active', true)
-      .order('rotation_priority', { ascending: true })
-      .order('last_used_at', { ascending: true, nullsFirst: true })
-
-    if (error || !senders || senders.length === 0) {
-      throw new Error(`No active senders found for campaign ${campaignId}`)
-    }
-
-    // Find sender who hasn't hit daily limit
-    const availableSender = senders.find(sender => 
-      (sender.emails_sent_today || 0) < (sender.daily_limit || 50)
-    )
-
-    if (!availableSender) {
-      throw new Error('All senders have reached their daily email limits')
-    }
-
-    // Update sender's last_used_at and increment emails_sent_today
-    const { error: updateError } = await supabaseServer
-      .from('campaign_senders')
-      .update({ 
-        last_used_at: new Date().toISOString(),
-        emails_sent_today: (availableSender.emails_sent_today || 0) + 1
-      })
-      .eq('id', availableSender.id)
-
-    if (updateError) {
-      console.error('Failed to update sender rotation data:', updateError)
-    }
-
-    return availableSender
-
-  } catch (error) {
-    console.error('❌ Error getting next available sender:', error)
-    throw error
-  }
-}
-
 // POST - Smart email sending with timezone awareness and sender rotation
 export async function POST(request: NextRequest) {
   if (!validateBasicAuth(request)) {
@@ -186,7 +187,7 @@ export async function POST(request: NextRequest) {
     console.log('🤖 Processing smart email send request with timezone awareness and sender rotation...')
 
     // Get pending emails from existing process-pending logic
-    const pendingResponse = await fetch(`${request.url.replace('/send-emails', '/process-pending')}`, {
+    const pendingResponse = await fetch(`${request.url.replace('/send-emails-smart', '/process-pending')}`, {
       headers: {
         'Authorization': request.headers.get('authorization') || ''
       }
@@ -378,7 +379,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Error in send-emails:', error)
+    console.error('❌ Error in smart email sending:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
