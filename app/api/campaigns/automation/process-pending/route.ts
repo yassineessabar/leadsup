@@ -247,16 +247,85 @@ export async function GET(request: NextRequest) {
           continue
         }
         
-        // TODO: Implement proper sequence tracking
-        // For now, we'll use the first sequence step for all new contacts
-        // In a complete system, you'd track prospect_sequence_progress to know which step is next
-        
-        // Get the first sequence step (step_number = 1 or minimum step_number)
-        const nextSequence = sequences.find(s => s.step_number === 1) || sequences[0]
+        // Check prospect sequence progress to determine next step
+        const { data: progressData, error: progressError } = await supabaseServer
+          .from('prospect_sequence_progress')
+          .select(`
+            sequence_id,
+            status,
+            sent_at,
+            created_at
+          `)
+          .eq('prospect_id', contact.id)
+          .eq('campaign_id', campaign.id)
+          .order('created_at', { ascending: false })
+
+        if (progressError) {
+          console.log(`⚠️ Error checking progress for ${contact.email_address}:`, progressError)
+          continue
+        }
+
+        let nextSequence = null
+        let nextStepNumber = 1 // Default to first step
+        const completedSequenceIds = new Set()
+
+        if (progressData && progressData.length > 0) {
+          // Get all completed/sent sequences
+          progressData.forEach(progress => {
+            if (progress.status === 'sent') {
+              completedSequenceIds.add(progress.sequence_id)
+            }
+          })
+
+          // Find the last sent sequence to check timing
+          const lastSentProgress = progressData.find(p => p.status === 'sent')
+          if (lastSentProgress) {
+            const lastSequence = sequences.find(s => s.id === lastSentProgress.sequence_id)
+            if (lastSequence && lastSentProgress.sent_at) {
+              const sentDate = new Date(lastSentProgress.sent_at)
+              const nextSendDate = new Date(sentDate.getTime() + (lastSequence.timing_days * 24 * 60 * 60 * 1000))
+              
+              if (now < nextSendDate) {
+                console.log(`⏰ Skipping contact ${contact.email_address} - Next sequence not due until ${nextSendDate.toISOString()} (${lastSequence.timing_days} days after step ${lastSequence.step_number})`)
+                continue
+              }
+              
+              // Find next step number after the last completed one
+              nextStepNumber = lastSequence.step_number + 1
+            }
+          }
+
+          // Check if any sequence is currently scheduled/pending
+          const pendingProgress = progressData.find(p => p.status === 'scheduled' || p.status === 'pending')
+          if (pendingProgress) {
+            const pendingSequence = sequences.find(s => s.id === pendingProgress.sequence_id)
+            console.log(`⏰ Skipping contact ${contact.email_address} - Step ${pendingSequence?.step_number || 'unknown'} already ${pendingProgress.status}`)
+            continue
+          }
+        }
+
+        // Find the next sequence step that hasn't been completed
+        nextSequence = sequences
+          .filter(s => !completedSequenceIds.has(s.id))
+          .find(s => s.step_number === nextStepNumber)
+
+        if (!nextSequence) {
+          // Try to find the next available sequence if exact step number doesn't exist
+          nextSequence = sequences
+            .filter(s => !completedSequenceIds.has(s.id))
+            .sort((a, b) => a.step_number - b.step_number)[0]
+        }
         
         if (!nextSequence) {
-          console.log(`⚠️ Skipping contact ${contact.email_address} - No sequence step available`)
-          continue
+          // Check if this contact has completed all sequences
+          const maxStep = Math.max(...sequences.map(s => s.step_number))
+          if (completedSequenceIds.size >= sequences.length) {
+            console.log(`✅ Contact ${contact.email_address} has completed all sequences (${sequences.length} steps)`)
+            continue
+          } else {
+            console.log(`⚠️ No available sequence found for contact ${contact.email_address} (completed ${completedSequenceIds.size}/${sequences.length})`)
+            continue
+          }
         }
         
         console.log(`📧 Assigning sequence step ${nextSequence.step_number} (${nextSequence.title}) to ${contact.email_address}`)
