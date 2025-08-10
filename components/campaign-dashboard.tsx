@@ -2097,866 +2097,321 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   const disconnectMicrosoft365Account = async (accountId) => {
-    setConnectedMicrosoft365Accounts(prev => prev.filter(acc => acc.id !== accountId))
+    try {
+      const response = await fetch(`/api/microsoft365/accounts?id=${accountId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        // Remove from UI state
+        setConnectedMicrosoft365Accounts(prev => prev.filter(acc => acc.id !== accountId))
+        toast({
+          title: "Account Disconnected",
+          description: "Microsoft 365 account has been removed successfully",
+          variant: "default"
+        })
+      } else {
+        const error = await response.json()
+        toast({
+          title: "Failed to Disconnect",
+          description: error.error || "Failed to remove Microsoft 365 account",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Error disconnecting Microsoft 365 account:', error)
+      toast({
+        title: "Connection Error",
+        description: "Failed to remove Microsoft 365 account",
+        variant: "destructive"
+      })
+    }
   }
 
   const disconnectSmtpAccount = async (accountId) => {
-    setConnectedSmtpAccounts(prev => prev.filter(acc => acc.id !== accountId))
+    try {
+      const response = await fetch(`/api/smtp/accounts?id=${accountId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        // Remove from UI state
+        setConnectedSmtpAccounts(prev => prev.filter(acc => acc.id !== accountId))
+        toast({
+          title: "Account Disconnected",
+          description: "SMTP account has been removed successfully",
+          variant: "default"
+        })
+      } else {
+        const error = await response.json()
+        toast({
+          title: "Failed to Disconnect",
+          description: error.error || "Failed to remove SMTP account",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Error disconnecting SMTP account:', error)
+      toast({
+        title: "Connection Error",
+        description: "Failed to remove SMTP account",
+        variant: "destructive"
+      })
+    }
   }
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'settings':
         return (
-          <div style={{ 
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: '32px',
-            boxShadow: '0 4px 20px rgba(37, 99, 235, 0.08)',
-            marginBottom: '24px'
-          }}>
-            
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '24px'
-            }}>
-
-              {/* Daily Limits Row */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '32px'
-              }}>
-                {/* Daily Contacts Limit */}
-                <div>
-                <label style={{
-                  fontWeight: '600',
-                  fontSize: '14px',
-                  color: '#000000',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  marginBottom: '8px',
-                  fontFamily: 'Jost, sans-serif'
-                }}>
-                  Daily Contacts Limit
-                  <a 
-                    href="https://emelia.io/hub/how-many-people-to-connect-per-day-in-cold-mailing" 
-                    target="_blank" 
-                    rel="noreferrer"
-                    style={{
-                      color: '#000000',
-                      textDecoration: 'none',
-                      fontSize: '12px',
-                      opacity: '0.8'
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgb(37, 99, 235)" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10"/>
-                      <path d="m9,9 0,0a3,3 0 0,1 6,0c0,2-3,3-3,3"/>
-                      <path d="m9 17h.01"/>
-                    </svg>
-                  </a>
-                </label>
-                <input 
-                  type="number" 
-                  value={dailyContactsLimit}
-                  onChange={(e) => setDailyContactsLimit(parseInt(e.target.value) || 35)}
-                  style={{
-                    backgroundColor: '#FAFBFC',
-                    border: '2px solid #E5E7EB',
-                    borderRadius: '12px',
-                    padding: '12px 16px',
-                    width: '100%',
-                    height: '48px',
-                    fontFamily: 'Jost, sans-serif',
-                    fontSize: '14px',
-                    color: '#000000',
-                    fontWeight: '500',
-                    textAlign: 'center',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                    outline: 'none'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'rgb(37, 99, 235)'
-                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#E5E7EB'
-                    e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'
-                  }}
-                />
-              </div>
-
-                {/* Daily Sequence Limit */}
-                <div>
-                <label style={{
-                  fontWeight: '600',
-                  fontSize: '14px',
-                  color: '#000000',
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontFamily: 'Jost, sans-serif'
-                }}>
-                  Daily Sequence Limit
-                </label>
-                <input 
-                  type="number" 
-                  value={dailySequenceLimit}
-                  onChange={(e) => setDailySequenceLimit(parseInt(e.target.value) || 100)}
-                  style={{
-                    backgroundColor: '#FAFBFC',
-                    border: '2px solid #E5E7EB',
-                    borderRadius: '12px',
-                    padding: '12px 16px',
-                    width: '100%',
-                    height: '48px',
-                    fontFamily: 'Jost, sans-serif',
-                    fontSize: '14px',
-                    color: '#000000',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                    outline: 'none'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'rgb(37, 99, 235)'
-                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#E5E7EB'
-                    e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'
-                  }}
-                />
-                </div>
-              </div>
-
-              {/* Sending Schedule */}
+          <div className="w-full">
+            {/* Header with Save Button */}
+            <div className="flex justify-between items-center mb-6">
               <div>
-                <label style={{
-                  fontWeight: '600',
-                  fontSize: '16px',
-                  color: '#000000',
-                  display: 'block',
-                  marginBottom: '16px',
-                  fontFamily: 'Jost, sans-serif'
-                }}>
-                  Sending Schedule
-                </label>
-                
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr auto',
-                  gap: '24px',
-                  alignItems: 'start'
-                }}>
-                  {/* Sending Days */}
-                  <div>
-                    <h4 style={{
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      color: '#000000',
-                      marginBottom: '12px',
-                      fontFamily: 'Jost, sans-serif'
-                    }}>
-                      Active Days
-                    </h4>
-                    <div style={{
-                      display: 'flex',
-                      gap: '8px',
-                      flexWrap: 'wrap'
-                    }}>
-                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
-                        const isActive = activeDays.includes(day)
-                        return (
-                          <button
-                            key={day}
-                            type="button"
-                            style={{
-                              backgroundColor: isActive ? 'rgb(37, 99, 235)' : '#F3F4F6',
-                              color: isActive ? 'white' : '#6B7280',
-                              border: isActive ? '2px solid rgb(37, 99, 235)' : '2px solid #E5E7EB',
-                              borderRadius: '10px',
-                              padding: '8px 12px',
-                              fontSize: '13px',
-                              fontWeight: '600',
-                              fontFamily: 'Jost, sans-serif',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              minWidth: '40px',
-                              textAlign: 'center',
-                              boxShadow: isActive ? '0 4px 12px rgba(37, 99, 235, 0.3)' : '0 2px 4px rgba(0,0,0,0.05)'
-                            }}
-                            onClick={() => {
-                              if (isActive) {
-                                setActiveDays(prev => prev.filter(d => d !== day))
-                              } else {
-                                setActiveDays(prev => [...prev, day])
-                              }
-                            }}
-                          >
-                            {day}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Time Range */}
-                  <div style={{ minWidth: '300px' }}>
-                    <h4 style={{
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      color: '#000000',
-                      marginBottom: '12px',
-                      fontFamily: 'Jost, sans-serif'
-                    }}>
-                      Sending Hours
-                    </h4>
-                    <div style={{
-                      display: 'flex',
-                      gap: '12px',
-                      alignItems: 'center'
-                    }}>
-                      <select 
-                        value={sendingStartTime}
-                        onChange={(e) => setSendingStartTime(e.target.value)}
-                        style={{
-                          backgroundColor: '#FAFBFC',
-                          border: '2px solid #E5E7EB',
-                          borderRadius: '12px',
-                          padding: '12px 16px',
-                          fontSize: '14px',
-                          fontFamily: 'Jost, sans-serif',
-                          color: '#000000',
-                          cursor: 'pointer',
-                          minWidth: '120px',
-                          transition: 'all 0.2s ease',
-                          fontWeight: '500',
-                          outline: 'none'
-                        }}
-                        onFocus={(e) => {
-                          e.target.style.borderColor = 'rgb(37, 99, 235)'
-                          e.target.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)'
-                        }}
-                        onBlur={(e) => {
-                          e.target.style.borderColor = '#E5E7EB'
-                          e.target.style.boxShadow = 'none'
-                        }}
-                      >
-                        {Array.from({ length: 24 }, (_, i) => {
-                          const hour = i.toString().padStart(2, '0')
-                          const ampm = i >= 12 ? 'PM' : 'AM'
-                          const displayHour = i === 0 ? '12' : i > 12 ? (i - 12).toString().padStart(2, '0') : hour
-                          const time = `${displayHour}:00 ${ampm}`
-                          return (
-                            <option key={time} value={time}>{time}</option>
-                          )
-                        })}
-                      </select>
-                      
-                      <span style={{ 
-                        color: '#6B7280',
-                        fontSize: '14px',
-                        fontFamily: 'Jost, sans-serif',
-                        fontWeight: '500'
-                      }}>
-                        to
-                      </span>
-                      
-                      <select 
-                        value={sendingEndTime}
-                        onChange={(e) => setSendingEndTime(e.target.value)}
-                        style={{
-                          backgroundColor: '#FAFBFC',
-                          border: '2px solid #E5E7EB',
-                          borderRadius: '12px',
-                          padding: '12px 16px',
-                          fontSize: '14px',
-                          fontFamily: 'Jost, sans-serif',
-                          color: '#000000',
-                          cursor: 'pointer',
-                          minWidth: '120px',
-                          transition: 'all 0.2s ease',
-                          fontWeight: '500',
-                          outline: 'none'
-                        }}
-                        onFocus={(e) => {
-                          e.target.style.borderColor = 'rgb(37, 99, 235)'
-                          e.target.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.15)'
-                        }}
-                        onBlur={(e) => {
-                          e.target.style.borderColor = '#E5E7EB'
-                          e.target.style.boxShadow = 'none'
-                        }}
-                      >
-                        {Array.from({ length: 24 }, (_, i) => {
-                          const hour = i.toString().padStart(2, '0')
-                          const ampm = i >= 12 ? 'PM' : 'AM'
-                          const displayHour = i === 0 ? '12' : i > 12 ? (i - 12).toString().padStart(2, '0') : hour
-                          const time = `${displayHour}:00 ${ampm}`
-                          return (
-                            <option key={time} value={time}>{time}</option>
-                          )
-                        })}
-                      </select>
-                    </div>
-                  </div>
-                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Campaign Settings</h2>
+                <p className="text-gray-600">Configure your campaign limits, timing, and signature</p>
               </div>
+              <div className="flex items-center">
+                <Button 
+                  onClick={saveSettings} 
+                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  Save Campaign Settings
+                </Button>
+              </div>
+            </div>
 
-              {/* Email Signature Section */}
-              <div style={{
-                backgroundColor: 'rgba(37, 99, 235, 0.03)',
-                borderRadius: '16px',
-                padding: '24px',
-                border: '1px solid rgba(37, 99, 235, 0.1)',
-                marginBottom: '24px'
-              }}>
-                {/* Sender Name Header */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  marginBottom: '24px'
-                }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    backgroundColor: '#6B7280',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <User style={{ width: '20px', height: '20px', color: 'white' }} />
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+              <div className="space-y-6">
+                {/* Daily Limits Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Daily Contacts Limit */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Daily Contacts Limit
+                    </label>
+                    <input 
+                      type="number" 
+                      value={dailyContactsLimit}
+                      onChange={(e) => setDailyContactsLimit(parseInt(e.target.value) || 35)}
+                      className="w-full h-12 px-4 text-center bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                    />
                   </div>
-                  <h3 style={{
-                    fontSize: '20px',
-                    fontWeight: '500',
-                    color: '#1F2937',
-                    fontFamily: 'Jost, sans-serif'
-                  }}>
-                    Sender name
-                  </h3>
-                </div>
 
-                {/* Name and Company Fields */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '24px',
-                  marginBottom: '32px'
-                }}>
+                  {/* Daily Sequence Limit */}
                   <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#6B7280',
-                      marginBottom: '8px',
-                      fontFamily: 'Jost, sans-serif'
-                    }}>
-                      First Name
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Daily Sequence Limit
                     </label>
-                    <input
-                      type="text"
-                      value={firstName}
-                      onChange={(e) => {
-                        setFirstName(e.target.value)
-                        // Update signature with new name
-                        const updatedSignature = emailSignature.replace(
-                          /<strong>.*?<\/strong>/,
-                          `<strong>${e.target.value} ${lastName}</strong>`
-                        )
-                        setEmailSignature(updatedSignature)
-                      }}
-                      style={{
-                        width: '100%',
-                        height: '48px',
-                        padding: '0 16px',
-                        fontSize: '16px',
-                        border: '2px solid #E5E7EB',
-                        borderRadius: '12px',
-                        backgroundColor: '#FAFBFC',
-                        fontFamily: 'Jost, sans-serif',
-                        fontWeight: '500',
-                        transition: 'all 0.2s ease',
-                        outline: 'none'
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = 'rgb(37, 99, 235)'
-                        e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = '#E5E7EB'
-                        e.target.style.boxShadow = 'none'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#6B7280',
-                      marginBottom: '8px',
-                      fontFamily: 'Jost, sans-serif'
-                    }}>
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      value={lastName}
-                      onChange={(e) => {
-                        setLastName(e.target.value)
-                        // Update signature with new name
-                        const updatedSignature = emailSignature.replace(
-                          /<strong>.*?<\/strong>/,
-                          `<strong>${firstName} ${e.target.value}</strong>`
-                        )
-                        setEmailSignature(updatedSignature)
-                      }}
-                      style={{
-                        width: '100%',
-                        height: '48px',
-                        padding: '0 16px',
-                        fontSize: '16px',
-                        border: '2px solid #E5E7EB',
-                        borderRadius: '12px',
-                        backgroundColor: '#FAFBFC',
-                        fontFamily: 'Jost, sans-serif',
-                        fontWeight: '500',
-                        transition: 'all 0.2s ease',
-                        outline: 'none'
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = 'rgb(37, 99, 235)'
-                        e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = '#E5E7EB'
-                        e.target.style.boxShadow = 'none'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#6B7280',
-                      marginBottom: '8px',
-                      fontFamily: 'Jost, sans-serif'
-                    }}>
-                      Company
-                    </label>
-                    <input
-                      type="text"
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      style={{
-                        width: '100%',
-                        height: '48px',
-                        padding: '0 16px',
-                        fontSize: '16px',
-                        border: '2px solid #E5E7EB',
-                        borderRadius: '12px',
-                        backgroundColor: '#FAFBFC',
-                        fontFamily: 'Jost, sans-serif',
-                        fontWeight: '500',
-                        transition: 'all 0.2s ease',
-                        outline: 'none'
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = 'rgb(37, 99, 235)'
-                        e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = '#E5E7EB'
-                        e.target.style.boxShadow = 'none'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#6B7280',
-                      marginBottom: '8px',
-                      fontFamily: 'Jost, sans-serif'
-                    }}>
-                      Website
-                    </label>
-                    <input
-                      type="text"
-                      value={companyWebsite}
-                      onChange={(e) => setCompanyWebsite(e.target.value)}
-                      style={{
-                        width: '100%',
-                        height: '48px',
-                        padding: '0 16px',
-                        fontSize: '16px',
-                        border: '2px solid #E5E7EB',
-                        borderRadius: '12px',
-                        backgroundColor: '#FAFBFC',
-                        fontFamily: 'Jost, sans-serif',
-                        fontWeight: '500',
-                        transition: 'all 0.2s ease',
-                        outline: 'none'
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = 'rgb(37, 99, 235)'
-                        e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = '#E5E7EB'
-                        e.target.style.boxShadow = 'none'
-                      }}
+                    <input 
+                      type="number" 
+                      value={dailySequenceLimit}
+                      onChange={(e) => setDailySequenceLimit(parseInt(e.target.value) || 100)}
+                      className="w-full h-12 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
 
-                {/* Signature Section */}
+                {/* Sending Schedule */}
                 <div>
-                  <h3 style={{
-                    fontSize: '20px',
-                    fontWeight: '600',
-                    color: '#1F2937',
-                    marginBottom: '16px',
-                    fontFamily: 'Jost, sans-serif'
-                  }}>
-                    Signature
-                  </h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Sending Schedule</h3>
                   
-                  <div style={{
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    backgroundColor: 'white'
-                  }}>
-                    {/* Signature Content */}
-                    <div 
-                      ref={signatureEditorRef}
-                      contentEditable
-                      suppressContentEditableWarning
-                      style={{
-                        padding: '32px',
-                        minHeight: '200px',
-                        backgroundColor: 'white',
-                        fontSize: '14px',
-                        lineHeight: '1.6',
-                        color: '#374151',
-                        fontFamily: 'Arial, sans-serif',
-                        outline: 'none'
-                      }}
-                      dangerouslySetInnerHTML={{ __html: emailSignature }}
-                      onInput={(e) => {
-                        const target = e.currentTarget
-                        setEmailSignature(target.innerHTML)
-                      }}
-                      onFocus={(e) => {
-                        e.currentTarget.style.backgroundColor = '#FAFBFC'
-                      }}
-                      onBlur={(e) => {
-                        e.currentTarget.style.backgroundColor = 'white'
-                      }}
-                    />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Sending Days */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Active Days</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
+                          const isActive = activeDays.includes(day)
+                          return (
+                            <button
+                              key={day}
+                              type="button"
+                              className={`px-3 py-2 text-sm font-semibold rounded-lg transition-all ${
+                                isActive 
+                                  ? 'bg-blue-600 text-white shadow-md' 
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                              onClick={() => {
+                                if (isActive) {
+                                  setActiveDays(prev => prev.filter(d => d !== day))
+                                } else {
+                                  setActiveDays(prev => [...prev, day])
+                                }
+                              }}
+                            >
+                              {day}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Time Range */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Sending Hours</h4>
+                      <div className="flex items-center gap-3">
+                        <select 
+                          value={sendingStartTime}
+                          onChange={(e) => setSendingStartTime(e.target.value)}
+                          className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                        >
+                          {Array.from({ length: 24 }, (_, i) => {
+                            const hour = i.toString().padStart(2, '0')
+                            const ampm = i >= 12 ? 'PM' : 'AM'
+                            const displayHour = i === 0 ? '12' : i > 12 ? (i - 12).toString().padStart(2, '0') : hour
+                            const time = `${displayHour}:00 ${ampm}`
+                            return (
+                              <option key={time} value={time}>{time}</option>
+                            )
+                          })}
+                        </select>
+                        
+                        <span className="text-gray-500 font-medium">to</span>
+                        
+                        <select 
+                          value={sendingEndTime}
+                          onChange={(e) => setSendingEndTime(e.target.value)}
+                          className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                        >
+                          {Array.from({ length: 24 }, (_, i) => {
+                            const hour = i.toString().padStart(2, '0')
+                            const ampm = i >= 12 ? 'PM' : 'AM'
+                            const displayHour = i === 0 ? '12' : i > 12 ? (i - 12).toString().padStart(2, '0') : hour
+                            const time = `${displayHour}:00 ${ampm}`
+                            return (
+                              <option key={time} value={time}>{time}</option>
+                            )
+                          })}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email Signature Section */}
+                <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900">Sender Information</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                      <input
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                      <input
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Company</label>
+                      <input
+                        type="text"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
+                      <input
+                        type="text"
+                        value={companyWebsite}
+                        onChange={(e) => setCompanyWebsite(e.target.value)}
+                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Signature Section */}
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Email Signature</h4>
                     
-                    {/* Formatting Toolbar */}
-                    <div style={{
-                      borderTop: '1px solid #E5E7EB',
-                      backgroundColor: '#FAFBFC',
-                      padding: '16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          document.execCommand('bold', false)
-                          if (signatureEditorRef.current) {
-                            setEmailSignature(signatureEditorRef.current.innerHTML)
-                          }
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div 
+                        ref={signatureEditorRef}
+                        contentEditable
+                        suppressContentEditableWarning
+                        className="p-8 min-h-[200px] outline-none"
+                        dangerouslySetInnerHTML={{ __html: emailSignature }}
+                        onInput={(e) => {
+                          const target = e.currentTarget
+                          setEmailSignature(target.innerHTML)
                         }}
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#E5E7EB'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                      >
-                        <Bold style={{ width: '16px', height: '16px' }} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          document.execCommand('italic', false)
-                          if (signatureEditorRef.current) {
-                            setEmailSignature(signatureEditorRef.current.innerHTML)
-                          }
-                        }}
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#E5E7EB'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                      >
-                        <Italic style={{ width: '16px', height: '16px' }} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          document.execCommand('underline', false)
-                          if (signatureEditorRef.current) {
-                            setEmailSignature(signatureEditorRef.current.innerHTML)
-                          }
-                        }}
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#E5E7EB'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                      >
-                        <Underline style={{ width: '16px', height: '16px' }} />
-                      </button>
-                      <button
-                        type="button"
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#E5E7EB'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                      >
-                        <Type style={{ width: '16px', height: '16px' }} />
-                      </button>
-                      <button
-                        type="button"
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#E5E7EB'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                      >
-                        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>A</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const url = prompt('Enter URL:', 'https://')
-                          if (url) {
-                            document.execCommand('createLink', false, url)
+                      />
+                      
+                      {/* Formatting Toolbar */}
+                      <div className="border-t border-gray-200 bg-gray-50 p-4 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            document.execCommand('bold', false)
                             if (signatureEditorRef.current) {
                               setEmailSignature(signatureEditorRef.current.innerHTML)
                             }
-                          }
-                        }}
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#E5E7EB'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                      >
-                        <Link style={{ width: '16px', height: '16px' }} />
-                      </button>
-                      <button
-                        type="button"
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#E5E7EB'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                      >
-                        <Image style={{ width: '16px', height: '16px' }} />
-                      </button>
-                      <button
-                        type="button"
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#E5E7EB'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
-                      >
-                        <Smile style={{ width: '16px', height: '16px' }} />
-                      </button>
-                      <div style={{ marginLeft: 'auto' }}>
+                          }}
+                          className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-200 transition-colors"
+                        >
+                          <Bold className="w-4 h-4" />
+                        </button>
                         <button
                           type="button"
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: 'none',
-                            backgroundColor: 'transparent',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.2s'
+                          onClick={() => {
+                            document.execCommand('italic', false)
+                            if (signatureEditorRef.current) {
+                              setEmailSignature(signatureEditorRef.current.innerHTML)
+                            }
                           }}
-                          onMouseEnter={(e) => e.target.style.backgroundColor = '#E5E7EB'}
-                          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                          className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-200 transition-colors"
                         >
-                          <Code style={{ width: '16px', height: '16px' }} />
+                          <Italic className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            document.execCommand('underline', false)
+                            if (signatureEditorRef.current) {
+                              setEmailSignature(signatureEditorRef.current.innerHTML)
+                            }
+                          }}
+                          className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-200 transition-colors"
+                        >
+                          <Underline className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = prompt('Enter URL:', 'https://')
+                            if (url) {
+                              document.execCommand('createLink', false, url)
+                              if (signatureEditorRef.current) {
+                                setEmailSignature(signatureEditorRef.current.innerHTML)
+                              }
+                            }
+                          }}
+                          className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-200 transition-colors"
+                        >
+                          <Link className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{
-                display: 'flex',
-                gap: '16px',
-                justifyContent: 'flex-end',
-                alignItems: 'center',
-                paddingTop: '24px',
-                borderTop: '1px solid rgba(37, 99, 235, 0.1)'
-              }}>
-                <button 
-                  type="button"
-                  style={{
-                    backgroundColor: '#F3F4F6',
-                    color: '#6B7280',
-                    border: '2px solid #E5E7EB',
-                    borderRadius: '12px',
-                    padding: '12px 24px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    fontFamily: 'Jost, sans-serif',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#E5E7EB'
-                    e.currentTarget.style.color = '#374151'
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = '#F3F4F6'
-                    e.currentTarget.style.color = '#6B7280'
-                  }}
-                  onClick={() => {
-                    const defaultSignature = `<br/><br/>Best regards,<br/><strong>${firstName} ${lastName}</strong><br/>${companyName}<br/><a href="${companyWebsite}" target="_blank">${companyWebsite}</a>`
-                    setEmailSignature(defaultSignature)
-                    if (signatureEditorRef.current) {
-                      signatureEditorRef.current.innerHTML = defaultSignature
-                    }
-                  }}
-                >
-                  <X size={16} />
-                  Reset to Default
-                </button>
-                
-                <button 
-                  type="button"
-                  style={{
-                    background: 'linear-gradient(135deg, rgb(37, 99, 235) 0%, rgb(59, 130, 246) 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '12px',
-                    padding: '12px 32px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    fontFamily: 'Jost, sans-serif',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-1px)'
-                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.5)'
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)'
-                  }}
-                  onClick={saveSettings}
-                >
-                  <Check size={16} />
-                  Save Campaign Settings
-                </button>
               </div>
             </div>
           </div>
@@ -2968,14 +2423,34 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           // Empty state - show only centered Connect Account button
           return (
             <div className="w-full min-h-[600px] flex items-center justify-center">
-              <Button
-                variant="default"
-                className="flex items-center space-x-2 text-white bg-blue-600 hover:bg-blue-700"
-                onClick={() => setShowConnectDropdown(!showConnectDropdown)}
-              >
-                <Plus className="w-4 h-4" />
-                <span>Connect Account</span>
-              </Button>
+              <div className="text-center max-w-md mx-auto">
+                {/* Icon */}
+                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Mail className="w-10 h-10 text-blue-600" />
+                </div>
+                
+                {/* Title and Description */}
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Connect Your Email Account</h3>
+                <p className="text-gray-600 mb-8 leading-relaxed">
+                  Connect an email account to start sending campaigns. Choose from Gmail, Microsoft 365, or any SMTP provider.
+                </p>
+                
+                {/* Connect Button */}
+                <Button
+                  variant="default"
+                  size="lg"
+                  className="flex items-center justify-center space-x-2 text-white bg-blue-600 hover:bg-blue-700 px-8 py-3 text-base font-medium shadow-lg hover:shadow-xl transition-all duration-200 mx-auto"
+                  onClick={() => setShowConnectDropdown(!showConnectDropdown)}
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Connect Email Account</span>
+                </Button>
+                
+                {/* Helper Text */}
+                <p className="text-sm text-gray-500 mt-4">
+                  Secure connection with industry-standard encryption
+                </p>
+              </div>
               
               {/* Connect Account Dropdown */}
               {showConnectDropdown && (
