@@ -4018,31 +4018,33 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div className="flex flex-col lg:flex-row gap-8">
               {/* Sequence Timeline Sidebar */}
-              <div className="lg:col-span-1">
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                  <h3 className="font-semibold text-gray-900 mb-6">Campaign Timeline</h3>
+              <div className="lg:w-2/5">
+                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm min-w-0">
+                  <h3 className="font-semibold text-gray-900 mb-6 text-lg">Campaign Timeline</h3>
                   
                   {/* Sequence 1 */}
                   <div className="mb-8">
                     <div className="mb-4 flex items-center justify-between">
                       <div className="flex-1">
                         <h4 className="text-sm font-medium text-blue-900 mb-2">Initial Outreach</h4>
-                        <div className="text-xs text-gray-500 flex items-center space-x-2">
-                          <span>Subject: "{steps.find(s => s.sequence === 1)?.subject || 'No subject'}"</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-4 w-4 p-0 text-blue-600 hover:bg-blue-100"
-                            onClick={() => {
-                              const newSubject = prompt('Enter subject line for Initial Outreach sequence:', steps.find(s => s.sequence === 1)?.subject || '')
-                              if (newSubject !== null) updateSequenceSubject(1, newSubject)
-                            }}
-                            title="Edit sequence subject"
-                          >
-                            <Edit2 className="h-2.5 w-2.5" />
-                          </Button>
+                        <div className="text-xs text-gray-500">
+                          <div className="flex items-start gap-2">
+                            <span className="flex-1 break-words">Subject: "{steps.find(s => s.sequence === 1)?.subject || 'No subject'}"</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-4 w-4 p-0 text-blue-600 hover:bg-blue-100 flex-shrink-0"
+                              onClick={() => {
+                                const newSubject = prompt('Enter subject line for Initial Outreach sequence:', steps.find(s => s.sequence === 1)?.subject || '')
+                                if (newSubject !== null) updateSequenceSubject(1, newSubject)
+                              }}
+                              title="Edit sequence subject"
+                            >
+                              <Edit2 className="h-2.5 w-2.5" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-1">
@@ -4163,15 +4165,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
                   {/* Add Sequence 2 button - only show if sequence 2 doesn't exist */}
                   {steps.filter(s => s.sequence === 2).length === 0 && (
-                    <div className="text-center my-6 py-4 border-t border-gray-200">
+                    <div className="text-center my-8 py-6 border-t border-gray-200">
                       <Button
                         variant="outline"
-                        size="sm"
-                        className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
+                        size="default"
+                        className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 px-4 py-2 w-full sm:w-auto whitespace-nowrap"
                         onClick={() => addStep(2)}
                       >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Follow-up Sequence
+                        <Plus className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span>Add Follow-up Sequence</span>
                       </Button>
                     </div>
                   )}
@@ -4281,7 +4283,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </div>
 
               {/* Step Editor */}
-              <div className="lg:col-span-3">
+              <div className="lg:w-3/5">
                 {steps.length > 0 && activeStepId && (
                   (() => {
                     const activeStep = steps.find(s => s.id === activeStepId)
