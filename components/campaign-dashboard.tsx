@@ -144,6 +144,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [importType, setImportType] = useState('leads') // 'leads', 'csv', 'manual'
   const [selectedLeads, setSelectedLeads] = useState([])
   const [allLeads, setAllLeads] = useState([])
+  const [leadsLoading, setLeadsLoading] = useState(false)
   const [manualContact, setManualContact] = useState({
     name: '',
     email: '',
@@ -746,18 +747,59 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     setShowPreviewModal(!showPreviewModal)
   }
 
-  // Load leads from database
+  // Load leads (prospects) from database
   const loadLeadsData = async () => {
+    setLeadsLoading(true)
     try {
-      const response = await fetch('/api/leads')
+      const response = await fetch('/api/prospects')
       const result = await response.json()
       
-      if (result.success) {
-        setAllLeads(result.data || [])
+      if (response.ok && result.prospects) {
+        // Map prospects to lead format for the import functionality
+        const mappedLeads = result.prospects.map(prospect => ({
+          id: prospect.id,
+          name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() || 'Unknown',
+          customer_name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() || 'Unknown',
+          email: prospect.email_address,
+          phone: prospect.phone,
+          company: prospect.company_name,
+          business_name: prospect.company_name,
+          title: prospect.job_title,
+          location: prospect.location,
+          industry: prospect.industry,
+          campaign_id: prospect.campaign_id
+        }))
+        
+        // Filter out prospects that are already assigned to the current campaign
+        // Show prospects that: 1) have no campaign assigned, OR 2) are assigned to a different campaign
+        const availableLeads = mappedLeads.filter(lead => 
+          lead.campaign_id !== campaign?.id?.toString()
+        )
+        
+        console.log(`📊 Import filtering results:`, {
+          total_prospects: mappedLeads.length,
+          current_campaign_id: campaign?.id?.toString(),
+          available_prospects: availableLeads.length,
+          prospects_already_assigned_to_this_campaign: mappedLeads.length - availableLeads.length,
+          sample_available: availableLeads.slice(0, 3).map(l => ({
+            name: l.name,
+            email: l.email,
+            current_campaign_id: l.campaign_id
+          }))
+        })
+        
+        setAllLeads(availableLeads)
+        
+        if (availableLeads.length === 0 && mappedLeads.length > 0) {
+          toast({
+            title: "No Available Prospects",
+            description: `All prospects are already assigned to "${campaign?.name}" campaign.`,
+          })
+        }
       } else {
         toast({
           title: "Error",
-          description: "Failed to load leads data",
+          description: result.error || "Failed to load prospects",
           variant: "destructive"
         })
       }
@@ -765,95 +807,136 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       console.error("Error loading leads:", error)
       toast({
         title: "Error",
-        description: "Failed to load leads data",
+        description: "Failed to load prospects data",
         variant: "destructive"
       })
+    } finally {
+      setLeadsLoading(false)
     }
   }
 
-  // Import contacts from various sources
+  // Import prospects from various sources
   const importContacts = async () => {
     if (!campaign?.id) return
 
     setImportLoading(true)
     
     try {
-      let contactsToImport = []
+      let prospectsToImport = []
       
       if (importType === 'leads') {
-        contactsToImport = selectedLeads.map(lead => ({
-          name: lead.name || lead.customer_name,
-          email: lead.email,
-          phone: lead.phone,
-          company: lead.company || lead.business_name,
-          source: 'leads_table'
-        }))
+        prospectsToImport = selectedLeads.map(lead => {
+          const nameParts = (lead.name || lead.customer_name || '').split(' ')
+          return {
+            first_name: nameParts[0] || '',
+            last_name: nameParts.slice(1).join(' ') || '',
+            email_address: lead.email,
+            phone: lead.phone,
+            company_name: lead.company || lead.business_name,
+            job_title: lead.title || '',
+            location: lead.location || '',
+            industry: lead.industry || '',
+            campaign_id: campaign.id,
+            email_status: 'Unknown',
+            tags: campaign.name,
+            notes: 'Imported from leads table'
+          }
+        })
       } else if (importType === 'csv' && csvFile) {
         // Handle CSV import
         const text = await csvFile.text()
         const lines = text.split('\n')
         const headers = lines[0].split(',').map(h => h.trim())
         
-        contactsToImport = lines.slice(1).filter(line => line.trim()).map(line => {
+        prospectsToImport = lines.slice(1).filter(line => line.trim()).map(line => {
           const values = line.split(',').map(v => v.trim())
           const contact = {}
           headers.forEach((header, index) => {
             contact[header.toLowerCase()] = values[index] || ''
           })
+          const fullName = contact.name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
+          const nameParts = fullName.split(' ')
           return {
-            name: contact.name || contact.first_name + ' ' + contact.last_name || '',
-            email: contact.email,
+            first_name: contact.first_name || nameParts[0] || '',
+            last_name: contact.last_name || nameParts.slice(1).join(' ') || '',
+            email_address: contact.email || contact.email_address,
             phone: contact.phone,
-            company: contact.company,
-            source: 'csv_import'
+            company_name: contact.company || contact.company_name,
+            job_title: contact.title || contact.job_title,
+            location: contact.location,
+            industry: contact.industry,
+            campaign_id: campaign.id,
+            email_status: 'Unknown',
+            tags: campaign.name,
+            notes: 'Imported from CSV'
           }
         })
       } else if (importType === 'manual') {
-        contactsToImport = [{
-          name: manualContact.name,
-          email: manualContact.email,
+        const nameParts = (manualContact.name || '').split(' ')
+        prospectsToImport = [{
+          first_name: nameParts[0] || '',
+          last_name: nameParts.slice(1).join(' ') || '',
+          email_address: manualContact.email,
           phone: manualContact.phone,
-          company: manualContact.company,
-          source: 'manual_entry'
+          company_name: manualContact.company,
+          campaign_id: campaign.id,
+          email_status: 'Unknown',
+          tags: campaign.name,
+          notes: 'Added manually'
         }]
       }
 
-      const response = await fetch(`/api/campaigns/${campaign.id}/contacts`, {
+      // Use prospects API instead of contacts
+      const response = await fetch(`/api/prospects`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          contacts: contactsToImport,
-          campaignTag: campaign.name
+          prospects: prospectsToImport
         }),
       })
 
       const result = await response.json()
 
-      if (result.success) {
-        toast({
-          title: "Contacts Imported",
-          description: `Successfully imported ${contactsToImport.length} contacts with "${campaign.name}" tag`,
-        })
+      if (response.ok) {
+        const importedCount = result.imported || 0
+        const updatedCount = result.updated || 0
+        
+        if (importedCount > 0 || updatedCount > 0) {
+          toast({
+            title: "Prospects Imported",
+            description: importedCount > 0 
+              ? `Successfully imported ${importedCount} new prospects to "${campaign.name}" campaign`
+              : `Successfully assigned ${updatedCount} existing prospects to "${campaign.name}" campaign`,
+          })
+        } else {
+          toast({
+            title: "Import Completed",
+            description: result.message || "Prospects have been processed successfully",
+          })
+        }
         
         setShowImportModal(false)
         setSelectedLeads([])
         setCsvFile(null)
         setManualContact({ name: '', email: '', phone: '', company: '' })
         
+        // Refresh the prospects list
+        fetchContacts()
+        
       } else {
         toast({
           title: "Import Failed",
-          description: result.error || "Failed to import contacts",
+          description: result.error || "Failed to import prospects",
           variant: "destructive"
         })
       }
     } catch (error) {
-      console.error("Error importing contacts:", error)
+      console.error("Error importing prospects:", error)
       toast({
         title: "Error",
-        description: "Failed to import contacts",
+        description: "Failed to import prospects",
         variant: "destructive"
       })
     } finally {
@@ -878,9 +961,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   // Open import modal and load leads
   const openImportModal = () => {
     setShowImportModal(true)
-    if (importType === 'leads') {
-      loadLeadsData()
-    }
+    // Always load leads data when opening the modal since 'leads' is the default importType
+    loadLeadsData()
   }
 
   const activeStep = steps.find((s) => s.id === activeStepId)
@@ -1581,28 +1663,62 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }
 
-  // Contact table functions (from LeadsTab)
+  // Contact table functions (modified to fetch prospects for the campaign)
   const fetchContacts = async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
       if (searchQuery) params.append('search', searchQuery)
+      if (campaign?.id) params.append('campaign_id', campaign.id.toString())
       params.append('limit', pageSize.toString())
       params.append('offset', ((currentPage - 1) * pageSize).toString())
 
-      const response = await fetch(`/api/contacts?${params.toString()}`)
+      console.log(`🔍 Fetching prospects for campaign ${campaign?.id} (${campaign?.name}) - ID type: ${typeof campaign?.id}`)
+      console.log(`📋 Query params:`, params.toString())
+      console.log(`📋 Campaign object:`, campaign)
+      
+      const response = await fetch(`/api/prospects?${params.toString()}`)
       const data = await response.json()
       
-      if (data.contacts) {
-        setContacts(data.contacts)
+      console.log(`📊 API Response:`, {
+        prospects_count: data.prospects?.length || 0,
+        total: data.total,
+        hasMore: data.hasMore,
+        prospects: data.prospects
+      })
+      
+      if (data.prospects) {
+        // Map prospects to contacts format for consistency with existing UI
+        const mappedContacts = data.prospects.map(prospect => ({
+          id: prospect.id,
+          name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() || 'Unknown',
+          email: prospect.email_address,
+          phone: prospect.phone,
+          company: prospect.company_name,
+          status: prospect.email_status || 'new',
+          lastContact: prospect.last_contacted,
+          tags: prospect.tags,
+          title: prospect.job_title,
+          location: prospect.location,
+          linkedin: prospect.linkedin_url,
+          industry: prospect.industry,
+          notes: prospect.notes,
+          opted_out: prospect.opted_out
+        }))
+        
+        console.log(`📝 Mapped contacts:`, mappedContacts)
+        
+        setContacts(mappedContacts)
         setTotalContacts(data.total)
         setHasMore(data.hasMore)
+      } else {
+        console.log('❌ No prospects property in response:', data)
       }
     } catch (error) {
-      console.error('Error fetching contacts:', error)
+      console.error('Error fetching campaign prospects:', error)
       toast({
         title: "Error",
-        description: "Failed to fetch contacts",
+        description: "Failed to fetch campaign prospects",
         variant: "destructive"
       })
     } finally {
@@ -3322,10 +3438,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Campaign Contacts</h2>
-                <p className="text-gray-600">Manage contacts for this campaign</p>
+                <h2 className="text-xl font-semibold text-gray-900">Campaign Prospects</h2>
+                <p className="text-gray-600">Prospects assigned to "{campaign?.name}" campaign</p>
               </div>
-              <Button onClick={() => setShowImportModal(true)} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={openImportModal} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="w-4 h-4 mr-2" />
                 Import Contacts
               </Button>
@@ -3401,7 +3517,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
-                      placeholder="Search contacts..."
+                      placeholder="Search campaign prospects..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10"
@@ -3449,16 +3565,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         />
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Contact
+                        Prospect
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Company
+                        Company & Title
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
+                        Email Status
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Last Contact
+                        Industry
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -3475,7 +3591,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     ) : contacts.length === 0 ? (
                       <tr>
                         <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
-                          No contacts found. Click "Import Contacts" to get started.
+                          No prospects assigned to this campaign yet. Import prospects or assign them from the prospects list.
                         </td>
                       </tr>
                     ) : (
@@ -3512,19 +3628,32 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             </div>
                           </td>
                           <td className="px-4 py-4">
-                            <div className="text-sm text-gray-900">{contact.company || '-'}</div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{contact.company || '-'}</div>
+                              {contact.title && (
+                                <div className="text-xs text-gray-500">{contact.title}</div>
+                              )}
+                              {contact.location && (
+                                <div className="text-xs text-gray-400">{contact.location}</div>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-4">
                             <Badge 
-                              variant={contact.status === 'active' ? 'default' : 'secondary'}
-                              className={contact.status === 'active' ? 'bg-green-100 text-green-800' : ''}
+                              variant={contact.status === 'Valid' ? 'default' : contact.status === 'Invalid' ? 'destructive' : 'secondary'}
+                              className={
+                                contact.status === 'Valid' ? 'bg-green-100 text-green-800' : 
+                                contact.status === 'Invalid' ? 'bg-red-100 text-red-800' :
+                                contact.status === 'Unknown' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }
                             >
-                              {contact.status || 'New'}
+                              {contact.status || 'Unknown'}
                             </Badge>
                           </td>
                           <td className="px-4 py-4">
                             <div className="text-sm text-gray-500">
-                              {contact.lastContact ? format(new Date(contact.lastContact), 'MMM d, yyyy') : 'Never'}
+                              {contact.industry || '-'}
                             </div>
                           </td>
                           <td className="px-4 py-4">
@@ -3563,7 +3692,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               {totalContacts > 0 && (
                 <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
                   <div className="text-sm text-gray-500">
-                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalContacts)} of {totalContacts} contacts
+                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalContacts)} of {totalContacts} prospects
                   </div>
                   <div className="flex items-center space-x-2">
                     <Button
@@ -3605,7 +3734,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     <div className="grid grid-cols-3 gap-4">
                       <button
                         type="button"
-                        onClick={() => setImportType('leads')}
+                        onClick={() => {
+                          setImportType('leads')
+                          loadLeadsData()
+                        }}
                         className={`p-4 border rounded-lg text-center transition-colors ${
                           importType === 'leads' 
                             ? 'border-blue-500 bg-blue-50 text-blue-700' 
@@ -3654,33 +3786,57 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           variant="outline"
                           size="sm"
                           onClick={loadLeadsData}
+                          disabled={leadsLoading}
                         >
-                          Refresh Leads
+                          {leadsLoading ? 'Loading...' : 'Refresh Leads'}
                         </Button>
                       </div>
                       <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
-                        {allLeads.map((lead) => (
-                          <div key={lead.id} className="flex items-center p-3 border-b border-gray-100 last:border-b-0">
-                            <Checkbox
-                              checked={selectedLeads.some(l => l.id === lead.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedLeads([...selectedLeads, lead])
-                                } else {
-                                  setSelectedLeads(selectedLeads.filter(l => l.id !== lead.id))
-                                }
-                              }}
-                            />
-                            <div className="ml-3">
-                              <div className="text-sm font-medium text-gray-900">
-                                {lead.name || lead.customer_name || 'Unknown'}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {lead.email} • {lead.company || lead.business_name || 'No company'}
+                        {leadsLoading ? (
+                          <div className="p-8 text-center text-gray-500">
+                            <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-2"></div>
+                            <div className="font-medium">Loading prospects...</div>
+                          </div>
+                        ) : allLeads.length === 0 ? (
+                          <div className="p-8 text-center text-gray-500">
+                            <Database className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                            <div className="font-medium">No prospects available</div>
+                            <div className="text-sm">
+                              Either no prospects exist or all are already assigned to campaigns.
+                            </div>
+                            <Button
+                              variant="link"
+                              size="sm"
+                              onClick={loadLeadsData}
+                              className="mt-2"
+                            >
+                              Try refreshing
+                            </Button>
+                          </div>
+                        ) : (
+                          allLeads.map((lead) => (
+                            <div key={lead.id} className="flex items-center p-3 border-b border-gray-100 last:border-b-0">
+                              <Checkbox
+                                checked={selectedLeads.some(l => l.id === lead.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedLeads([...selectedLeads, lead])
+                                  } else {
+                                    setSelectedLeads(selectedLeads.filter(l => l.id !== lead.id))
+                                  }
+                                }}
+                              />
+                              <div className="ml-3">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {lead.name || lead.customer_name || 'Unknown'}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {lead.email} • {lead.company || lead.business_name || 'No company'}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))
+                        )}
                       </div>
                       {selectedLeads.length > 0 && (
                         <div className="text-sm text-gray-600 mt-2">

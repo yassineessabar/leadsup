@@ -38,20 +38,22 @@ import {
   Tag
 } from 'lucide-react'
 
-interface Contact {
+interface Prospect {
   id: number
   first_name?: string
   last_name?: string
-  email?: string
+  email_address?: string
   email_status?: string
-  privacy?: string
   tags?: string
-  linkedin?: string
-  title?: string
+  linkedin_url?: string
+  job_title?: string
   location?: string
-  company?: string
+  company_name?: string
   industry?: string
-  note?: string
+  notes?: string
+  campaign_id?: number
+  time_zone?: string
+  opted_out?: boolean
   created_at?: string
   updated_at?: string
 }
@@ -75,24 +77,24 @@ const emailStatusColors = {
 }
 
 export function LeadsTab() {
-  const [contacts, setContacts] = useState<Contact[]>([])
+  const [prospects, setProspects] = useState<Prospect[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedContacts, setSelectedContacts] = useState<number[]>([])
+  const [selectedProspects, setSelectedProspects] = useState<number[]>([])
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalContacts, setTotalContacts] = useState(0)
+  const [totalProspects, setTotalProspects] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [editingContact, setEditingContact] = useState<Partial<Contact>>({})
+  const [editingProspect, setEditingProspect] = useState<Partial<Prospect>>({})
   const [filterCount, setFilterCount] = useState(0)
   const { toast } = useToast()
 
   const pageSize = 20
 
-  // Fetch contacts from API
-  const fetchContacts = async () => {
+  // Fetch prospects from API
+  const fetchProspects = async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
@@ -100,19 +102,19 @@ export function LeadsTab() {
       params.append('limit', pageSize.toString())
       params.append('offset', ((currentPage - 1) * pageSize).toString())
 
-      const response = await fetch(`/api/contacts?${params.toString()}`)
+      const response = await fetch(`/api/prospects?${params.toString()}`)
       const data = await response.json()
       
-      if (data.contacts) {
-        setContacts(data.contacts)
-        setTotalContacts(data.total)
+      if (data.prospects) {
+        setProspects(data.prospects)
+        setTotalProspects(data.total)
         setHasMore(data.hasMore)
       }
     } catch (error) {
-      console.error('Error fetching contacts:', error)
+      console.error('Error fetching prospects:', error)
       toast({
         title: "Error",
-        description: "Failed to fetch contacts",
+        description: "Failed to fetch prospects",
         variant: "destructive"
       })
     } finally {
@@ -143,7 +145,7 @@ export function LeadsTab() {
   }
 
   useEffect(() => {
-    fetchContacts()
+    fetchProspects()
   }, [currentPage])
 
   useEffect(() => {
@@ -153,120 +155,168 @@ export function LeadsTab() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setCurrentPage(1)
-      fetchContacts()
+      fetchProspects()
     }, 500)
     return () => clearTimeout(timer)
   }, [searchQuery])
 
   const handleCampaignAssignment = async (campaignId: string) => {
-    if (selectedContacts.length === 0) return
+    if (selectedProspects.length === 0) {
+      toast({
+        title: "No Selection",
+        description: "Please select prospects to assign to campaign",
+        variant: "destructive"
+      })
+      return
+    }
 
     try {
       const selectedCampaign = campaigns.find(c => c.id.toString() === campaignId)
-      if (!selectedCampaign) return
+      if (!selectedCampaign) {
+        toast({
+          title: "Error",
+          description: "Campaign not found",
+          variant: "destructive"
+        })
+        return
+      }
 
-      // Update each selected contact by appending the campaign name to their tags
-      const updatePromises = selectedContacts.map(contactId => {
-        const contact = contacts.find(c => c.id === contactId)
-        if (!contact) return Promise.resolve()
+      console.log(`Assigning ${selectedProspects.length} prospects to campaign "${selectedCampaign.name}" (ID: ${campaignId})`)
 
-        // Append the campaign name to existing tags
-        const existingTags = contact.tags || ''
-        const newTag = selectedCampaign.name
-        const updatedTags = existingTags 
-          ? (existingTags.includes(newTag) ? existingTags : `${existingTags}, ${newTag}`)
-          : newTag
-
-        return fetch(`/api/contacts/${contactId}`, {
+      // Update each selected prospect to assign them to the campaign
+      const updatePromises = selectedProspects.map(async (prospectId) => {
+        console.log(`🔄 Updating prospect ${prospectId} with campaign_id: ${campaignId} (type: ${typeof campaignId})`)
+        
+        // Campaign IDs are UUIDs (strings), not integers
+        const requestBody = { campaign_id: campaignId }
+        console.log(`📋 Request body:`, requestBody)
+        
+        const response = await fetch(`/api/prospects/${prospectId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tags: updatedTags })
+          body: JSON.stringify(requestBody)
         })
+        
+        const result = await response.json()
+        console.log(`📊 Update result for prospect ${prospectId}:`, {
+          success: response.ok,
+          status: response.status,
+          prospect_name: result.prospect ? `${result.prospect.first_name} ${result.prospect.last_name}` : 'Unknown',
+          old_campaign_id: result.prospect?.campaign_id,
+          error: result.error
+        })
+        
+        if (!response.ok) {
+          throw new Error(`Failed to update prospect ${prospectId}: ${result.error || 'Unknown error'}`)
+        }
+        
+        return result
       })
 
-      await Promise.all(updatePromises)
+      const results = await Promise.all(updatePromises)
+      console.log('✅ All assignments completed successfully. Updated prospects:', 
+        results.map(r => ({
+          id: r.prospect?.id,
+          name: `${r.prospect?.first_name || ''} ${r.prospect?.last_name || ''}`.trim(),
+          campaign_id: r.prospect?.campaign_id
+        }))
+      )
+
+      // Verify assignments worked by checking a sample prospect
+      if (results.length > 0) {
+        const sampleProspectId = selectedProspects[0]
+        console.log(`🔍 Verifying assignment for prospect ${sampleProspectId}...`)
+        
+        try {
+          const verifyResponse = await fetch(`/api/prospects?campaign_id=${campaignId}&limit=5`)
+          const verifyData = await verifyResponse.json()
+          console.log(`✅ Verification: Found ${verifyData.prospects?.length || 0} prospects for campaign ${campaignId}`)
+        } catch (verifyError) {
+          console.error('❌ Verification failed:', verifyError)
+        }
+      }
 
       toast({
         title: "Campaign Assignment",
-        description: `${selectedContacts.length} contacts assigned to campaign "${selectedCampaign.name}"`
+        description: `${selectedProspects.length} prospects assigned to campaign "${selectedCampaign.name}"`
       })
 
-      setSelectedContacts([])
-      fetchContacts() // Refresh the contacts list
+      setSelectedProspects([])
+      fetchProspects() // Refresh the prospects list
     } catch (error) {
-      console.error('Error assigning contacts to campaign:', error)
+      console.error('Error assigning prospects to campaign:', error)
       toast({
         title: "Error",
-        description: "Failed to assign contacts to campaign",
+        description: error instanceof Error ? error.message : "Failed to assign prospects to campaign",
         variant: "destructive"
       })
     }
   }
 
-  const handleSelectContact = (contactId: number) => {
-    setSelectedContacts(prev => 
-      prev.includes(contactId) 
-        ? prev.filter(id => id !== contactId)
-        : [...prev, contactId]
+  const handleSelectProspect = (prospectId: number) => {
+    setSelectedProspects(prev => 
+      prev.includes(prospectId) 
+        ? prev.filter(id => id !== prospectId)
+        : [...prev, prospectId]
     )
   }
 
   const handleSelectAll = () => {
-    if (selectedContacts.length === contacts.length) {
-      setSelectedContacts([])
+    if (selectedProspects.length === prospects.length) {
+      setSelectedProspects([])
     } else {
-      setSelectedContacts(contacts.map(contact => contact.id))
+      setSelectedProspects(prospects.map(prospect => prospect.id))
     }
   }
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Are you sure you want to delete ${selectedContacts.length} selected contacts?`)) return
+    if (!confirm(`Are you sure you want to delete ${selectedProspects.length} selected prospects?`)) return
 
     try {
-      const deletePromises = selectedContacts.map(contactId =>
-        fetch(`/api/contacts/${contactId}`, { method: 'DELETE' })
+      const deletePromises = selectedProspects.map(prospectId =>
+        fetch(`/api/prospects/${prospectId}`, { method: 'DELETE' })
       )
 
       await Promise.all(deletePromises)
 
       toast({
-        title: "Contacts deleted",
-        description: `${selectedContacts.length} contacts have been deleted successfully`
+        title: "Prospects deleted",
+        description: `${selectedProspects.length} prospects have been deleted successfully`
       })
 
-      setSelectedContacts([])
-      fetchContacts()
+      setSelectedProspects([])
+      fetchProspects()
     } catch (error) {
-      console.error('Error deleting contacts:', error)
+      console.error('Error deleting prospects:', error)
       toast({
         title: "Error",
-        description: "Failed to delete contacts",
+        description: "Failed to delete prospects",
         variant: "destructive"
       })
     }
   }
 
   const handleExportCSV = () => {
-    const contactsToExport = selectedContacts.length > 0 
-      ? contacts.filter(contact => selectedContacts.includes(contact.id))
-      : contacts
+    const prospectsToExport = selectedProspects.length > 0 
+      ? prospects.filter(prospect => selectedProspects.includes(prospect.id))
+      : prospects
 
-    const headers = ['First Name', 'Last Name', 'Email', 'Title', 'Company', 'Industry', 'Location', 'LinkedIn', 'Tags', 'Email Status', 'Privacy', 'Notes']
+    const headers = ['First Name', 'Last Name', 'Email', 'Title', 'Company', 'Industry', 'Location', 'LinkedIn', 'Tags', 'Email Status', 'Time Zone', 'Notes']
     const csvContent = [
       headers.join(','),
-      ...contactsToExport.map(contact => [
-        contact.first_name || '',
-        contact.last_name || '',
-        contact.email || '',
-        contact.title || '',
-        contact.company || '',
-        contact.industry || '',
-        contact.location || '',
-        contact.linkedin || '',
-        contact.tags || '',
-        contact.email_status || '',
-        contact.privacy || '',
-        contact.note || ''
+      ...prospectsToExport.map(prospect => [
+        prospect.first_name || '',
+        prospect.last_name || '',
+        prospect.email_address || '',
+        prospect.job_title || '',
+        prospect.company_name || '',
+        prospect.industry || '',
+        prospect.location || '',
+        prospect.linkedin_url || '',
+        prospect.tags || '',
+        prospect.email_status || '',
+        prospect.time_zone || '',
+        prospect.notes || ''
       ].map(field => `"${field.replace(/"/g, '""')}"`).join(','))
     ].join('\n')
 
@@ -274,7 +324,7 @@ export function LeadsTab() {
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
-    link.setAttribute('download', `contacts-${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute('download', `prospects-${new Date().toISOString().split('T')[0]}.csv`)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
@@ -282,46 +332,46 @@ export function LeadsTab() {
 
     toast({
       title: "Export completed",
-      description: `${contactsToExport.length} contacts exported successfully`
+      description: `${prospectsToExport.length} prospects exported successfully`
     })
   }
 
-  const handleEditContact = (contact: Contact) => {
-    setEditingContact(contact)
+  const handleEditProspect = (prospect: Prospect) => {
+    setEditingProspect(prospect)
     setShowEditModal(true)
   }
 
-  const saveContact = async () => {
+  const saveProspect = async () => {
     try {
-      const isEditing = editingContact.id
+      const isEditing = editingProspect.id
       const method = isEditing ? 'PATCH' : 'POST'
-      const url = isEditing ? `/api/contacts/${editingContact.id}` : '/api/contacts'
+      const url = isEditing ? `/api/prospects/${editingProspect.id}` : '/api/prospects'
 
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingContact)
+        body: JSON.stringify(editingProspect)
       })
 
       const data = await response.json()
 
       if (response.ok) {
         toast({
-          title: isEditing ? "Contact updated" : "Contact added",
-          description: `Contact has been ${isEditing ? 'updated' : 'added'} successfully`
+          title: isEditing ? "Prospect updated" : "Prospect added",
+          description: `Prospect has been ${isEditing ? 'updated' : 'added'} successfully`
         })
         
         setShowEditModal(false)
-        setEditingContact({})
-        fetchContacts()
+        setEditingProspect({})
+        fetchProspects()
       } else {
-        throw new Error(data.error || 'Failed to save contact')
+        throw new Error(data.error || 'Failed to save prospect')
       }
     } catch (error) {
-      console.error('Error saving contact:', error)
+      console.error('Error saving prospect:', error)
       toast({
         title: "Error",
-        description: "Failed to save contact",
+        description: "Failed to save prospect",
         variant: "destructive"
       })
     }
@@ -354,16 +404,16 @@ export function LeadsTab() {
   }
 
   return (
-    <div className={`min-h-screen bg-white ${selectedContacts.length > 0 ? 'pb-20' : ''}`}>
+    <div className={`min-h-screen bg-white ${selectedProspects.length > 0 ? 'pb-20' : ''}`}>
       {/* Header */}
       <div className="border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <User className="w-5 h-5 text-gray-400" />
-              <span className="text-lg font-medium text-gray-900">All contacts</span>
+              <span className="text-lg font-medium text-gray-900">All prospects</span>
               <Badge variant="secondary" className="bg-gray-100 text-gray-600">
-                {totalContacts}
+                {totalProspects}
               </Badge>
             </div>
           </div>
@@ -394,7 +444,7 @@ export function LeadsTab() {
               onClick={() => setShowImportModal(true)}
             >
               <Plus className="w-4 h-4 mr-2" />
-              Import new contacts
+              Import new prospects
             </Button>
           </div>
         </div>
@@ -407,7 +457,7 @@ export function LeadsTab() {
             <tr>
               <th className="w-12 px-4 py-3">
                 <Checkbox
-                  checked={selectedContacts.length === contacts.length && contacts.length > 0}
+                  checked={selectedProspects.length === prospects.length && prospects.length > 0}
                   onCheckedChange={handleSelectAll}
                 />
               </th>
@@ -439,7 +489,7 @@ export function LeadsTab() {
                 Tags
               </th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Privacy
+                Campaign
               </th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Added
@@ -451,22 +501,22 @@ export function LeadsTab() {
             {loading ? (
               <tr>
                 <td colSpan={13} className="px-4 py-8 text-center text-gray-500">
-                  Loading contacts...
+                  Loading prospects...
                 </td>
               </tr>
-            ) : contacts.length === 0 ? (
+            ) : prospects.length === 0 ? (
               <tr>
                 <td colSpan={13} className="px-4 py-8 text-center text-gray-500">
-                  No contacts found
+                  No prospects found
                 </td>
               </tr>
             ) : (
-              contacts.map((contact) => (
-                <tr key={contact.id} className="hover:bg-gray-50 transition-colors">
+              prospects.map((prospect) => (
+                <tr key={prospect.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-4">
                     <Checkbox
-                      checked={selectedContacts.includes(contact.id)}
-                      onCheckedChange={() => handleSelectContact(contact.id)}
+                      checked={selectedProspects.includes(prospect.id)}
+                      onCheckedChange={() => handleSelectProspect(prospect.id)}
                     />
                   </td>
                   
@@ -474,19 +524,19 @@ export function LeadsTab() {
                     <div className="flex items-center space-x-3">
                       <Avatar className="w-8 h-8">
                         <AvatarFallback className="bg-gray-100 text-gray-600 text-xs">
-                          {getInitials(contact.first_name, contact.last_name)}
+                          {getInitials(prospect.first_name, prospect.last_name)}
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm font-medium text-gray-900">
-                        {contact.first_name} {contact.last_name}
+                        {prospect.first_name} {prospect.last_name}
                       </span>
                     </div>
                   </td>
                   
                   <td className="px-4 py-4 text-sm text-blue-600">
-                    {contact.email ? (
-                      <a href={`mailto:${contact.email}`} className="hover:underline">
-                        {contact.email}
+                    {prospect.email_address ? (
+                      <a href={`mailto:${prospect.email_address}`} className="hover:underline">
+                        {prospect.email_address}
                       </a>
                     ) : (
                       <Button 
@@ -500,16 +550,16 @@ export function LeadsTab() {
                   </td>
                   
                   <td className="px-4 py-4">
-                    {contact.email_status && (
-                      <Badge className={`text-xs ${emailStatusColors[contact.email_status as keyof typeof emailStatusColors] || 'bg-gray-100 text-gray-800'}`}>
-                        {contact.email_status}
+                    {prospect.email_status && (
+                      <Badge className={`text-xs ${emailStatusColors[prospect.email_status as keyof typeof emailStatusColors] || 'bg-gray-100 text-gray-800'}`}>
+                        {prospect.email_status}
                       </Badge>
                     )}
                   </td>
                   
                   <td className="px-4 py-4 text-sm text-gray-600 max-w-xs">
-                    <div className="truncate" title={contact.title}>
-                      {contact.title || "-"}
+                    <div className="truncate" title={prospect.job_title}>
+                      {prospect.job_title || "-"}
                     </div>
                   </td>
                   
@@ -517,28 +567,28 @@ export function LeadsTab() {
                     <div className="flex items-center space-x-2">
                       <Building2 className="w-4 h-4 text-gray-400" />
                       <span className="text-sm text-gray-900 truncate max-w-32">
-                        {contact.company || "-"}
+                        {prospect.company_name || "-"}
                       </span>
                     </div>
                   </td>
                   
                   <td className="px-4 py-4 text-sm text-gray-600">
-                    {contact.industry || "-"}
+                    {prospect.industry || "-"}
                   </td>
                   
                   <td className="px-4 py-4 text-sm text-gray-600">
-                    {contact.location ? (
+                    {prospect.location ? (
                       <div className="flex items-center space-x-1">
                         <MapPin className="w-3 h-3 text-gray-400" />
-                        <span>{contact.location}</span>
+                        <span>{prospect.location}</span>
                       </div>
                     ) : "-"}
                   </td>
                   
                   <td className="px-4 py-4">
-                    {contact.linkedin ? (
+                    {prospect.linkedin_url ? (
                       <a 
-                        href={contact.linkedin} 
+                        href={prospect.linkedin_url} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-700"
@@ -549,16 +599,16 @@ export function LeadsTab() {
                   </td>
                   
                   <td className="px-4 py-4">
-                    {contact.tags ? (
+                    {prospect.tags ? (
                       <div className="flex flex-wrap gap-1">
-                        {getTagsArray(contact.tags).slice(0, 2).map((tag, index) => (
+                        {getTagsArray(prospect.tags).slice(0, 2).map((tag, index) => (
                           <Badge key={index} variant="outline" className="text-xs">
                             {tag}
                           </Badge>
                         ))}
-                        {getTagsArray(contact.tags).length > 2 && (
+                        {getTagsArray(prospect.tags).length > 2 && (
                           <Badge variant="outline" className="text-xs">
-                            +{getTagsArray(contact.tags).length - 2}
+                            +{getTagsArray(prospect.tags).length - 2}
                           </Badge>
                         )}
                       </div>
@@ -566,16 +616,16 @@ export function LeadsTab() {
                   </td>
                   
                   <td className="px-4 py-4">
-                    {contact.privacy && contact.privacy !== 'Normal' && (
-                      <Badge className="bg-orange-100 text-orange-800 text-xs">
-                        {contact.privacy}
+                    {prospect.campaign_id ? (
+                      <Badge className="bg-blue-100 text-blue-800 text-xs">
+                        {campaigns.find(c => c.id === prospect.campaign_id)?.name || `Campaign ${prospect.campaign_id}`}
                       </Badge>
-                    )}
+                    ) : "-"}
                   </td>
                   
                   <td className="px-4 py-4 text-sm text-gray-600">
                     <div>
-                      <div>{formatDate(contact.created_at)}</div>
+                      <div>{formatDate(prospect.created_at)}</div>
                     </div>
                   </td>
                   
@@ -584,7 +634,7 @@ export function LeadsTab() {
                       variant="ghost" 
                       size="sm" 
                       className="text-gray-400 hover:text-gray-600"
-                      onClick={() => handleEditContact(contact)}
+                      onClick={() => handleEditProspect(prospect)}
                     >
                       <MoreHorizontal className="w-4 h-4" />
                     </Button>
@@ -609,7 +659,7 @@ export function LeadsTab() {
             <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
               <Database className="w-6 h-6 text-gray-400" />
               <div>
-                <h3 className="font-medium text-gray-900">Contacts database</h3>
+                <h3 className="font-medium text-gray-900">Prospects database</h3>
                 <p className="text-sm text-gray-500">Import from existing database</p>
               </div>
             </div>
@@ -618,7 +668,7 @@ export function LeadsTab() {
               <FileText className="w-6 h-6 text-gray-400" />
               <div>
                 <h3 className="font-medium text-gray-900">CSV import</h3>
-                <p className="text-sm text-gray-500">Import your contacts from CSV file</p>
+                <p className="text-sm text-gray-500">Import your prospects from CSV file</p>
               </div>
             </div>
             
@@ -626,7 +676,7 @@ export function LeadsTab() {
               <Linkedin className="w-6 h-6 text-blue-600" />
               <div>
                 <h3 className="font-medium text-gray-900">LinkedIn import</h3>
-                <p className="text-sm text-gray-500">Import contacts from LinkedIn</p>
+                <p className="text-sm text-gray-500">Import prospects from LinkedIn</p>
               </div>
             </div>
           </div>
@@ -637,34 +687,34 @@ export function LeadsTab() {
               onClick={() => setShowImportModal(false)}
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
-              Back to contacts
+              Back to prospects
             </button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Contact Modal */}
+      {/* Edit Prospect Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingContact.id ? 'Edit Contact' : 'Add New Contact'}
+              {editingProspect.id ? 'Edit Prospect' : 'Add New Prospect'}
             </DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
             <div>
               <label className="text-sm font-medium">First Name</label>
               <Input
-                value={editingContact.first_name || ''}
-                onChange={(e) => setEditingContact({...editingContact, first_name: e.target.value})}
+                value={editingProspect.first_name || ''}
+                onChange={(e) => setEditingProspect({...editingProspect, first_name: e.target.value})}
                 placeholder="First name"
               />
             </div>
             <div>
               <label className="text-sm font-medium">Last Name</label>
               <Input
-                value={editingContact.last_name || ''}
-                onChange={(e) => setEditingContact({...editingContact, last_name: e.target.value})}
+                value={editingProspect.last_name || ''}
+                onChange={(e) => setEditingProspect({...editingProspect, last_name: e.target.value})}
                 placeholder="Last name"
               />
             </div>
@@ -672,16 +722,16 @@ export function LeadsTab() {
               <label className="text-sm font-medium">Email</label>
               <Input
                 type="email"
-                value={editingContact.email || ''}
-                onChange={(e) => setEditingContact({...editingContact, email: e.target.value})}
+                value={editingProspect.email_address || ''}
+                onChange={(e) => setEditingProspect({...editingProspect, email_address: e.target.value})}
                 placeholder="email@example.com"
               />
             </div>
             <div>
               <label className="text-sm font-medium">Email Status</label>
               <Select 
-                value={editingContact.email_status || 'Unknown'} 
-                onValueChange={(value) => setEditingContact({...editingContact, email_status: value})}
+                value={editingProspect.email_status || 'Unknown'} 
+                onValueChange={(value) => setEditingProspect({...editingProspect, email_status: value})}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
@@ -694,75 +744,84 @@ export function LeadsTab() {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium">Privacy</label>
+              <label className="text-sm font-medium">Campaign</label>
               <Select 
-                value={editingContact.privacy || 'Normal'} 
-                onValueChange={(value) => setEditingContact({...editingContact, privacy: value})}
+                value={editingProspect.campaign_id?.toString() || ''} 
+                onValueChange={(value) => setEditingProspect({...editingProspect, campaign_id: value ? parseInt(value) : undefined})}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select campaign" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Normal">Normal</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Restricted">Restricted</SelectItem>
+                  <SelectItem value="">No campaign</SelectItem>
+                  {campaigns.map(campaign => (
+                    <SelectItem key={campaign.id} value={campaign.id.toString()}>{campaign.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="col-span-2">
               <label className="text-sm font-medium">Job Title</label>
               <Input
-                value={editingContact.title || ''}
-                onChange={(e) => setEditingContact({...editingContact, title: e.target.value})}
+                value={editingProspect.job_title || ''}
+                onChange={(e) => setEditingProspect({...editingProspect, job_title: e.target.value})}
                 placeholder="Job title"
               />
             </div>
             <div>
               <label className="text-sm font-medium">Company</label>
               <Input
-                value={editingContact.company || ''}
-                onChange={(e) => setEditingContact({...editingContact, company: e.target.value})}
+                value={editingProspect.company_name || ''}
+                onChange={(e) => setEditingProspect({...editingProspect, company_name: e.target.value})}
                 placeholder="Company name"
               />
             </div>
             <div>
               <label className="text-sm font-medium">Industry</label>
               <Input
-                value={editingContact.industry || ''}
-                onChange={(e) => setEditingContact({...editingContact, industry: e.target.value})}
+                value={editingProspect.industry || ''}
+                onChange={(e) => setEditingProspect({...editingProspect, industry: e.target.value})}
                 placeholder="Industry"
               />
             </div>
-            <div className="col-span-2">
+            <div>
               <label className="text-sm font-medium">Location</label>
               <Input
-                value={editingContact.location || ''}
-                onChange={(e) => setEditingContact({...editingContact, location: e.target.value})}
+                value={editingProspect.location || ''}
+                onChange={(e) => setEditingProspect({...editingProspect, location: e.target.value})}
                 placeholder="City, Country"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Time Zone</label>
+              <Input
+                value={editingProspect.time_zone || ''}
+                onChange={(e) => setEditingProspect({...editingProspect, time_zone: e.target.value})}
+                placeholder="e.g., America/New_York"
               />
             </div>
             <div className="col-span-2">
               <label className="text-sm font-medium">LinkedIn</label>
               <Input
-                value={editingContact.linkedin || ''}
-                onChange={(e) => setEditingContact({...editingContact, linkedin: e.target.value})}
+                value={editingProspect.linkedin_url || ''}
+                onChange={(e) => setEditingProspect({...editingProspect, linkedin_url: e.target.value})}
                 placeholder="https://linkedin.com/in/username"
               />
             </div>
             <div className="col-span-2">
               <label className="text-sm font-medium">Tags</label>
               <Input
-                value={editingContact.tags || ''}
-                onChange={(e) => setEditingContact({...editingContact, tags: e.target.value})}
+                value={editingProspect.tags || ''}
+                onChange={(e) => setEditingProspect({...editingProspect, tags: e.target.value})}
                 placeholder="tag1, tag2, tag3"
               />
             </div>
             <div className="col-span-2">
               <label className="text-sm font-medium">Notes</label>
               <Textarea
-                value={editingContact.note || ''}
-                onChange={(e) => setEditingContact({...editingContact, note: e.target.value})}
-                placeholder="Additional notes about this contact"
+                value={editingProspect.notes || ''}
+                onChange={(e) => setEditingProspect({...editingProspect, notes: e.target.value})}
+                placeholder="Additional notes about this prospect"
                 rows={3}
               />
             </div>
@@ -771,20 +830,20 @@ export function LeadsTab() {
             <Button variant="outline" onClick={() => setShowEditModal(false)}>
               Cancel
             </Button>
-            <Button onClick={saveContact}>
-              {editingContact.id ? 'Save Changes' : 'Add Contact'}
+            <Button onClick={saveProspect}>
+              {editingProspect.id ? 'Save Changes' : 'Add Prospect'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Selection Bar - appears when contacts are selected */}
-      {selectedContacts.length > 0 && (
+      {/* Selection Bar - appears when prospects are selected */}
+      {selectedProspects.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 shadow-lg">
           <div className="flex items-center justify-between max-w-7xl mx-auto">
             <div className="flex items-center space-x-4">
               <button 
-                onClick={() => setSelectedContacts([])}
+                onClick={() => setSelectedProspects([])}
                 className="text-sm text-red-600 hover:text-red-700 flex items-center"
               >
                 <X className="w-4 h-4 mr-1" />
@@ -797,7 +856,7 @@ export function LeadsTab() {
                 Select all
               </button>
               <span className="text-sm text-gray-600">
-                {selectedContacts.length} selected.
+                {selectedProspects.length} selected.
               </span>
             </div>
             
@@ -836,12 +895,12 @@ export function LeadsTab() {
         </div>
       )}
 
-      {/* Regular Footer - only show when no contacts selected */}
-      {selectedContacts.length === 0 && (
+      {/* Regular Footer - only show when no prospects selected */}
+      {selectedProspects.length === 0 && (
         <div className="border-t border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-500">
-              {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalContacts)} of {totalContacts}
+              {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalProspects)} of {totalProspects}
             </div>
             
             <div className="flex items-center space-x-2">
@@ -856,7 +915,7 @@ export function LeadsTab() {
               </Button>
               
               <div className="flex items-center space-x-1">
-                {[...Array(Math.min(5, Math.ceil(totalContacts / pageSize)))].map((_, index) => (
+                {[...Array(Math.min(5, Math.ceil(totalProspects / pageSize)))].map((_, index) => (
                   <Button 
                     key={index + 1}
                     variant="outline" 
