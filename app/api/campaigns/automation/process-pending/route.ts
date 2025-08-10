@@ -208,9 +208,27 @@ export async function GET(request: NextRequest) {
         // Calculate local time for contact
         const contactLocalHour = (currentUTCHour + timezoneOffset + 24) % 24
         
-        // Parse sending hours from settings
-        const startHour = parseInt(settings.sending_start_time?.split(':')[0] || '9')
-        const endHour = parseInt(settings.sending_end_time?.split(':')[0] || '17')
+        // Parse sending hours from settings (handle 12-hour format)
+        function parseTimeToHour(timeStr) {
+          if (!timeStr) return null;
+          
+          const timeParts = timeStr.toLowerCase().match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/);
+          if (!timeParts) return null;
+          
+          let hour = parseInt(timeParts[1]);
+          const ampm = timeParts[3];
+          
+          if (ampm === 'pm' && hour !== 12) {
+            hour += 12;
+          } else if (ampm === 'am' && hour === 12) {
+            hour = 0;
+          }
+          
+          return hour;
+        }
+        
+        const startHour = parseTimeToHour(settings.sending_start_time) || 9;
+        const endHour = parseTimeToHour(settings.sending_end_time) || 17;
         
         // Check if it's within sending hours for this contact's timezone
         const isWithinSendingHours = contactLocalHour >= startHour && contactLocalHour < endHour
