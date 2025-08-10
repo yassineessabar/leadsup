@@ -74,10 +74,11 @@ export function InsightsChart({ data, activeTab }: InsightsChartProps) {
         <button
           onClick={() => toggleMetric("emails")}
           className={`flex items-center gap-2 px-3 py-1 rounded transition-colors ${
-            selectedMetrics.emails ? "bg-purple-100 text-purple-700" : "text-gray-600 hover:bg-gray-100"
+            selectedMetrics.emails ? "" : "text-gray-600 hover:bg-gray-100"
           }`}
+          style={selectedMetrics.emails ? { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' } : {}}
         >
-          <div className={`w-3 h-3 rounded ${selectedMetrics.emails ? "bg-purple-500" : "bg-gray-300"}`}></div>
+          <div className={`w-3 h-3 rounded ${selectedMetrics.emails ? "" : "bg-gray-300"}`} style={selectedMetrics.emails ? { backgroundColor: 'rgb(87, 140, 255)' } : {}}></div>
           Emails
         </button>
       </div>
@@ -140,10 +141,10 @@ export function InsightsChart({ data, activeTab }: InsightsChartProps) {
               <Line 
                 type="monotone" 
                 dataKey="emails" 
-                stroke="#8b5cf6" 
+                stroke="rgb(87, 140, 255)" 
                 strokeWidth={2}
-                dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, fill: "#8b5cf6" }}
+                dot={{ fill: "rgb(87, 140, 255)", strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, fill: "rgb(87, 140, 255)" }}
               />
             )}
           </LineChart>
@@ -171,7 +172,7 @@ export function InsightsChart({ data, activeTab }: InsightsChartProps) {
           <div className="text-xs text-gray-500">Total Calls</div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-purple-600">
+          <div className="text-2xl font-bold" style={{ color: 'rgb(87, 140, 255)' }}>
             {data.reduce((sum, item) => sum + item.emails, 0)}
           </div>
           <div className="text-xs text-gray-500">Total Emails</div>

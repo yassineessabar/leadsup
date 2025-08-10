@@ -102,7 +102,7 @@ export default function Home() {
       <div className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-blue-700 font-medium">Loading LeadsUp...</p>
+          <p className="font-medium" style={{ color: 'rgb(87, 140, 255)' }}>Loading LeadsUp...</p>
         </div>
       </div>
     )

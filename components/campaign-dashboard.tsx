@@ -247,8 +247,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     'Unknown': 'bg-gray-100 text-gray-800',
     'Disposable': 'bg-orange-100 text-orange-800',
     'Not found': 'bg-gray-100 text-gray-600',
-    'Skipped': 'bg-blue-100 text-blue-800',
-    'Pending': 'bg-purple-100 text-purple-800'
+    'Skipped': 'text-[rgb(87,140,255)]',
+    'Pending': 'text-[rgb(87,140,255)]'
+  }
+
+  const statusInlineStyles = {
+    'Skipped': { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' },
+    'Pending': { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }
   }
 
   const tabs = [
@@ -2177,7 +2182,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <div className="flex items-center">
                 <Button 
                   onClick={saveSettings} 
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
+                  className="text-white shadow-sm hover:shadow-md transition-all duration-200"
+                  style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
                 >
                   <Check className="w-4 h-4 mr-2" />
                   Save Campaign Settings
@@ -2198,7 +2206,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       type="number" 
                       value={dailyContactsLimit}
                       onChange={(e) => setDailyContactsLimit(parseInt(e.target.value) || 35)}
-                      className="w-full h-12 px-4 text-center bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                      className="w-full h-12 px-4 text-center bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none transition-colors"
                     />
                   </div>
 
@@ -2211,7 +2219,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       type="number" 
                       value={dailySequenceLimit}
                       onChange={(e) => setDailySequenceLimit(parseInt(e.target.value) || 100)}
-                      className="w-full h-12 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                      className="w-full h-12 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -2233,9 +2241,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               type="button"
                               className={`px-3 py-2 text-sm font-semibold rounded-lg transition-all ${
                                 isActive 
-                                  ? 'bg-blue-600 text-white shadow-md' 
+                                  ? 'text-white shadow-md' 
                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                               }`}
+                              style={isActive ? { backgroundColor: 'rgb(87, 140, 255)' } : {}}
                               onClick={() => {
                                 if (isActive) {
                                   setActiveDays(prev => prev.filter(d => d !== day))
@@ -2258,7 +2267,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <select 
                           value={sendingStartTime}
                           onChange={(e) => setSendingStartTime(e.target.value)}
-                          className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                          className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none"
                         >
                           {Array.from({ length: 24 }, (_, i) => {
                             const hour = i.toString().padStart(2, '0')
@@ -2276,7 +2285,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <select 
                           value={sendingEndTime}
                           onChange={(e) => setSendingEndTime(e.target.value)}
-                          className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                          className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none"
                         >
                           {Array.from({ length: 24 }, (_, i) => {
                             const hour = i.toString().padStart(2, '0')
@@ -2294,7 +2303,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 </div>
 
                 {/* Email Signature Section */}
-                <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100">
+                <div className="rounded-2xl p-6 border" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', borderColor: 'rgba(87, 140, 255, 0.2)' }}>
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center">
                       <User className="w-5 h-5 text-white" />
@@ -2309,7 +2318,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         type="text"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none transition-colors"
                       />
                     </div>
                     <div>
@@ -2318,7 +2327,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         type="text"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none transition-colors"
                       />
                     </div>
                     <div>
@@ -2327,7 +2336,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         type="text"
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none transition-colors"
                       />
                     </div>
                     <div>
@@ -2336,7 +2345,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         type="text"
                         value={companyWebsite}
                         onChange={(e) => setCompanyWebsite(e.target.value)}
-                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none transition-colors"
                       />
                     </div>
                   </div>
@@ -2428,8 +2437,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             <div className="w-full min-h-[600px] flex items-center justify-center">
               <div className="text-center max-w-md mx-auto">
                 {/* Icon */}
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Mail className="w-10 h-10 text-blue-600" />
+                <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)' }}>
+                  <Mail className="w-10 h-10" style={{ color: 'rgb(87, 140, 255)' }} />
                 </div>
                 
                 {/* Title and Description */}
@@ -2442,7 +2451,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 <Button
                   variant="default"
                   size="lg"
-                  className="flex items-center justify-center space-x-2 text-white bg-blue-600 hover:bg-blue-700 px-8 py-3 text-base font-medium shadow-lg hover:shadow-xl transition-all duration-200 mx-auto"
+                  className="flex items-center justify-center space-x-2 text-white px-8 py-3 text-base font-medium shadow-lg hover:shadow-xl transition-all duration-200 mx-auto"
+                  style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
                   onClick={() => setShowConnectDropdown(!showConnectDropdown)}
                 >
                   <Plus className="w-5 h-5" />
@@ -2484,7 +2496,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       initiateMicrosoft365OAuth()
                     }}
                   >
-                    <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center">
+                    <div className="w-5 h-5 rounded flex items-center justify-center" style={{ backgroundColor: 'rgb(87, 140, 255)' }}>
                       <Mail className="w-3 h-3 text-white" />
                     </div>
                     <div className="text-left">
@@ -2515,8 +2527,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       setShowBulkImportModal(true)
                     }}
                   >
-                    <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center">
-                      <Upload className="w-3 h-3 text-purple-600" />
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)' }}>
+                      <Upload className="w-3 h-3" style={{ color: 'rgb(87, 140, 255)' }} />
                     </div>
                     <div className="text-left">
                       <div className="font-medium">Import bulk emails</div>
@@ -2541,7 +2553,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 <div className="relative">
                   <Button
                     variant="default"
-                    className="flex items-center space-x-2 text-white bg-blue-600 hover:bg-blue-700"
+                    className="flex items-center space-x-2 text-white"
+                    style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
                     onClick={() => setShowConnectDropdown(!showConnectDropdown)}
                   >
                     <Plus className="w-4 h-4" />
@@ -2577,7 +2592,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           initiateMicrosoft365OAuth()
                         }}
                       >
-                        <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center">
+                        <div className="w-5 h-5 rounded flex items-center justify-center" style={{ backgroundColor: 'rgb(87, 140, 255)' }}>
                           <Mail className="w-3 h-3 text-white" />
                         </div>
                         <div className="text-left">
@@ -2608,8 +2623,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           setShowBulkImportModal(true)
                         }}
                       >
-                        <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center">
-                          <Upload className="w-3 h-3 text-purple-600" />
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)' }}>
+                          <Upload className="w-3 h-3" style={{ color: 'rgb(87, 140, 255)' }} />
                         </div>
                         <div className="text-left">
                           <div className="font-medium">Import bulk emails</div>
@@ -2661,10 +2676,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Avg. Score</p>
-                      <p className="text-2xl font-bold text-blue-600">{avgScore}%</p>
+                      <p className="text-2xl font-bold" style={{ color: 'rgb(87, 140, 255)' }}>{avgScore}%</p>
                     </div>
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <BarChart className="w-5 h-5 text-blue-600" />
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)' }}>
+                      <BarChart className="w-5 h-5" style={{ color: 'rgb(87, 140, 255)' }} />
                     </div>
                   </div>
                 </div>
@@ -2682,7 +2697,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       <Button
                         size="sm"
                         onClick={saveSenders}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
                       >
                         Save Sender Selection
                       </Button>
@@ -2697,7 +2714,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           <input 
                             type="checkbox" 
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                            className="rounded border-gray-300 focus:ring-[rgb(87,140,255)]" style={{ color: 'rgb(87, 140, 255)' }} 
                             checked={selectedSenderAccounts.length === allConnectedAccounts.length && allConnectedAccounts.length > 0}
                             onChange={(e) => {
                               if (e.target.checked) {
@@ -2727,7 +2744,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             <td className="px-6 py-4 whitespace-nowrap">
                               <input 
                                 type="checkbox" 
-                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                                className="rounded border-gray-300 focus:ring-[rgb(87,140,255)]" style={{ color: 'rgb(87, 140, 255)' }} 
                                 checked={selectedSenderAccounts.includes(account.id)}
                                 onChange={(e) => {
                                   if (e.target.checked) {
@@ -2767,7 +2784,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   <div className="text-sm font-medium text-gray-900">{account.email}</div>
                                   <div className="text-sm text-gray-500 flex items-center gap-1">
                                     {isGmail && (
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>
                                         Google
                                       </span>
                                     )}
@@ -2796,7 +2813,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                         ? 'bg-yellow-100 text-yellow-800'
                                         : warmupAccount.warmup_status === 'error'
                                         ? 'bg-red-100 text-red-800'
-                                        : 'bg-blue-100 text-blue-800'
+                                        : '" style={{ backgroundColor: \'rgba(87, 140, 255, 0.1)\', color: \'rgb(87, 140, 255)\' }}'
                                     }`}>
                                       {warmupAccount.warmup_status === 'active' ? 'Active Warmup' : 
                                        warmupAccount.warmup_status === 'paused' ? 'Paused' : 
@@ -2804,9 +2821,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                     </div>
                                   </>
                                 ) : connectedMicrosoft365Accounts.find(acc => acc.id === account.id) ? (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Connected</span>
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>Connected</span>
                                 ) : (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Connected</span>
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>Connected</span>
                                 )}
                               </div>
                             </td>
@@ -2998,7 +3015,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     />
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Button onClick={openImportModal} size="sm" className="bg-blue-600 hover:bg-blue-700">
+                    <Button onClick={openImportModal} size="sm" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}>
                       <Plus className="w-4 h-4 mr-2" />
                       Import Contacts
                     </Button>
@@ -3090,7 +3107,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           <td className="px-4 py-4">
                             <div className="flex items-center">
                               <Avatar className="h-8 w-8 mr-3">
-                                <AvatarFallback className="bg-blue-100 text-blue-600">
+                                <AvatarFallback style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>
                                   {contact.name?.charAt(0)?.toUpperCase() || 'U'}
                                 </AvatarFallback>
                               </Avatar>
@@ -3488,7 +3505,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <div className="flex items-center space-x-3">
                 <Button 
                   onClick={saveAll} 
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
+                  className="text-white shadow-sm hover:shadow-md transition-all duration-200"
+                  style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
                 >
                   <Send className="w-4 h-4 mr-2" />
                   Save All Campaign Data
@@ -3513,7 +3533,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-4 w-4 p-0 text-blue-600 hover:bg-blue-100 flex-shrink-0"
+                              className="h-4 w-4 p-0 flex-shrink-0" style={{ color: 'rgb(87, 140, 255)' }}
                               onClick={() => {
                                 const newSubject = prompt('Enter subject line for Initial Outreach sequence:', steps.find(s => s.sequence === 1)?.subject || '')
                                 if (newSubject !== null) updateSequenceSubject(1, newSubject)
@@ -3624,8 +3644,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       title="Click to edit waiting period"
                     >
                       <div className="flex items-center justify-center space-x-2">
-                        <Clock className="h-4 w-4 text-gray-500 group-hover:text-blue-600" />
-                        <div className="text-sm text-gray-600 group-hover:text-blue-600">
+                        <Clock className="h-4 w-4 text-gray-500" />
+                        <div className="text-sm text-gray-600">
                           {(() => {
                             const seq1End = Math.max(...steps.filter(s => s.sequence === 1).map(s => s.timing))
                             const seq2Start = Math.min(...steps.filter(s => s.sequence === 2).map(s => s.timing))
@@ -3633,7 +3653,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             return `${gap} day waiting period`
                           })()}
                         </div>
-                        <Edit2 className="h-3 w-3 text-gray-400 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <Edit2 className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                       <div className="text-xs text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         Click to edit
@@ -3799,7 +3819,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                 value={activeStep.subject || ''}
                                 onChange={(e) => updateSequenceSubject(activeStep.sequence, e.target.value)}
                                 placeholder={`Enter subject for ${activeStep.sequence === 1 ? 'Initial Outreach' : 'Follow-up'} sequence...`}
-                                className="w-full h-11 text-sm border-gray-200 focus:border-blue-400 focus:ring-blue-400"
+                                className="w-full h-11 text-sm border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
                               />
                               <p className="text-xs text-gray-500 mt-2 flex items-center space-x-1">
                                 <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
@@ -3820,7 +3840,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                     updateStepTiming(activeStep.id, baseTime + newTiming)
                                   }}
                                 >
-                                  <SelectTrigger className="h-11 border-gray-200 focus:border-blue-400 focus:ring-blue-400">
+                                  <SelectTrigger className="h-11 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -3838,7 +3858,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                     value={activeStep.timing}
                                     onChange={(e) => updateStepTiming(activeStep.id, parseInt(e.target.value) || 0)}
                                     min="90"
-                                    className="w-full h-11 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
+                                    className="w-full h-11 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
                                     placeholder="Days from start"
                                   />
                                   <p className="text-xs text-gray-500 flex items-center space-x-1">
@@ -3923,7 +3943,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   size="sm"
                                   onClick={toggleCodeView}
                                   title={showCodeView ? "Switch to Rich Text View" : "Switch to HTML Code View"}
-                                  className={showCodeView ? "bg-blue-100 text-blue-600" : ""}
+                                  className={showCodeView ? "" : ""}
+                                  style={showCodeView ? { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' } : {}}
                                 >
                                   <Code className="w-4 h-4" />
                                 </Button>
@@ -4059,7 +4080,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                     A/B Testing Enabled
                                   </span>
                                 </div>
-                                <Badge className="bg-blue-100 text-blue-800">
+                                <Badge style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>
                                   {activeStep.variants} Variants
                                 </Badge>
                               </div>
@@ -4303,15 +4324,17 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </Button>
-            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-              campaign.status === 'Active' 
-                ? 'bg-green-100 text-green-800'
-                : campaign.status === 'Draft'
-                ? 'bg-gray-100 text-gray-800'  
-                : campaign.status === 'Paused'
-                ? 'bg-yellow-100 text-yellow-800'
-                : 'bg-blue-100 text-blue-800'
-            }`}>
+            <span 
+              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+              style={
+                campaign.status === 'Active' 
+                  ? { backgroundColor: '#dcfce7', color: '#166534' }
+                  : campaign.status === 'Draft'
+                  ? { backgroundColor: '#f3f4f6', color: '#374151' }
+                  : campaign.status === 'Paused'
+                  ? { backgroundColor: '#fef3c7', color: '#92400e' }
+                  : { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }
+              }>
               {campaign.status}
             </span>
             {campaign.status !== 'Completed' && (
@@ -4354,9 +4377,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
                   isActive
-                    ? 'border-blue-500 text-blue-600'
+                    ? 'border-[rgb(87,140,255)]'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
+                style={isActive ? { color: 'rgb(87, 140, 255)' } : {}}
               >
                 <Icon className="w-4 h-4" />
                 <span>{tab.label}</span>
@@ -4457,7 +4481,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
-              <Upload className="w-5 h-5 text-purple-600" />
+              <Upload className="w-5 h-5" style={{ color: 'rgb(87, 140, 255)' }} />
               <span>Import Bulk Email Accounts</span>
             </DialogTitle>
           </DialogHeader>
@@ -4468,7 +4492,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <code className="block bg-white p-2 rounded text-xs text-gray-700 font-mono">
                 email,password,smtp_host,smtp_port,imap_host,imap_port,provider_type
               </code>
-              <p className="text-xs text-blue-600 mt-2">
+              <p className="text-xs mt-2" style={{ color: 'rgb(87, 140, 255)' }}>
                 📧 <strong>email:</strong> Your email address<br/>
                 🔑 <strong>password:</strong> App password (Gmail/Yahoo) or regular password<br/>
                 🏢 <strong>provider_type:</strong> gmail, outlook, yahoo, or other
@@ -4496,7 +4520,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 <div>john@gmail.com,app-password,smtp.gmail.com,587,imap.gmail.com,993,gmail</div>
               </div>
               <p className="text-xs text-yellow-700 mt-1">
-                💡 Get Gmail App Passwords: <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline text-blue-600">Google Settings</a>
+                💡 Get Gmail App Passwords: <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'rgb(87, 140, 255)' }}>Google Settings</a>
               </p>
             </div>
 
@@ -4511,7 +4535,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="flex text-sm text-gray-600">
                     <label
                       htmlFor="bulk-email-upload"
-                      className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                      className="relative cursor-pointer bg-white rounded-md font-medium focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[rgb(87,140,255)]" style={{ color: 'rgb(87, 140, 255)' }}
                     >
                       <span>Upload a file</span>
                       <input
@@ -4573,11 +4597,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <tr key={index}>
                           <td className="px-4 py-2 text-sm text-gray-900">{account.email}</td>
                           <td className="px-4 py-2 text-sm text-gray-600">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              account.provider_type === 'gmail' ? 'bg-blue-100 text-blue-800' :
-                              account.provider_type === 'outlook' ? 'bg-indigo-100 text-indigo-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
+                            <span 
+                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                              style={
+                                account.provider_type === 'gmail' ? { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' } :
+                                account.provider_type === 'outlook' ? { backgroundColor: 'rgba(99, 102, 241, 0.1)', color: 'rgb(99, 102, 241)' } :
+                                { backgroundColor: 'rgba(107, 114, 128, 0.1)', color: 'rgb(107, 114, 128)' }
+                              }>
                               {account.provider_type || 'other'}
                             </span>
                           </td>
@@ -4696,7 +4722,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   }
                 }}
                 disabled={!bulkEmailCsvFile || bulkImportLoading}
-                className="bg-purple-600 hover:bg-purple-700"
+                style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
               >
                 {bulkImportLoading ? (
                   <>
@@ -4720,7 +4746,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
-              <Mail className="w-5 h-5 text-blue-600" />
+              <Mail className="w-5 h-5" style={{ color: 'rgb(87, 140, 255)' }} />
               <span>Connect SMTP/IMAP Account</span>
             </DialogTitle>
           </DialogHeader>
@@ -4732,7 +4758,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   type="text"
                   value={smtpFormData.name}
                   onChange={(e) => setSmtpFormData({...smtpFormData, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)]"
                   placeholder="Your Name"
                 />
               </div>
@@ -4742,7 +4768,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   type="email"
                   value={smtpFormData.email}
                   onChange={(e) => setSmtpFormData({...smtpFormData, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)]"
                   placeholder="your@email.com"
                 />
               </div>
@@ -4755,7 +4781,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   type="text"
                   value={smtpFormData.smtpHost}
                   onChange={(e) => setSmtpFormData({...smtpFormData, smtpHost: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)]"
                   placeholder="smtp.gmail.com"
                 />
               </div>
@@ -4765,7 +4791,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   type="number"
                   value={smtpFormData.smtpPort}
                   onChange={(e) => setSmtpFormData({...smtpFormData, smtpPort: parseInt(e.target.value) || 587})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)]"
                   placeholder="587"
                 />
               </div>
@@ -4777,7 +4803,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 id="smtpSecure"
                 checked={smtpFormData.smtpSecure}
                 onChange={(e) => setSmtpFormData({...smtpFormData, smtpSecure: e.target.checked})}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 focus:ring-[rgb(87,140,255)] border-gray-300 rounded" style={{ color: 'rgb(87, 140, 255)' }}
               />
               <label htmlFor="smtpSecure" className="text-sm font-medium text-gray-700">
                 Use secure connection (TLS/SSL)
@@ -4791,7 +4817,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   type="text"
                   value={smtpFormData.smtpUser}
                   onChange={(e) => setSmtpFormData({...smtpFormData, smtpUser: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)]"
                   placeholder="Username or email"
                 />
               </div>
@@ -4801,7 +4827,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   type="password"
                   value={smtpFormData.smtpPassword}
                   onChange={(e) => setSmtpFormData({...smtpFormData, smtpPassword: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)]"
                   placeholder="App password or account password"
                 />
               </div>
@@ -4867,19 +4893,19 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <h4 className="font-medium text-gray-900">Follow these steps:</h4>
               <div className="space-y-2 text-sm text-gray-700">
                 <div className="flex items-start space-x-2">
-                  <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">1</span>
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>1</span>
                   <span>Enable 2-Factor Authentication in your Google Account</span>
                 </div>
                 <div className="flex items-start space-x-2">
-                  <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">2</span>
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>2</span>
                   <span>Go to Google Account Settings → Security → App passwords</span>
                 </div>
                 <div className="flex items-start space-x-2">
-                  <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">3</span>
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>3</span>
                   <span>Generate an app password for "Mail"</span>
                 </div>
                 <div className="flex items-start space-x-2">
-                  <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">4</span>
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>4</span>
                   <span>Use that 16-character password instead of your regular password</span>
                 </div>
               </div>
@@ -4890,7 +4916,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 href="https://myaccount.google.com/apppasswords"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-[rgb(87,140,255)] focus:ring-offset-2"
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Open App Passwords
@@ -4933,7 +4959,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       <Button
                         variant="outline"
                         size="sm"
-                        className="mt-3 text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
+                        className="mt-3 border-gray-200" style={{ color: 'rgb(87, 140, 255)' }}
                         onClick={error.action}
                       >
                         {error.buttonText}

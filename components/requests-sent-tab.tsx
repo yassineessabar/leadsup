@@ -111,9 +111,9 @@ export function RequestsSentTab() {
       case "failed":
         return <Badge variant="destructive">Failed</Badge>
       case "opened":
-        return <Badge variant="default" className="bg-blue-100 text-blue-800">Opened</Badge>
+        return <Badge variant="default" className="" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>Opened</Badge>
       case "clicked":
-        return <Badge variant="default" className="bg-purple-100 text-purple-800">Clicked</Badge>
+        return <Badge variant="default" className="" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>Clicked</Badge>
       default:
         return <Badge variant="secondary" className="capitalize">{status}</Badge>
     }

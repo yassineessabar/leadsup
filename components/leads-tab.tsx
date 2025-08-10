@@ -72,8 +72,8 @@ const emailStatusColors = {
   'Unknown': 'bg-gray-100 text-gray-800',
   'Disposable': 'bg-orange-100 text-orange-800',
   'Not found': 'bg-gray-100 text-gray-600',
-  'Skipped': 'bg-blue-100 text-blue-800',
-  'Pending': 'bg-purple-100 text-purple-800'
+  'Skipped': 'text-blue-800',
+  'Pending': 'text-purple-800'
 }
 
 export function LeadsTab() {
@@ -425,7 +425,7 @@ export function LeadsTab() {
                 placeholder="Search name, email, company..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-64 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                className="pl-10 w-64 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
               />
             </div>
             
@@ -440,7 +440,7 @@ export function LeadsTab() {
             </Button>
             
             <Button 
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="text-white" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
               onClick={() => setShowImportModal(true)}
             >
               <Plus className="w-4 h-4 mr-2" />

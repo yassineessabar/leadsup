@@ -244,11 +244,11 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
                 </p>
 
                 {/* Trial indicator */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mt-3">
-                  <p className="text-blue-700 font-medium text-xs">
+                <div className="border rounded-lg p-2 mt-3" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', borderColor: 'rgba(87, 140, 255, 0.3)' }}>
+                  <p className="font-medium text-xs" style={{ color: 'rgb(87, 140, 255)' }}>
                     🎉 7-day free trial included
                   </p>
-                  <p className="text-blue-600 text-xs">
+                  <p className="text-xs" style={{ color: 'rgb(87, 140, 255)' }}>
                     No payment required to start
                   </p>
                 </div>

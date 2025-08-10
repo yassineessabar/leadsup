@@ -122,7 +122,7 @@ function SmsPhonePreview({
         <div className="max-w-[85%] rounded-2xl bg-gray-100 p-4 text-sm text-gray-800 shadow-sm">
           <p className="mb-2 font-semibold">{sender}</p>
           <p className="leading-relaxed">{message}</p>
-          <p className="mt-3 break-all font-medium text-blue-600 underline">{reviewLink}</p>
+          <p className="mt-3 break-all font-medium underline" style={{ color: 'rgb(87, 140, 255)' }}>{reviewLink}</p>
         </div>
       </div>
     </div>
@@ -162,8 +162,8 @@ function EmailPreview({
           <h4 className="mb-2 text-sm font-semibold text-gray-900">Subject: {subject}</h4>
           <div className="text-sm leading-relaxed text-gray-700">
             <p>{message}</p>
-            <div className="mt-3 rounded-lg bg-blue-50 p-2">
-              <p className="break-all text-xs font-medium text-blue-600 underline">{reviewLink}</p>
+            <div className="mt-3 rounded-lg p-2" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)' }}>
+              <p className="break-all text-xs font-medium underline" style={{ color: 'rgb(87, 140, 255)' }}>{reviewLink}</p>
             </div>
           </div>
         </div>
@@ -685,13 +685,13 @@ function WorkflowEditor({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
                             <DropdownMenuItem onClick={() => insertPlaceholder(step.id, "[Name]")}>
-                              <span className="text-blue-600 font-mono">[Name]</span> - Customer name
+                              <span className="font-mono" style={{ color: 'rgb(87, 140, 255)' }}>[Name]</span> - Customer name
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => insertPlaceholder(step.id, "[Company]")}>
-                              <span className="text-blue-600 font-mono">[Company]</span> - Company name
+                              <span className="font-mono" style={{ color: 'rgb(87, 140, 255)' }}>[Company]</span> - Company name
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => insertPlaceholder(step.id, "[reviewUrl]")}>
-                              <span className="text-blue-600 font-mono">[reviewUrl]</span> - Review link
+                              <span className="font-mono" style={{ color: 'rgb(87, 140, 255)' }}>[reviewUrl]</span> - Review link
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => insertPlaceholder(step.id, "{{customerName}}")}>
                               <span className="text-green-600 font-mono">{"{{customerName}}"}</span> - Customer name

@@ -282,7 +282,7 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
                 type="number"
                 value={dailyLimit}
                 onChange={(e) => setDailyLimit(e.target.value)}
-                className="text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                className="text-center border-gray-300 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
               />
             </div>
           </div>
@@ -302,7 +302,7 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
         {/* Action Buttons */}
         <div className="flex items-center justify-center space-x-4 pt-8">
           <Button 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8"
+            className="text-white px-8" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
             onClick={handleSave}
             disabled={saving}
           >

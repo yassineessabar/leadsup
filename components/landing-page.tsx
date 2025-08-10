@@ -13,7 +13,7 @@ export function LandingPage() {
         <header className="py-6">
           <nav className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgb(87, 140, 255)' }}>
                 <span className="text-white font-bold text-lg">L</span>
               </div>
               <span className="font-bold text-xl">LeadsUp</span>
@@ -34,7 +34,7 @@ export function LandingPage() {
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
             Generate More Leads.
             <br />
-            <span className="text-blue-600">Convert Better.</span>
+            <span style={{ color: 'rgb(87, 140, 255)' }}>Convert Better.</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Transform your lead generation with LeadsUp. Capture, qualify, and convert leads automatically 
@@ -42,7 +42,7 @@ export function LandingPage() {
           </p>
           <div className="flex items-center justify-center space-x-4">
             <Link href="/auth/signup">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+              <Button size="lg" className="text-white" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}>
                 Start Free Trial
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
@@ -61,8 +61,8 @@ export function LandingPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <Card>
               <CardHeader>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                  <Users className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center mb-4" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)' }}>
+                  <Users className="w-6 h-6" style={{ color: 'rgb(87, 140, 255)' }} />
                 </div>
                 <CardTitle>Lead Capture</CardTitle>
                 <CardDescription>
@@ -95,8 +95,8 @@ export function LandingPage() {
 
             <Card>
               <CardHeader>
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-                  <Mail className="w-6 h-6 text-purple-600" />
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center mb-4" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)' }}>
+                  <Mail className="w-6 h-6" style={{ color: 'rgb(87, 140, 255)' }} />
                 </div>
                 <CardTitle>Email Automation</CardTitle>
                 <CardDescription>
@@ -130,15 +130,15 @@ export function LandingPage() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 text-center bg-blue-600 rounded-2xl text-white">
+        <section className="py-20 text-center rounded-2xl text-white" style={{ backgroundColor: 'rgb(87, 140, 255)' }}>
           <h2 className="text-4xl font-bold mb-6">
             Ready to grow your business?
           </h2>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl mb-8 max-w-2xl mx-auto" style={{ color: 'rgba(87, 140, 255, 0.2)' }}>
             Join thousands of businesses using LeadsUp to generate more leads and increase sales.
           </p>
           <Link href="/auth/signup">
-            <Button size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100">
+            <Button size="lg" variant="secondary" className="bg-white hover:bg-gray-100" style={{ color: 'rgb(87, 140, 255)' }}>
               Start Your Free Trial
               <ArrowRight className="ml-2 w-4 h-4" />
             </Button>

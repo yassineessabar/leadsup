@@ -473,7 +473,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       case "Paused":
         return `${baseClasses} bg-yellow-100 text-yellow-800 border border-yellow-300`
       case "Completed":
-        return `${baseClasses} bg-blue-100 text-blue-800 border border-blue-300`
+        return `${baseClasses} border border-[rgb(87,140,255)]`
       default:
         return `${baseClasses} bg-gray-100 text-gray-700 border border-gray-300`
     }
@@ -481,7 +481,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
   const getTypeIcon = (type: Campaign["type"]) => {
     return type === "Email" ? (
-      <Mail className="w-4 h-4 text-purple-600" />
+      <Mail className="w-4 h-4" style={{ color: 'rgb(87, 140, 255)' }} />
     ) : (
       <MessageSquare className="w-4 h-4 text-green-600" />
     )
@@ -687,7 +687,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                 </Button>
               )}
               <div className="relative">
-                <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => setShowAdvancedPopup(true)}>
+                <Button style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'} onClick={() => setShowAdvancedPopup(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add New
                 </Button>
@@ -808,7 +808,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           {loading ? (
               <div className="p-8 text-center text-gray-500">
                 <div className="flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                  <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mr-2" style={{ borderColor: 'rgb(87, 140, 255)', borderTopColor: 'transparent' }}></div>
                   Loading campaigns...
                 </div>
               </div>
@@ -841,7 +841,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         {(() => {
                           const progress = getCampaignProgress(campaign)
                           const progressColor = progress.percentage >= 75 ? 'text-green-600' : 
-                                              progress.percentage >= 50 ? 'text-blue-600' : 
+                                              progress.percentage >= 50 ? 'text-[rgb(87,140,255)]' : 
                                               progress.percentage >= 25 ? 'text-orange-500' : 
                                               'text-gray-400'
                           return (
@@ -853,7 +853,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                                 <div 
                                   className={`h-1.5 rounded-full transition-all ${
                                     progress.percentage >= 75 ? 'bg-green-600' : 
-                                    progress.percentage >= 50 ? 'bg-blue-600' : 
+                                    progress.percentage >= 50 ? 'bg-[rgb(87,140,255)]' : 
                                     progress.percentage >= 25 ? 'bg-orange-500' : 
                                     'bg-gray-400'
                                   }`}
@@ -1063,7 +1063,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     <Button variant="outline" onClick={() => setShowCreateModal(false)}>
                       Cancel
                     </Button>
-                    <Button className="bg-purple-600 hover:bg-purple-700" onClick={handleCreateCampaign}>
+                    <Button style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'} onClick={handleCreateCampaign}>
                       Continue →
                     </Button>
                   </div>
@@ -1089,7 +1089,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50">
                           <RadioGroupItem value="Email" id="email" />
                           <Label htmlFor="email" className="flex items-center space-x-3 cursor-pointer">
-                            <Mail className="w-5 h-5 text-purple-600" />
+                            <Mail className="w-5 h-5" style={{ color: 'rgb(87, 140, 255)' }} />
                             <div>
                               <div className="font-medium">Email Campaign</div>
                               <div className="text-sm text-gray-500">Send email sequences</div>
@@ -1144,7 +1144,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     <Button variant="outline" onClick={() => setCreateStep(1)}>
                       Back
                     </Button>
-                    <Button className="bg-purple-600 hover:bg-purple-700" onClick={handleCreateCampaign}>
+                    <Button style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'} onClick={handleCreateCampaign}>
                       Create Campaign
                     </Button>
                   </div>
@@ -1157,7 +1157,10 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         {/* Chat Widget */}
         <div className="fixed bottom-6 right-6">
           <Button
-            className="bg-purple-600 hover:bg-purple-700 rounded-full w-14 h-14 shadow-lg"
+            className="rounded-full w-14 h-14 shadow-lg"
+            style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
             onClick={() => toast({ title: "Chat", description: "Chat support coming soon!" })}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

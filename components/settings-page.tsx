@@ -213,7 +213,7 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
 
       {/* Footer */}
       <div className="mt-8 text-center text-sm text-gray-500">
-        <p>Need help? <a href="/support" className="text-blue-600 hover:text-blue-700 font-medium">Contact Support</a></p>
+        <p>Need help? <a href="/support" className="font-medium" style={{ color: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(87, 140, 255)'}>Contact Support</a></p>
       </div>
     </div>
   )

@@ -371,9 +371,9 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
 
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-8">
-        <div className="flex items-center space-x-3 text-purple-600">
-          <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-lg font-medium text-purple-600">
+        <div className="flex items-center space-x-3" style={{ color: 'rgb(87, 140, 255)' }}>
+          <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgb(87, 140, 255)', borderTopColor: 'transparent' }}></div>
+          <span className="text-lg font-medium" style={{ color: 'rgb(87, 140, 255)' }}>
             AI Copilot brainstorming in progress
           </span>
         </div>
@@ -388,7 +388,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
               <div key={index} className={`flex items-center space-x-3 transition-all duration-300 ${
                 isCompleted ? 'text-gray-400' : isCurrent ? 'text-gray-800 font-medium' : 'text-gray-300'
               }`}>
-                <div className={`p-1 rounded-lg ${isCurrent ? 'bg-purple-50' : ''}`}>
+                <div className={`p-1 rounded-lg`} style={isCurrent ? { backgroundColor: 'rgba(87, 140, 255, 0.05)' } : {}}>
                   <Icon className="w-5 h-5" />
                 </div>
                 <span className="flex-1">{step.text}</span>
@@ -421,7 +421,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             id="campaign-name"
             value={formData.campaignName}
             onChange={(e) => setFormData(prev => ({ ...prev, campaignName: e.target.value }))}
-            className="h-12 border-gray-200 focus:border-purple-500 focus:ring-purple-500 transition-colors"
+            className="h-12 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] transition-colors"
             placeholder="Enter your campaign name"
           />
         </div>
@@ -432,7 +432,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             id="company"
             value={formData.companyName}
             onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
-            className="h-12 border-gray-200 focus:border-purple-500 focus:ring-purple-500 transition-colors"
+            className="h-12 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] transition-colors"
             placeholder="Enter your company name"
           />
         </div>
@@ -443,7 +443,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <Input
               id="website"
-              className="pl-12 h-12 border-gray-200 focus:border-purple-500 focus:ring-purple-500 transition-colors"
+              className="pl-12 h-12 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] transition-colors"
               value={formData.website}
               onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
               disabled={formData.noWebsite}
@@ -472,7 +472,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         <div className="space-y-3">
           <Label htmlFor="language" className="text-base font-semibold text-gray-800">Prospecting language</Label>
           <Select value={formData.language} onValueChange={(value) => setFormData(prev => ({ ...prev, language: value }))}>
-            <SelectTrigger className="h-12 border-gray-200 focus:border-purple-500 focus:ring-purple-500">
+            <SelectTrigger className="h-12 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]">
               <SelectValue placeholder="Select your preferred language" />
             </SelectTrigger>
             <SelectContent>
@@ -783,7 +783,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
               </Button>
               <Button 
                 onClick={() => handleSave('icp')}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                className="text-white" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
               >
                 <Save className="w-4 h-4 mr-2" />
                 Save Changes
@@ -913,7 +913,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
               </Button>
               <Button 
                 onClick={() => handleSave('persona')}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                className="text-white" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
               >
                 <Save className="w-4 h-4 mr-2" />
                 Save Changes
@@ -976,7 +976,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
               </Button>
               <Button 
                 onClick={() => handleSave('painPoint')}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                className="text-white" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
               >
                 <Save className="w-4 h-4 mr-2" />
                 Save Changes
@@ -1520,7 +1520,7 @@ Best regards,
                                   })
                                   setShowMessageModal(true)
                                 }}
-                                className="text-xs px-3 py-1 h-6 border-purple-200 text-purple-600 hover:bg-purple-50"
+                                className="text-xs px-3 py-1 h-6 border-gray-200" style={{ color: 'rgb(87, 140, 255)', borderColor: 'rgba(87, 140, 255, 0.2)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(87, 140, 255, 0.05)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               >
                                 <Eye className="w-3 h-3 mr-1" />
                                 View Message
@@ -1566,7 +1566,7 @@ Best regards,
           <div className="w-80 bg-gray-50 border-r border-gray-200 h-full">
             <div className="p-6 space-y-8">
               <div className="space-y-2">
-                <p className="text-xs text-purple-600 uppercase tracking-wider font-semibold">GET STARTED</p>
+                <p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'rgb(87, 140, 255)' }}>GET STARTED</p>
                 <h1 className="text-2xl font-bold text-gray-900">
                   Campaign creation
                 </h1>
@@ -1588,9 +1588,9 @@ Best regards,
                     >
                       <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                         isCompleted 
-                          ? 'bg-purple-600 border-transparent shadow-sm' 
+                          ? 'border-transparent shadow-sm' 
                           : isCurrent 
-                            ? 'border-purple-500 bg-purple-500 shadow-sm' 
+                            ? 'shadow-sm' 
                             : 'border-gray-300 group-hover:border-gray-400'
                       }`}>
                         {isCompleted ? (
@@ -1603,7 +1603,7 @@ Best regards,
                       </div>
                       <span className={`font-medium transition-colors ${
                         isCurrent 
-                          ? 'text-purple-600 font-semibold' 
+                          ? 'font-semibold' 
                           : isCompleted 
                             ? 'text-gray-900' 
                             : 'text-gray-500 group-hover:text-gray-700'
@@ -1630,11 +1630,11 @@ Best regards,
               </div>
               
               {/* Copilot indicator */}
-              <div className="flex items-center space-x-3 mt-8 p-3 bg-purple-50 rounded-lg border border-purple-200">
-                <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center shadow-sm">
+              <div className="flex items-center space-x-3 mt-8 p-3 rounded-lg border" style={{ backgroundColor: 'rgba(87, 140, 255, 0.05)', borderColor: 'rgba(87, 140, 255, 0.2)' }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm" style={{ backgroundColor: 'rgb(87, 140, 255)' }}>
                   <Brain className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-sm font-semibold text-purple-600">
+                <span className="text-sm font-semibold" style={{ color: 'rgb(87, 140, 255)' }}>
                   AI Copilot
                 </span>
               </div>
@@ -1674,7 +1674,7 @@ Best regards,
               <Button 
                 onClick={handleContinue}
                 disabled={isProcessing}
-                className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg transition-all duration-200 disabled:opacity-50"
+                className="text-white shadow-lg transition-all duration-200 disabled:opacity-50" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
               >
                 <span>
                   {isProcessing 

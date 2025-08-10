@@ -44,9 +44,9 @@ interface Campaign {
 }
 
 const statusConfig = {
-  lead: { color: "text-blue-500", bg: "bg-blue-100", label: "Lead" },
+  lead: { color: "text-[rgb(87,140,255)]", bg: "bg-[rgba(87,140,255,0.1)]", label: "Lead" },
   interested: { color: "text-green-500", bg: "bg-green-100", label: "Interested" },
-  "meeting-booked": { color: "text-purple-500", bg: "bg-purple-100", label: "Meeting booked" },
+  "meeting-booked": { color: "text-[rgb(87,140,255)]", bg: "bg-[rgba(87,140,255,0.1)]", label: "Meeting booked" },
   "meeting-completed": { color: "text-orange-500", bg: "bg-orange-100", label: "Meeting completed" },
   won: { color: "text-lime-500", bg: "bg-lime-100", label: "Won" },
   lost: { color: "text-red-500", bg: "bg-red-100", label: "Lost" }
@@ -390,9 +390,10 @@ export default function InboxPage() {
                 onClick={() => setSelectedFolder(folder.key)}
                 className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left rounded-lg transition-colors ${
                   selectedFolder === folder.key 
-                    ? 'bg-blue-50 text-blue-700 font-medium' 
+                    ? 'font-medium'  
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
+                style={selectedFolder === folder.key ? { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' } : {}}
               >
                 <div className="flex items-center space-x-3">
                   <folder.icon className="w-4 h-4" />
@@ -401,9 +402,10 @@ export default function InboxPage() {
                 {folder.count > 0 && (
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                     selectedFolder === folder.key 
-                      ? 'bg-blue-100 text-blue-700' 
+                      ? '' 
                       : 'bg-gray-100 text-gray-600'
-                  }`}>
+                  }`}
+                  style={selectedFolder === folder.key ? { backgroundColor: 'rgba(87, 140, 255, 0.2)', color: 'rgb(87, 140, 255)' } : {}}>
                     {folder.count}
                   </span>
                 )}
@@ -422,7 +424,7 @@ export default function InboxPage() {
             <select 
               value={selectedCampaign || ''}
               onChange={(e) => setSelectedCampaign(e.target.value || null)}
-              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[rgb(87,140,255)]"
             >
               <option value="">All Campaigns</option>
               {campaigns.map(campaign => (
@@ -439,7 +441,7 @@ export default function InboxPage() {
             <select 
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[rgb(87,140,255)]"
             >
               <option value="">All Statuses</option>
               {Object.entries(statusConfig).map(([key, config]) => (
@@ -454,7 +456,7 @@ export default function InboxPage() {
             <select 
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[rgb(87,140,255)]"
             >
               <option value="7">Last 7 days</option>
               <option value="30">Last 30 days</option>
@@ -469,7 +471,7 @@ export default function InboxPage() {
             <select 
               value={channelFilter}
               onChange={(e) => setChannelFilter(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[rgb(87,140,255)]"
             >
               <option value="">All Channels</option>
               <option value="email">Email</option>
@@ -486,7 +488,7 @@ export default function InboxPage() {
               placeholder="Search messages..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+              className="pl-10 text-sm border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
             />
           </div>
         </div>
@@ -519,7 +521,7 @@ export default function InboxPage() {
             <button
               className={`pb-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === "primary"
-                  ? "border-blue-500 text-blue-600"
+                  ? "border-[rgb(87,140,255)] text-[rgb(87,140,255)]"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
               onClick={() => setActiveTab("primary")}
@@ -529,7 +531,7 @@ export default function InboxPage() {
             <button
               className={`pb-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === "others"
-                  ? "border-blue-500 text-blue-600"
+                  ? "border-[rgb(87,140,255)] text-[rgb(87,140,255)]"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
               onClick={() => setActiveTab("others")}
@@ -545,7 +547,7 @@ export default function InboxPage() {
               placeholder="Search mail"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+              className="pl-10 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
             />
           </div>
         </div>
@@ -570,7 +572,7 @@ export default function InboxPage() {
                 <div
                   key={email.id}
                   className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                    selectedEmail?.id === email.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                    selectedEmail?.id === email.id ? 'bg-[rgba(87,140,255,0.05)] border-l-4 border-l-[rgb(87,140,255)]' : ''
                   }`}
                   onClick={() => handleEmailSelect(email)}
                 >
@@ -650,7 +652,7 @@ export default function InboxPage() {
                     <div className="flex items-center space-x-2">
                       <span className="text-sm text-gray-900 font-medium">{selectedEmail.sender}</span>
                       {(selectedEmail.isOutOfOffice || selectedEmail.is_out_of_office) && (
-                        <Badge className="bg-blue-100 text-blue-700 text-xs flex items-center space-x-1">
+                        <Badge className="text-xs flex items-center space-x-1" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>
                           <Zap className="w-3 h-3" />
                           <span>Out of office</span>
                         </Badge>
@@ -716,7 +718,7 @@ export default function InboxPage() {
                 {selectedEmail.campaign_name && (
                   <div className="flex items-center space-x-2 mt-1">
                     <span>Campaign:</span>
-                    <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>
                       {selectedEmail.campaign_name}
                     </span>
                     {selectedEmail.sequence_step && (
@@ -743,7 +745,7 @@ export default function InboxPage() {
                     <p className="text-gray-900 mb-4">This email inbox is no longer monitored.</p>
                     
                     <p className="text-gray-900 mb-4">
-                      <a href="#" className="text-blue-600 underline">Click here to chat with us</a> or visit our website to find other ways to contact us.
+                      <a href="#" className="underline" style={{ color: 'rgb(87, 140, 255)' }}>Click here to chat with us</a> or visit our website to find other ways to contact us.
                     </p>
                     
                     <p className="text-gray-900 mb-4">Cheers,</p>
@@ -773,7 +775,10 @@ export default function InboxPage() {
             <div className="p-6 border-t border-gray-200 bg-white">
               <div className="flex items-center space-x-3">
                 <Button 
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="text-white"
+                  style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
                   onClick={handleReply}
                 >
                   <Reply className="w-4 h-4 mr-2" />
