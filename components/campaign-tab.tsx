@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "@/hooks/use-toast"
 import CampaignDashboard from "./campaign-dashboard"
 import AddCampaignPopup from "./add-campaign-popup"
@@ -47,6 +48,11 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<Set<string | number>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
   const [showAdvancedPopup, setShowAdvancedPopup] = useState(false)
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean
+    campaign: { id: string | number; name: string } | null
+    isMultiple: boolean
+  }>({ open: false, campaign: null, isMultiple: false })
 
   const triggerOptions = [
     { value: "New Client", label: "New Client", icon: UserPlus, description: "Trigger when a new client signs up" },
@@ -186,13 +192,19 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     }
   }
 
-  const handleDeleteCampaign = async (campaignId: string | number, campaignName: string) => {
-    if (!confirm(`Are you sure you want to delete "${campaignName}"? This action cannot be undone.`)) {
-      return
-    }
+  const handleDeleteCampaign = (campaignId: string | number, campaignName: string) => {
+    setDeleteDialog({ 
+      open: true, 
+      campaign: { id: campaignId, name: campaignName },
+      isMultiple: false
+    })
+  }
+
+  const confirmDeleteCampaign = async () => {
+    if (!deleteDialog.campaign) return
 
     try {
-      const response = await fetch(`/api/campaigns?id=${campaignId}`, {
+      const response = await fetch(`/api/campaigns?id=${deleteDialog.campaign.id}`, {
         method: "DELETE",
         credentials: "include",
       })
@@ -201,7 +213,13 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
       if (result.success) {
         // Remove the campaign from the local state
-        setCampaigns(campaigns.filter(campaign => campaign.id !== campaignId))
+        setCampaigns(campaigns.filter(campaign => campaign.id !== deleteDialog.campaign!.id))
+        
+        // If we're currently viewing this campaign, go back to list view
+        if (currentView === "dashboard" && selectedCampaign?.id === deleteDialog.campaign!.id) {
+          setCurrentView("list")
+          setSelectedCampaign(null)
+        }
         
         // Notify sidebar that campaigns have changed
         const event = new CustomEvent('campaigns-changed')
@@ -209,7 +227,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         
         toast({
           title: "Campaign Deleted",
-          description: result.message || `Campaign "${campaignName}" has been deleted successfully`,
+          description: result.message || `Campaign "${deleteDialog.campaign.name}" has been deleted successfully`,
         })
       } else {
         toast({
@@ -225,6 +243,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         description: "Failed to delete campaign",
         variant: "destructive"
       })
+    } finally {
+      setDeleteDialog({ open: false, campaign: null, isMultiple: false })
     }
   }
 
@@ -251,15 +271,21 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     setSelectAll(checked)
   }
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedCampaignIds.size === 0) return
 
     const selectedCampaigns = campaigns.filter(campaign => selectedCampaignIds.has(campaign.id))
     const campaignNames = selectedCampaigns.map(c => c.name).join(", ")
     
-    if (!confirm(`Are you sure you want to delete ${selectedCampaignIds.size} campaign(s): ${campaignNames}? This action cannot be undone.`)) {
-      return
-    }
+    setDeleteDialog({ 
+      open: true, 
+      campaign: { id: 'bulk', name: campaignNames },
+      isMultiple: true
+    })
+  }
+
+  const confirmBulkDelete = async () => {
+    if (selectedCampaignIds.size === 0) return
 
     try {
       // Delete campaigns in parallel
@@ -309,6 +335,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         description: "Failed to delete campaigns",
         variant: "destructive"
       })
+    } finally {
+      setDeleteDialog({ open: false, campaign: null, isMultiple: false })
     }
   }
 
@@ -538,9 +566,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         }} 
         onBack={() => setCurrentView("list")}
         onDelete={(campaignId) => {
-          // Remove from local state and go back to list
+          // Remove from local state and go back to list view
           setCampaigns(campaigns.filter(campaign => campaign.id !== campaignId))
           setCurrentView("list")
+          setSelectedCampaign(null)
+          
+          // Notify sidebar that campaigns have changed
+          const event = new CustomEvent('campaigns-changed')
+          window.dispatchEvent(event)
         }}
         onStatusUpdate={async (campaignId, newStatus) => {
           try {
@@ -1162,6 +1195,43 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           onClose={() => setShowAdvancedPopup(false)}
           onComplete={handleAdvancedCampaignComplete}
         />
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, campaign: null, isMultiple: false })}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Campaign{deleteDialog.isMultiple ? 's' : ''}</DialogTitle>
+              <DialogDescription>
+                {deleteDialog.isMultiple ? (
+                  <>
+                    Are you sure you want to delete {selectedCampaignIds.size} campaign(s): <br />
+                    <strong>{deleteDialog.campaign?.name}</strong>?
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to delete the campaign <strong>"{deleteDialog.campaign?.name}"</strong>?
+                  </>
+                )}
+                <br />
+                <span className="text-red-600 font-medium">This action cannot be undone.</span>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialog({ open: false, campaign: null, isMultiple: false })}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={deleteDialog.isMultiple ? confirmBulkDelete : confirmDeleteCampaign}
+              >
+                Delete Campaign{deleteDialog.isMultiple ? 's' : ''}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </div>
   )
 }

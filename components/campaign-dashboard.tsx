@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Card } from "@/components/ui/card"
@@ -138,6 +138,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [showTestModal, setShowTestModal] = useState(false)
   const [showCodeView, setShowCodeView] = useState(false)
   const [showLaunchValidationModal, setShowLaunchValidationModal] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [launchValidationErrors, setLaunchValidationErrors] = useState([])
   const editorRef = useRef<HTMLDivElement>(null)
   const [testModalAccountId, setTestModalAccountId] = useState(null)
@@ -1383,14 +1384,46 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   // Delete campaign function
   const handleDeleteCampaign = () => {
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDeleteCampaign = async () => {
     if (!campaign?.id) return
-    
-    const confirmed = window.confirm(
-      `Are you sure you want to delete the campaign "${campaign.name}"? This action cannot be undone.`
-    )
-    
-    if (confirmed && onDelete) {
-      onDelete(campaign.id)
+
+    try {
+      const response = await fetch(`/api/campaigns?id=${campaign.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: "Campaign Deleted",
+          description: result.message || `Campaign "${campaign.name}" has been deleted successfully`,
+        })
+        
+        // Call onDelete to update parent state and navigate back
+        if (onDelete) {
+          onDelete(campaign.id)
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete campaign",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error("Error deleting campaign:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete campaign",
+        variant: "destructive"
+      })
+    } finally {
+      setShowDeleteDialog(false)
     }
   }
 
@@ -5084,6 +5117,37 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               Delete {deleteConfirm.type === 'sequence' ? 'Sequence' : 'Email'}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Campaign Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Campaign
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the campaign <strong>"{campaign?.name}"</strong>?
+              <br />
+              <span className="text-red-600 font-medium">This action cannot be undone.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteCampaign}
+            >
+              Delete Campaign
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </main>

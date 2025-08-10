@@ -84,6 +84,17 @@ export default function InboxPage() {
   const [dateRange, setDateRange] = useState("30")
   const [channelFilter, setChannelFilter] = useState("")
   
+  // Folder counts state
+  const [folderCounts, setFolderCounts] = useState({
+    inbox: 0,
+    sent: 0,
+    drafts: 0,
+    scheduled: 0,
+    archived: 0,
+    spam: 0,
+    trash: 0
+  })
+  
   const { toast } = useToast()
 
   // Fetch campaigns from API
@@ -99,6 +110,30 @@ export default function InboxPage() {
       }
     } catch (error) {
       console.error('Error fetching campaigns:', error)
+    }
+  }
+
+  // Fetch folder statistics from API
+  const fetchFolderStats = async () => {
+    try {
+      const response = await fetch('/api/inbox/stats', {
+        credentials: 'include'
+      })
+      const result = await response.json()
+      
+      if (result.success && result.data.folder_distribution) {
+        setFolderCounts({
+          inbox: result.data.folder_distribution.inbox || 0,
+          sent: result.data.folder_distribution.sent || 0,
+          drafts: result.data.folder_distribution.drafts || 0,
+          scheduled: result.data.folder_distribution.scheduled || 0,
+          archived: result.data.folder_distribution.archived || 0,
+          spam: result.data.folder_distribution.spam || 0,
+          trash: result.data.folder_distribution.trash || 0
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching folder stats:', error)
     }
   }
 
@@ -193,6 +228,7 @@ export default function InboxPage() {
 
   useEffect(() => {
     fetchCampaigns()
+    fetchFolderStats()
   }, [])
 
   useEffect(() => {
@@ -274,6 +310,9 @@ export default function InboxPage() {
       setEmails(newEmails)
       setSelectedEmail(newEmails[0] || null)
       
+      // Update folder counts
+      fetchFolderStats()
+      
       toast({
         title: "Email archived",
         description: "The email has been archived successfully"
@@ -300,6 +339,9 @@ export default function InboxPage() {
       const newEmails = emails.filter(e => e.id !== selectedEmail.id)
       setEmails(newEmails)
       setSelectedEmail(newEmails[0] || null)
+      
+      // Update folder counts
+      fetchFolderStats()
       
       toast({
         title: "Email deleted",
@@ -377,13 +419,13 @@ export default function InboxPage() {
           <div className="text-sm font-medium text-gray-700 mb-3">Folders</div>
           <div className="space-y-1">
             {[
-              { name: 'Inbox', key: 'inbox', icon: Mail, count: 24 },
-              { name: 'Sent', key: 'sent', icon: Send, count: 12 },
-              { name: 'Drafts', key: 'drafts', icon: BookOpen, count: 3 },
-              { name: 'Scheduled', key: 'scheduled', icon: Calendar, count: 8 },
-              { name: 'Archived', key: 'archived', icon: Archive, count: 156 },
-              { name: 'Spam', key: 'spam', icon: AlertTriangle, count: 5 },
-              { name: 'Trash', key: 'trash', icon: Trash2, count: 0 }
+              { name: 'Inbox', key: 'inbox', icon: Mail, count: folderCounts.inbox },
+              { name: 'Sent', key: 'sent', icon: Send, count: folderCounts.sent },
+              { name: 'Drafts', key: 'drafts', icon: BookOpen, count: folderCounts.drafts },
+              { name: 'Scheduled', key: 'scheduled', icon: Calendar, count: folderCounts.scheduled },
+              { name: 'Archived', key: 'archived', icon: Archive, count: folderCounts.archived },
+              { name: 'Spam', key: 'spam', icon: AlertTriangle, count: folderCounts.spam },
+              { name: 'Trash', key: 'trash', icon: Trash2, count: folderCounts.trash }
             ].map((folder, index) => (
               <button
                 key={index}

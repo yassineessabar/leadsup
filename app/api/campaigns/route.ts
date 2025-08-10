@@ -480,6 +480,28 @@ export async function DELETE(request: NextRequest) {
       // Continue with deletion even if schedules fail to delete
     }
 
+    // Delete related senders
+    const { error: sendersError } = await supabaseServer
+      .from("campaign_senders")
+      .delete()
+      .eq("campaign_id", campaignId)
+
+    if (sendersError) {
+      console.error("❌ Error deleting campaign senders:", sendersError)
+      // Continue with deletion even if senders fail to delete
+    }
+
+    // Delete related leads
+    const { error: leadsError } = await supabaseServer
+      .from("campaign_leads")
+      .delete()
+      .eq("campaign_id", campaignId)
+
+    if (leadsError) {
+      console.error("❌ Error deleting campaign leads:", leadsError)
+      // Continue with deletion even if leads fail to delete
+    }
+
     // Finally delete the campaign
     const { error: campaignError } = await supabaseServer
       .from("campaigns")
