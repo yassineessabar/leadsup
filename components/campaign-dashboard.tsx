@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Card } from "@/components/ui/card"
 import { toast } from "@/hooks/use-toast"
+import AddCampaignPopup from "./add-campaign-popup"
 import { format } from "date-fns"
 import AutomationSettings from "@/components/automation-settings"
 
@@ -139,6 +140,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [showCodeView, setShowCodeView] = useState(false)
   const [showLaunchValidationModal, setShowLaunchValidationModal] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showAdvancedPopup, setShowAdvancedPopup] = useState(false)
   const [launchValidationErrors, setLaunchValidationErrors] = useState([])
   const editorRef = useRef<HTMLDivElement>(null)
   const [testModalAccountId, setTestModalAccountId] = useState(null)
@@ -757,6 +759,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       loadCampaignData()
     }
   }, [campaign?.id])
+
+  // Listen for create campaign event from sidebar
+  useEffect(() => {
+    const handleCreateCampaign = () => {
+      setShowAdvancedPopup(true)
+    }
+
+    window.addEventListener('create-campaign', handleCreateCampaign)
+    return () => window.removeEventListener('create-campaign', handleCreateCampaign)
+  }, [])
 
   // Auto-save functionality (only after data is loaded)
   useEffect(() => {
@@ -1424,6 +1436,63 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       })
     } finally {
       setShowDeleteDialog(false)
+    }
+  }
+
+  const handleAdvancedCampaignComplete = async (campaignData: any) => {
+    try {
+      const response = await fetch("/api/campaigns", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: campaignData.formData.campaignName,
+          description: `Campaign for ${campaignData.formData.companyName}`,
+          type: "email",
+          trigger: "manual",
+          status: "Draft",
+          settings: {
+            formData: campaignData.formData,
+            selectedICP: campaignData.selectedICP,
+            selectedPersona: campaignData.selectedPersona,
+            selectedPainPoint: campaignData.selectedPainPoint,
+            selectedOutreachStrategy: campaignData.selectedOutreachStrategy
+          }
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setShowAdvancedPopup(false)
+        
+        toast({
+          title: "Campaign Created",
+          description: `Campaign "${campaignData.formData.campaignName}" has been created successfully`,
+        })
+        
+        // Refresh the parent campaigns list
+        window.dispatchEvent(new CustomEvent('campaigns-changed'))
+        
+        // Navigate to the new campaign or back to list
+        if (onBack) {
+          onBack()
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to create campaign",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error("Error creating campaign:", error)
+      toast({
+        title: "Error", 
+        description: "Failed to create campaign",
+        variant: "destructive"
+      })
     }
   }
 
@@ -5150,6 +5219,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Advanced Campaign Popup */}
+      <AddCampaignPopup 
+        isOpen={showAdvancedPopup}
+        onClose={() => setShowAdvancedPopup(false)}
+        onComplete={handleAdvancedCampaignComplete}
+      />
     </main>
     </>
   )
