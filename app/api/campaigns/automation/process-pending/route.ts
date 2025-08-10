@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
       console.log(`📝 Found ${sequences.length} active sequences for ${campaign.name}`)
 
       // Get prospects that need processing with timezone information
-      const { data: contactsData } = await supabaseServer
+      const { data: contactsData, error: contactsError } = await supabaseServer
         .from('prospects')
         .select(`
           id,
@@ -189,11 +189,18 @@ export async function GET(request: NextRequest) {
           first_name,
           last_name,
           time_zone,
-          company_name,
-          job_title
+          job_title,
+          location
         `)
         .eq('campaign_id', campaign.id)
-        .not('opted_out', 'eq', true)
+
+      // Debug logging
+      console.log(`📋 Prospects query for campaign ${campaign.id}:`)
+      if (contactsError) {
+        console.log(`❌ Error fetching prospects:`, contactsError)
+      } else {
+        console.log(`✅ Found ${contactsData?.length || 0} prospects`)
+      }
 
       const contactsToProcess = []
       const senderUsage = new Map() // Track daily usage per sender
@@ -231,10 +238,12 @@ export async function GET(request: NextRequest) {
         const endHour = parseTimeToHour(settings.sending_end_time) || 17;
         
         // Check if it's within sending hours for this contact's timezone
-        const isWithinSendingHours = contactLocalHour >= startHour && contactLocalHour < endHour
+        // For 11:59 PM, endHour should be 24 (next day) to include 23:xx
+        const effectiveEndHour = endHour === 23 && settings.sending_end_time?.includes('11:59') ? 24 : endHour
+        const isWithinSendingHours = contactLocalHour >= startHour && contactLocalHour < effectiveEndHour
         
         if (!isWithinSendingHours) {
-          console.log(`⏰ Skipping contact ${contact.email_address} - Local time ${contactLocalHour}:00 not within ${startHour}:00-${endHour}:00`)
+          console.log(`⏰ Skipping contact ${contact.email_address} - Local time ${contactLocalHour}:00 not within ${startHour}:00-${effectiveEndHour}:00`)
           continue
         }
         
@@ -273,7 +282,7 @@ export async function GET(request: NextRequest) {
           email: contact.email_address,
           firstName: contact.first_name,
           lastName: contact.last_name,
-          company: contact.company_name,
+          company: contact.location,
           title: contact.job_title,
           nextSequence: {
             id: nextSequence.id,
