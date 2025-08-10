@@ -190,7 +190,8 @@ export async function GET(request: NextRequest) {
           last_name,
           time_zone,
           job_title,
-          location
+          location,
+          sender_email
         `)
         .eq('campaign_id', campaign.id)
 
@@ -408,6 +409,7 @@ export async function GET(request: NextRequest) {
           lastName: contact.last_name,
           company: contact.location,
           title: contact.job_title,
+          sender_email: contact.sender_email,
           nextSequence: {
             id: nextSequence.id,
             step_number: nextSequence.step_number,

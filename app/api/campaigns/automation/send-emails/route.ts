@@ -124,40 +124,66 @@ function isWithinBusinessHours(timezoneGroup: string): boolean {
   return localHours >= 9 && localHours <= 17
 }
 
-// Get next available sender for a campaign (with rotation and daily limits)
+// Get assigned sender for a prospect (maintains consistency across sequences)
+async function getAssignedSender(campaignId: string, assignedSenderEmail: string) {
+  try {
+    console.log(`🔍 Looking for assigned sender: ${assignedSenderEmail}`)
+    
+    // Get the specific sender assigned to this prospect
+    const { data: sender, error } = await supabaseServer
+      .from('campaign_senders')
+      .select(`
+        id, email, name, access_token, refresh_token, app_password, auth_type,
+        daily_limit, updated_at
+      `)
+      .eq('campaign_id', campaignId)
+      .eq('email', assignedSenderEmail)
+      .eq('is_active', true)
+      .single()
+
+    if (error || !sender) {
+      console.error('❌ Assigned sender not found:', error)
+      throw new Error(`Assigned sender ${assignedSenderEmail} not found or inactive for campaign ${campaignId}: ${error?.message || 'Unknown error'}`)
+    }
+
+    console.log(`✅ Found assigned sender: ${sender.email} (${sender.name})`)
+    return sender
+
+  } catch (error) {
+    console.error('❌ Error getting assigned sender:', error)
+    throw error
+  }
+}
+
+// Fallback: Get next available sender for a campaign (with rotation and daily limits)
 async function getNextAvailableSender(campaignId: string) {
   try {
-    // Get all active senders for this campaign, ordered by rotation priority and last used
+    // Get all active senders for this campaign, using existing columns only
     const { data: senders, error } = await supabaseServer
       .from('campaign_senders')
       .select(`
         id, email, name, access_token, refresh_token, app_password, auth_type,
-        rotation_priority, last_used_at, emails_sent_today, daily_limit
+        daily_limit, updated_at
       `)
       .eq('campaign_id', campaignId)
       .eq('is_active', true)
-      .order('rotation_priority', { ascending: true })
-      .order('last_used_at', { ascending: true, nullsFirst: true })
+      .order('updated_at', { ascending: true, nullsFirst: true }) // Use updated_at for basic rotation
 
     if (error || !senders || senders.length === 0) {
-      throw new Error(`No active senders found for campaign ${campaignId}`)
+      console.error('❌ Sender query error:', error)
+      throw new Error(`No active senders found for campaign ${campaignId}: ${error?.message || 'Unknown error'}`)
     }
 
-    // Find sender who hasn't hit daily limit
-    const availableSender = senders.find(sender => 
-      (sender.emails_sent_today || 0) < (sender.daily_limit || 50)
-    )
+    console.log(`📋 Found ${senders.length} active senders for campaign ${campaignId}`)
 
-    if (!availableSender) {
-      throw new Error('All senders have reached their daily email limits')
-    }
+    // For now, use simple round-robin (pick first sender - will update timestamp for rotation)
+    const availableSender = senders[0]
 
-    // Update sender's last_used_at and increment emails_sent_today
+    // Update sender's updated_at for rotation tracking (using existing columns)
     const { error: updateError } = await supabaseServer
       .from('campaign_senders')
       .update({ 
-        last_used_at: new Date().toISOString(),
-        emails_sent_today: (availableSender.emails_sent_today || 0) + 1
+        updated_at: new Date().toISOString()
       })
       .eq('id', availableSender.id)
 
@@ -250,18 +276,25 @@ export async function POST(request: NextRequest) {
         try {
           const sequence = contact.nextSequence
 
-          // Get next available sender with rotation
+          // Use assigned sender for this prospect (maintains consistency across sequences)
           let senderData
           try {
-            senderData = await getNextAvailableSender(campaignData.id)
-            console.log(`🔄 Using rotated sender: ${senderData.email} (sent today: ${senderData.emails_sent_today || 0}/${senderData.daily_limit || 50})`)
+            // Check if prospect has assigned sender
+            if (contact.sender_email) {
+              console.log(`✅ Using assigned sender for ${contact.email}: ${contact.sender_email}`)
+              senderData = await getAssignedSender(campaignData.id, contact.sender_email)
+            } else {
+              console.log(`⚠️ No assigned sender for ${contact.email}, falling back to rotation`)
+              senderData = await getNextAvailableSender(campaignData.id)
+            }
+            console.log(`📧 Selected sender: ${senderData.email} (${senderData.name})`)
           } catch (senderError) {
-            console.log(`❌ No available senders: ${senderError}`)
+            console.log(`❌ Sender error: ${senderError}`)
             results.failed++
             results.skipped_sender_limit++
             results.errors.push({
               contact: contact.email,
-              error: 'No available senders (daily limits reached)'
+              error: 'Sender assignment failed: ' + (senderError instanceof Error ? senderError.message : 'Unknown error')
             })
             continue
           }
@@ -327,7 +360,8 @@ export async function POST(request: NextRequest) {
               tracking_data: {
                 subject: subject,
                 sender_type: senderData.auth_type,
-                method: 'smart_rotation',
+                method: contact.sender_email ? 'assigned_sender' : 'fallback_rotation',
+                assigned_sender: contact.sender_email || null,
                 timezone_group: timezoneGroup,
                 local_time: new Date().toLocaleString('en-US', { 
                   timeZone: TIMEZONE_CONFIG[timezoneGroup as keyof typeof TIMEZONE_CONFIG].name 
@@ -371,7 +405,7 @@ export async function POST(request: NextRequest) {
       processedAt: new Date().toISOString(),
       features_used: [
         '🌍 Timezone-aware sending (business hours only)',
-        '🔄 Smart sender rotation with daily limits',
+        '🎯 Consistent sender assignment per prospect (maintains relationships)',
         '📧 OAuth Gmail API integration',
         '⏰ Rate limiting between emails'
       ]
