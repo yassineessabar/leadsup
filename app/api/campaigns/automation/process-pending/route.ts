@@ -285,35 +285,56 @@ export async function GET(request: NextRequest) {
           console.log(`⚠️ Error checking progress for ${contact.email_address}:`, progressError)
           continue
         }
+        
+        console.log(`🔍 Progress data for ${contact.email_address}:`, progressData?.map(p => ({
+          sequence_id: p.sequence_id,
+          status: p.status,
+          sent_at: p.sent_at
+        })) || [])
+        
+        console.log(`📝 Current sequences:`, sequences.map(s => ({
+          id: s.id,
+          step_number: s.step_number,
+          title: s.title
+        })))
 
         let nextSequence = null
         let nextStepNumber = 1 // Default to first step
-        const completedSequenceIds = new Set()
+        const completedStepNumbers = new Set()
 
         if (progressData && progressData.length > 0) {
-          // Get all completed/sent sequences
-          progressData.forEach(progress => {
-            if (progress.status === 'sent') {
-              completedSequenceIds.add(progress.sequence_id)
-            }
-          })
+          // Count how many sequences have been sent for this contact
+          // Since sequence IDs change when edited, we'll count sent sequences chronologically
+          const sentSequences = progressData.filter(p => p.status === 'sent').length
+          
+          console.log(`📋 Contact ${contact.email_address}: ${sentSequences} sequences sent`)
+          
+          // Map sent sequences to step numbers based on chronological order
+          // 1st sent = step 1, 2nd sent = step 2, etc.
+          for (let i = 1; i <= sentSequences; i++) {
+            completedStepNumbers.add(i)
+          }
+          
+          console.log(`📋 Contact ${contact.email_address}: completed steps [${Array.from(completedStepNumbers).join(', ')}]`)
 
-          // Find the last sent sequence to check timing
-          const lastSentProgress = progressData.find(p => p.status === 'sent')
-          if (lastSentProgress) {
-            const lastSequence = sequences.find(s => s.id === lastSentProgress.sequence_id)
-            if (lastSequence && lastSentProgress.sent_at) {
+          // Find the last sent sequence to check timing (get the highest completed step)
+          const lastCompletedStep = Math.max(...completedStepNumbers)
+          if (lastCompletedStep > 0) {
+            const lastCompletedSequence = sequences.find(s => s.step_number === lastCompletedStep)
+            const lastSentProgress = progressData.find(p => p.status === 'sent')
+            
+            if (lastCompletedSequence && lastSentProgress?.sent_at) {
               const sentDate = new Date(lastSentProgress.sent_at)
-              const nextSendDate = new Date(sentDate.getTime() + (lastSequence.timing_days * 24 * 60 * 60 * 1000))
+              const nextSendDate = new Date(sentDate.getTime() + (lastCompletedSequence.timing_days * 24 * 60 * 60 * 1000))
               
               if (now < nextSendDate) {
-                console.log(`⏰ Skipping contact ${contact.email_address} - Next sequence not due until ${nextSendDate.toISOString()} (${lastSequence.timing_days} days after step ${lastSequence.step_number})`)
+                console.log(`⏰ Skipping contact ${contact.email_address} - Next sequence not due until ${nextSendDate.toISOString()} (${lastCompletedSequence.timing_days} days after step ${lastCompletedStep})`)
                 continue
               }
-              
-              // Find next step number after the last completed one
-              nextStepNumber = lastSequence.step_number + 1
             }
+            
+            // Find next step number after the last completed one
+            nextStepNumber = lastCompletedStep + 1
           }
 
           // Check if any sequence is currently scheduled/pending
@@ -325,26 +346,26 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Find the next sequence step that hasn't been completed
+        // Find the next sequence step that hasn't been completed by step number
         nextSequence = sequences
-          .filter(s => !completedSequenceIds.has(s.id))
+          .filter(s => !completedStepNumbers.has(s.step_number))
           .find(s => s.step_number === nextStepNumber)
 
         if (!nextSequence) {
           // Try to find the next available sequence if exact step number doesn't exist
           nextSequence = sequences
-            .filter(s => !completedSequenceIds.has(s.id))
+            .filter(s => !completedStepNumbers.has(s.step_number))
             .sort((a, b) => a.step_number - b.step_number)[0]
         }
         
         if (!nextSequence) {
           // Check if this contact has completed all sequences
           const maxStep = Math.max(...sequences.map(s => s.step_number))
-          if (completedSequenceIds.size >= sequences.length) {
+          if (completedStepNumbers.size >= sequences.length) {
             console.log(`✅ Contact ${contact.email_address} has completed all sequences (${sequences.length} steps)`)
             continue
           } else {
-            console.log(`⚠️ No available sequence found for contact ${contact.email_address} (completed ${completedSequenceIds.size}/${sequences.length})`)
+            console.log(`⚠️ No available sequence found for contact ${contact.email_address} (completed steps: ${Array.from(completedStepNumbers).join(', ')})`)
             continue
           }
         }
