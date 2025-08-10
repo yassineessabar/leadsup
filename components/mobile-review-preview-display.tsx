@@ -982,8 +982,9 @@ export function MobileReviewPreviewDisplay({
 
       {/* Main Content Area - with dynamic background and improved spacing */}
       <div
-        className={`flex-1 flex flex-col relative ${backgroundColor === "gradient" ? "bg-gradient-to-r from-purple-400 to-cyan-400" : ""}`}
+        className={`flex-1 flex flex-col relative ${backgroundColor === "gradient" ? "" : ""}`}
         style={{
+          ...(backgroundColor === "gradient" ? { background: 'linear-gradient(to right, rgb(87, 140, 255), #22d3ee)' } : {}),
           backgroundColor: backgroundColor !== "gradient" ? backgroundColor : undefined,
           color: textColor,
           fontFamily: font === 'gothic-a1' ? 'Gothic A1, sans-serif' :

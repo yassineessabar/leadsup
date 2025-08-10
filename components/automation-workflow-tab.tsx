@@ -707,7 +707,7 @@ export function DashboardMainContent({ activeTab, setActiveTab }: DashboardMainC
                 <DialogContent className="w-full max-w-lg rounded-2xl bg-white p-0 shadow-2xl border-0 dark:bg-gray-900">
                   <div className="p-6 pb-4">
                     <DialogHeader className="relative text-center">
-                      <div className="mx-auto w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center mb-4">
+                      <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4" style={{ background: 'linear-gradient(to bottom right, rgb(67, 120, 235), rgb(87, 140, 255))' }}>
                         <Plus className="w-6 h-6 text-white" />
                       </div>
                       <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white">

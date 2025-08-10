@@ -1000,7 +1000,7 @@ export function CustomersTab({ onTabChange }: CustomersTabProps = {}) {
     switch (type) {
       case "sms": return "bg-green-100 text-green-800"
       case "email": return "bg-blue-100 text-blue-800"
-      case "both": return "bg-purple-100 text-purple-800"
+      case "both": return "" // Use inline style
       default: return "bg-gray-100 text-gray-800"
     }
   }
@@ -1216,7 +1216,11 @@ export function CustomersTab({ onTabChange }: CustomersTabProps = {}) {
                       </Badge>
                     </div>
                   ) : (
-                    <Badge variant="secondary" className={getTypeColor(customer.type)}>
+                    <Badge 
+                      variant="secondary" 
+                      className={getTypeColor(customer.type)}
+                      style={customer.type === "both" ? { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' } : {}}
+                    >
                       {customer.type.toUpperCase()}
                     </Badge>
                   )}
@@ -1338,10 +1342,11 @@ export function CustomersTab({ onTabChange }: CustomersTabProps = {}) {
                                   request.status === 'sent' ? 'bg-green-100 text-green-800' :
                                   request.status === 'delivered' ? 'bg-blue-100 text-blue-800' :
                                   request.status === 'failed' ? 'bg-red-100 text-red-800' :
-                                  request.status === 'opened' ? 'bg-purple-100 text-purple-800' :
+                                  request.status === 'opened' ? '' :
                                   request.status === 'clicked' ? 'bg-indigo-100 text-indigo-800' :
                                   'bg-yellow-100 text-yellow-800'
                                 }`}
+                                style={request.status === 'opened' ? { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' } : {}}
                               >
                                 {request.status.toUpperCase()}
                               </Badge>
@@ -1683,7 +1688,11 @@ export function CustomersTab({ onTabChange }: CustomersTabProps = {}) {
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-medium text-gray-900">{selectedCustomerForSend?.name}</span>
-                <Badge variant="secondary" className={getTypeColor(selectedCustomerForSend?.type || "email")}>
+                <Badge 
+                  variant="secondary" 
+                  className={getTypeColor(selectedCustomerForSend?.type || "email")}
+                  style={(selectedCustomerForSend?.type === "both") ? { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' } : {}}
+                >
                   {selectedCustomerForSend?.type?.toUpperCase()}
                 </Badge>
               </div>

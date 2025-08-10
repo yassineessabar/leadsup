@@ -544,7 +544,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         {sampleICPs.map((icp) => (
           <Card 
             key={icp.id} 
-            className="border-2 border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-md"
+            className="border-2 shadow-md" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
           >
             <CardContent className="p-6">
               <div className="flex-1 space-y-3">
@@ -576,7 +576,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         {samplePersonas.map((persona) => (
           <Card 
             key={persona.id} 
-            className="border-2 border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-md"
+            className="border-2 shadow-md" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
           >
             <CardContent className="p-6">
               <div className="flex-1 space-y-3">
@@ -658,9 +658,10 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             key={icp.id} 
             className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
               selectedICP === icp.id 
-                ? 'border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-md' 
+                ? 'shadow-md' 
                 : 'border-gray-200 hover:border-gray-300'
             }`}
+            style={selectedICP === icp.id ? { borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' } : {}}
             onClick={() => setSelectedICP(icp.id)}
           >
             <CardContent className="p-6">
@@ -706,7 +707,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
           <p className="text-gray-600">Customize your ideal customer profile</p>
         </div>
         
-        <Card className="border-2 border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg">
+        <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
           <CardContent className="p-8 space-y-6">
             <div className="space-y-4">
               <div className="space-y-3">
@@ -810,9 +811,10 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             key={persona.id} 
             className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
               selectedPersona === persona.id 
-                ? 'border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-md' 
+                ? 'shadow-md' 
                 : 'border-gray-200 hover:border-gray-300'
             }`}
+            style={selectedPersona === persona.id ? { borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' } : {}}
             onClick={() => setSelectedPersona(persona.id)}
           >
             <CardContent className="p-6">
@@ -858,7 +860,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
           <p className="text-gray-600">Customize your target persona</p>
         </div>
         
-        <Card className="border-2 border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg">
+        <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
           <CardContent className="p-8 space-y-6">
             <div className="space-y-4">
               <div className="space-y-3">
@@ -935,7 +937,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
           <p className="text-gray-600">Customize your pain point</p>
         </div>
         
-        <Card className="border-2 border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg">
+        <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
           <CardContent className="p-8 space-y-6">
             <div className="space-y-4">
               <div className="space-y-3">
@@ -1064,7 +1066,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         {samplePainPoints.map((painPoint) => (
           <Card 
             key={painPoint.id} 
-            className="border-2 border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-md"
+            className="border-2 shadow-md" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
           >
             <CardContent className="p-6">
               <div className="flex-1 space-y-3">
@@ -1093,7 +1095,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       {/* Value Proposition Section */}
       <div className="space-y-4 pt-6 border-t">
         <h3 className="text-xl font-semibold text-gray-800">Your Value Proposition</h3>
-        <Card className="border-2 border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg">
+        <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
           <CardContent className="p-6">
             <div className="flex-1 space-y-3">
               <div className="flex items-center justify-between">
@@ -1145,9 +1147,10 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             key={painPoint.id} 
             className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
               selectedPainPoint === painPoint.id 
-                ? 'border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-md' 
+                ? 'shadow-md' 
                 : 'border-gray-200 hover:border-gray-300'
             }`}
+            style={selectedPainPoint === painPoint.id ? { borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' } : {}}
             onClick={() => setSelectedPainPoint(painPoint.id)}
           >
             <CardContent className="p-6">
@@ -1201,7 +1204,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         </div>
       </div>
       
-      <Card className="border-2 border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg">
+      <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
         <CardContent className="p-6">
           <div className="flex items-start space-x-4">
             <RadioGroup value="1">
@@ -1257,9 +1260,10 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             key={strategy.id} 
             className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
               selectedOutreachStrategy === strategy.id 
-                ? 'border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-md' 
+                ? 'shadow-md' 
                 : 'border-gray-200 hover:border-gray-300'
             }`}
+            style={selectedOutreachStrategy === strategy.id ? { borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' } : {}}
             onClick={() => setSelectedOutreachStrategy(strategy.id)}
           >
             <CardContent className="p-8">

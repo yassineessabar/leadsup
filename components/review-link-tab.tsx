@@ -1469,7 +1469,7 @@ export function ReviewLinkTab({ mode = 'links', onTabChange }: ReviewLinkTabProp
                 className="flex items-center gap-3 p-3 cursor-pointer"
                 onClick={handleShowQRCode}
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-200 text-purple-700">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>
                   <LayoutGrid className="h-4 w-4" />
                 </div>
                 <span>My Loop QR code</span>

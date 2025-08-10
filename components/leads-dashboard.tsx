@@ -67,7 +67,7 @@ export function LeadsDashboard() {
     {
       title: "Reply rate",
       value: "0%",
-      color: "bg-purple-500",
+      color: "bg-[rgb(87,140,255)]",
       icon: Info
     },
     {
@@ -176,7 +176,7 @@ export function LeadsDashboard() {
       {
         title: "Reply rate",
         value: `${replyRate}%`,
-        color: "bg-purple-500",
+        color: "bg-[rgb(87,140,255)]",
         icon: Info
       },
       {

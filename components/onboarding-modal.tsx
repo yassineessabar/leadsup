@@ -272,7 +272,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(to right, rgb(87, 140, 255), rgb(67, 120, 235))' }}>
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>

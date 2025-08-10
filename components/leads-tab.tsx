@@ -73,7 +73,7 @@ const emailStatusColors = {
   'Disposable': 'bg-orange-100 text-orange-800',
   'Not found': 'bg-gray-100 text-gray-600',
   'Skipped': 'text-blue-800',
-  'Pending': 'text-purple-800'
+  'Pending': 'text-[rgb(87,140,255)]'
 }
 
 export function LeadsTab() {

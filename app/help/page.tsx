@@ -74,7 +74,7 @@ export default function HelpPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="bg-purple-700 text-white" style={{ backgroundColor: '#5022B4' }}>
+      <header className="text-white" style={{ backgroundColor: 'rgb(87, 140, 255)' }}>
         <div className="relative flex flex-col mb-9 pb-9" style={{ minHeight: '245px' }}>
           {/* Top Bar */}
           <section className="relative flex w-full flex-col mb-6 pb-6">
@@ -190,17 +190,17 @@ export default function HelpPage() {
                     <Link
                       key={collection.id}
                       href={collection.href}
-                      className="collection-link group/collection-summary flex grow overflow-hidden border border-solid border-gray-200 bg-white no-underline shadow-sm transition ease-linear rounded-xl hover:border-purple-400 flex-col"
+                      className="collection-link group/collection-summary flex grow overflow-hidden border border-solid border-gray-200 bg-white no-underline shadow-sm transition ease-linear rounded-xl hover:border-[rgb(87,140,255)] flex-col"
                     >
                       <div className="flex grow flex-col gap-4 p-5 sm:flex-col sm:p-6">
                         <div className="flex items-center rounded-lg bg-cover bg-center h-10 w-10 justify-center bg-gray-100">
                           <div className="h-6 w-6">
-                            <Icon className="h-full w-full text-purple-600" />
+                            <Icon className="h-full w-full" style={{ color: 'rgb(87, 140, 255)' }} />
                           </div>
                         </div>
                         <div className="intercom-force-break flex w-full flex-1 flex-col text-gray-900 justify-between">
                           <div>
-                            <div className="-mt-1 mb-0.5 line-clamp-2 text-md font-semibold leading-normal text-gray-900 transition ease-linear group-hover/collection-summary:text-purple-600 sm:line-clamp-1">
+                            <div className="-mt-1 mb-0.5 line-clamp-2 text-md font-semibold leading-normal text-gray-900 transition ease-linear sm:line-clamp-1">
                               {collection.title}
                             </div>
                             <p className="mb-0 mt-0 line-clamp-3 text-md sm:line-clamp-2 text-gray-600">
@@ -231,15 +231,15 @@ export default function HelpPage() {
                     <Link
                       key={index}
                       href={article.href}
-                      className="duration-250 group/article flex flex-row justify-between gap-2 py-2 no-underline transition ease-linear hover:bg-purple-50 hover:text-purple-600 sm:rounded-lg sm:py-3 rounded-lg px-3"
+                      className="duration-250 group/article flex flex-row justify-between gap-2 py-2 no-underline transition ease-linear sm:rounded-lg sm:py-3 rounded-lg px-3" onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(87, 140, 255, 0.05)'; e.currentTarget.style.color = 'rgb(87, 140, 255)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'inherit'; }}"
                     >
                       <div className="flex flex-col p-0">
-                        <span className="m-0 text-md text-gray-900 group-hover/article:text-purple-600 font-regular">
+                        <span className="m-0 text-md text-gray-900 font-regular">
                           {article.title}
                         </span>
                       </div>
                       <div className="flex shrink-0 flex-col justify-center p-0">
-                        <svg className="block h-4 w-4 text-purple-600 -rotate-90" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="block h-4 w-4 -rotate-90" style={{ color: 'rgb(87, 140, 255)' }} fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                           <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"></path>
                         </svg>
                       </div>

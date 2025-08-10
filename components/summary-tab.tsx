@@ -257,7 +257,7 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
             <MousePointer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-purple-500" />
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: 'rgb(87, 140, 255)' }} />
             <div className="text-2xl font-bold">{stats.totalPlatformClicks || 0}</div>
             <span className="text-sm text-muted-foreground">
               {stats.customersWhoClickedPlatform || 0} users
@@ -468,7 +468,7 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
 
       {/* Upgrade Banner - Hide for Pro/Enterprise users */}
       {showUpgradeBanner && !((userInfo.subscription_type === 'pro' || userInfo.subscription_type === 'enterprise') && userInfo.subscription_status === 'active') && (
-        <Card className="rounded-xl shadow-sm border bg-gradient-to-r from-purple-50 to-pink-50">
+        <Card className="rounded-xl shadow-sm border" style={{ background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
           <CardContent className="p-6 relative">
             <button
               className="absolute right-4 top-4 h-6 w-6 rounded-full hover:bg-gray-100 flex items-center justify-center"

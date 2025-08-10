@@ -642,7 +642,7 @@ export default function AppearancePage({ onTabChange }: AppearancePageProps = {}
                 className="flex items-center gap-3 p-3 cursor-pointer"
                 onClick={handleShowQRCode}
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-200 text-purple-700">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>
                   <LayoutGrid className="h-4 w-4" />
                 </div>
                 <span>My Loop QR code</span>
@@ -1127,7 +1127,7 @@ export default function AppearancePage({ onTabChange }: AppearancePageProps = {}
                       }`}
                       onClick={() => handleThemeChange("miami")}
                     >
-                      <div className="w-full h-full rounded-md overflow-hidden relative bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600">
+                      <div className="w-full h-full rounded-md overflow-hidden relative" style={{ background: 'linear-gradient(to bottom right, #22d3ee, rgb(87, 140, 255), rgb(67, 120, 235))' }}>
                         <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-r from-orange-400 to-pink-400 theme-wave"></div>
                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-3/4 h-4 rounded-full bg-white/90" />
                         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-3/4 h-4 rounded-full bg-white/90" />
@@ -1138,7 +1138,7 @@ export default function AppearancePage({ onTabChange }: AppearancePageProps = {}
                   ) : (
                     <UpgradeProDialog>
                       <div className="relative flex flex-col items-center p-2 border border-gray-200 rounded-lg h-40 cursor-pointer hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600">
-                        <div className="w-full h-full rounded-md overflow-hidden relative bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600">
+                        <div className="w-full h-full rounded-md overflow-hidden relative" style={{ background: 'linear-gradient(to bottom right, #22d3ee, rgb(87, 140, 255), rgb(67, 120, 235))' }}>
                           <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-r from-orange-400 to-pink-400 theme-wave"></div>
                           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-3/4 h-4 rounded-full bg-white/90" />
                           <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-3/4 h-4 rounded-full bg-white/90" />
