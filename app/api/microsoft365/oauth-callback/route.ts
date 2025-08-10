@@ -63,8 +63,9 @@ export async function GET(request: NextRequest) {
       `, { headers: { 'Content-Type': 'text/html' } })
     }
 
-    // Exchange authorization code for access token
-    const tokenResponse = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+    // Exchange authorization code for access token using the same tenant
+    const tenant = process.env.MICROSOFT365_TENANT || 'consumers'
+    const tokenResponse = await fetch(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',

@@ -29,18 +29,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 })
     }
 
-    // Create transporter
-    const transporter = nodemailer.createTransporter({
+    // Create transporter with proper security settings
+    const port = account.smtp_port
+    let secure = false
+    let requireTLS = false
+    
+    if (port === 465) {
+      secure = true // SSL/TLS from start
+    } else if (port === 587 || port === 25) {
+      secure = false
+      requireTLS = true // STARTTLS
+    } else {
+      // Use secure if available from database, otherwise default based on port
+      secure = account.smtp_secure === true || account.smtp_secure === 'true'
+      requireTLS = !secure
+    }
+
+    const transporter = nodemailer.createTransport({
       host: account.smtp_host,
-      port: account.smtp_port,
-      secure: account.smtp_secure,
+      port: port,
+      secure: secure,
+      requireTLS: requireTLS,
       auth: {
         user: account.smtp_user,
         pass: account.smtp_password,
       },
       tls: {
-        rejectUnauthorized: false
-      }
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1'
+      },
+      connectionTimeout: 15000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000
     })
 
     // Send email

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
-import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart } from "lucide-react"
+import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -170,16 +170,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     name: '',
     email: '',
     smtpHost: '',
-    smtpPort: '587',
-    smtpSecure: 'false',
+    smtpPort: 587,
+    smtpSecure: true,
     smtpUser: '',
-    smtpPassword: '',
-    imapHost: '',
-    imapPort: '993',
-    imapSecure: 'true'
+    smtpPassword: ''
   })
   const [smtpLoading, setSmtpLoading] = useState(false)
   const [showConnectDropdown, setShowConnectDropdown] = useState(false)
+  const [showGmailAppPasswordModal, setShowGmailAppPasswordModal] = useState(false)
   const [connectedSmtpAccounts, setConnectedSmtpAccounts] = useState([])
   const [selectedSmtpAccount, setSelectedSmtpAccount] = useState(null)
   
@@ -1246,21 +1244,23 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           name: '',
           email: '',
           smtpHost: '',
-          smtpPort: '587',
-          smtpSecure: 'false',
+          smtpPort: 587,
+          smtpSecure: true,
           smtpUser: '',
-          smtpPassword: '',
-          imapHost: '',
-          imapPort: '993',
-          imapSecure: 'true'
+          smtpPassword: ''
         })
         loadConnectedSmtpAccounts()
       } else {
-        toast({
-          title: "Connection Failed",
-          description: data.error || "Failed to connect SMTP account",
-          variant: "destructive"
-        })
+        // Check if it's a Gmail App Password error
+        if (data.error && data.error.includes('Gmail App Password Required')) {
+          setShowGmailAppPasswordModal(true)
+        } else {
+          toast({
+            title: "Connection Failed",
+            description: data.error || "Failed to connect SMTP account",
+            variant: "destructive"
+          })
+        }
       }
     } catch (error) {
       toast({
@@ -4980,15 +4980,42 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <span>Import Bulk Email Accounts</span>
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800 font-medium mb-2">CSV Format Requirements:</p>
-              <p className="text-xs text-blue-700 mb-2">Your CSV file should contain the following columns:</p>
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {/* CSV Format Guide */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800 font-medium mb-2">CSV Format Required:</p>
               <code className="block bg-white p-2 rounded text-xs text-gray-700 font-mono">
                 email,password,smtp_host,smtp_port,imap_host,imap_port,provider_type
               </code>
               <p className="text-xs text-blue-600 mt-2">
-                Provider types: gmail, outlook, yahoo, other
+                📧 <strong>email:</strong> Your email address<br/>
+                🔑 <strong>password:</strong> App password (Gmail/Yahoo) or regular password<br/>
+                🏢 <strong>provider_type:</strong> gmail, outlook, yahoo, or other
+              </p>
+            </div>
+
+            {/* Where to Find Information */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <p className="text-sm text-green-800 font-medium mb-2">Where to Find This Info:</p>
+              <div className="text-xs text-green-700 space-y-2">
+                <div><strong>🔑 App Passwords:</strong><br/>
+                Gmail: Google Account → Security → App passwords<br/>
+                Yahoo: Yahoo Account → Account security → Generate app password</div>
+                <div><strong>📧 SMTP/IMAP Settings:</strong><br/>
+                Gmail: smtp.gmail.com:587, imap.gmail.com:993<br/>
+                Outlook: smtp-mail.outlook.com:587, outlook.office365.com:993<br/>
+                Yahoo: smtp.mail.yahoo.com:587, imap.mail.yahoo.com:993</div>
+              </div>
+            </div>
+
+            {/* Example */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <p className="text-sm text-yellow-800 font-medium mb-2">Example CSV:</p>
+              <div className="bg-white p-2 rounded border text-xs text-gray-700 font-mono">
+                <div>john@gmail.com,app-password,smtp.gmail.com,587,imap.gmail.com,993,gmail</div>
+              </div>
+              <p className="text-xs text-yellow-700 mt-1">
+                💡 Get Gmail App Passwords: <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline text-blue-600">Google Settings</a>
               </p>
             </div>
 
@@ -5201,6 +5228,198 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     Import Accounts
                   </>
                 )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* SMTP/IMAP Connection Modal */}
+      <Dialog open={showSmtpModal} onOpenChange={setShowSmtpModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Mail className="w-5 h-5 text-blue-600" />
+              <span>Connect SMTP/IMAP Account</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Name</label>
+                <input
+                  type="text"
+                  value={smtpFormData.name}
+                  onChange={(e) => setSmtpFormData({...smtpFormData, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Your Name"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Email</label>
+                <input
+                  type="email"
+                  value={smtpFormData.email}
+                  onChange={(e) => setSmtpFormData({...smtpFormData, email: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="your@email.com"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">SMTP Host</label>
+                <input
+                  type="text"
+                  value={smtpFormData.smtpHost}
+                  onChange={(e) => setSmtpFormData({...smtpFormData, smtpHost: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="smtp.gmail.com"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">SMTP Port</label>
+                <input
+                  type="number"
+                  value={smtpFormData.smtpPort}
+                  onChange={(e) => setSmtpFormData({...smtpFormData, smtpPort: parseInt(e.target.value) || 587})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="587"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="smtpSecure"
+                checked={smtpFormData.smtpSecure}
+                onChange={(e) => setSmtpFormData({...smtpFormData, smtpSecure: e.target.checked})}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="smtpSecure" className="text-sm font-medium text-gray-700">
+                Use secure connection (TLS/SSL)
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Username</label>
+                <input
+                  type="text"
+                  value={smtpFormData.smtpUser}
+                  onChange={(e) => setSmtpFormData({...smtpFormData, smtpUser: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Username or email"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Password</label>
+                <input
+                  type="password"
+                  value={smtpFormData.smtpPassword}
+                  onChange={(e) => setSmtpFormData({...smtpFormData, smtpPassword: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="App password or account password"
+                />
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>Common Settings:</strong><br/>
+                • Gmail: smtp.gmail.com, Port 587, TLS enabled<br/>
+                • Outlook: smtp-mail.outlook.com, Port 587, TLS enabled<br/>
+                • For Gmail: Use App Password (not regular password)
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowSmtpModal(false)
+                  setSmtpFormData({
+                    name: '',
+                    email: '',
+                    smtpHost: '',
+                    smtpPort: 587,
+                    smtpSecure: true,
+                    smtpUser: '',
+                    smtpPassword: ''
+                  })
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={saveSmtpAccount}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Connect Account
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Gmail App Password Help Modal */}
+      <Dialog open={showGmailAppPasswordModal} onOpenChange={setShowGmailAppPasswordModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-red-600" />
+              </div>
+              <span>Gmail App Password Required</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm text-yellow-800 mb-3">
+                Gmail requires an App Password instead of your regular password for SMTP connections.
+              </p>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-900">Follow these steps:</h4>
+              <div className="space-y-2 text-sm text-gray-700">
+                <div className="flex items-start space-x-2">
+                  <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">1</span>
+                  <span>Enable 2-Factor Authentication in your Google Account</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">2</span>
+                  <span>Go to Google Account Settings → Security → App passwords</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">3</span>
+                  <span>Generate an app password for "Mail"</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">4</span>
+                  <span>Use that 16-character password instead of your regular password</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
+              <a
+                href="https://myaccount.google.com/apppasswords"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open App Passwords
+              </a>
+              <Button
+                variant="outline"
+                onClick={() => setShowGmailAppPasswordModal(false)}
+                className="flex-1"
+              >
+                Got it, thanks!
               </Button>
             </div>
           </div>

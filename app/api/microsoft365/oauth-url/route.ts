@@ -20,7 +20,11 @@ export async function POST(request: NextRequest) {
       'https://graph.microsoft.com/offline_access'
     ]
 
-    const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${new URLSearchParams({
+    // Determine tenant type based on environment variable or default to consumers
+    // Options: 'consumers' (personal accounts), 'organizations' (work accounts), 'common' (both)
+    const tenant = process.env.MICROSOFT365_TENANT || 'consumers'
+    
+    const authUrl = `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize?${new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',

@@ -18,10 +18,7 @@ export async function POST(request: NextRequest) {
       smtpPort, 
       smtpSecure,
       smtpUser, 
-      smtpPassword,
-      imapHost,
-      imapPort,
-      imapSecure
+      smtpPassword
     } = await request.json()
 
     if (!name || !email || !smtpHost || !smtpPort || !smtpUser || !smtpPassword) {
@@ -29,25 +26,86 @@ export async function POST(request: NextRequest) {
     }
 
     // Test SMTP connection
-    const transporter = nodemailer.createTransporter({
+    const port = typeof smtpPort === 'string' ? parseInt(smtpPort) : smtpPort
+    
+    // Determine security settings based on port and user preference
+    let secure = false
+    let requireTLS = false
+    
+    if (port === 465) {
+      secure = true // SSL/TLS from start
+    } else if (port === 587 || port === 25) {
+      secure = false
+      requireTLS = true // STARTTLS
+    } else {
+      secure = smtpSecure === true
+      requireTLS = !secure
+    }
+    
+    const transporter = nodemailer.createTransport({
       host: smtpHost,
-      port: parseInt(smtpPort),
-      secure: smtpSecure === 'true' || smtpPort === '465',
+      port: port,
+      secure: secure,
+      requireTLS: requireTLS,
       auth: {
         user: smtpUser,
         pass: smtpPassword,
       },
       tls: {
-        rejectUnauthorized: false
-      }
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1'
+      },
+      connectionTimeout: 15000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      debug: false,
+      logger: false
     })
 
     try {
       await transporter.verify()
     } catch (smtpError) {
       console.error('SMTP connection failed:', smtpError)
+      
+      // Provide specific error messages based on error type
+      let errorMessage = 'SMTP connection failed. Please check your settings.'
+      
+      if (smtpError.code === 'ESOCKET') {
+        if (smtpError.reason === 'wrong version number') {
+          errorMessage = `SSL/TLS configuration error. Try these settings:
+          - For Gmail: Port 587 with TLS enabled, or Port 465 with SSL
+          - For Outlook: Port 587 with TLS enabled
+          - Check if you're using the correct security settings for port ${port}`
+        } else {
+          errorMessage = `Connection failed. Please verify:
+          - SMTP server address: ${smtpHost}
+          - Port: ${port}
+          - Network connectivity`
+        }
+      } else if (smtpError.code === 'EAUTH') {
+        if (smtpError.response && smtpError.response.includes('Application-specific password required')) {
+          errorMessage = `Gmail App Password Required:
+          1. Enable 2-Factor Authentication in your Google Account
+          2. Go to Google Account Settings → Security → App passwords
+          3. Generate an app password for "Mail"
+          4. Use that 16-character password instead of your regular password
+          
+          More info: https://support.google.com/mail/?p=InvalidSecondFactor`
+        } else {
+          errorMessage = `Authentication failed. Please verify:
+          - Username/Email: ${smtpUser}
+          - Password (for Gmail, use App Password, not regular password)
+          - Two-factor authentication settings`
+        }
+      } else if (smtpError.code === 'ECONNECTION') {
+        errorMessage = `Cannot connect to ${smtpHost}:${port}. Please check:
+        - Server address is correct
+        - Port is accessible
+        - Firewall settings`
+      }
+      
       return NextResponse.json({ 
-        error: 'SMTP connection failed. Please check your settings.' 
+        error: errorMessage 
       }, { status: 400 })
     }
 
@@ -72,20 +130,20 @@ export async function POST(request: NextRequest) {
       .eq('email', email)
       .single()
 
-    const accountData = {
+    // Try to save with all columns first, then fallback to basic columns
+    let accountData = {
       user_id: userId,
       name,
       email,
       smtp_host: smtpHost,
-      smtp_port: parseInt(smtpPort),
-      smtp_secure: smtpSecure === 'true' || smtpPort === '465',
+      smtp_port: port,
+      smtp_secure: secure,
       smtp_user: smtpUser,
       smtp_password: smtpPassword,
-      imap_host: imapHost || null,
-      imap_port: imapPort ? parseInt(imapPort) : null,
-      imap_secure: imapSecure === 'true' || imapPort === '993',
       updated_at: new Date().toISOString()
     }
+
+    let saveError = null
 
     if (existingAccount) {
       // Update existing account
@@ -93,13 +151,8 @@ export async function POST(request: NextRequest) {
         .from('smtp_accounts')
         .update(accountData)
         .eq('id', existingAccount.id)
-
-      if (updateError) {
-        console.error('Database update error:', updateError)
-        return NextResponse.json({ 
-          error: 'Failed to update SMTP account' 
-        }, { status: 500 })
-      }
+      
+      saveError = updateError
     } else {
       // Insert new account
       accountData.created_at = new Date().toISOString()
@@ -107,13 +160,57 @@ export async function POST(request: NextRequest) {
       const { error: dbError } = await supabaseServer
         .from('smtp_accounts')
         .insert(accountData)
+      
+      saveError = dbError
+    }
 
-      if (dbError) {
-        console.error('Database error:', dbError)
-        return NextResponse.json({ 
-          error: 'Failed to save SMTP account' 
-        }, { status: 500 })
+    // If save failed due to missing columns, try with basic columns only
+    if (saveError && saveError.message && saveError.message.includes('Could not find')) {
+      console.log('Trying with basic columns only due to schema limitations')
+      
+      // Basic account data with only columns that definitely exist
+      const basicAccountData = {
+        user_id: userId,
+        name, // Required field based on NOT NULL constraint
+        email,
+        smtp_host: smtpHost,
+        smtp_port: port,
+        smtp_user: smtpUser,
+        smtp_password: smtpPassword,
+        updated_at: new Date().toISOString()
       }
+
+      if (existingAccount) {
+        const { error: basicUpdateError } = await supabaseServer
+          .from('smtp_accounts')
+          .update(basicAccountData)
+          .eq('id', existingAccount.id)
+
+        if (basicUpdateError) {
+          console.error('Database update error (basic):', basicUpdateError)
+          return NextResponse.json({ 
+            error: 'Failed to update SMTP account' 
+          }, { status: 500 })
+        }
+      } else {
+        basicAccountData.created_at = new Date().toISOString()
+        
+        const { error: basicDbError } = await supabaseServer
+          .from('smtp_accounts')
+          .insert(basicAccountData)
+
+        if (basicDbError) {
+          console.error('Database error (basic):', basicDbError)
+          return NextResponse.json({ 
+            error: 'Failed to save SMTP account' 
+          }, { status: 500 })
+        }
+      }
+    } else if (saveError) {
+      console.error('Database error:', saveError)
+      return NextResponse.json({ 
+        error: 'Failed to save SMTP account' 
+      }, { status: 500 })
     }
 
     return NextResponse.json({ 
