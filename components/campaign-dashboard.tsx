@@ -2916,10 +2916,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 <h2 className="text-xl font-semibold text-gray-900">Campaign Prospects</h2>
                 <p className="text-gray-600">Prospects assigned to "{campaign?.name}" campaign</p>
               </div>
-              <Button onClick={openImportModal} className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Import Contacts
-              </Button>
             </div>
 
             {/* Scrapping Configuration */}
@@ -2999,6 +2995,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     />
                   </div>
                   <div className="flex items-center space-x-2">
+                    <Button onClick={openImportModal} size="sm" className="bg-blue-600 hover:bg-blue-700">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Import Contacts
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
