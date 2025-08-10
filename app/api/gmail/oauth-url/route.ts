@@ -25,9 +25,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Build OAuth URL with required scopes
+    // Build OAuth URL with required scopes  
     const scopes = [
       'https://www.googleapis.com/auth/gmail.send',
+      'https://www.googleapis.com/auth/gmail.compose',
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile'
     ]

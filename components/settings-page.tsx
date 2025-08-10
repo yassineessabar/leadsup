@@ -104,100 +104,17 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
         <p className="text-gray-600 mt-2">Manage your account and application preferences</p>
       </div>
 
-      {/* Email Signature Section */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
-        {/* Sender Name Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center">
-            <User className="w-5 h-5 text-white" />
-          </div>
-          <h2 className="text-xl font-medium text-gray-800">Sender name</h2>
-        </div>
-
-        {/* Name Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="space-y-2">
-            <Label htmlFor="firstName" className="text-gray-600 font-medium">
-              First Name
-            </Label>
-            <Input
-              id="firstName"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="h-12 text-lg border-gray-300 rounded-lg"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="lastName" className="text-gray-600 font-medium">
-              Last Name
-            </Label>
-            <Input
-              id="lastName"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="h-12 text-lg border-gray-300 rounded-lg"
-            />
-          </div>
-        </div>
-
-        {/* Signature Section */}
-        <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-gray-800">Signature</h3>
-          
-          <Card className="border border-gray-300 rounded-lg overflow-hidden">
-            {/* Signature Content */}
-            <div className="p-8 bg-white min-h-[400px] flex items-center justify-center">
-              <div className="text-gray-400 text-center">
-                <p className="text-lg">Your signature will appear here</p>
-                <p className="text-sm mt-2">Use the formatting tools below to create your signature</p>
-              </div>
-            </div>
-            
-            {/* Formatting Toolbar */}
-            <div className="border-t border-gray-200 bg-gray-50 p-4">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Bold className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Italic className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Underline className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Type className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <span className="text-sm font-bold">A</span>
-                </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Link className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Image className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Smile className="w-4 h-4" />
-                </Button>
-                <div className="ml-auto">
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <Code className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </div>
-
       {/* Settings Sections */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        {/* Account Section */}
+        {/* Account Section - FIRST SECTION */}
+        <div className="bg-gray-50 px-6 py-4">
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Account</h2>
+        </div>
+
         <div className="space-y-0">
           <SettingsItem
             icon={User}
-            title="Account"
+            title="Profile"
             description="Manage your profile and account settings"
             onClick={() => onSectionChange?.("account")}
           />
