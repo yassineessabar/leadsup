@@ -204,6 +204,7 @@ export async function GET(request: NextRequest) {
 
       const contactsToProcess = []
       const senderUsage = new Map() // Track daily usage per sender
+      let senderRotationIndex = 0 // Round-robin rotation index
 
       // Check each contact for due sequences
       for (const contact of contactsData || []) {
@@ -372,15 +373,27 @@ export async function GET(request: NextRequest) {
         
         console.log(`📧 Assigning sequence step ${nextSequence.step_number} (${nextSequence.title}) to ${contact.email_address}`)
         
-        // Find available sender with capacity
+        // Round-robin sender assignment with capacity check
         let assignedSender = null
-        for (const sender of senders) {
+        let attemptedSenders = 0
+        
+        while (attemptedSenders < senders.length) {
+          const senderIndex = senderRotationIndex % senders.length
+          const sender = senders[senderIndex]
           const currentUsage = senderUsage.get(sender.id) || 0
+          
+          // Check if this sender has capacity
           if (currentUsage < sender.daily_limit) {
             assignedSender = sender
             senderUsage.set(sender.id, currentUsage + 1)
+            senderRotationIndex++ // Move to next sender for next contact
+            console.log(`🔄 Assigned sender ${sender.email} (${currentUsage + 1}/${sender.daily_limit}) to ${contact.email_address}`)
             break
           }
+          
+          // Try next sender
+          senderRotationIndex++
+          attemptedSenders++
         }
         
         if (!assignedSender) {
