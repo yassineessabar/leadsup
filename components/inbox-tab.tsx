@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Search, MoreHorizontal, Reply, Forward, Archive, Trash2, Star, ChevronDown, Zap, Mail, BookOpen, MoreVertical, Send, X, Filter, Calendar, Users, MessageSquare, AlertTriangle } from 'lucide-react'
+import { Search, MoreHorizontal, Reply, Forward, Archive, Trash2, Star, ChevronDown, Zap, Mail, BookOpen, MoreVertical, Send, X, Filter, Users, MessageSquare } from 'lucide-react'
 
 interface Email {
   id: number
@@ -92,10 +92,6 @@ export default function InboxPage() {
   const [folderCounts, setFolderCounts] = useState({
     inbox: 0,
     sent: 0,
-    drafts: 0,
-    scheduled: 0,
-    archived: 0,
-    spam: 0,
     trash: 0
   })
   
@@ -170,10 +166,6 @@ export default function InboxPage() {
         setFolderCounts({
           inbox: result.data.folder_distribution.inbox || 0,
           sent: result.data.folder_distribution.sent || 0,
-          drafts: result.data.folder_distribution.drafts || 0,
-          scheduled: result.data.folder_distribution.scheduled || 0,
-          archived: result.data.folder_distribution.archived || 0,
-          spam: result.data.folder_distribution.spam || 0,
           trash: result.data.folder_distribution.trash || 0
         })
       }
@@ -191,7 +183,7 @@ export default function InboxPage() {
       if (selectedAccount) params.append('account', selectedAccount)
       if (selectedCampaign) params.append('campaign_id', selectedCampaign)
       if (searchQuery) params.append('search', searchQuery)
-      if (selectedFolder !== 'inbox') params.append('folder', selectedFolder)
+      if (selectedFolder && selectedFolder !== 'inbox') params.append('folder', selectedFolder)
       if (channelFilter) params.append('channel', channelFilter)
       params.append('tab', activeTab)
       
@@ -495,10 +487,6 @@ export default function InboxPage() {
             {[
               { name: 'Inbox', key: 'inbox', icon: Mail, count: folderCounts.inbox },
               { name: 'Sent', key: 'sent', icon: Send, count: folderCounts.sent },
-              { name: 'Drafts', key: 'drafts', icon: BookOpen, count: folderCounts.drafts },
-              { name: 'Scheduled', key: 'scheduled', icon: Calendar, count: folderCounts.scheduled },
-              { name: 'Archived', key: 'archived', icon: Archive, count: folderCounts.archived },
-              { name: 'Spam', key: 'spam', icon: AlertTriangle, count: folderCounts.spam },
               { name: 'Trash', key: 'trash', icon: Trash2, count: folderCounts.trash }
             ].map((folder, index) => (
               <button
@@ -778,28 +766,6 @@ export default function InboxPage() {
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  <div className="relative">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      Move
-                      <ChevronDown className="w-4 h-4 ml-1" />
-                    </Button>
-                    <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg z-10 hidden">
-                      {Object.entries(statusConfig).map(([key, config]) => (
-                        <button
-                          key={key}
-                          onClick={() => handleStatusChange(key)}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center space-x-2"
-                        >
-                          <Zap className={`w-3 h-3 ${config.color}`} />
-                          <span>{config.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                   <Button 
                     variant="ghost" 
                     size="sm" 
