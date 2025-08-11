@@ -283,19 +283,48 @@ export default function InboxPage() {
   const handleEmailSelect = async (email: Email) => {
     setSelectedEmail(email)
     
-    // Mark as read if not already
+    // Mark thread as read if it has unread messages
     if (!email.isRead && !email.is_read) {
       try {
-        await fetch(`/api/inbox/${email.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ is_read: true })
-        })
-        
-        // Update local state
-        setEmails(prev => prev.map(e => 
-          e.id === email.id ? { ...e, isRead: true, is_read: true } : e
-        ))
+        // Mark all unread messages in this conversation as read
+        const conversationId = (email as any).conversation_id
+        if (conversationId) {
+          const response = await fetch(`/api/inbox/threads/${conversationId}/mark-read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+          })
+
+          if (response.ok) {
+            // Update local state - mark this thread as read
+            setEmails(prev => prev.map(e => 
+              e.id === email.id ? { ...e, isRead: true, is_read: true } : e
+            ))
+            
+            // Refresh folder stats to update badge counts
+            fetchFolderStats()
+          } else {
+            console.error('Failed to mark thread as read:', response.status)
+          }
+        } else {
+          // Fallback: mark individual message as read using latest_message.id
+          const messageId = (email as any).latest_message?.id
+          if (messageId) {
+            const response = await fetch(`/api/inbox/${messageId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ status: 'read' })
+            })
+
+            if (response.ok) {
+              setEmails(prev => prev.map(e => 
+                e.id === email.id ? { ...e, isRead: true, is_read: true } : e
+              ))
+              fetchFolderStats()
+            }
+          }
+        }
       } catch (error) {
         console.error('Error marking email as read:', error)
       }
