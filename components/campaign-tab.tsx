@@ -400,30 +400,22 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
   const handleAdvancedCampaignComplete = async (campaignData: any) => {
     try {
-      // Use the correct API endpoint that supports advanced fields
-      console.log('🚀 Creating advanced campaign with data:', campaignData.formData)
+      console.log('✅ Advanced campaign completed:', campaignData)
       
-      const response = await fetch("/api/campaigns/create", {
-        method: "POST", 
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(campaignData.formData), // Send the full form data with keywords, location, industry
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
+      // Campaign was already created in the popup, just use the existing campaign
+      const existingCampaign = campaignData.campaign || campaignData.campaignResult?.data?.campaign
+      
+      if (existingCampaign) {
+        console.log('📋 Using existing campaign from popup:', existingCampaign)
         const newCampaign: Campaign = {
-          id: result.data.id,
-          name: result.data.name,
-          type: result.data.type,
-          trigger: result.data.trigger_type,
-          status: result.data.status,
+          id: existingCampaign.id,
+          name: existingCampaign.name || campaignData.formData?.campaignName,
+          type: existingCampaign.type || "Email",
+          trigger: existingCampaign.trigger_type || "Manual",
+          status: existingCampaign.status || "Draft",
           sent: Math.floor(Math.random() * 30), // Sample data for demo
           totalPlanned: Math.floor(Math.random() * 200) + 50, // Sample data for demo
-          outreachStrategy: result.data.outreach_strategy || campaignData.selectedOutreachStrategy,
+          outreachStrategy: campaignData.selectedOutreachStrategy || "email",
         }
 
         setCampaigns([newCampaign, ...campaigns])
@@ -456,7 +448,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       } else {
         toast({
           title: "Error",
-          description: result.error || "Failed to create advanced campaign",
+          description: "Campaign data is missing from popup result",
           variant: "destructive"
         })
       }

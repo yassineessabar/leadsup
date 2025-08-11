@@ -117,6 +117,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   const [completedSteps, setCompletedSteps] = useState<string[]>([])
   const [aiAssets, setAiAssets] = useState<any>(null)
   const [campaignId, setCampaignId] = useState<number | null>(null)
+  const [campaignResult, setCampaignResult] = useState<any>(null)
   const [formData, setFormData] = useState({
     campaignName: "",
     companyName: "",
@@ -430,6 +431,12 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   }
 
   const handleContinue = async () => {
+    // Prevent multiple executions while processing
+    if (isProcessing || isCreatingCampaign) {
+      console.log('⚠️ Campaign creation already in progress, ignoring click')
+      return
+    }
+    
     const stepOrder = ["company", "icps-personas", "pain-value", "sequence"]
     const currentIndex = stepOrder.indexOf(currentStep)
     
@@ -457,6 +464,9 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       try {
         // Step 1: Create campaign and generate ICPs & Personas
         const result = await createCampaignWithICPs();
+        
+        // Store the campaign result for later use
+        setCampaignResult(result);
         
         // Immediately move to next step after API completes
         setIsProcessing(false);
@@ -507,6 +517,8 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         formData,
         campaignId,
         aiAssets,
+        campaignResult, // Include the stored campaign result
+        campaign: campaignResult?.campaign, // Direct reference to campaign object
         selectedICP: aiAssets?.icps?.find((icp: any) => icp.id === selectedICP) || sampleICPs.find(icp => icp.id === selectedICP),
         selectedPersona: aiAssets?.personas?.find((persona: any) => persona.id === selectedPersona) || samplePersonas.find(persona => persona.id === selectedPersona),
         selectedPainPoint: aiAssets?.pain_points?.find((pp: any) => pp.id === selectedPainPoint) || samplePainPoints.find(pp => pp.id === selectedPainPoint),
