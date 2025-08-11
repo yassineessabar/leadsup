@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Search, MoreHorizontal, Reply, Forward, Archive, Trash2, Star, ChevronDown, Zap, Mail, BookOpen, MoreVertical, Send, X, Filter, Users, MessageSquare } from 'lucide-react'
+import { Search, MoreHorizontal, Reply, Forward, Archive, Trash2, Star, ChevronDown, Zap, Mail, BookOpen, MoreVertical, Send, X, Filter, Users, MessageSquare, RotateCcw } from 'lucide-react'
 
 interface Email {
   id: number
@@ -393,12 +393,14 @@ export default function InboxPage() {
     }
   }
 
-  const handleDelete = async () => {
+  const handleRestore = async () => {
     if (!selectedEmail) return
     
     try {
       await fetch(`/api/inbox/${selectedEmail.id}`, {
-        method: 'DELETE'
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder: 'inbox' })
       })
       
       // Remove from current list
@@ -410,14 +412,62 @@ export default function InboxPage() {
       fetchFolderStats()
       
       toast({
-        title: "Email deleted",
-        description: "The email has been deleted successfully"
+        title: "Email restored",
+        description: "The email has been restored to inbox"
       })
     } catch (error) {
-      console.error('Error deleting email:', error)
+      console.error('Error restoring email:', error)
       toast({
         title: "Error",
-        description: "Failed to delete email",
+        description: "Failed to restore email",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!selectedEmail) return
+    
+    try {
+      if (selectedFolder === 'trash') {
+        // Permanently delete if already in trash
+        await fetch(`/api/inbox/${selectedEmail.id}`, {
+          method: 'DELETE'
+        })
+        
+        toast({
+          title: "Email permanently deleted",
+          description: "The email has been permanently deleted"
+        })
+      } else {
+        // Move to trash if not in trash
+        await fetch(`/api/inbox/${selectedEmail.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder: 'trash' })
+        })
+        
+        toast({
+          title: "Email moved to trash",
+          description: "The email has been moved to trash"
+        })
+      }
+      
+      // Remove from current list
+      const newEmails = emails.filter(e => e.id !== selectedEmail.id)
+      setEmails(newEmails)
+      setSelectedEmail(newEmails[0] || null)
+      
+      // Update folder counts
+      fetchFolderStats()
+      
+    } catch (error) {
+      console.error('Error handling email delete:', error)
+      toast({
+        title: "Error",
+        description: selectedFolder === 'trash' 
+          ? "Failed to permanently delete email"
+          : "Failed to move email to trash",
         variant: "destructive"
       })
     }
@@ -766,19 +816,35 @@ export default function InboxPage() {
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-gray-400 hover:text-gray-600"
-                    onClick={handleArchive}
-                  >
-                    <Archive className="w-4 h-4" />
-                  </Button>
+                  {selectedFolder === 'trash' ? (
+                    // Show restore button when viewing trash
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-gray-400 hover:text-gray-600"
+                      onClick={handleRestore}
+                      title="Restore to Inbox"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    // Show archive button for non-trash folders
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-gray-400 hover:text-gray-600"
+                      onClick={handleArchive}
+                      title="Archive"
+                    >
+                      <Archive className="w-4 h-4" />
+                    </Button>
+                  )}
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     className="text-gray-400 hover:text-gray-600"
                     onClick={handleDelete}
+                    title={selectedFolder === 'trash' ? 'Delete Permanently' : 'Move to Trash'}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
