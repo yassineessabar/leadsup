@@ -37,6 +37,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   // Campaign name editing state
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(campaign?.name || "")
+
+  // Update editedName when campaign prop changes
+  useEffect(() => {
+    if (campaign?.name && !isEditingName) {
+      setEditedName(campaign.name)
+    }
+  }, [campaign?.name, isEditingName])
   
   // Track if settings have been saved
   const [hasSettingsSaved, setHasSettingsSaved] = useState(false)
@@ -4315,7 +4322,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               </label>
                               {activeStep.sequence === 1 ? (
                                 <Select
-                                  value={activeStep.timing.toString()}
+                                  value={(() => {
+                                    // Calculate relative timing from previous step
+                                    const prevSteps = steps.filter(s => s.sequence === 1 && s.sequenceStep < activeStep.sequenceStep)
+                                    const baseTime = prevSteps.length > 0 ? Math.max(...prevSteps.map(s => s.timing)) : 0
+                                    const relativeTiming = activeStep.timing - baseTime
+                                    return relativeTiming.toString()
+                                  })()}
                                   onValueChange={(value) => {
                                     const newTiming = parseInt(value)
                                     const prevSteps = steps.filter(s => s.sequence === 1 && s.sequenceStep < activeStep.sequenceStep)

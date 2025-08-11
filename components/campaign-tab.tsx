@@ -599,15 +599,49 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
             })
           }
         }}
-        onNameUpdate={(campaignId, newName) => {
-          // Update the campaign name in local state
-          setCampaigns(campaigns.map(campaign => 
-            campaign.id === campaignId 
-              ? { ...campaign, name: newName }
-              : campaign
-          ))
-          // Also update the selected campaign
-          setSelectedCampaign(prev => prev ? { ...prev, name: newName } : prev)
+        onNameUpdate={async (campaignId, newName) => {
+          try {
+            console.log(`🔄 Updating campaign ${campaignId} name to: "${newName}"`)
+            
+            const response = await fetch(`/api/campaigns/${campaignId}/name`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ name: newName })
+            })
+            
+            const result = await response.json()
+            
+            if (!response.ok) {
+              throw new Error(result.error || 'Failed to update campaign name')
+            }
+            
+            if (result.success) {
+              console.log(`✅ Campaign name updated successfully: "${result.data.previousName}" → "${result.data.name}"`)
+              
+              // Update the campaign name in local state
+              setCampaigns(campaigns.map(campaign => 
+                campaign.id === campaignId 
+                  ? { ...campaign, name: newName }
+                  : campaign
+              ))
+              // Also update the selected campaign
+              setSelectedCampaign(prev => prev ? { ...prev, name: newName } : prev)
+              
+              toast({
+                title: "Campaign Updated",
+                description: `Campaign name changed to "${newName}"`
+              })
+            }
+          } catch (error) {
+            console.error('❌ Error updating campaign name:', error)
+            toast({
+              title: "Error",
+              description: error instanceof Error ? error.message : "Failed to update campaign name",
+              variant: "destructive"
+            })
+          }
         }}
         initialTab={initialTab}
       />
