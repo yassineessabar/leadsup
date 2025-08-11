@@ -105,12 +105,13 @@ export async function GET(request: NextRequest) {
         .not('campaign_id', 'is', null)
         .gte('created_at', startDate.toISOString()),
 
-      // Folder distribution
+      // Folder distribution (unread messages only)
       supabaseServer
         .from('inbox_messages')
         .select('folder')
         .eq('user_id', userId)
-        .neq('status', 'deleted'),
+        .eq('status', 'unread')
+        .neq('folder', 'trash'),
 
       // Recent activity (last 10 actions)
       supabaseServer
