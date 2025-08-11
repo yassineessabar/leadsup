@@ -211,7 +211,14 @@ export default function InboxPage() {
           isImportant: email.isImportant ?? email.is_important ?? false,
           isOutOfOffice: email.isOutOfOffice ?? email.is_out_of_office ?? false,
           statusLabel: email.statusLabel ?? email.status_label,
-          date: email.date || new Date(email.created_at || Date.now()).toLocaleDateString()
+          date: email.date || new Date(email.created_at || Date.now()).toLocaleDateString(),
+          // Fix sender/recipient mapping based on actual data structure
+          // In inbox_messages: contact_email = who sent TO us, sender_email = our email that received it
+          sender: email.sender || email.contact_email,  // External person who sent the email
+          to_email: email.to_email || email.sender_email,  // Our email address that received it
+          // Also ensure we have content/preview fields
+          content: email.content || email.body_text || email.body_html,
+          preview: email.preview || (email.body_text ? email.body_text.substring(0, 100) + '...' : '')
         }))
         setEmails(normalizedEmails)
         if (normalizedEmails.length > 0 && !selectedEmail) {
