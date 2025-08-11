@@ -179,8 +179,8 @@ async function getThreadedMessages(userId: string, filters: any) {
       
       // Apply folder-specific filtering
       if (folder === 'sent') {
-        // For sent folder, show messages that are either marked as 'sent' folder OR are outbound messages
-        folderQuery = folderQuery.or(`folder.eq.sent,direction.eq.outbound`)
+        // For sent folder, show messages that are either marked as 'sent' folder OR are outbound messages (but NOT trash)
+        folderQuery = folderQuery.or(`and(folder.eq.sent,folder.neq.trash),and(direction.eq.outbound,folder.neq.trash)`)
       } else {
         // For other folders, use the folder field directly
         folderQuery = folderQuery.eq('folder', folder)
@@ -305,8 +305,8 @@ async function getThreadedMessages(userId: string, filters: any) {
         // If filtering by folder, only get messages from that folder
         if (folder && folder !== 'all') {
           if (folder === 'sent') {
-            // For sent folder, show messages that are either marked as 'sent' folder OR are outbound messages
-            messageQuery = messageQuery.or(`folder.eq.sent,direction.eq.outbound`)
+            // For sent folder, show messages that are either marked as 'sent' folder OR are outbound messages (but NOT trash)
+            messageQuery = messageQuery.or(`and(folder.eq.sent,folder.neq.trash),and(direction.eq.outbound,folder.neq.trash)`)
           } else {
             messageQuery = messageQuery.eq('folder', folder)
           }
@@ -408,8 +408,8 @@ async function getIndividualMessages(userId: string, filters: any) {
     // Apply folder filter
     if (folder && folder !== 'all') {
       if (folder === 'sent') {
-        // For sent folder, show messages that are either marked as 'sent' folder OR are outbound messages
-        query = query.or(`folder.eq.sent,direction.eq.outbound`)
+        // For sent folder, show messages that are either marked as 'sent' folder OR are outbound messages (but NOT trash)
+        query = query.or(`and(folder.eq.sent,folder.neq.trash),and(direction.eq.outbound,folder.neq.trash)`)
       } else {
         query = query.eq('folder', folder)
       }
@@ -468,8 +468,8 @@ async function getIndividualMessages(userId: string, filters: any) {
     // Apply same filters for count
     if (folder && folder !== 'all') {
       if (folder === 'sent') {
-        // For sent folder, show messages that are either marked as 'sent' folder OR are outbound messages
-        countQuery = countQuery.or(`folder.eq.sent,direction.eq.outbound`)
+        // For sent folder, show messages that are either marked as 'sent' folder OR are outbound messages (but NOT trash)
+        countQuery = countQuery.or(`and(folder.eq.sent,folder.neq.trash),and(direction.eq.outbound,folder.neq.trash)`)
       } else {
         countQuery = countQuery.eq('folder', folder)
       }
