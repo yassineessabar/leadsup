@@ -14,8 +14,8 @@ function validateBasicAuth(request: NextRequest): boolean {
     const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii')
     const [username, password] = credentials.split(':')
     
-    const expectedUsername = process.env.N8N_API_USERNAME || 'admin'
-    const expectedPassword = process.env.N8N_API_PASSWORD || 'password'
+    const expectedUsername = process.env.AUTOMATION_API_USERNAME || 'admin'
+    const expectedPassword = process.env.AUTOMATION_API_PASSWORD || 'password'
     
     return username === expectedUsername && password === expectedPassword
   } catch (error) {
@@ -260,8 +260,9 @@ export async function POST(request: NextRequest) {
     for (const [timezoneGroup, timezoneContacts] of Object.entries(contactsByTimezone)) {
       console.log(`🕐 Processing timezone ${timezoneGroup} (${TIMEZONE_CONFIG[timezoneGroup as keyof typeof TIMEZONE_CONFIG]?.description})`)
       
-      // Check if it's business hours for this timezone
-      if (!isWithinBusinessHours(timezoneGroup)) {
+      // Check if it's business hours for this timezone (disabled for testing)
+      const skipTimezone = false // Set to true to enable business hours check
+      if (skipTimezone && !isWithinBusinessHours(timezoneGroup)) {
         console.log(`⏰ Skipping ${timezoneGroup} - outside business hours (9 AM - 5 PM local time)`)
         results.skipped_timezone += (timezoneContacts as any[]).length
         results.timezone_stats[timezoneGroup] = 0
@@ -346,7 +347,7 @@ export async function POST(request: NextRequest) {
           
           console.log(`✅ Email sent to ${contact.email} - Message ID: ${emailResult.messageId}`)
 
-          // Track success
+          // Track success in prospect sequence
           await supabaseServer
             .from('prospect_sequence_progress')
             .insert({
@@ -368,6 +369,102 @@ export async function POST(request: NextRequest) {
                 })
               }
             })
+
+          // Also log to inbox system for unified email management
+          try {
+            // Generate conversation ID for threading
+            const generateConversationId = (contactEmail: string, senderEmail: string, campaignId: string) => {
+              const participants = [contactEmail, senderEmail].sort().join('|')
+              const base = participants + `|${campaignId}`
+              return Buffer.from(base).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 32)
+            }
+
+            const conversationId = generateConversationId(contact.email, senderData.email, campaignData.id)
+
+            // Get user_id from campaign
+            const { data: campaignInfo } = await supabaseServer
+              .from('campaigns')
+              .select('user_id')
+              .eq('id', campaignData.id)
+              .single()
+
+            if (campaignInfo) {
+              const inboxMessageData = {
+                user_id: campaignInfo.user_id,
+                message_id: emailResult.messageId,
+                thread_id: emailResult.threadId,
+                conversation_id: conversationId,
+                campaign_id: campaignData.id,
+                contact_id: contact.id,
+                contact_email: contact.email,
+                contact_name: `${contact.firstName} ${contact.lastName}`.trim(),
+                sender_email: senderData.email,
+                subject: subject,
+                body_text: htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+                body_html: htmlContent,
+                direction: 'outbound',
+                channel: 'email',
+                message_type: 'email',
+                status: 'read', // Outbound emails are 'read' by definition
+                folder: 'sent',
+                provider: (senderData.auth_type === 'oauth2') ? 'gmail' : 'smtp',
+                provider_data: {
+                  method: emailResult.method,
+                  sender_type: senderData.auth_type,
+                  sequence_id: sequence.id,
+                  timezone_group: timezoneGroup
+                },
+                sent_at: new Date().toISOString()
+              }
+              
+              console.log('📥 🔍 DEBUG: About to insert inbox message with data:')
+              console.log('📥 🔍 Provider:', inboxMessageData.provider)
+              console.log('📥 🔍 Status:', inboxMessageData.status) 
+              console.log('📥 🔍 Folder:', inboxMessageData.folder)
+              console.log('📥 🔍 Auth Type:', senderData.auth_type)
+              
+              const { data: insertedMessage, error: insertError } = await supabaseServer
+                .from('inbox_messages')
+                .insert(inboxMessageData)
+                .select()
+
+              if (insertError) {
+                console.error('❌ 🚨 INBOX MESSAGE INSERT ERROR:', JSON.stringify(insertError, null, 2))
+                console.error('❌ 🚨 Failed data:', JSON.stringify(inboxMessageData, null, 2))
+              } else {
+                console.log('✅ 📥 SUCCESS: Inbox message inserted:', insertedMessage[0]?.id)
+              }
+
+              // Update or create inbox thread
+              await supabaseServer
+                .from('inbox_threads')
+                .upsert({
+                  user_id: campaignInfo.user_id,
+                  conversation_id: conversationId,
+                  thread_id: emailResult.threadId,
+                  campaign_id: campaignData.id,
+                  contact_id: contact.id,
+                  contact_email: contact.email,
+                  contact_name: `${contact.firstName} ${contact.lastName}`.trim(),
+                  subject: subject,
+                  last_message_at: new Date().toISOString(),
+                  last_message_preview: htmlContent.replace(/<[^>]*>/g, '').substring(0, 150),
+                  status: 'active'
+                }, {
+                  onConflict: 'conversation_id,user_id'
+                })
+
+              console.log(`📥 ✅ SUCCESS: Logged outbound email to inbox_messages table`)
+              console.log(`📧 Email: ${contact.email} → ${senderData.email}`)
+              console.log(`🧵 Conversation ID: ${conversationId}`)
+            } else {
+              console.error('❌ No campaign info found for inbox logging')
+            }
+          } catch (inboxError) {
+            console.error('❌ CRITICAL: Failed to log to inbox system:', inboxError)
+            console.error('❌ Error details:', JSON.stringify(inboxError, null, 2))
+            // Don't fail the entire email send if inbox logging fails
+          }
 
           results.sent++
           timezoneProcessed++

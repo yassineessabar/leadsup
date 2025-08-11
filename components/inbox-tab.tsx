@@ -77,6 +77,10 @@ export default function InboxPage() {
   const [forwardTo, setForwardTo] = useState("")
   const [forwardContent, setForwardContent] = useState("")
   
+  // Thread expansion state
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set())
+  const [threadMessages, setThreadMessages] = useState<{[key: string]: any[]}>({})
+  
   // Campaign-related state
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null)
@@ -96,6 +100,47 @@ export default function InboxPage() {
   })
   
   const { toast } = useToast()
+
+  // Fetch all messages for a thread
+  const fetchThreadMessages = async (conversationId: string) => {
+    try {
+      const response = await fetch(`/api/inbox?conversation_id=${encodeURIComponent(conversationId)}`, {
+        credentials: 'include'
+      })
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        setThreadMessages(prev => ({
+          ...prev,
+          [conversationId]: result.data
+        }))
+      } else {
+        console.error('Error fetching thread messages:', result.error)
+      }
+    } catch (error) {
+      console.error('Error fetching thread messages:', error)
+    }
+  }
+
+  // Handle thread expansion
+  const handleThreadExpansion = async (conversationId: string) => {
+    const isExpanded = expandedThreads.has(conversationId)
+    
+    if (isExpanded) {
+      // Collapse thread
+      setExpandedThreads(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(conversationId)
+        return newSet
+      })
+    } else {
+      // Expand thread - fetch all messages if not already loaded
+      if (!threadMessages[conversationId]) {
+        await fetchThreadMessages(conversationId)
+      }
+      setExpandedThreads(prev => new Set(prev).add(conversationId))
+    }
+  }
 
   // Fetch campaigns from API
   const fetchCampaigns = async () => {
@@ -777,8 +822,11 @@ export default function InboxPage() {
             <div className="flex-1 p-6 overflow-y-auto bg-white">
               <div className="prose max-w-none">
                 {selectedEmail.content ? (
-                  <div className="text-gray-900 whitespace-pre-wrap">
-                    {selectedEmail.content}
+                  <div 
+                    className="text-gray-900 whitespace-pre-wrap" 
+                    style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}
+                  >
+                    {selectedEmail.latest_message?.body_text || selectedEmail.content.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')}
                   </div>
                 ) : (
                   <>
@@ -804,13 +852,68 @@ export default function InboxPage() {
                 )}
               </div>
               
+              {/* Thread Messages */}
+              {selectedEmail && expandedThreads.has(selectedEmail.conversation_id) && threadMessages[selectedEmail.conversation_id] && (
+                <div className="border-t border-gray-200 mt-6">
+                  <div className="px-6 py-4">
+                    <h3 className="text-sm font-medium text-gray-900 mb-4">
+                      Thread Messages ({threadMessages[selectedEmail.conversation_id].length})
+                    </h3>
+                    <div className="space-y-4">
+                      {threadMessages[selectedEmail.conversation_id].map((message, index) => (
+                        <div key={message.id} className={`p-4 rounded-lg border ${
+                          message.direction === 'outbound' 
+                            ? 'bg-blue-50 border-blue-200 ml-8' 
+                            : 'bg-gray-50 border-gray-200 mr-8'
+                        }`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                message.direction === 'outbound'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {message.direction === 'outbound' ? 'Sent' : 'Received'}
+                              </span>
+                              <span className="text-sm text-gray-600">
+                                {message.formatted_date}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-sm text-gray-700">
+                            <div 
+                              className="whitespace-pre-wrap" 
+                              style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5' }}
+                            >
+                              {message.body_text}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* More messages indicator */}
-              <div className="text-center py-4">
-                <button className="text-sm text-gray-500 hover:text-gray-700">
-                  1 more message
-                  <ChevronDown className="w-4 h-4 ml-1 inline" />
-                </button>
-              </div>
+              {selectedEmail && selectedEmail.message_count && selectedEmail.message_count > 1 && (
+                <div className="text-center py-4 border-t border-gray-200">
+                  <button 
+                    onClick={() => handleThreadExpansion(selectedEmail.conversation_id)}
+                    className="text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center space-x-1"
+                  >
+                    <span>
+                      {expandedThreads.has(selectedEmail.conversation_id) 
+                        ? 'Hide messages' 
+                        : `${selectedEmail.message_count - 1} more message${selectedEmail.message_count - 1 !== 1 ? 's' : ''}`
+                      }
+                    </span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${
+                      expandedThreads.has(selectedEmail.conversation_id) ? 'rotate-180' : ''
+                    }`} />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}

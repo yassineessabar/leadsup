@@ -270,6 +270,61 @@ The [Company] Team`
           console.error("Error saving Email request to database:", saveError)
         }
 
+        // Also log to inbox system for unified email management
+        try {
+          const generateConversationId = (contactEmail: string, senderEmail: string) => {
+            const participants = [contactEmail, senderEmail].sort().join('|')
+            return Buffer.from(participants).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 32)
+          }
+
+          const conversationId = generateConversationId(contact.email, fromEmail)
+
+          await supabase.from('inbox_messages').insert({
+            user_id: userId,
+            message_id: emailResponse.messageId,
+            conversation_id: conversationId,
+            contact_email: contact.email,
+            contact_name: contact.name,
+            sender_email: fromEmail,
+            subject: personalizedSubject,
+            body_text: personalizedMessage,
+            body_html: htmlContent,
+            direction: 'outbound',
+            channel: 'email',
+            message_type: 'email',
+            status: 'read', // Outbound emails are 'read' by definition
+            folder: 'sent',
+            provider: 'smtp',
+            provider_data: {
+              review_request_id: savedRequest?.id,
+              company_name: reviewLink.company_name,
+              smtp_server: process.env.SMTP_HOST
+            },
+            sent_at: new Date().toISOString()
+          })
+
+          // Update or create inbox thread
+          await supabase
+            .from('inbox_threads')
+            .upsert({
+              user_id: userId,
+              conversation_id: conversationId,
+              contact_email: contact.email,
+              contact_name: contact.name,
+              subject: personalizedSubject,
+              last_message_at: new Date().toISOString(),
+              last_message_preview: personalizedMessage.substring(0, 150),
+              status: 'active'
+            }, {
+              onConflict: 'conversation_id,user_id'
+            })
+
+          console.log(`📥 Logged review request email to inbox system`)
+        } catch (inboxError) {
+          console.error('⚠️ Failed to log to inbox system:', inboxError)
+          // Don't fail the entire email send if inbox logging fails
+        }
+
         results.push({
           contact: contact.name,
           email: contact.email,

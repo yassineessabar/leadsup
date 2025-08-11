@@ -60,12 +60,16 @@ export async function GET(request: NextRequest) {
     const dateTo = searchParams.get('date_to')
     const status = searchParams.get('status') // read, unread, etc.
     const view = searchParams.get('view') || 'threads' // 'threads' or 'messages'
+    const conversationId = searchParams.get('conversation_id') // for fetching thread messages
 
     console.log('📧 Inbox API called with filters:', {
-      campaigns, senders, leadStatuses, folder, channel, search, dateFrom, dateTo, status, view
+      campaigns, senders, leadStatuses, folder, channel, search, dateFrom, dateTo, status, view, conversationId
     })
 
-    if (view === 'threads') {
+    if (conversationId) {
+      // Fetch all messages for a specific conversation/thread
+      return await getThreadMessages(userId, conversationId)
+    } else if (view === 'threads') {
       // Fetch threaded view (conversations)
       return await getThreadedMessages(userId, {
         page, limit, offset, campaigns, senders, leadStatuses, 
@@ -85,23 +89,127 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Helper function to get all messages for a specific thread/conversation
+async function getThreadMessages(userId: string, conversationId: string) {
+  try {
+    console.log(`📧 Fetching all messages for conversation: ${conversationId}`)
+
+    // Fetch all messages for this conversation
+    const { data: messages, error } = await supabaseServer
+      .from('inbox_messages')
+      .select(`
+        id, message_id, subject, body_text, body_html, direction, status, 
+        sent_at, received_at, sender_email, contact_name, contact_email, 
+        has_attachments, folder, created_at, provider_data
+      `)
+      .eq('user_id', userId)
+      .eq('conversation_id', conversationId)
+      .order('sent_at', { ascending: true, nullsLast: true })
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('❌ Error fetching thread messages:', error)
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    }
+
+    // Format messages for frontend
+    const formattedMessages = messages.map(message => ({
+      id: message.id,
+      message_id: message.message_id,
+      subject: message.subject,
+      body_text: message.body_text,
+      body_html: message.body_html,
+      direction: message.direction,
+      status: message.status,
+      sender_email: message.sender_email,
+      contact_name: message.contact_name,
+      contact_email: message.contact_email,
+      sent_at: message.sent_at,
+      received_at: message.received_at,
+      has_attachments: message.has_attachments,
+      folder: message.folder,
+      created_at: message.created_at,
+      provider_data: message.provider_data,
+      // Format date for display
+      formatted_date: message.sent_at ? new Date(message.sent_at).toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }) : 'No date',
+      // Choose content (prefer text for proper formatting)
+      content: message.body_text || message.body_html || 'No content'
+    }))
+
+    console.log(`✅ Found ${formattedMessages.length} messages in thread`)
+
+    return NextResponse.json({
+      success: true,
+      data: formattedMessages
+    })
+
+  } catch (error) {
+    console.error('❌ Error in getThreadMessages:', error)
+    return NextResponse.json({ 
+      success: false, 
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 })
+  }
+}
+
 // Helper function to get threaded messages (conversations)
 async function getThreadedMessages(userId: string, filters: any) {
   const { page, limit, offset, campaigns, senders, leadStatuses, folder, channel, search, dateFrom, dateTo, status } = filters
 
   try {
-    // Build the query for threads
+    // First, get thread IDs that have messages in the specified folder
+    let threadIds: string[] = []
+    
+    if (folder && folder !== 'all') {
+      const { data: messagesInFolder, error: folderError } = await supabaseServer
+        .from('inbox_messages')
+        .select('conversation_id')
+        .eq('user_id', userId)
+        .eq('folder', folder)
+        .eq('channel', channel)
+        
+      if (folderError) {
+        console.error('❌ Error fetching messages by folder:', folderError)
+        return NextResponse.json({ success: false, error: folderError.message }, { status: 500 })
+      }
+      
+      threadIds = [...new Set(messagesInFolder.map(m => m.conversation_id))]
+      
+      if (threadIds.length === 0) {
+        // No messages in this folder, return empty result
+        return NextResponse.json({
+          success: true,
+          data: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0
+          }
+        })
+      }
+    }
+
+    // Build the main query for threads (without the problematic inner join)
     let query = supabaseServer
       .from('inbox_threads')
-      .select(`
-        *,
-        latest_message:inbox_messages!inner (
-          id, subject, body_text, direction, status, sent_at, received_at,
-          sender_id, sender_email, contact_name, contact_email, has_attachments
-        )
-      `)
+      .select('*')
       .eq('user_id', userId)
       .order('last_message_at', { ascending: false })
+
+    // Apply thread ID filter if we have folder restrictions
+    if (threadIds.length > 0) {
+      query = query.in('conversation_id', threadIds)
+    }
 
     // Apply campaign filter
     if (campaigns.length > 0) {
@@ -172,35 +280,66 @@ async function getThreadedMessages(userId: string, filters: any) {
 
     const { count: totalCount } = await countQuery
 
-    // Format threads for frontend
-    const formattedThreads = threads?.map(thread => ({
-      id: thread.id,
-      conversation_id: thread.conversation_id,
-      subject: thread.subject,
-      contact_name: thread.contact_name,
-      contact_email: thread.contact_email,
-      campaign_id: thread.campaign_id,
-      message_count: thread.message_count,
-      unread_count: thread.unread_count,
-      last_message_at: thread.last_message_at,
-      last_message_preview: thread.last_message_preview,
-      status: thread.status,
-      lead_status: thread.lead_status,
-      tags: thread.tags,
-      latest_message: thread.latest_message?.[0] || null
-    })) || []
+    // Get latest messages for each thread
+    const formattedThreads = await Promise.all(
+      (threads || []).map(async (thread) => {
+        // Get the latest message for this conversation
+        const { data: latestMessage } = await supabaseServer
+          .from('inbox_messages')
+          .select('id, subject, body_text, direction, status, sent_at, received_at, sender_id, sender_email, contact_name, contact_email, has_attachments, folder')
+          .eq('user_id', userId)
+          .eq('conversation_id', thread.conversation_id)
+          .order('sent_at', { ascending: false, nullsLast: true })
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        return {
+          id: thread.id,
+          conversation_id: thread.conversation_id,
+          
+          // UI expects these fields for email display
+          sender: thread.contact_email?.trim() || 'Unknown',
+          subject: thread.subject || 'No subject',
+          preview: thread.last_message_preview || (latestMessage?.body_text?.substring(0, 100) + '...' || ''),
+          date: latestMessage?.sent_at ? new Date(latestMessage.sent_at).toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'short', 
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          }) : new Date(thread.last_message_at).toLocaleDateString(),
+          isRead: thread.unread_count === 0,
+          hasAttachment: latestMessage?.has_attachments || false,
+          content: latestMessage?.body_html || latestMessage?.body_text || thread.last_message_preview || 'No content available',
+          
+          // Keep original thread data for compatibility
+          contact_name: thread.contact_name,
+          contact_email: thread.contact_email,
+          campaign_id: thread.campaign_id,
+          message_count: thread.message_count,
+          unread_count: thread.unread_count,
+          last_message_at: thread.last_message_at,
+          last_message_preview: thread.last_message_preview,
+          status: thread.status,
+          lead_status: thread.lead_status,
+          tags: thread.tags,
+          latest_message: latestMessage || null
+        }
+      })
+    )
 
     return NextResponse.json({
       success: true,
-      data: {
-        threads: formattedThreads,
-        pagination: {
-          page,
-          limit,
-          total: totalCount || 0,
-          totalPages: Math.ceil((totalCount || 0) / limit),
-          hasMore: offset + limit < (totalCount || 0)
-        }
+      emails: formattedThreads, // UI expects 'emails' at root level
+      pagination: {
+        page,
+        limit,
+        total: totalCount || 0,
+        totalPages: Math.ceil((totalCount || 0) / limit),
+        hasMore: offset + limit < (totalCount || 0)
       }
     })
 
