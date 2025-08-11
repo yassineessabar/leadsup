@@ -384,7 +384,7 @@ Language: ${formData.language || 'English'}
       messages: [
         {
           role: "system",
-          content: `You are an expert email marketing copywriter. Generate 6 compelling emails for a 2-sequence campaign. First 3 emails are initial outreach, last 3 are re-engagement after 60 days. Write in ${formData.language || 'English'}. Return only valid JSON without code blocks or markdown.`
+          content: `You are an expert email marketing copywriter. Generate 6 compelling emails for a 2-sequence campaign. IMPORTANT: All emails in the same sequence must have the SAME subject line for email threading. First 3 emails (sequence 1) share one subject, last 3 emails (sequence 2 after 60 days) share a different subject. Write in ${formData.language || 'English'}. Return only valid JSON without code blocks or markdown.`
         },
         {
           role: "user",
@@ -395,48 +395,50 @@ ${companyContext}
 ICP: ${JSON.stringify(aiAssets.icps?.[0])}
 Value Proposition: ${JSON.stringify(aiAssets.value_propositions?.[0])}
 
+IMPORTANT: Use the SAME subject for emails 1-3 (initial sequence), and the SAME subject for emails 4-6 (re-engagement sequence).
+
 Return JSON in this exact format:
 {
   "email_sequences": [
     {
       "step": 1,
-      "subject": "Initial introduction subject",
+      "subject": "Quick question about {{companyName}}",
       "content": "Email body with {{firstName}} and {{companyName}} variables",
       "purpose": "Introduction/awareness",
       "timing_days": 0
     },
     {
       "step": 2, 
-      "subject": "First follow-up subject",
-      "content": "Follow-up email content",
+      "subject": "Quick question about {{companyName}}",
+      "content": "Follow-up email content (same subject for threading)",
       "purpose": "Value demonstration",
       "timing_days": 3
     },
     {
       "step": 3,
-      "subject": "Final follow-up subject",
-      "content": "Final follow-up content", 
+      "subject": "Quick question about {{companyName}}",
+      "content": "Final follow-up content (same subject for threading)",
       "purpose": "Call to action",
       "timing_days": 6
     },
     {
       "step": 4,
-      "subject": "Re-engagement subject after 60 days",
-      "content": "Re-engagement email content",
+      "subject": "New updates for {{companyName}}",
+      "content": "Re-engagement email content (new subject for new thread)",
       "purpose": "Re-engagement",
       "timing_days": 66
     },
     {
       "step": 5,
-      "subject": "Second re-engagement follow-up",
-      "content": "Follow-up re-engagement content",
+      "subject": "New updates for {{companyName}}",
+      "content": "Follow-up re-engagement content (same subject for threading)",
       "purpose": "Renewed value proposition",
       "timing_days": 69
     },
     {
       "step": 6,
-      "subject": "Final re-engagement attempt",
-      "content": "Final re-engagement content",
+      "subject": "New updates for {{companyName}}",
+      "content": "Final re-engagement content (same subject for threading)",
       "purpose": "Last call to action",
       "timing_days": 72
     }
@@ -611,14 +613,14 @@ function getFallbackEmailSequence() {
       },
       {
         step: 2,
-        subject: "Following up - {{companyName}}",
+        subject: "Quick question about {{companyName}}",
         content: "Hi {{firstName}},\n\nI wanted to follow up on my previous email. I understand you're busy, but I believe we could really help {{companyName}} streamline operations.\n\nCould we schedule a quick 15-minute call?",
         purpose: "Value demonstration",
         timing_days: 3
       },
       {
         step: 3,
-        subject: "Final thoughts for {{companyName}}",
+        subject: "Quick question about {{companyName}}",
         content: "Hi {{firstName}},\n\nThis will be my last email in this sequence. I genuinely believe we can help {{companyName}} save significant time and resources.\n\nIf you're interested, I'm here. Otherwise, I won't bother you further.",
         purpose: "Call to action",
         timing_days: 6
@@ -632,14 +634,14 @@ function getFallbackEmailSequence() {
       },
       {
         step: 5,
-        subject: "Special opportunity for {{companyName}}",
+        subject: "New updates for {{companyName}}",
         content: "Hi {{firstName}},\n\nI wanted to share an exclusive opportunity we're offering to companies like {{companyName}}. \n\nWe're seeing incredible results with similar businesses in your industry.",
         purpose: "Renewed value proposition",
         timing_days: 69
       },
       {
         step: 6,
-        subject: "Last chance - {{companyName}}",
+        subject: "New updates for {{companyName}}",
         content: "Hi {{firstName}},\n\nThis is my final outreach. We've helped dozens of companies similar to {{companyName}} achieve remarkable results.\n\nIf there's any interest, I'd love to connect. Otherwise, I'll close your file.",
         purpose: "Last call to action",
         timing_days: 72
