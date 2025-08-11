@@ -521,9 +521,9 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   }
 
   const filteredCampaigns = campaigns.filter((campaign) => {
-    const matchesSearch = campaign.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === "all" || campaign.status.toLowerCase() === statusFilter
-    const matchesType = typeFilter === "all" || campaign.type.toLowerCase() === typeFilter
+    const matchesSearch = campaign.name?.toLowerCase().includes(searchQuery.toLowerCase()) || false
+    const matchesStatus = statusFilter === "all" || campaign.status?.toLowerCase() === statusFilter
+    const matchesType = typeFilter === "all" || campaign.type?.toLowerCase() === typeFilter
     
     // Filter by active sub-tab
     let matchesSubTab = true
@@ -822,11 +822,11 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     <div className="grid gap-4 p-4" style={{ gridTemplateColumns: '120px 1fr 120px 100px 100px 100px 100px 100px' }}>
                       <div>
                         <div className="px-3 py-1 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 border border-gray-300 w-fit">
-                          {campaign.status}
+                          {campaign.status || 'Draft'}
                         </div>
                       </div>
                       <div>
-                        <div className="font-medium">{campaign.name}</div>
+                        <div className="font-medium">{campaign.name || 'Untitled Campaign'}</div>
                       </div>
                       <div>
                         {(() => {
@@ -883,11 +883,11 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     <div className="grid grid-cols-7 gap-4 p-4">
                       <div>
                         <div className="px-3 py-1 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 border border-gray-300 w-fit">
-                          {campaign.status}
+                          {campaign.status || 'Draft'}
                         </div>
                       </div>
                       <div>
-                        <div className="font-medium">{campaign.name}</div>
+                        <div className="font-medium">{campaign.name || 'Untitled Campaign'}</div>
                       </div>
                       <div>
                         <div className="text-orange-500 font-semibold">0</div>
@@ -917,11 +917,11 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     <div className="grid grid-cols-6 gap-4 p-4">
                       <div>
                         <div className="px-3 py-1 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 border border-gray-300 w-fit">
-                          {campaign.status}
+                          {campaign.status || 'Draft'}
                         </div>
                       </div>
                       <div>
-                        <div className="font-medium">{campaign.name}</div>
+                        <div className="font-medium">{campaign.name || 'Untitled Campaign'}</div>
                       </div>
                       <div>
                         <div className="text-[#3B82F6] font-semibold">0</div>
