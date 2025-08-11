@@ -1481,6 +1481,54 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       if (result.success) {
         setShowAdvancedPopup(false)
         
+        // Pre-fill Contact Scrapping fields with campaign data
+        setScrappingIndustry(campaignData.formData.industry || '')
+        setScrappingLocation(campaignData.formData.location || '')
+        const keywords = campaignData.formData.keywords || []
+        setScrappingKeyword(keywords.join(', '))
+        
+        // Populate email sequences with AI-generated content
+        if (campaignData.aiAssets && campaignData.aiAssets.email_sequences) {
+          const aiSequences = campaignData.aiAssets.email_sequences
+          const newSteps = []
+          
+          // First Sequence - 3 emails with 3-day intervals
+          for (let i = 0; i < 3 && i < aiSequences.length; i++) {
+            const aiEmail = aiSequences[i]
+            newSteps.push({
+              id: i + 1,
+              type: 'email',
+              sequence: 1,
+              sequenceStep: i + 1,
+              title: `Email ${i + 1}`,
+              subject: aiEmail.subject || `Email ${i + 1} Subject`,
+              content: (aiEmail.content || '').replace(/\n/g, '<br/>'),
+              timing: i * 3, // 0, 3, 6 days
+              variants: 1
+            })
+          }
+          
+          // Second Sequence - 3 more emails after 60 days, with 3-day intervals
+          for (let i = 0; i < 3; i++) {
+            const aiEmailIndex = Math.min(i + 3, aiSequences.length - 1)
+            const aiEmail = aiSequences[aiEmailIndex] || aiSequences[aiSequences.length - 1] || {}
+            
+            newSteps.push({
+              id: i + 4,
+              type: 'email',
+              sequence: 2,
+              sequenceStep: i + 1,
+              title: `Email ${i + 4}`,
+              subject: aiEmail.subject || `Follow-up ${i + 1}`,
+              content: (aiEmail.content || `Hi {{firstName}},<br/><br/>Following up on our previous conversation about {{companyName}}.<br/><br/>Best regards,<br/>{{senderName}}`).replace(/\n/g, '<br/>'),
+              timing: 60 + 6 + (i * 3), // 66, 69, 72 days from start
+              variants: 1
+            })
+          }
+          
+          setSteps(newSteps)
+        }
+        
         toast({
           title: "Campaign Created",
           description: `Campaign "${campaignData.formData.campaignName}" has been created successfully`,

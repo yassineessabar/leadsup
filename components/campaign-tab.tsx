@@ -720,7 +720,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
         {/* Table */}
         <div className="bg-white rounded-lg border">
-          {activeSubTab === "campaigns-email" && (
+          {(!activeSubTab || activeSubTab === "campaigns-email") && (
             <>
               <div className="grid gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600" style={{ gridTemplateColumns: '120px 1fr 120px 100px 100px 100px 100px 100px' }}>
                 <div>Status</div>
@@ -807,25 +807,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
             </>
           )}
 
-          {!activeSubTab || activeSubTab === "campaigns" ? (
-            <>
-              <div className="grid grid-cols-7 gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600">
-                <div>
-                  <Checkbox 
-                    checked={selectAll}
-                    onCheckedChange={handleSelectAll}
-                    aria-label="Select all campaigns"
-                  />
-                </div>
-                <div>Name</div>
-                <div>Type</div>
-                <div>Trigger</div>
-                <div>Status</div>
-                <div>Sent</div>
-                <div>Actions</div>
-              </div>
-            </>
-          ) : null}
 
           {loading ? (
               <div className="p-8 text-center text-gray-500">
@@ -849,7 +830,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                   }}
                 >
                   {/* Email Campaign Layout */}
-                  {activeSubTab === "campaigns-email" && (
+                  {(!activeSubTab || activeSubTab === "campaigns-email") && (
                     <div className="grid gap-4 p-4" style={{ gridTemplateColumns: '120px 1fr 120px 100px 100px 100px 100px 100px' }}>
                       <div>
                         <div className="px-3 py-1 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 border border-gray-300 w-fit">
@@ -973,76 +954,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     </div>
                   )}
 
-                  {/* Default/All Campaigns Layout */}
-                  {(!activeSubTab || activeSubTab === "campaigns") && (
-                    <div className="grid grid-cols-7 gap-4 p-4">
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <Checkbox 
-                          checked={selectedCampaignIds.has(campaign.id)}
-                          onCheckedChange={(checked) => handleSelectCampaign(campaign.id, checked as boolean)}
-                          aria-label={`Select ${campaign.name}`}
-                        />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{campaign.name}</div>
-                      </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          {getTypeIcon(campaign.type)}
-                          <span className="text-sm text-gray-900">{campaign.type}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          {getTriggerIcon(campaign.trigger)}
-                          <span className="text-sm text-gray-900">{campaign.trigger}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <span className={getStatusBadge(campaign.status)}>{campaign.status}</span>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-900">{campaign.sent ?? "-"}</span>
-                      </div>
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className={`h-8 w-8 ${campaign.status === "Active" ? "text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50" : "text-green-600 hover:text-green-700 hover:bg-green-50"}`}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
-                            }}
-                            title={campaign.status === "Active" ? "Pause campaign" : "Activate campaign"}
-                          >
-                            {campaign.status === "Active" ? (
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                              </svg>
-                            ) : (
-                              <Play className="w-4 h-4" />
-                            )}
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteCampaign(campaign.id, campaign.name)
-                            }}
-                            title="Delete campaign"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               ))
             )}

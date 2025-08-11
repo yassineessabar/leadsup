@@ -76,7 +76,6 @@ export default function Home() {
         return <LeadsDashboard />
       case "leads":
         return <LeadsTab />
-      case "campaigns":
       case "campaigns-email":
       case "campaigns-linkedin":
       case "campaigns-multi-channel":

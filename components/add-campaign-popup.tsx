@@ -26,43 +26,7 @@ const steps = [
   { id: "sequence", label: "Sequence review", completed: false },
 ]
 
-const processingSteps = {
-  company: [
-    { icon: Search, text: "Defining search strategy", completed: false },
-    { icon: Globe, text: "Searching official website and other sources", completed: false },
-    { icon: BarChart3, text: "Analyzing content", completed: false },
-    { icon: MapPin, text: "Identifying company mission and key offerings", completed: false },
-    { icon: Tag, text: "Extracting industry and sector tags", completed: false },
-    { icon: FolderOpen, text: "Compiling company profile summary", completed: false },
-  ],
-  "icps-personas": [
-    { icon: FileText, text: "Analyzing company activity", completed: false },
-    { icon: Search, text: "Searching ICPs", completed: false },
-    { icon: Target, text: "Segmenting results", completed: false },
-    { icon: Users, text: "Identifying high-potential ICPs", completed: false },
-    { icon: Brain, text: "Identifying personas and motivations", completed: false },
-    { icon: Filter, text: "Refining ICPs and personas", completed: false },
-    { icon: FolderOpen, text: "Compiling profiles", completed: false },
-    { icon: Send, text: "Presenting results", completed: false },
-  ],
-  "pain-value": [
-    { icon: Users, text: "Analyzing persona profiles and behaviors", completed: false },
-    { icon: MapPin, text: "Mapping pain points and business needs", completed: false },
-    { icon: Target, text: "Refining pain points", completed: false },
-    { icon: Brain, text: "Generating value propositions", completed: false },
-    { icon: Filter, text: "Matching solutions to pain points", completed: false },
-    { icon: FolderOpen, text: "Compiling insights", completed: false },
-    { icon: Send, text: "Presenting recommendations", completed: false },
-  ],
-  sequence: [
-    { icon: Search, text: "Searching information on leads", completed: false },
-    { icon: BarChart3, text: "Analyzing content", completed: false },
-    { icon: FileText, text: "Crafting icebreakers", completed: false },
-    { icon: Target, text: "Generating messages", completed: false },
-    { icon: FolderOpen, text: "Reviewing sequence", completed: false },
-    { icon: Send, text: "Presenting sequence", completed: false },
-  ]
-}
+// Removed processingSteps - no longer needed for simplified loading
 
 const sampleICPs = [
   {
@@ -151,6 +115,8 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   const [isProcessing, setIsProcessing] = useState(false)
   const [showForm, setShowForm] = useState(true)
   const [completedSteps, setCompletedSteps] = useState<string[]>([])
+  const [aiAssets, setAiAssets] = useState<any>(null)
+  const [campaignId, setCampaignId] = useState<number | null>(null)
   const [formData, setFormData] = useState({
     campaignName: "",
     companyName: "",
@@ -159,15 +125,17 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     language: "",
     keywords: [] as string[],
     mainActivity: "Uboard is a company specializing in revolutionizing car advertising through the deployment of smart rooftop screens on rideshare vehicles. Their technology enhances ad visibility by displaying targeted advertisements at optimal moments and locations, leveraging a proprietary targeting algorithm that considers the vehicle's exact location and time to ensure ads are shown when and where they are most effective. Their rooftop screens measure 37.8 inches wide by 12.6 inches tall and support various media formats including MP4, MOV, GIF, PNG, JPG, and HEIC, displaying 6–8 second full-motion creatives with auto-brightness for visibility even under direct sunlight. Uboard offers programmatic advertising capabilities, dashboard reporting, and ads are shown on both sides of the screen for maximum exposure.\n\nThe company has demonstrated advanced measurement techniques by collecting device IDs of users within viewing distance during ad play and comparing them with control groups to evaluate campaign effectiveness. They have executed hyper-targeted campaigns in specific urban neighborhoods such as Manhattan and",
-    location: "Australia"
+    location: "Australia",
+    industry: ""
   })
   const [selectedICP, setSelectedICP] = useState(1)
   const [selectedPersona, setSelectedPersona] = useState(1)
   const [selectedPainPoint, setSelectedPainPoint] = useState(1)
   const [selectedOutreachStrategy, setSelectedOutreachStrategy] = useState("email")
-  const [processingStepIndex, setProcessingStepIndex] = useState(0)
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [selectedMessage, setSelectedMessage] = useState({ title: "", content: "" })
+  const [error, setError] = useState<string | null>(null)
+  const [isCreatingCampaign, setIsCreatingCampaign] = useState(false)
 
   // Auto-generate campaign name when company name changes
   useEffect(() => {
@@ -247,6 +215,69 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     }
   }
 
+  const createCampaignWithAI = async () => {
+    try {
+      setIsCreatingCampaign(true);
+      setError(null);
+
+      const response = await fetch('/api/campaigns/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          campaignName: formData.campaignName,
+          companyName: formData.companyName,
+          website: formData.website,
+          noWebsite: formData.noWebsite,
+          language: formData.language || 'English',
+          keywords: formData.keywords,
+          mainActivity: formData.mainActivity,
+          location: formData.location,
+          industry: formData.industry,
+          campaignId: campaignId // For editing existing campaigns
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Please log in to continue');
+        } else if (response.status === 400) {
+          throw new Error(result.error || 'Please check your input and try again');
+        } else if (response.status >= 500) {
+          throw new Error('Server error. Please try again later');
+        } else {
+          throw new Error(result.error || 'Failed to create campaign');
+        }
+      }
+
+      if (result.success) {
+        setCampaignId(result.data.campaign.id);
+        setAiAssets(result.data.aiAssets);
+        
+        // Auto-fill keywords from AI extraction
+        if (result.data.extractedKeywords && result.data.extractedKeywords.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            keywords: [...new Set([...prev.keywords, ...result.data.extractedKeywords])]
+          }));
+        }
+        
+        return result.data;
+      } else {
+        throw new Error(result.error || 'Unknown error occurred');
+      }
+    } catch (error) {
+      console.error('Error creating campaign:', error);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      throw error;
+    } finally {
+      setIsCreatingCampaign(false);
+    }
+  }
+
   const [newKeyword, setNewKeyword] = useState("")
 
   const addKeyword = () => {
@@ -266,44 +297,45 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     }))
   }
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const stepOrder = ["company", "icps-personas", "pain-value", "sequence"]
     const currentIndex = stepOrder.indexOf(currentStep)
     
     if (currentStep === "company" && showForm) {
-      setShowForm(false)
-      setIsProcessing(true)
-      setProcessingStepIndex(0)
+      // Clear any previous errors
+      setError(null);
+
+      // Validate required fields before proceeding
+      if (!formData.campaignName?.trim()) {
+        setError("Campaign name is required");
+        return;
+      }
+      if (!formData.companyName?.trim()) {
+        setError("Company name is required");
+        return;
+      }
+      if (!formData.mainActivity?.trim()) {
+        setError("Main activity description is required");
+        return;
+      }
+
+      setShowForm(false);
+      setIsProcessing(true);
       
-      const companySteps = processingSteps.company
-      let stepIndex = 0
-      const stepInterval = setInterval(() => {
-        setProcessingStepIndex(stepIndex)
-        stepIndex++
-        if (stepIndex >= companySteps.length) {
-          clearInterval(stepInterval)
-          setTimeout(() => {
-            setIsProcessing(false)
-            setCompletedSteps(prev => [...prev, "company"])
-            setCurrentStep("icps-personas")
-            setIsProcessing(true)
-            setProcessingStepIndex(0)
-            
-            const icpSteps = processingSteps["icps-personas"]
-            let icpStepIndex = 0
-            const icpInterval = setInterval(() => {
-              setProcessingStepIndex(icpStepIndex)
-              icpStepIndex++
-              if (icpStepIndex >= icpSteps.length) {
-                clearInterval(icpInterval)
-                setTimeout(() => {
-                  setIsProcessing(false)
-                }, 500)
-              }
-            }, 500)
-          }, 1000)
-        }
-      }, 400)
+      try {
+        // Call the API to create campaign and generate AI assets
+        const result = await createCampaignWithAI();
+        
+        // Immediately move to next step after API completes
+        setIsProcessing(false);
+        setCompletedSteps(prev => [...prev, "company"]);
+        setCurrentStep("icps-personas");
+
+      } catch (error) {
+        setIsProcessing(false);
+        setShowForm(true);
+        // Error is already set in createCampaignWithAI function
+      }
     } else if (!isProcessing && currentIndex < stepOrder.length - 1) {
       const nextStep = stepOrder[currentIndex + 1]
       setCompletedSteps(prev => [...prev, currentStep])
@@ -313,32 +345,16 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       setEditingPainPoint(false)
       setEditingValueProp(false)
       
-      if (["icps-personas", "pain-value", "sequence"].includes(nextStep)) {
-        setIsProcessing(true)
-        setProcessingStepIndex(0)
-        
-        const steps = processingSteps[nextStep as keyof typeof processingSteps]
-        if (steps) {
-          let stepIndex = 0
-          const stepInterval = setInterval(() => {
-            setProcessingStepIndex(stepIndex)
-            stepIndex++
-            if (stepIndex >= steps.length) {
-              clearInterval(stepInterval)
-              setTimeout(() => {
-                setIsProcessing(false)
-              }, 500)
-            }
-          }, 500)
-        }
-      }
+      // No artificial delays for navigation between steps
     } else if (currentStep === "sequence") {
       // Final step - complete the campaign creation
       const campaignData = {
         formData,
-        selectedICP: sampleICPs.find(icp => icp.id === selectedICP),
-        selectedPersona: samplePersonas.find(persona => persona.id === selectedPersona),
-        selectedPainPoint: samplePainPoints.find(pp => pp.id === selectedPainPoint),
+        campaignId,
+        aiAssets,
+        selectedICP: aiAssets?.icps?.find((icp: any) => icp.id === selectedICP) || sampleICPs.find(icp => icp.id === selectedICP),
+        selectedPersona: aiAssets?.personas?.find((persona: any) => persona.id === selectedPersona) || samplePersonas.find(persona => persona.id === selectedPersona),
+        selectedPainPoint: aiAssets?.pain_points?.find((pp: any) => pp.id === selectedPainPoint) || samplePainPoints.find(pp => pp.id === selectedPainPoint),
         selectedOutreachStrategy,
         completedSteps: [...completedSteps, currentStep]
       }
@@ -366,41 +382,13 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   }
 
   const renderProcessingSteps = () => {
-    const currentProcessingSteps = processingSteps[currentStep as keyof typeof processingSteps]
-    if (!currentProcessingSteps) return null
-
     return (
-      <div className="flex flex-col items-center justify-center h-full space-y-8">
-        <div className="flex items-center space-x-3" style={{ color: 'rgb(87, 140, 255)' }}>
-          <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgb(87, 140, 255)', borderTopColor: 'transparent' }}></div>
-          <span className="text-lg font-medium" style={{ color: 'rgb(87, 140, 255)' }}>
-            AI Copilot brainstorming in progress
-          </span>
-        </div>
-        
-        <div className="space-y-4 w-full max-w-md">
-          {currentProcessingSteps.map((step, index) => {
-            const Icon = step.icon
-            const isCompleted = index < processingStepIndex
-            const isCurrent = index === processingStepIndex
-            
-            return (
-              <div key={index} className={`flex items-center space-x-3 transition-all duration-300 ${
-                isCompleted ? 'text-gray-400' : isCurrent ? 'text-gray-800 font-medium' : 'text-gray-300'
-              }`}>
-                <div className={`p-1 rounded-lg`} style={isCurrent ? { backgroundColor: 'rgba(87, 140, 255, 0.05)' } : {}}>
-                  <Icon className="w-5 h-5" />
-                </div>
-                <span className="flex-1">{step.text}</span>
-                {isCompleted && (
-                  <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" />
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
+      <div className="flex flex-col items-center justify-center h-full space-y-4">
+        <div className="w-12 h-12 border-3 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgb(87, 140, 255)', borderTopColor: 'transparent' }}></div>
+        <span className="text-lg font-medium" style={{ color: 'rgb(87, 140, 255)' }}>
+          {currentStep === "company" ? "Generating AI campaign assets..." : "Processing..."}
+        </span>
+        <p className="text-sm text-gray-500">This may take a few seconds</p>
       </div>
     )
   }
@@ -413,6 +401,32 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         </h2>
         <p className="text-gray-600">Let's start by getting to know your business</p>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <div className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5">
+              <svg fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <p className="mt-1 text-sm text-red-700">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="ml-auto text-red-400 hover:text-red-600"
+            >
+              <span className="sr-only">Dismiss</span>
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
       
       <div className="space-y-6">
         <div className="space-y-3">
@@ -468,6 +482,44 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
           </div>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-3">
+            <Label htmlFor="location" className="text-base font-semibold text-gray-800">Location</Label>
+            <Select value={formData.location} onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}>
+              <SelectTrigger className="h-12 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]">
+                <SelectValue placeholder="Select location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Australia">🇦🇺 Australia</SelectItem>
+                <SelectItem value="United States">🇺🇸 United States</SelectItem>
+                <SelectItem value="United Kingdom">🇬🇧 United Kingdom</SelectItem>
+                <SelectItem value="Canada">🇨🇦 Canada</SelectItem>
+                <SelectItem value="Germany">🇩🇪 Germany</SelectItem>
+                <SelectItem value="France">🇫🇷 France</SelectItem>
+                <SelectItem value="Spain">🇪🇸 Spain</SelectItem>
+                <SelectItem value="Italy">🇮🇹 Italy</SelectItem>
+                <SelectItem value="Netherlands">🇳🇱 Netherlands</SelectItem>
+                <SelectItem value="Singapore">🇸🇬 Singapore</SelectItem>
+                <SelectItem value="India">🇮🇳 India</SelectItem>
+                <SelectItem value="Japan">🇯🇵 Japan</SelectItem>
+                <SelectItem value="Brazil">🇧🇷 Brazil</SelectItem>
+                <SelectItem value="Mexico">🇲🇽 Mexico</SelectItem>
+                <SelectItem value="South Africa">🇿🇦 South Africa</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-3">
+            <Label htmlFor="industry" className="text-base font-semibold text-gray-800">Industry</Label>
+            <Input
+              id="industry"
+              value={formData.industry}
+              onChange={(e) => setFormData(prev => ({ ...prev, industry: e.target.value }))}
+              className="h-12 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] transition-colors"
+              placeholder="e.g., Technology, Healthcare, Marketing"
+            />
+          </div>
+        </div>
       
         <div className="space-y-3">
           <Label htmlFor="language" className="text-base font-semibold text-gray-800">Prospecting language</Label>
@@ -529,19 +581,23 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     </div>
   )
 
-  const renderICPsAndPersonasList = () => (
+  const renderICPsAndPersonasList = () => {
+    const displayICPs = aiAssets?.icps || sampleICPs
+    const displayPersonas = aiAssets?.personas || samplePersonas
+
+    return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="space-y-3">
         <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
           ICPs & Personas for {formData.companyName || "your company"}
         </h2>
-        <p className="text-gray-600">Review and customize your ideal customer profile and target persona</p>
+        <p className="text-gray-600">Review and customize your AI-generated ideal customer profile and target persona</p>
       </div>
       
       {/* ICPs Section */}
       <div className="space-y-4">
         <h3 className="text-xl font-semibold text-gray-800">Ideal Customer Profile</h3>
-        {sampleICPs.map((icp) => (
+        {displayICPs.map((icp: any) => (
           <Card 
             key={icp.id} 
             className="border-2 shadow-md" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
@@ -573,7 +629,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       {/* Personas Section */}
       <div className="space-y-4 pt-6 border-t">
         <h3 className="text-xl font-semibold text-gray-800">Target Persona</h3>
-        {samplePersonas.map((persona) => (
+        {displayPersonas.map((persona: any) => (
           <Card 
             key={persona.id} 
             className="border-2 shadow-md" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
@@ -595,7 +651,9 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
                     <Edit className="w-4 h-4" />
                   </Button>
                 </div>
-                <p className="text-gray-600 leading-relaxed">{persona.description.substring(0, 150)}...</p>
+                <p className="text-gray-600 leading-relaxed">
+                  {(persona.demographics || persona.description || 'Demographics information').substring(0, 150)}...
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -641,7 +699,8 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         )}
       </div>
     </div>
-  )
+    )
+  }
 
   const renderICPsList = () => (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -840,7 +899,9 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
                       <Edit className="w-4 h-4" />
                     </Button>
                   </div>
-                  <p className="text-gray-600 leading-relaxed">{persona.description.substring(0, 150)}...</p>
+                  <p className="text-gray-600 leading-relaxed">
+                    {(persona.demographics || persona.description || 'Demographics information').substring(0, 150)}...
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -1042,13 +1103,17 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     </div>
   )
 
-  const renderPainAndValueList = () => (
+  const renderPainAndValueList = () => {
+    const displayPainPoints = aiAssets?.pain_points || samplePainPoints
+    const displayValueProps = aiAssets?.value_propositions || sampleValuePropositions
+
+    return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="space-y-3">
         <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
           Pain Points & Value Propositions
         </h2>
-        <p className="text-gray-600">Review the identified challenge and your solution</p>
+        <p className="text-gray-600">Review the AI-generated challenges and your solutions</p>
       </div>
       
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 mb-8">
@@ -1063,7 +1128,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       {/* Pain Points Section */}
       <div className="space-y-4">
         <h3 className="text-xl font-semibold text-gray-800">Customer Pain Point</h3>
-        {samplePainPoints.map((painPoint) => (
+        {displayPainPoints.map((painPoint: any) => (
           <Card 
             key={painPoint.id} 
             className="border-2 shadow-md" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
@@ -1094,34 +1159,44 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       
       {/* Value Proposition Section */}
       <div className="space-y-4 pt-6 border-t">
-        <h3 className="text-xl font-semibold text-gray-800">Your Value Proposition</h3>
-        <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
-          <CardContent className="p-6">
-            <div className="flex-1 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900">{sampleValuePropositions[0].title}</h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => {
-                    setEditingValueProp(true)
-                    setEditedData(prev => ({ ...prev, valueProp: { ...sampleValuePropositions[0] } }))
-                  }}
-                  className="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+        <h3 className="text-xl font-semibold text-gray-800">Your Value Propositions</h3>
+        {displayValueProps.map((valueProp: any) => (
+          <Card key={valueProp.id} className="border-2 shadow-lg" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
+            <CardContent className="p-6">
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold text-gray-900">{valueProp.title}</h3>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      setEditingValueProp(true)
+                      setEditedData(prev => ({ ...prev, valueProp: { ...valueProp } }))
+                    }}
+                    className="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                </div>
+                {valueProp.benefits && (
+                  <div>
+                    <span className="text-sm text-gray-600 font-medium">Benefits:</span>
+                    <ul className="text-sm text-gray-600 list-disc pl-4">
+                      {valueProp.benefits.map((benefit: string, idx: number) => (
+                        <li key={idx}>{benefit}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <p className="text-gray-600 leading-relaxed">{valueProp.description}</p>
               </div>
-              <p className="text-indigo-600 text-sm font-semibold bg-indigo-100 px-3 py-1 rounded-full inline-block">
-                {sampleValuePropositions[0].subtitle}
-              </p>
-              <p className="text-gray-600 leading-relaxed">{sampleValuePropositions[0].description}</p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
-  )
+    )
+  }
 
   const renderPainPointsList = () => (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -1299,6 +1374,33 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
 
   const renderSequencePreview = () => {
     const getSequenceSteps = () => {
+      // Use AI-generated email sequences if available
+      const emailSequences = aiAssets?.email_sequences || []
+      
+      if (emailSequences.length > 0) {
+        const steps = [{ type: "start", title: "Sequence start" }]
+        
+        emailSequences.forEach((email: any, index: number) => {
+          steps.push({
+            type: "timing",
+            text: email.timing_days === 0 ? "Send immediately" : `Wait for ${email.timing_days} day${email.timing_days > 1 ? 's' : ''}`,
+            color: "text-blue-600"
+          })
+          steps.push({
+            type: "action",
+            icon: "📧",
+            title: "Email",
+            subtitle: email.subject,
+            iconBg: "bg-green-50",
+            iconColor: "text-green-600",
+            message: email.content
+          })
+        })
+        
+        return steps
+      }
+
+      // Fallback to default email sequence
       switch (selectedOutreachStrategy) {
         case "email":
           return [
@@ -1448,9 +1550,11 @@ Best regards,
       <div className="max-w-2xl mx-auto space-y-8">
         <div className="space-y-3 text-center">
           <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-            Sequence Preview - {strategyTitle}
+            {aiAssets?.email_sequences ? 'AI-Generated Sequence Preview' : `Sequence Preview - ${strategyTitle}`}
           </h2>
-          <p className="text-gray-600">Review your automated outreach sequence</p>
+          <p className="text-gray-600">
+            {aiAssets?.email_sequences ? 'Review your AI-generated automated outreach sequence' : 'Review your automated outreach sequence'}
+          </p>
         </div>
 
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 mb-8">
@@ -1459,7 +1563,9 @@ Best regards,
               <span className="text-white text-sm font-bold">i</span>
             </div>
             <div>
-              <p className="text-blue-900 font-semibold">This sequence will run automatically for each lead</p>
+              <p className="text-blue-900 font-semibold">
+                {aiAssets?.email_sequences ? 'This AI-generated sequence will run automatically for each lead' : 'This sequence will run automatically for each lead'}
+              </p>
               <p className="text-blue-700 mt-1">You can edit individual steps or timing after creation</p>
             </div>
           </div>
@@ -1677,19 +1783,21 @@ Best regards,
               </Button>
               <Button 
                 onClick={handleContinue}
-                disabled={isProcessing}
+                disabled={isProcessing || isCreatingCampaign}
                 className="text-white shadow-lg transition-all duration-200 disabled:opacity-50" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
               >
                 <span>
-                  {isProcessing 
-                    ? "Processing..." 
-                    : currentStep === "sequence" 
-                      ? "Create Campaign" 
-                      : "Continue"
+                  {isCreatingCampaign && currentStep === "company" && showForm
+                    ? "Generating..."
+                    : isProcessing 
+                      ? "Loading..." 
+                      : currentStep === "sequence" 
+                        ? "Create Campaign" 
+                        : "Continue"
                   }
                 </span>
-                {!isProcessing && <ChevronRight className="w-4 h-4 ml-2" />}
-                {isProcessing && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2" />}
+                {!isProcessing && !isCreatingCampaign && <ChevronRight className="w-4 h-4 ml-2" />}
+                {(isProcessing || isCreatingCampaign) && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2" />}
               </Button>
             </div>
           </div>

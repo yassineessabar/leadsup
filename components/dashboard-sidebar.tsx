@@ -189,7 +189,7 @@ export function DashboardSidebar({
               isCollapsed ? "justify-center px-2" : "justify-center gap-2"
             )}
             onClick={() => {
-              onTabChange("campaigns")
+              onTabChange("campaigns-email")
               // Trigger campaign creation after switching to campaigns tab
               setTimeout(() => {
                 const event = new CustomEvent('create-campaign')
@@ -391,7 +391,7 @@ export function DashboardSidebar({
         <Button
           className="w-full justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white h-10 text-sm font-medium"
           onClick={() => {
-            onTabChange("campaigns")
+            onTabChange("campaigns-email")
             // Trigger campaign creation after switching to campaigns tab
             setTimeout(() => {
               const event = new CustomEvent('create-campaign')
