@@ -946,6 +946,77 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }
 
+  // Select/Unselect all leads functions
+  const selectAllLeads = () => {
+    setSelectedLeads([...allLeads])
+  }
+
+  const unselectAllLeads = () => {
+    setSelectedLeads([])
+  }
+
+  // Import all available leads (for bulk import)
+  const importAllContacts = async () => {
+    if (!campaign?.id || allLeads.length === 0) return
+
+    setImportLoading(true)
+    
+    try {
+      const prospectsToImport = allLeads.map(lead => {
+        const nameParts = (lead.name || lead.customer_name || '').split(' ')
+        return {
+          first_name: nameParts[0] || '',
+          last_name: nameParts.slice(1).join(' ') || '',
+          email_address: lead.email,
+          phone: lead.phone,
+          company_name: lead.company || lead.business_name,
+          job_title: lead.title || '',
+          location: lead.location || '',
+          industry: lead.industry || '',
+          campaign_id: campaign.id,
+          email_status: 'Unknown',
+          tags: campaign.name,
+          notes: 'Imported from leads table (bulk import)'
+        }
+      })
+
+      console.log(`📥 Bulk importing ${prospectsToImport.length} contacts...`)
+
+      const response = await fetch(`/api/campaigns/${campaign.id}/leads/import`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contacts: prospectsToImport
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: "Bulk Import Successful",
+          description: `${prospectsToImport.length} contacts imported successfully`
+        })
+        setShowImportModal(false)
+        setSelectedLeads([])
+        fetchContacts() // Refresh the contacts list
+      } else {
+        throw new Error(result.message || 'Import failed')
+      }
+    } catch (error) {
+      console.error('❌ Error importing all contacts:', error)
+      toast({
+        title: "Import Failed",
+        variant: "destructive",
+        description: error.message || "Failed to import all contacts",
+      })
+    } finally {
+      setImportLoading(false)
+    }
+  }
+
   // Import prospects from various sources
   const importContacts = async () => {
     if (!campaign?.id) return
@@ -1120,6 +1191,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     if (industryFilter.trim()) count++
     setFilterCount(count)
   }, [locationFilter, keywordFilter, industryFilter])
+
+  // Re-fetch contacts when filters change
+  useEffect(() => {
+    if (activeTab === 'contacts' && campaign?.id) {
+      fetchContacts()
+    }
+  }, [locationFilter, keywordFilter, industryFilter, searchQuery, currentPage, campaign?.id, activeTab])
 
   // Gmail OAuth functions
   const initiateGmailOAuth = async () => {
@@ -1953,6 +2031,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       if (campaign?.id) params.append('campaign_id', campaign.id.toString())
       params.append('limit', pageSize.toString())
       params.append('offset', ((currentPage - 1) * pageSize).toString())
+      
+      // Add filter parameters
+      if (locationFilter.trim()) params.append('location', locationFilter.trim())
+      if (keywordFilter.trim()) params.append('keyword', keywordFilter.trim())
+      if (industryFilter.trim()) params.append('industry', industryFilter.trim())
 
       console.log(`🔍 Fetching prospects for campaign ${campaign?.id} (${campaign?.name}) - ID type: ${typeof campaign?.id}`)
       console.log(`📋 Query params:`, params.toString())
@@ -3296,6 +3379,66 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 </div>
               </div>
 
+              {/* Filters Panel */}
+              {showFilters && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                  <div className="flex flex-wrap gap-4">
+                    <div className="flex-1 min-w-48">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Location Filter
+                      </label>
+                      <Input
+                        placeholder="Filter by location..."
+                        value={locationFilter}
+                        onChange={(e) => setLocationFilter(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-48">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Keyword Filter
+                      </label>
+                      <Input
+                        placeholder="Filter by keywords..."
+                        value={keywordFilter}
+                        onChange={(e) => setKeywordFilter(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-48">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Industry Filter
+                      </label>
+                      <Input
+                        placeholder="Filter by industry..."
+                        value={industryFilter}
+                        onChange={(e) => setIndustryFilter(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setLocationFilter("")
+                          setKeywordFilter("")
+                          setIndustryFilter("")
+                        }}
+                        className="h-10"
+                      >
+                        Clear All
+                      </Button>
+                    </div>
+                  </div>
+                  {filterCount > 0 && (
+                    <div className="mt-2 text-sm text-gray-600">
+                      {filterCount} filter{filterCount > 1 ? 's' : ''} applied
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Contact Table */}
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -3594,14 +3737,27 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     <div>
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="font-medium text-gray-900">Select Leads to Import</h3>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={loadLeadsData}
-                          disabled={leadsLoading}
-                        >
-                          {leadsLoading ? 'Loading...' : 'Refresh Leads'}
-                        </Button>
+                        <div className="flex space-x-2">
+                          {allLeads.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={selectedLeads.length === allLeads.length ? unselectAllLeads : selectAllLeads}
+                              disabled={leadsLoading}
+                              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            >
+                              {selectedLeads.length === allLeads.length ? 'Unselect All' : 'Select All'}
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={loadLeadsData}
+                            disabled={leadsLoading}
+                          >
+                            {leadsLoading ? 'Loading...' : 'Refresh Leads'}
+                          </Button>
+                        </div>
                       </div>
                       <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
                         {leadsLoading ? (
@@ -3732,6 +3888,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     >
                       Cancel
                     </Button>
+                    {importType === 'leads' && allLeads.length > 0 && (
+                      <Button
+                        variant="secondary"
+                        onClick={importAllContacts}
+                        disabled={importLoading || allLeads.length === 0}
+                        className="bg-blue-500 text-white hover:bg-blue-600"
+                      >
+                        {importLoading ? 'Importing...' : `Import All (${allLeads.length})`}
+                      </Button>
+                    )}
                     <Button
                       onClick={importContacts}
                       disabled={

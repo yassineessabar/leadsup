@@ -89,6 +89,10 @@ export function LeadsTab() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingProspect, setEditingProspect] = useState<Partial<Prospect>>({})
   const [filterCount, setFilterCount] = useState(0)
+  const [showFilters, setShowFilters] = useState(false)
+  const [locationFilter, setLocationFilter] = useState("")
+  const [keywordFilter, setKeywordFilter] = useState("")
+  const [industryFilter, setIndustryFilter] = useState("")
   const { toast } = useToast()
 
   const pageSize = 20
@@ -101,6 +105,11 @@ export function LeadsTab() {
       if (searchQuery) params.append('search', searchQuery)
       params.append('limit', pageSize.toString())
       params.append('offset', ((currentPage - 1) * pageSize).toString())
+      
+      // Add filter parameters
+      if (locationFilter.trim()) params.append('location', locationFilter.trim())
+      if (keywordFilter.trim()) params.append('keyword', keywordFilter.trim())
+      if (industryFilter.trim()) params.append('industry', industryFilter.trim())
 
       const response = await fetch(`/api/prospects?${params.toString()}`)
       const data = await response.json()
@@ -159,6 +168,21 @@ export function LeadsTab() {
     }, 500)
     return () => clearTimeout(timer)
   }, [searchQuery])
+
+  // Update filter count when filters change
+  useEffect(() => {
+    let count = 0
+    if (locationFilter.trim()) count++
+    if (keywordFilter.trim()) count++
+    if (industryFilter.trim()) count++
+    setFilterCount(count)
+  }, [locationFilter, keywordFilter, industryFilter])
+
+  // Re-fetch prospects when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+    fetchProspects()
+  }, [locationFilter, keywordFilter, industryFilter])
 
   const handleCampaignAssignment = async (campaignId: string) => {
     if (selectedProspects.length === 0) {
@@ -429,7 +453,11 @@ export function LeadsTab() {
               />
             </div>
             
-            <Button variant="outline" className="border-gray-200 text-gray-700 hover:bg-gray-50">
+            <Button 
+              variant="outline" 
+              className="border-gray-200 text-gray-700 hover:bg-gray-50"
+              onClick={() => setShowFilters(!showFilters)}
+            >
               <Filter className="w-4 h-4 mr-2" />
               Filters
               {filterCount > 0 && (
@@ -449,6 +477,66 @@ export function LeadsTab() {
           </div>
         </div>
       </div>
+
+      {/* Filters Panel */}
+      {showFilters && (
+        <div className="bg-gray-50 border-b border-gray-200 px-6 py-4">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex-1 min-w-48">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Location Filter
+              </label>
+              <Input
+                placeholder="Filter by location..."
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="flex-1 min-w-48">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Keyword Filter
+              </label>
+              <Input
+                placeholder="Filter by keywords..."
+                value={keywordFilter}
+                onChange={(e) => setKeywordFilter(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="flex-1 min-w-48">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Industry Filter
+              </label>
+              <Input
+                placeholder="Filter by industry..."
+                value={industryFilter}
+                onChange={(e) => setIndustryFilter(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setLocationFilter("")
+                  setKeywordFilter("")
+                  setIndustryFilter("")
+                }}
+                className="h-10"
+              >
+                Clear All
+              </Button>
+            </div>
+          </div>
+          {filterCount > 0 && (
+            <div className="mt-2 text-sm text-gray-600">
+              {filterCount} filter{filterCount > 1 ? 's' : ''} applied
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto">
