@@ -105,11 +105,12 @@ export async function GET(request: NextRequest) {
         .not('campaign_id', 'is', null)
         .gte('created_at', startDate.toISOString()),
 
-      // Folder distribution (all messages)
+      // Folder distribution (unread messages only - for UI badges)
       supabaseServer
         .from('inbox_messages')
-        .select('folder')
+        .select('folder, direction')
         .eq('user_id', userId)
+        .eq('status', 'unread')
         .neq('status', 'deleted'),
 
       // Recent activity (last 10 actions)
@@ -144,29 +145,25 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Process folder stats with defaults
+    // Process folder stats with defaults (UNREAD counts only for UI badges)
     const folderCounts = {
       inbox: 0,
-      sent: 0,
+      sent: 0, // Sent folder should ALWAYS be 0 unread (you sent these messages)
       trash: 0
     }
     
-    // Get additional sent message count (outbound messages not already marked as sent)
-    const { count: outboundCount } = await supabaseServer
-      .from('inbox_messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('direction', 'outbound')
-      .neq('status', 'deleted')
-      .neq('folder', 'sent') // Don't double count
-    
     folderStatsResult.data?.forEach(message => {
-      const folder = message.folder || 'inbox'
-      folderCounts[folder] = (folderCounts[folder] || 0) + 1
+      // Only count unread messages for badges
+      if (message.direction === 'inbound' || message.direction !== 'outbound') {
+        // Only inbound messages can be unread for badge purposes
+        const folder = message.folder || 'inbox'
+        if (folder !== 'sent') { // Never count unread for sent folder
+          folderCounts[folder] = (folderCounts[folder] || 0) + 1
+        }
+      }
     })
     
-    // Add outbound messages to sent count
-    folderCounts.sent += (outboundCount || 0)
+    // Sent folder always stays at 0 unread
 
     // Calculate response rate (replied messages vs total inbound)
     const { count: inboundCount } = await supabaseServer
