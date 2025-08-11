@@ -177,28 +177,34 @@ export default function InboxPage() {
   // Fetch emails from API with campaign filtering
   const fetchEmails = async () => {
     setLoading(true)
+    setSelectedEmail(null) // Clear selected email when fetching new folder
+    console.log('🔄 Fetching emails for folder:', selectedFolder)
     try {
       const params = new URLSearchParams()
       if (selectedStatus) params.append('status', selectedStatus)
-      if (selectedAccount) params.append('account', selectedAccount)
-      if (selectedCampaign) params.append('campaign_id', selectedCampaign)
+      if (selectedAccount) params.append('account', selectedAccount) // Keep for backward compatibility
+      if (selectedCampaign) params.append('campaigns', selectedCampaign) // Fixed: use 'campaigns' not 'campaign_id'
       if (searchQuery) params.append('search', searchQuery)
-      if (selectedFolder && selectedFolder !== 'inbox') params.append('folder', selectedFolder)
+      if (selectedFolder) params.append('folder', selectedFolder)
       if (channelFilter) params.append('channel', channelFilter)
-      params.append('tab', activeTab)
+      params.append('view', 'threads') // Ensure we use threaded view
       
-      // Date range filter
+      console.log('📡 API params:', params.toString())
+      
+      // Date range filter - Fixed: use date_from instead of start_date
       if (dateRange !== 'custom') {
         const days = parseInt(dateRange)
         const startDate = new Date()
         startDate.setDate(startDate.getDate() - days)
-        params.append('start_date', startDate.toISOString())
+        params.append('date_from', startDate.toISOString())
       }
 
       const response = await fetch(`/api/inbox?${params.toString()}`)
       const data = await response.json()
       
-      if (data.emails) {
+      console.log('📧 API response:', { success: data.success, emailCount: data.emails?.length, folder: selectedFolder })
+      
+      if (data.success && data.emails) {
         // Normalize the email data to handle both old and new property names
         const normalizedEmails = data.emails.map((email: any) => ({
           ...email,
@@ -213,51 +219,22 @@ export default function InboxPage() {
         if (normalizedEmails.length > 0 && !selectedEmail) {
           setSelectedEmail(normalizedEmails[0])
         }
+      } else if (data.success && !data.emails) {
+        // API succeeded but no emails returned
+        console.log('📧 No emails returned for folder:', selectedFolder)
+        setEmails([])
+        setSelectedEmail(null)
+      } else {
+        // API failed
+        console.error('❌ API failed:', data.error)
+        setEmails([])
+        setSelectedEmail(null)
       }
     } catch (error) {
-      console.error('Error fetching emails:', error)
-      // Use fallback data if API fails
-      const fallbackEmails = [
-        {
-          id: 1,
-          sender: "customerservice@colesgroup.com.au",
-          subject: "Quiet customers? I've got something.",
-          preview: "Stop sending anti Ombudsman Brookes Mobile: 0410 151...",
-          date: "Monday, Aug 4, 2025 at 3:13 pm",
-          isRead: false,
-          hasAttachment: false,
-          isImportant: false,
-          isOutOfOffice: true,
-          status: "lead"
-        },
-        {
-          id: 2,
-          sender: "shannon.latty@carat.com",
-          subject: "Re: Automatic reply: Ads ON THE MOVE -",
-          preview: "Hi Shannon, Thank you for engaging with us in 2024. We hop...",
-          date: "Jun 14, 2025",
-          isRead: true,
-          hasAttachment: false,
-          isImportant: false,
-          statusLabel: "Stratus x Uboard",
-          status: "interested"
-        },
-        {
-          id: 3,
-          sender: "genevieve.marshall@scbcity.n...",
-          subject: "RE: Ads ON THE MOVE - City of Canterbury Bankstown x Uboard",
-          preview: "Hi Genevieve, Thank you for engaging with us in 2024. We h...",
-          date: "Jun 14, 2025",
-          isRead: true,
-          hasAttachment: false,
-          isImportant: true,
-          status: "meeting-booked"
-        }
-      ]
-      setEmails(fallbackEmails)
-      if (fallbackEmails.length > 0) {
-        setSelectedEmail(fallbackEmails[0])
-      }
+      console.error('❌ Network error fetching emails:', error)
+      setEmails([])
+      setSelectedEmail(null)
+      // No fallback data - use real API only */
     } finally {
       setLoading(false)
     }
@@ -397,11 +374,23 @@ export default function InboxPage() {
     if (!selectedEmail) return
     
     try {
-      await fetch(`/api/inbox/${selectedEmail.id}`, {
+      console.log('🔄 Restoring email:', { 
+        emailId: selectedEmail.id, 
+        conversationId: selectedEmail.conversation_id,
+        latestMessageId: selectedEmail.latest_message?.id,
+        from: selectedFolder, 
+        to: 'inbox' 
+      })
+      // Update the latest message in the thread
+      const messageId = selectedEmail.latest_message?.id || selectedEmail.id
+      const response = await fetch(`/api/inbox/${messageId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ folder: 'inbox' })
       })
+      
+      const result = await response.json()
+      console.log('📧 Restore response:', result)
       
       // Remove from current list
       const newEmails = emails.filter(e => e.id !== selectedEmail.id)
@@ -431,7 +420,8 @@ export default function InboxPage() {
     try {
       if (selectedFolder === 'trash') {
         // Permanently delete if already in trash
-        await fetch(`/api/inbox/${selectedEmail.id}`, {
+        const messageId = selectedEmail.latest_message?.id || selectedEmail.id
+        await fetch(`/api/inbox/${messageId}`, {
           method: 'DELETE'
         })
         
@@ -441,11 +431,22 @@ export default function InboxPage() {
         })
       } else {
         // Move to trash if not in trash
-        await fetch(`/api/inbox/${selectedEmail.id}`, {
+        console.log('🗑️ Moving email to trash:', { 
+          emailId: selectedEmail.id,
+          latestMessageId: selectedEmail.latest_message?.id, 
+          from: selectedFolder, 
+          to: 'trash' 
+        })
+        // Update the latest message in the thread
+        const messageId = selectedEmail.latest_message?.id || selectedEmail.id
+        const response = await fetch(`/api/inbox/${messageId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ folder: 'trash' })
         })
+        
+        const result = await response.json()
+        console.log('📧 Move to trash response:', result)
         
         toast({
           title: "Email moved to trash",

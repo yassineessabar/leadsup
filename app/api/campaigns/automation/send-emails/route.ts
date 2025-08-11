@@ -417,6 +417,33 @@ export async function POST(request: NextRequest) {
                 sent_at: new Date().toISOString()
               }
               
+              // Create or update inbox thread FIRST (required by foreign key constraint)
+              console.log('📥 🔍 Creating inbox thread first...')
+              const { error: threadError } = await supabaseServer
+                .from('inbox_threads')
+                .upsert({
+                  user_id: campaignInfo.user_id,
+                  conversation_id: conversationId,
+                  thread_id: emailResult.threadId,
+                  campaign_id: campaignData.id,
+                  contact_id: contact.id,
+                  contact_email: contact.email,
+                  contact_name: `${contact.firstName} ${contact.lastName}`.trim(),
+                  subject: subject,
+                  last_message_at: new Date().toISOString(),
+                  last_message_preview: htmlContent.replace(/<[^>]*>/g, '').substring(0, 150),
+                  status: 'active'
+                }, {
+                  onConflict: 'conversation_id,user_id'
+                })
+
+              if (threadError) {
+                console.error('❌ 🚨 INBOX THREAD ERROR:', JSON.stringify(threadError, null, 2))
+              } else {
+                console.log('✅ 📥 SUCCESS: Inbox thread created/updated')
+              }
+              
+              // Now create the inbox message (after thread exists)
               console.log('📥 🔍 DEBUG: About to insert inbox message with data:')
               console.log('📥 🔍 Provider:', inboxMessageData.provider)
               console.log('📥 🔍 Status:', inboxMessageData.status) 
@@ -434,25 +461,6 @@ export async function POST(request: NextRequest) {
               } else {
                 console.log('✅ 📥 SUCCESS: Inbox message inserted:', insertedMessage[0]?.id)
               }
-
-              // Update or create inbox thread
-              await supabaseServer
-                .from('inbox_threads')
-                .upsert({
-                  user_id: campaignInfo.user_id,
-                  conversation_id: conversationId,
-                  thread_id: emailResult.threadId,
-                  campaign_id: campaignData.id,
-                  contact_id: contact.id,
-                  contact_email: contact.email,
-                  contact_name: `${contact.firstName} ${contact.lastName}`.trim(),
-                  subject: subject,
-                  last_message_at: new Date().toISOString(),
-                  last_message_preview: htmlContent.replace(/<[^>]*>/g, '').substring(0, 150),
-                  status: 'active'
-                }, {
-                  onConflict: 'conversation_id,user_id'
-                })
 
               console.log(`📥 ✅ SUCCESS: Logged outbound email to inbox_messages table`)
               console.log(`📧 Email: ${contact.email} → ${senderData.email}`)

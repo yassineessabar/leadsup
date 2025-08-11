@@ -63,7 +63,8 @@ export async function GET(request: NextRequest) {
     const conversationId = searchParams.get('conversation_id') // for fetching thread messages
 
     console.log('📧 Inbox API called with filters:', {
-      campaigns, senders, leadStatuses, folder, channel, search, dateFrom, dateTo, status, view, conversationId
+      campaigns, senders, leadStatuses, folder, channel, search, dateFrom, dateTo, status, view, conversationId,
+      rawParams: Object.fromEntries(searchParams.entries())
     })
 
     if (conversationId) {
@@ -170,12 +171,22 @@ async function getThreadedMessages(userId: string, filters: any) {
     let threadIds: string[] = []
     
     if (folder && folder !== 'all') {
-      const { data: messagesInFolder, error: folderError } = await supabaseServer
+      let folderQuery = supabaseServer
         .from('inbox_messages')
         .select('conversation_id')
         .eq('user_id', userId)
-        .eq('folder', folder)
         .eq('channel', channel)
+      
+      // Apply folder-specific filtering
+      if (folder === 'sent') {
+        // For sent folder, show messages that are either marked as 'sent' folder OR are outbound messages
+        folderQuery = folderQuery.or(`folder.eq.sent,direction.eq.outbound`)
+      } else {
+        // For other folders, use the folder field directly
+        folderQuery = folderQuery.eq('folder', folder)
+      }
+        
+      const { data: messagesInFolder, error: folderError } = await folderQuery
         
       if (folderError) {
         console.error('❌ Error fetching messages by folder:', folderError)
@@ -183,6 +194,7 @@ async function getThreadedMessages(userId: string, filters: any) {
       }
       
       threadIds = [...new Set(messagesInFolder.map(m => m.conversation_id))]
+      console.log(`📁 Found ${messagesInFolder.length} messages in folder '${folder}', ${threadIds.length} unique threads`)
       
       if (threadIds.length === 0) {
         // No messages in this folder, return empty result
@@ -284,16 +296,39 @@ async function getThreadedMessages(userId: string, filters: any) {
     const formattedThreads = await Promise.all(
       (threads || []).map(async (thread) => {
         // Get the latest message for this conversation
-        const { data: latestMessage } = await supabaseServer
+        let messageQuery = supabaseServer
           .from('inbox_messages')
           .select('id, subject, body_text, direction, status, sent_at, received_at, sender_id, sender_email, contact_name, contact_email, has_attachments, folder')
           .eq('user_id', userId)
           .eq('conversation_id', thread.conversation_id)
+          
+        // If filtering by folder, only get messages from that folder
+        if (folder && folder !== 'all') {
+          if (folder === 'sent') {
+            // For sent folder, show messages that are either marked as 'sent' folder OR are outbound messages
+            messageQuery = messageQuery.or(`folder.eq.sent,direction.eq.outbound`)
+          } else {
+            messageQuery = messageQuery.eq('folder', folder)
+          }
+        }
+        
+        const { data: latestMessage, error: messageError } = await messageQuery
           .order('sent_at', { ascending: false, nullsLast: true })
           .order('created_at', { ascending: false })
           .limit(1)
           .single()
 
+        // Debug message fetching
+        if (messageError) {
+          console.log(`⚠️ No message found for thread ${thread.conversation_id} in folder ${folder}:`, messageError.message)
+        }
+
+        // Only return threads that have a message in the specified folder
+        if (!latestMessage && folder && folder !== 'all') {
+          console.log(`❌ Skipping thread ${thread.conversation_id} - no message in folder ${folder}`)
+          return null // Skip this thread if no message in the folder
+        }
+        
         return {
           id: thread.id,
           conversation_id: thread.conversation_id,
@@ -314,6 +349,7 @@ async function getThreadedMessages(userId: string, filters: any) {
           isRead: thread.unread_count === 0,
           hasAttachment: latestMessage?.has_attachments || false,
           content: latestMessage?.body_html || latestMessage?.body_text || thread.last_message_preview || 'No content available',
+          folder: latestMessage?.folder || 'inbox', // Include folder from latest message
           
           // Keep original thread data for compatibility
           contact_name: thread.contact_name,
@@ -329,8 +365,10 @@ async function getThreadedMessages(userId: string, filters: any) {
           latest_message: latestMessage || null
         }
       })
-    )
+    ).then(results => results.filter(thread => thread !== null)) // Filter out null threads
 
+    console.log(`✅ Returning ${formattedThreads.length} threads for folder '${folder}'`)
+    
     return NextResponse.json({
       success: true,
       emails: formattedThreads, // UI expects 'emails' at root level
@@ -369,7 +407,12 @@ async function getIndividualMessages(userId: string, filters: any) {
 
     // Apply folder filter
     if (folder && folder !== 'all') {
-      query = query.eq('folder', folder)
+      if (folder === 'sent') {
+        // For sent folder, show messages that are either marked as 'sent' folder OR are outbound messages
+        query = query.or(`folder.eq.sent,direction.eq.outbound`)
+      } else {
+        query = query.eq('folder', folder)
+      }
     }
 
     // Apply status filter
@@ -424,7 +467,12 @@ async function getIndividualMessages(userId: string, filters: any) {
 
     // Apply same filters for count
     if (folder && folder !== 'all') {
-      countQuery = countQuery.eq('folder', folder)
+      if (folder === 'sent') {
+        // For sent folder, show messages that are either marked as 'sent' folder OR are outbound messages
+        countQuery = countQuery.or(`folder.eq.sent,direction.eq.outbound`)
+      } else {
+        countQuery = countQuery.eq('folder', folder)
+      }
     }
     if (status) {
       countQuery = countQuery.eq('status', status)

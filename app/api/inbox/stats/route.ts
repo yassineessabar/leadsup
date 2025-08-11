@@ -105,13 +105,12 @@ export async function GET(request: NextRequest) {
         .not('campaign_id', 'is', null)
         .gte('created_at', startDate.toISOString()),
 
-      // Folder distribution (unread messages only)
+      // Folder distribution (all messages)
       supabaseServer
         .from('inbox_messages')
         .select('folder')
         .eq('user_id', userId)
-        .eq('status', 'unread')
-        .neq('folder', 'trash'),
+        .neq('status', 'deleted'),
 
       // Recent activity (last 10 actions)
       supabaseServer
@@ -145,12 +144,29 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Process folder stats
-    const folderCounts = {}
+    // Process folder stats with defaults
+    const folderCounts = {
+      inbox: 0,
+      sent: 0,
+      trash: 0
+    }
+    
+    // Get additional sent message count (outbound messages not already marked as sent)
+    const { count: outboundCount } = await supabaseServer
+      .from('inbox_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('direction', 'outbound')
+      .neq('status', 'deleted')
+      .neq('folder', 'sent') // Don't double count
+    
     folderStatsResult.data?.forEach(message => {
       const folder = message.folder || 'inbox'
       folderCounts[folder] = (folderCounts[folder] || 0) + 1
     })
+    
+    // Add outbound messages to sent count
+    folderCounts.sent += (outboundCount || 0)
 
     // Calculate response rate (replied messages vs total inbound)
     const { count: inboundCount } = await supabaseServer

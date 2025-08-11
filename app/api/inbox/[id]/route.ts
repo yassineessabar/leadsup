@@ -133,7 +133,7 @@ export async function PATCH(
     const messageId = params.id
     const body = await request.json()
 
-    console.log('📧 Updating inbox message:', { messageId, updates: body })
+    console.log('📧 Updating inbox message:', { messageId, updates: body, userId })
 
     // Prepare update data
     const updateData: any = {}
@@ -170,6 +170,8 @@ export async function PATCH(
       console.error('❌ Error updating message:', error)
       return NextResponse.json({ success: false, error: 'Failed to update message' }, { status: 500 })
     }
+
+    console.log('✅ Successfully updated message:', { messageId, updatedData: message })
 
     // Log the action for audit trail
     const actionType = body.status ? (body.status === 'read' ? 'mark_read' : 'mark_unread') :
