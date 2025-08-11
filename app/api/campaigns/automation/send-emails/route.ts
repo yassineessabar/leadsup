@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase"
+import { sendEmailWithSendGrid } from "@/lib/sendgrid"
 
 // Basic Auth helper function
 function validateBasicAuth(request: NextRequest): boolean {
@@ -23,82 +24,29 @@ function validateBasicAuth(request: NextRequest): boolean {
   }
 }
 
-// Send email via Gmail API (OAuth2) or SMTP (App Passwords)
+// Send email via SendGrid (new unified method)
 async function sendEmail(senderData: any, mailOptions: any) {
-  console.log(`📧 Sending email via ${senderData.auth_type === 'oauth2' ? 'Gmail API' : 'SMTP'} for ${senderData.email}`)
+  console.log(`📧 Sending email via SendGrid for ${senderData.email}`)
   
   try {
-    if (senderData.auth_type === 'oauth2' && senderData.access_token) {
-      console.log('🔐 Using Gmail API with OAuth2')
-      
-      // Use nodemailer to create proper email structure, then extract raw for Gmail API
-      const nodemailer = require('nodemailer')
-      
-      // Create a test transport to generate the email
-      const testTransport = nodemailer.createTransport({
-        streamTransport: true,
-        newline: 'unix',
-        buffer: true
-      })
-      
-      // Generate the email using nodemailer
-      const info = await testTransport.sendMail(mailOptions)
-      const emailMessage = info.message.toString()
-      
-      // Encode email message in base64url format for Gmail API
-      const encodedMessage = Buffer.from(emailMessage)
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '')
+    // Use SendGrid for all email sending
+    const result = await sendEmailWithSendGrid({
+      to: mailOptions.to,
+      from: senderData.email,
+      fromName: senderData.name || senderData.email,
+      subject: mailOptions.subject,
+      html: mailOptions.html,
+      text: mailOptions.html?.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+      replyTo: senderData.email
+    })
 
-      // Send via Gmail API
-      const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${senderData.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          raw: encodedMessage
-        })
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Gmail API error: ${response.status} - ${errorText}`)
-      }
-
-      const result = await response.json()
-      return {
-        messageId: result.id,
-        threadId: result.threadId,
-        method: 'gmail_api'
-      }
-      
-    } else if (senderData.auth_type === 'app_password' && senderData.app_password) {
-      console.log('🔑 Using SMTP with App Password')
-      
-      const nodemailer = require('nodemailer')
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: senderData.email,
-          pass: senderData.app_password
-        }
-      })
-      
-      const result = await transporter.sendMail(mailOptions)
-      return {
-        messageId: result.messageId,
-        method: 'smtp'
-      }
-      
-    } else {
-      throw new Error(`No valid authentication method available (auth_type: ${senderData.auth_type})`)
+    return {
+      messageId: result.messageId,
+      method: 'sendgrid_api'
     }
+      
   } catch (error) {
-    console.error('❌ Error sending email:', error)
+    console.error('❌ Error sending email via SendGrid:', error)
     throw error
   }
 }
@@ -300,21 +248,8 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          // Determine authentication method
-          if (senderData.access_token && senderData.refresh_token) {
-            senderData.auth_type = 'oauth2'
-          } else if (senderData.app_password) {
-            senderData.auth_type = 'app_password'
-          } else {
-            console.log(`❌ No valid auth method for ${senderData.email}`)
-            results.failed++
-            results.errors.push({
-              contact: contact.email,
-              sender: senderData.email,
-              error: 'No valid authentication configured'
-            })
-            continue
-          }
+          // For SendGrid, we don't need authentication per sender - all emails go through SendGrid API
+          console.log(`✅ Using SendGrid for ${senderData.email} - no authentication required per sender`)
 
           console.log(`📤 Sending email to ${contact.email} from ${senderData.email} (${timezoneGroup})`)
 
@@ -360,13 +295,14 @@ export async function POST(request: NextRequest) {
               sender_email: senderData.email,
               tracking_data: {
                 subject: subject,
-                sender_type: senderData.auth_type,
+                sender_type: 'sendgrid',
                 method: contact.sender_email ? 'assigned_sender' : 'fallback_rotation',
                 assigned_sender: contact.sender_email || null,
                 timezone_group: timezoneGroup,
                 local_time: new Date().toLocaleString('en-US', { 
                   timeZone: TIMEZONE_CONFIG[timezoneGroup as keyof typeof TIMEZONE_CONFIG].name 
-                })
+                }),
+                provider: 'sendgrid'
               }
             })
 
@@ -407,12 +343,13 @@ export async function POST(request: NextRequest) {
                 message_type: 'email',
                 status: 'read', // Outbound emails are 'read' by definition
                 folder: 'sent',
-                provider: (senderData.auth_type === 'oauth2') ? 'gmail' : 'smtp',
+                provider: 'smtp', // Use 'smtp' as per schema constraints
                 provider_data: {
                   method: emailResult.method,
-                  sender_type: senderData.auth_type,
+                  sender_type: 'sendgrid',
                   sequence_id: sequence.id,
-                  timezone_group: timezoneGroup
+                  timezone_group: timezoneGroup,
+                  provider: 'sendgrid'
                 },
                 sent_at: new Date().toISOString()
               }
@@ -511,8 +448,9 @@ export async function POST(request: NextRequest) {
       features_used: [
         '🌍 Timezone-aware sending (business hours only)',
         '🎯 Consistent sender assignment per prospect (maintains relationships)',
-        '📧 OAuth Gmail API integration',
-        '⏰ Rate limiting between emails'
+        '📧 SendGrid API integration for reliable email delivery',
+        '⏰ Rate limiting between emails',
+        '📥 Automated reply capture via SendGrid Inbound Parse webhook'
       ]
     })
 

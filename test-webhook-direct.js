@@ -1,130 +1,195 @@
-#!/usr/bin/env node
+const FormData = require('form-data')
+const http = require('http')
+const https = require('https')
+const { URL } = require('url')
 
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+async function testWebhookDirectly() {
+  console.log('🧪 Testing SendGrid Webhook Directly\n')
+  console.log('=' .repeat(50))
 
-async function simulateMailgunWebhook() {
-  console.log('🧪 SIMULATING MAILGUN WEBHOOK CALL');
-  console.log('==================================\n');
+  const webhookUrl = process.env.WEBHOOK_URL || 'http://localhost:3000/api/webhooks/sendgrid'
   
-  const webhookUrl = 'http://app.leadsup.io/api/webhooks/mailgun';
-  const timestamp = Math.floor(Date.now() / 1000);
-  const token = 'webhook-test-' + timestamp;
-  
-  console.log('📡 Webhook URL:', webhookUrl);
-  console.log('⏰ Timestamp:', timestamp);
-  console.log('🎫 Token:', token);
-  console.log('');
-  
-  // Create form data exactly as Mailgun would send it
-  const FormData = (await import('form-data')).default;
-  const formData = new FormData();
-  
-  // Email details - simulating your reply from Gmail
-  formData.append('sender', 'essabar.yassine@gmail.com');
-  formData.append('recipient', 'campaign@sandbox09593b053aaa4a158cfdada61cbbdb0d.mailgun.org');
-  formData.append('subject', 'Re: LeadsUp Campaign - Very Interested in Your Product!');
-  formData.append('body-plain', `Hi there!
+  console.log(`📡 Webhook URL: ${webhookUrl}`)
+  console.log('\nSimulating inbound email from SendGrid...\n')
 
-I received your campaign email and I am very interested in learning more about your product.
-
-Could you please send me:
-1. Pricing information
-2. Available packages/plans  
-3. How to get started
-4. Any special offers for new customers
-
-I think this would be perfect for my business needs and I'm ready to move forward.
-
-Looking forward to hearing from you soon!
-
-Best regards,
-Yassine`);
-  
-  formData.append('body-html', `<p>Hi there!</p>
-
-<p>I received your campaign email and I am <strong>very interested</strong> in learning more about your product.</p>
-
-<p>Could you please send me:</p>
-<ol>
-<li>Pricing information</li>
-<li>Available packages/plans</li>
-<li>How to get started</li>
-<li>Any special offers for new customers</li>
-</ol>
-
-<p>I think this would be perfect for my business needs and I'm <strong>ready to move forward</strong>.</p>
-
-<p>Looking forward to hearing from you soon!</p>
-
-<p>Best regards,<br>
-Yassine</p>`);
-  
-  formData.append('Message-Id', `simulated-webhook-${timestamp}@gmail.com`);
-  formData.append('timestamp', timestamp.toString());
-  formData.append('token', token);
-  formData.append('signature', 'test-signature-' + timestamp);
-  formData.append('attachment-count', '0');
-  
-  console.log('📤 Simulating inbound email:');
-  console.log('   From: essabar.yassine@gmail.com');
-  console.log('   To: campaign@sandbox...mailgun.org');
-  console.log('   Subject: Re: LeadsUp Campaign - Very Interested!');
-  console.log('   Body: Interested prospect response...');
-  console.log('');
+  // Load test campaign config if available
+  let toEmail = 'campaign@app.leadsup.io'  // Use existing sender
+  let configInfo = 'using existing sender'
   
   try {
-    console.log('🚀 Sending webhook request...');
-    
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'User-Agent': 'Mailgun/Test-Webhook'
-      },
-      body: formData
-    });
-    
-    const result = await response.json();
-    
-    console.log(`📊 Response Status: ${response.status}`);
-    console.log('📄 Response Body:', JSON.stringify(result, null, 2));
-    
-    if (response.ok && result.success) {
-      console.log('\n🎉 WEBHOOK TEST SUCCESSFUL!');
-      console.log('=============================');
-      console.log(`✅ Message ID: ${result.messageId}`);
-      console.log(`✅ Conversation ID: ${result.conversationId}`);
-      console.log(`✅ Direction: ${result.direction}`);
-      console.log(`✅ Processed: ${result.processed}`);
-      console.log('');
-      console.log('🎯 This proves your webhook is working correctly!');
-      console.log('When real emails come through Mailgun, they will be captured just like this.');
-      
-      return result;
-      
-    } else {
-      console.log('\n❌ WEBHOOK TEST FAILED');
-      console.log('Response details:', result);
-      return null;
+    const fs = require('fs')
+    if (fs.existsSync('webhook-test-config.json')) {
+      const config = JSON.parse(fs.readFileSync('webhook-test-config.json', 'utf8'))
+      toEmail = config.senderEmail
+      configInfo = `using campaign: ${config.campaignName}`
+      console.log(`📋 Found webhook config: ${config.campaignName}`)
+      console.log(`   Campaign ID: ${config.campaignId}`)
+      console.log(`   Sender Email: ${config.senderEmail}`)
+    } else if (fs.existsSync('test-campaign-config.json')) {
+      const config = JSON.parse(fs.readFileSync('test-campaign-config.json', 'utf8'))
+      toEmail = config.senderEmail
+      configInfo = 'using test config'
+      console.log(`📋 Using test campaign sender: ${toEmail}`)
     }
-    
-  } catch (error) {
-    console.error('\n❌ Test error:', error.message);
-    return null;
+  } catch (e) {
+    console.log('📋 No campaign config found, using default')
   }
+
+  // Create test data
+  const testId = Date.now()
+  const formData = new FormData()
+  
+  // Simulate an email reply
+  const emailData = {
+    from: `John Doe <john.doe${testId}@example.com>`,
+    to: toEmail,
+    subject: `Re: Your Campaign Message - Test ${testId}`,
+    text: `This is a test reply to your campaign.
+    
+I'm interested in learning more about your product.
+
+Please send me more information.
+
+Best regards,
+John Doe`,
+    html: `<p>This is a test reply to your campaign.</p>
+<p>I'm interested in learning more about your product.</p>
+<p>Please send me more information.</p>
+<p>Best regards,<br>John Doe</p>`,
+    envelope: JSON.stringify({
+      from: `john.doe${testId}@example.com`,
+      to: [toEmail]
+    }),
+    headers: `Received: by mx.sendgrid.net
+From: John Doe <john.doe${testId}@example.com>
+To: ${toEmail}
+Subject: Re: Your Campaign Message - Test ${testId}
+Date: ${new Date().toUTCString()}`,
+    spam_score: '0.1',
+    spam_report: 'Spam detection software running',
+    attachments: '0',
+    charsets: JSON.stringify({
+      to: 'UTF-8',
+      from: 'UTF-8',
+      subject: 'UTF-8',
+      text: 'UTF-8'
+    })
+  }
+
+  // Add all fields to form data
+  Object.entries(emailData).forEach(([key, value]) => {
+    formData.append(key, value)
+  })
+
+  try {
+    console.log('📤 Sending webhook request...')
+    console.log(`   From: ${emailData.from}`)
+    console.log(`   To: ${emailData.to}`)
+    console.log(`   Subject: ${emailData.subject}`)
+    
+    // Parse URL
+    const parsedUrl = new URL(webhookUrl)
+    const protocol = parsedUrl.protocol === 'https:' ? https : http
+    
+    // Create promise for the request
+    const response = await new Promise((resolve, reject) => {
+      const req = protocol.request({
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+        path: parsedUrl.pathname,
+        method: 'POST',
+        headers: formData.getHeaders()
+      }, (res) => {
+        let data = ''
+        res.on('data', chunk => data += chunk)
+        res.on('end', () => {
+          resolve({
+            ok: res.statusCode >= 200 && res.statusCode < 300,
+            status: res.statusCode,
+            statusText: res.statusMessage,
+            text: () => Promise.resolve(data),
+            json: () => Promise.resolve(JSON.parse(data))
+          })
+        })
+      })
+      
+      req.on('error', reject)
+      formData.pipe(req)
+    })
+
+    const responseText = await response.text()
+    let responseData
+    
+    try {
+      responseData = JSON.parse(responseText)
+    } catch {
+      responseData = { raw: responseText }
+    }
+
+    console.log('\n📥 Webhook Response:')
+    console.log(`   Status: ${response.status} ${response.statusText}`)
+    
+    if (response.ok) {
+      console.log('✅ Webhook processed successfully!')
+      
+      if (responseData.success) {
+        console.log('\n📊 Processing Details:')
+        console.log(`   Message ID: ${responseData.messageId || 'N/A'}`)
+        console.log(`   Conversation ID: ${responseData.conversationId || 'N/A'}`)
+        console.log(`   Direction: ${responseData.direction || 'N/A'}`)
+        console.log(`   Timestamp: ${responseData.timestamp || 'N/A'}`)
+        
+        if (responseData.message) {
+          console.log(`   Note: ${responseData.message}`)
+        }
+      } else {
+        console.log('⚠️  Webhook returned success=false')
+        console.log(`   Error: ${responseData.error || 'Unknown'}`)
+        console.log(`   Message: ${responseData.message || 'None'}`)
+      }
+    } else {
+      console.log('❌ Webhook request failed!')
+      console.log(`   Response: ${JSON.stringify(responseData, null, 2)}`)
+    }
+
+    // Test GET endpoint to verify webhook is accessible
+    console.log('\n🔍 Testing GET endpoint...')
+    const getResponse = await fetch(webhookUrl, { method: 'GET' })
+    
+    if (getResponse.ok) {
+      const getInfo = await getResponse.json()
+      console.log('✅ Webhook endpoint is accessible')
+      console.log(`   Status: ${getInfo.status}`)
+      console.log(`   Provider: ${getInfo.provider}`)
+    } else {
+      console.log('❌ GET endpoint not accessible')
+    }
+
+  } catch (error) {
+    console.error('❌ Request failed:', error.message)
+    
+    if (error.code === 'ECONNREFUSED') {
+      console.log('\n⚠️  Connection refused. Make sure:')
+      console.log('   1. Your Next.js app is running (npm run dev)')
+      console.log('   2. The webhook URL is correct')
+      console.log('   3. No firewall is blocking the connection')
+    }
+  }
+
+  console.log('\n' + '='.repeat(50))
+  console.log('📋 WEBHOOK TEST COMPLETE')
+  console.log('='.repeat(50))
+  
+  console.log('\n💡 What to check next:')
+  console.log('   1. Check your database for the test message')
+  console.log('   2. Run: node check-inbox-replies.js')
+  console.log('   3. Check application logs for processing details')
+  console.log('   4. If using production URL, ensure it\'s publicly accessible')
+  
+  console.log('\n🔧 For production testing:')
+  console.log('   Set WEBHOOK_URL=http://app.leadsup.io/api/webhooks/sendgrid')
+  console.log('   Then run this script again')
 }
 
-// Run the simulation
-simulateMailgunWebhook()
-  .then(result => {
-    if (result) {
-      console.log('\n✅ Webhook simulation complete - SUCCESS!');
-      process.exit(0);
-    } else {
-      console.log('\n❌ Webhook simulation complete - FAILED!');
-      process.exit(1);
-    }
-  })
-  .catch(error => {
-    console.error('❌ Simulation error:', error);
-    process.exit(1);
-  });
+// Run the test
+testWebhookDirectly().catch(console.error)

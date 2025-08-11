@@ -56,6 +56,15 @@ export async function POST(request: NextRequest) {
     // Parse the form data from SendGrid
     const emailData = await parseFormData(request)
     
+    console.log('📧 SendGrid parsed data:', {
+      from: emailData.from,
+      to: emailData.to,
+      subject: emailData.subject,
+      hasText: !!emailData.text,
+      hasHtml: !!emailData.html,
+      attachments: emailData.attachments
+    })
+    
     // Extract clean email addresses
     const fromEmail = extractEmail(emailData.envelope.from || emailData.from)
     const toEmails = emailData.envelope.to || [extractEmail(emailData.to)]
@@ -65,11 +74,14 @@ export async function POST(request: NextRequest) {
     console.log(`   Subject: "${emailData.subject}"`)
     
     // Find which campaign sender this email is responding to
+    console.log(`🔍 Looking for campaign_sender with email: "${toEmail}"`)
     const { data: campaignSender, error: senderError } = await supabaseServer
       .from('campaign_senders')
       .select('user_id, campaign_id')
       .eq('email', toEmail)
       .single()
+    
+    console.log('🔍 Campaign sender query result:', { campaignSender, senderError })
     
     if (senderError || !campaignSender) {
       console.log(`⏭️ Email to ${toEmail} is not for a campaign sender, ignoring`)
@@ -103,6 +115,25 @@ export async function POST(request: NextRequest) {
       console.log(`⚠️ High spam score: ${spamScore}`)
     }
     
+    // Create or update thread FIRST (required for foreign key constraint)
+    await supabaseServer
+      .from('inbox_threads')
+      .upsert({
+        user_id: campaignSender.user_id,
+        conversation_id: conversationId,
+        campaign_id: campaignSender.campaign_id,
+        contact_id: contactId,
+        contact_email: fromEmail,
+        subject: emailData.subject,
+        last_message_at: new Date().toISOString(),
+        last_message_preview: (emailData.text || '').substring(0, 150),
+        status: 'active'
+      }, {
+        onConflict: 'conversation_id,user_id'
+      })
+    
+    console.log(`✅ Thread created/updated for conversation ${conversationId}`)
+    
     // Store the inbound message
     const { data: message, error: insertError } = await supabaseServer
       .from('inbox_messages')
@@ -122,7 +153,7 @@ export async function POST(request: NextRequest) {
         status: 'unread',
         folder: 'inbox',
         has_attachments: parseInt(emailData.attachments) > 0,
-        provider: 'sendgrid',
+        provider: 'smtp', // Use 'smtp' as it's in the allowed values per schema
         provider_data: {
           spam_score: spamScore,
           spam_report: emailData.spam_report,
@@ -138,31 +169,27 @@ export async function POST(request: NextRequest) {
     
     if (insertError) {
       console.error('❌ Error storing message:', insertError)
+      console.error('❌ Insert error details:', JSON.stringify(insertError, null, 2))
       // Return success to SendGrid anyway to prevent retries
       return NextResponse.json({ 
         success: false,
-        error: 'Failed to store message but acknowledged' 
+        error: 'Failed to store message but acknowledged',
+        debug: insertError.message
       })
     }
     
     console.log(`✅ Message stored successfully: ${message.id}`)
     
-    // Update or create thread
+    // Update thread with latest message info
     await supabaseServer
       .from('inbox_threads')
-      .upsert({
-        user_id: campaignSender.user_id,
-        conversation_id: conversationId,
-        campaign_id: campaignSender.campaign_id,
-        contact_id: contactId,
-        contact_email: fromEmail,
-        subject: emailData.subject,
+      .update({
         last_message_at: new Date().toISOString(),
         last_message_preview: (emailData.text || '').substring(0, 150),
         status: 'active'
-      }, {
-        onConflict: 'conversation_id,user_id'
       })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', campaignSender.user_id)
     
     console.log(`✅ Thread updated for conversation ${conversationId}`)
     
