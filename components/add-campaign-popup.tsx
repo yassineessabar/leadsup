@@ -177,20 +177,51 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     }
   }
 
-  const handleSave = (type: 'icp' | 'persona' | 'painPoint' | 'valueProp') => {
+  const handleSave = async (type: 'icp' | 'persona' | 'painPoint' | 'valueProp') => {
+    // Update AI assets with edited data
+    let updatedAssets = { ...aiAssets }
+    
     switch(type) {
       case 'icp':
+        if (editedData.icp && aiAssets?.icps) {
+          updatedAssets.icps = aiAssets.icps.map((icp: any) => 
+            icp.id === editedData.icp?.id ? editedData.icp : icp
+          )
+        }
         setEditingICP(false)
         break
       case 'persona':
+        if (editedData.persona && aiAssets?.personas) {
+          updatedAssets.personas = aiAssets.personas.map((persona: any) => 
+            persona.id === editedData.persona?.id ? editedData.persona : persona
+          )
+        }
         setEditingPersona(false)
         break
       case 'painPoint':
+        if (editedData.painPoint && aiAssets?.pain_points) {
+          updatedAssets.pain_points = aiAssets.pain_points.map((pp: any) => 
+            pp.id === editedData.painPoint?.id ? editedData.painPoint : pp
+          )
+        }
         setEditingPainPoint(false)
         break
       case 'valueProp':
+        if (editedData.valueProp && aiAssets?.value_propositions) {
+          updatedAssets.value_propositions = aiAssets.value_propositions.map((vp: any) => 
+            vp.id === editedData.valueProp?.id ? editedData.valueProp : vp
+          )
+        }
         setEditingValueProp(false)
         break
+    }
+    
+    // Update local state immediately for responsive UI
+    setAiAssets(updatedAssets)
+    
+    // Save to database if campaign exists
+    if (campaignId) {
+      await updateAIAssets(updatedAssets)
     }
   }
 
@@ -215,27 +246,32 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     }
   }
 
-  const createCampaignWithAI = async () => {
+  const createCampaignWithICPs = async () => {
     try {
       setIsCreatingCampaign(true);
       setError(null);
 
-      const response = await fetch('/api/campaigns/create', {
+      const response = await fetch('/api/campaigns/create-progressive', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          campaignName: formData.campaignName,
-          companyName: formData.companyName,
-          website: formData.website,
-          noWebsite: formData.noWebsite,
-          language: formData.language || 'English',
-          keywords: formData.keywords,
-          mainActivity: formData.mainActivity,
-          location: formData.location,
-          industry: formData.industry,
-          campaignId: campaignId // For editing existing campaigns
+          step: 'create-campaign',
+          formData: {
+            campaignName: formData.campaignName,
+            companyName: formData.companyName,
+            website: formData.website,
+            noWebsite: formData.noWebsite,
+            language: formData.language || 'English',
+            keywords: formData.keywords,
+            mainActivity: formData.mainActivity,
+            location: formData.location,
+            industry: formData.industry,
+            productService: formData.productService,
+            goals: formData.goals,
+            targetAudience: formData.targetAudience
+          }
         }),
       });
 
@@ -255,7 +291,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
 
       if (result.success) {
         setCampaignId(result.data.campaign.id);
-        setAiAssets(result.data.aiAssets);
+        setAiAssets(prev => ({ ...prev, ...result.data.aiAssets }));
         
         // Auto-fill keywords from AI extraction
         if (result.data.extractedKeywords && result.data.extractedKeywords.length > 0) {
@@ -270,11 +306,107 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         throw new Error(result.error || 'Unknown error occurred');
       }
     } catch (error) {
-      console.error('Error creating campaign:', error);
+      console.error('Error creating campaign and ICPs:', error);
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');
       throw error;
     } finally {
       setIsCreatingCampaign(false);
+    }
+  }
+
+  const generatePainPointsAndValueProps = async () => {
+    try {
+      setIsProcessing(true);
+      setError(null);
+
+      const response = await fetch('/api/campaigns/create-progressive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          step: 'generate-pain-value',
+          campaignId: campaignId,
+          aiAssets: aiAssets
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setAiAssets(prev => ({ ...prev, ...result }));
+        return result;
+      } else {
+        throw new Error(result.error || 'Failed to generate pain points and value propositions');
+      }
+    } catch (error) {
+      console.error('Error generating pain points and value props:', error);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      throw error;
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  const generateEmailSequence = async () => {
+    try {
+      setIsProcessing(true);
+      setError(null);
+
+      const response = await fetch('/api/campaigns/create-progressive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          step: 'generate-sequence',
+          campaignId: campaignId,
+          formData: formData,
+          aiAssets: aiAssets
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setAiAssets(prev => ({ ...prev, ...result }));
+        return result;
+      } else {
+        throw new Error(result.error || 'Failed to generate email sequence');
+      }
+    } catch (error) {
+      console.error('Error generating email sequence:', error);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      throw error;
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  const updateAIAssets = async (updatedAssets: any) => {
+    try {
+      const response = await fetch('/api/campaigns/create-progressive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          step: 'update-assets',
+          campaignId: campaignId,
+          aiAssets: updatedAssets
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setAiAssets(prev => ({ ...prev, ...updatedAssets }));
+        return result;
+      } else {
+        console.warn('Failed to update assets in database:', result.error);
+      }
+    } catch (error) {
+      console.error('Error updating AI assets:', error);
     }
   }
 
@@ -323,8 +455,8 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       setIsProcessing(true);
       
       try {
-        // Call the API to create campaign and generate AI assets
-        const result = await createCampaignWithAI();
+        // Step 1: Create campaign and generate ICPs & Personas
+        const result = await createCampaignWithICPs();
         
         // Immediately move to next step after API completes
         setIsProcessing(false);
@@ -334,18 +466,41 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       } catch (error) {
         setIsProcessing(false);
         setShowForm(true);
-        // Error is already set in createCampaignWithAI function
+        // Error is already set in createCampaignWithICPs function
       }
     } else if (!isProcessing && currentIndex < stepOrder.length - 1) {
       const nextStep = stepOrder[currentIndex + 1]
-      setCompletedSteps(prev => [...prev, currentStep])
-      setCurrentStep(nextStep)
+      
+      // Generate content for the next step
+      if (nextStep === "pain-value") {
+        setIsProcessing(true);
+        try {
+          await generatePainPointsAndValueProps();
+          setCompletedSteps(prev => [...prev, currentStep])
+          setCurrentStep(nextStep)
+        } catch (error) {
+          // Error handling is done in the function
+          return;
+        }
+      } else if (nextStep === "sequence") {
+        setIsProcessing(true);
+        try {
+          await generateEmailSequence();
+          setCompletedSteps(prev => [...prev, currentStep])
+          setCurrentStep(nextStep)
+        } catch (error) {
+          // Error handling is done in the function
+          return;
+        }
+      } else {
+        setCompletedSteps(prev => [...prev, currentStep])
+        setCurrentStep(nextStep)
+      }
+      
       setEditingICP(false)
       setEditingPersona(false)
       setEditingPainPoint(false)
       setEditingValueProp(false)
-      
-      // No artificial delays for navigation between steps
     } else if (currentStep === "sequence") {
       // Final step - complete the campaign creation
       const campaignData = {

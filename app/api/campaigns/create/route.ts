@@ -68,6 +68,11 @@ export async function POST(request: NextRequest) {
 
     const formData: CampaignFormData = await request.json()
 
+    // Debug: Log the data received from frontend
+    console.log('🔍 [Regular API] Keywords received:', formData.keywords)
+    console.log('🔍 [Regular API] Location received:', formData.location)  
+    console.log('🔍 [Regular API] Industry received:', formData.industry)
+
     // Validate required fields
     if (!formData.campaignName?.trim()) {
       return NextResponse.json({ success: false, error: "Campaign name is required" }, { status: 400 })
@@ -270,7 +275,7 @@ Language: ${formData.language || 'English'}
     // Generate single ICP & Persona (cost optimization)
     console.log("🎯 Generating ICP & Persona...")
     const icpResponse = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -316,7 +321,7 @@ Return JSON in this exact format:
     // Generate single Pain Point & Value Prop (cost optimization)
     console.log("💡 Generating Pain Point & Value Proposition...")
     const painValueResponse = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -364,7 +369,7 @@ Return JSON in this exact format:
       console.log("🔍 Extracting keywords from website...")
       try {
         const keywordResponse = await openai.chat.completions.create({
-          model: "gpt-4",
+          model: "gpt-4o-mini",
           messages: [
             {
               role: "system",
@@ -388,7 +393,7 @@ Return JSON in this exact format:
     // Generate Email Sequence (language-aware) - 6 emails for 2 sequences
     console.log("📧 Generating Email Sequences...")
     const sequenceResponse = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",

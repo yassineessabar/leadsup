@@ -723,13 +723,21 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           setSelectedSenderAccounts(data.senders)
         }
         
-        // Load scraping settings
+        // Load scraping settings with campaign data fallback
         if (data.scrapingSettings) {
           setIsScrappingActive(data.scrapingSettings.isActive || false)
           setScrappingDailyLimit(data.scrapingSettings.dailyLimit || 100)
           setScrappingIndustry(data.scrapingSettings.industry || '')
           setScrappingKeyword(data.scrapingSettings.keyword || '')
           setScrappingLocation(data.scrapingSettings.location || '')
+        } else if (data.campaign) {
+          // Pre-populate with campaign data if no scraping settings exist
+          setScrappingIndustry(data.campaign.industry || '')
+          setScrappingLocation(data.campaign.location || '')
+          const keywords = data.campaign.keywords || []
+          setScrappingKeyword(Array.isArray(keywords) ? keywords.join(', ') : keywords.toString())
+          setScrappingDailyLimit(100) // Default daily limit
+          setIsScrappingActive(false) // Default to inactive
         }
         
         // Load connected accounts
@@ -757,6 +765,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   useEffect(() => {
     if (campaign?.id && !campaignDataLoaded) {
       loadCampaignData()
+      // Also populate scrapping fields when campaign is first loaded
+      populateScrapingFromCampaignData()
     }
   }, [campaign?.id])
 
@@ -769,6 +779,65 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     window.addEventListener('create-campaign', handleCreateCampaign)
     return () => window.removeEventListener('create-campaign', handleCreateCampaign)
   }, [])
+
+  // Function to populate Contact Scrapping fields from campaign data  
+  const populateScrapingFromCampaignData = async () => {
+    if (!campaign?.id) {
+      console.log('⚠️ No campaign ID available for scrapping population')
+      return
+    }
+    
+    console.log('🔍 Fetching campaign data for Contact Scrapping fields...')
+    
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/save`)
+      const result = await response.json()
+      
+      console.log('📨 API Response for campaign data:', {
+        success: result.success,
+        hasCampaignData: !!result.data?.campaign,
+        campaignFields: result.data?.campaign ? {
+          id: result.data.campaign.id,
+          industry: result.data.campaign.industry,
+          location: result.data.campaign.location,
+          keywords: result.data.campaign.keywords
+        } : null
+      })
+      
+      if (result.success && result.data && result.data.campaign) {
+        const campaignData = result.data.campaign
+        
+        // Always populate from campaign data (override any existing values)
+        if (campaignData.industry) {
+          setScrappingIndustry(campaignData.industry)
+          console.log('✅ Set scrapping industry:', campaignData.industry)
+        }
+        if (campaignData.location) {
+          setScrappingLocation(campaignData.location)
+          console.log('✅ Set scrapping location:', campaignData.location)
+        }
+        if (campaignData.keywords) {
+          const keywords = campaignData.keywords || []
+          const keywordString = Array.isArray(keywords) ? keywords.join(', ') : keywords.toString()
+          setScrappingKeyword(keywordString)
+          console.log('✅ Set scrapping keywords:', keywordString)
+        }
+        
+        console.log('✅ Contact Scrapping fields populated from campaign data')
+      } else {
+        console.log('❌ Failed to get campaign data from API response')
+      }
+    } catch (error) {
+      console.error('❌ Error fetching campaign data for scrapping fields:', error)
+    }
+  }
+
+  // Ensure Contact Scrapping fields are populated when user navigates to contacts tab
+  useEffect(() => {
+    if (activeTab === 'contacts' && campaign?.id) {
+      populateScrapingFromCampaignData()
+    }
+  }, [activeTab, campaign?.id])
 
   // Auto-save functionality (only after data is loaded)
   useEffect(() => {
@@ -1455,25 +1524,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   const handleAdvancedCampaignComplete = async (campaignData: any) => {
     try {
-      const response = await fetch("/api/campaigns", {
+      // Use the correct API endpoint that supports advanced fields
+      console.log('🚀 Creating advanced campaign with data:', campaignData.formData)
+      
+      const response = await fetch("/api/campaigns/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name: campaignData.formData.campaignName,
-          description: `Campaign for ${campaignData.formData.companyName}`,
-          type: "email",
-          trigger: "manual",
-          status: "Draft",
-          settings: {
-            formData: campaignData.formData,
-            selectedICP: campaignData.selectedICP,
-            selectedPersona: campaignData.selectedPersona,
-            selectedPainPoint: campaignData.selectedPainPoint,
-            selectedOutreachStrategy: campaignData.selectedOutreachStrategy
-          }
-        })
+        body: JSON.stringify(campaignData.formData) // Send the full form data with keywords, location, industry
       })
 
       const result = await response.json()

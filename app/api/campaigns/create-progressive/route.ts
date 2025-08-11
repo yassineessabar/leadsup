@@ -1,0 +1,646 @@
+import { type NextRequest, NextResponse } from "next/server"
+import { cookies } from "next/headers"
+import { supabaseServer } from "@/lib/supabase"
+import OpenAI from 'openai'
+
+// Initialize OpenAI client with error handling
+const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI
+const openai = apiKey ? new OpenAI({
+  apiKey: apiKey,
+}) : null
+
+async function getUserIdFromSession(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get("session")?.value
+
+    if (!sessionToken) {
+      return null
+    }
+
+    const { data: session, error } = await supabaseServer
+      .from("user_sessions")
+      .select("user_id, expires_at")
+      .eq("session_token", sessionToken)
+      .single()
+    
+    if (error || !session) {
+      return null
+    }
+    
+    // Check if session is expired
+    if (new Date(session.expires_at) < new Date()) {
+      return null
+    }
+
+    return session.user_id
+  } catch (err) {
+    console.error("Error in getUserIdFromSession:", err)
+    return null
+  }
+}
+
+interface CampaignFormData {
+  campaignName: string
+  companyName: string
+  website: string
+  noWebsite: boolean
+  language: string
+  keywords: string[]
+  mainActivity: string
+  location: string
+  industry: string
+  productService?: string
+  goals?: string
+  targetAudience?: string
+}
+
+// Step 1: Create campaign and generate ICPs & Personas
+export async function POST(request: NextRequest) {
+  try {
+    const { step, campaignId, formData, aiAssets } = await request.json()
+    const userId = await getUserIdFromSession()
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
+    }
+
+    switch (step) {
+      case 'create-campaign':
+        return await createCampaignAndICPs(userId, formData)
+      case 'generate-pain-value': {
+        const result = await generatePainPointsAndValueProps(campaignId, aiAssets)
+        return NextResponse.json({ success: true, ...result })
+      }
+      case 'generate-sequence': {
+        const result = await generateEmailSequence(campaignId, formData, aiAssets)
+        return NextResponse.json({ success: true, ...result })
+      }
+      case 'update-assets': {
+        await updateCampaignAssets(campaignId, aiAssets)
+        return NextResponse.json({ success: true })
+      }
+      default:
+        return NextResponse.json({ success: false, error: "Invalid step" }, { status: 400 })
+    }
+  } catch (error) {
+    console.error("❌ Error in progressive campaign creation:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+  }
+}
+
+async function createCampaignAndICPs(userId: string, formData: CampaignFormData) {
+  try {
+    // Log the keywords being received
+    console.log('🔍 Keywords received in API:', formData.keywords)
+    console.log('🔍 Keywords type:', typeof formData.keywords, 'isArray:', Array.isArray(formData.keywords))
+    
+    // Create campaign first
+    const campaignData = {
+      user_id: userId,
+      name: formData.campaignName.trim(),
+      type: "Email",
+      trigger_type: "Manual",
+      status: "Draft",
+      company_name: formData.companyName.trim(),
+      website: formData.website?.trim() || null,
+      no_website: formData.noWebsite || false,
+      language: formData.language?.trim() || 'English',
+      keywords: formData.keywords || [],
+      main_activity: formData.mainActivity.trim(),
+      location: formData.location?.trim() || null,
+      industry: formData.industry?.trim() || null,
+      product_service: formData.productService?.trim() || null,
+      goals: formData.goals?.trim() || null,
+      target_audience: formData.targetAudience?.trim() || null,
+    }
+    
+    // Log what we're about to save
+    console.log('💾 Campaign data being saved:', {
+      keywords: campaignData.keywords,
+      industry: campaignData.industry,
+      location: campaignData.location
+    })
+
+    let { data: campaign, error: campaignError } = await supabaseServer
+      .from("campaigns")
+      .insert(campaignData)
+      .select()
+      .single()
+
+    if (campaignError) {
+      console.error('❌ Database error:', campaignError)
+      
+      // If error mentions missing columns, try with basic fields only
+      if (campaignError.message.includes("Could not find") || campaignError.message.includes("column")) {
+        console.log("🔄 Retrying with basic campaign fields only...")
+        const basicCampaignData = {
+          user_id: userId,
+          name: formData.campaignName.trim(),
+          type: "Email",
+          trigger_type: "Manual",
+          status: "Draft"
+        }
+        
+        const { data: basicCampaign, error: basicError } = await supabaseServer
+          .from("campaigns")
+          .insert(basicCampaignData)
+          .select()
+          .single()
+          
+        if (basicError) {
+          console.error('❌ Basic campaign creation failed:', basicError)
+          throw new Error(basicError.message)
+        }
+        
+        console.log("✅ Basic campaign created, now trying to add additional fields...")
+        campaign = basicCampaign
+        
+        // Try to add additional fields one by one
+        const additionalFields = {
+          company_name: formData.companyName.trim(),
+          website: formData.website?.trim() || null,
+          no_website: formData.noWebsite || false,
+          language: formData.language?.trim() || 'English',
+          keywords: formData.keywords || [],
+          main_activity: formData.mainActivity.trim(),
+          location: formData.location?.trim() || null,
+          industry: formData.industry?.trim() || null,
+          product_service: formData.productService?.trim() || null,
+          goals: formData.goals?.trim() || null,
+          target_audience: formData.targetAudience?.trim() || null,
+        }
+        
+        // Try to update with additional fields
+        const { data: updatedCampaign, error: updateError } = await supabaseServer
+          .from("campaigns")
+          .update(additionalFields)
+          .eq("id", campaign.id)
+          .eq("user_id", userId)
+          .select()
+          .single()
+          
+        if (updateError) {
+          console.error('⚠️ Could not add additional fields:', updateError.message)
+          console.log("💡 Please run the database migration to enable all campaign fields:")
+          console.log("   psql [connection-string] -f database-migration-ultra-simple.sql")
+        } else {
+          console.log("✅ Additional fields added successfully!")
+          campaign = updatedCampaign
+        }
+      } else {
+        throw new Error(campaignError.message)
+      }
+    }
+    
+    // Log what was actually saved
+    console.log('✅ Campaign saved to database:', {
+      id: campaign.id,
+      keywords: campaign.keywords,
+      industry: campaign.industry,
+      location: campaign.location
+    })
+
+    // Generate ICPs & Personas
+    const icpsAndPersonas = await generateICPsAndPersonas(formData)
+
+    // Save AI assets to database
+    await saveAIAssets(campaign.id, { 
+      icps: icpsAndPersonas.icps, 
+      personas: icpsAndPersonas.personas 
+    })
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        campaign,
+        aiAssets: icpsAndPersonas,
+        extractedKeywords: icpsAndPersonas.extracted_keywords || []
+      }
+    })
+  } catch (error) {
+    console.error("❌ Error creating campaign and ICPs:", error)
+    throw error
+  }
+}
+
+async function generateICPsAndPersonas(formData: CampaignFormData) {
+  try {
+    console.log("🎯 Generating ICPs & Personas...")
+
+    if (!openai) {
+      console.warn("⚠️ OpenAI API key not configured, using fallback data")
+      return getFallbackICPsAndPersonas()
+    }
+
+    const companyContext = `
+Company: ${formData.companyName}
+${formData.website ? `Website: ${formData.website}` : 'No website provided'}
+Location: ${formData.location || 'Not specified'}
+Industry: ${formData.industry || 'Not specified'}
+Main Activity: ${formData.mainActivity}
+${formData.productService ? `Product/Service: ${formData.productService}` : ''}
+${formData.goals ? `Goals: ${formData.goals}` : ''}
+${formData.targetAudience ? `Target Audience: ${formData.targetAudience}` : ''}
+Keywords: ${formData.keywords?.join(', ') || 'None'}
+Language: ${formData.language || 'English'}
+    `.trim()
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert marketing strategist. Generate 1 detailed Ideal Customer Profile (ICP) and 1 target persona for the given company. Respond in ${formData.language || 'English'}. Return only valid JSON without code blocks or markdown.`
+        },
+        {
+          role: "user",
+          content: `Based on this company information, generate 1 ICP and 1 persona in ${formData.language || 'English'}:
+
+${companyContext}
+
+Return JSON in this exact format:
+{
+  "icps": [{
+    "id": 1,
+    "title": "ICP Title",
+    "description": "Detailed description",
+    "company_size": "Size range",
+    "industry": "Industry type",
+    "budget_range": "Budget range",
+    "decision_makers": ["Role 1", "Role 2"]
+  }],
+  "personas": [{
+    "id": 1,
+    "icp_id": 1,
+    "name": "Persona Name",
+    "title": "Job Title",
+    "demographics": "Demographics info",
+    "goals": ["Goal 1", "Goal 2"],
+    "challenges": ["Challenge 1", "Challenge 2"],
+    "preferred_communication": "Communication style"
+  }],
+  "extracted_keywords": ["keyword1", "keyword2", "keyword3"]
+}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    })
+
+    const result = JSON.parse(response.choices[0].message.content || '{}')
+    console.log("✅ ICPs & Personas generated successfully")
+    return result
+
+  } catch (error) {
+    console.error("❌ Error generating ICPs & Personas:", error)
+    return getFallbackICPsAndPersonas()
+  }
+}
+
+async function generatePainPointsAndValueProps(campaignId: number, aiAssets: any) {
+  try {
+    console.log("💡 Generating Pain Points & Value Props...")
+
+    if (!openai) {
+      console.warn("⚠️ OpenAI API key not configured, using fallback data")
+      return getFallbackPainPointsAndValueProps()
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert sales strategist. Generate 1 specific pain point and 1 value proposition based on the ICP and persona. Return only valid JSON without code blocks or markdown.`
+        },
+        {
+          role: "user",
+          content: `Based on this ICP and persona, create 1 pain point and 1 value proposition:
+
+ICP: ${JSON.stringify(aiAssets.icps?.[0])}
+Persona: ${JSON.stringify(aiAssets.personas?.[0])}
+
+Return JSON in this exact format:
+{
+  "pain_points": [{
+    "id": 1,
+    "icp_id": 1,
+    "title": "Pain Point Title",
+    "description": "Detailed pain point description",
+    "impact": "Business impact",
+    "urgency": "high"
+  }],
+  "value_propositions": [{
+    "id": 1,
+    "pain_point_id": 1,
+    "title": "Value Prop Title", 
+    "description": "How we solve this pain point",
+    "benefits": ["Benefit 1", "Benefit 2"],
+    "proof_points": ["Proof 1", "Proof 2"]
+  }]
+}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 800
+    })
+
+    const result = JSON.parse(response.choices[0].message.content || '{}')
+    
+    // Update AI assets in database
+    await updateAIAssets(campaignId, {
+      pain_points: result.pain_points,
+      value_propositions: result.value_propositions
+    })
+
+    console.log("✅ Pain Points & Value Props generated successfully")
+    return result
+
+  } catch (error) {
+    console.error("❌ Error generating Pain Points & Value Props:", error)
+    return getFallbackPainPointsAndValueProps()
+  }
+}
+
+async function generateEmailSequence(campaignId: number, formData: CampaignFormData, aiAssets: any) {
+  try {
+    console.log("📧 Generating Email Sequence...")
+
+    if (!openai) {
+      console.warn("⚠️ OpenAI API key not configured, using fallback data")
+      return getFallbackEmailSequence()
+    }
+
+    const companyContext = `
+Company: ${formData.companyName}
+Industry: ${formData.industry || 'Not specified'}
+Main Activity: ${formData.mainActivity}
+Language: ${formData.language || 'English'}
+    `.trim()
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert email marketing copywriter. Generate 6 compelling emails for a 2-sequence campaign. First 3 emails are initial outreach, last 3 are re-engagement after 60 days. Write in ${formData.language || 'English'}. Return only valid JSON without code blocks or markdown.`
+        },
+        {
+          role: "user",
+          content: `Create 6 emails in ${formData.language || 'English'} for this campaign:
+
+${companyContext}
+
+ICP: ${JSON.stringify(aiAssets.icps?.[0])}
+Value Proposition: ${JSON.stringify(aiAssets.value_propositions?.[0])}
+
+Return JSON in this exact format:
+{
+  "email_sequences": [
+    {
+      "step": 1,
+      "subject": "Initial introduction subject",
+      "content": "Email body with {{firstName}} and {{companyName}} variables",
+      "purpose": "Introduction/awareness",
+      "timing_days": 0
+    },
+    {
+      "step": 2, 
+      "subject": "First follow-up subject",
+      "content": "Follow-up email content",
+      "purpose": "Value demonstration",
+      "timing_days": 3
+    },
+    {
+      "step": 3,
+      "subject": "Final follow-up subject",
+      "content": "Final follow-up content", 
+      "purpose": "Call to action",
+      "timing_days": 6
+    },
+    {
+      "step": 4,
+      "subject": "Re-engagement subject after 60 days",
+      "content": "Re-engagement email content",
+      "purpose": "Re-engagement",
+      "timing_days": 66
+    },
+    {
+      "step": 5,
+      "subject": "Second re-engagement follow-up",
+      "content": "Follow-up re-engagement content",
+      "purpose": "Renewed value proposition",
+      "timing_days": 69
+    },
+    {
+      "step": 6,
+      "subject": "Final re-engagement attempt",
+      "content": "Final re-engagement content",
+      "purpose": "Last call to action",
+      "timing_days": 72
+    }
+  ]
+}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 1500
+    })
+
+    const result = JSON.parse(response.choices[0].message.content || '{}')
+    
+    // Update AI assets in database with complete sequence
+    await updateAIAssets(campaignId, {
+      email_sequences: result.email_sequences
+    })
+
+    console.log("✅ Email Sequence generated successfully")
+    return result
+
+  } catch (error) {
+    console.error("❌ Error generating email sequence:", error)
+    return getFallbackEmailSequence()
+  }
+}
+
+async function updateCampaignAssets(campaignId: number, updatedAssets: any) {
+  try {
+    await updateAIAssets(campaignId, updatedAssets)
+  } catch (error) {
+    console.error("❌ Error updating campaign assets:", error)
+    throw error
+  }
+}
+
+async function saveAIAssets(campaignId: number, aiAssets: any) {
+  try {
+    console.log("💾 Saving AI assets to database...")
+
+    const { error } = await supabaseServer
+      .from("campaign_ai_assets")
+      .insert({
+        campaign_id: campaignId,
+        icps: aiAssets.icps || [],
+        personas: aiAssets.personas || [],
+        pain_points: aiAssets.pain_points || [],
+        value_propositions: aiAssets.value_propositions || [],
+        email_sequences: aiAssets.email_sequences || [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+
+    if (error) {
+      console.error("❌ Error saving AI assets:", error)
+      // Don't throw error, just log it
+    } else {
+      console.log("✅ AI assets saved successfully")
+    }
+
+  } catch (error) {
+    console.error("❌ Error in saveAIAssets:", error)
+  }
+}
+
+async function updateAIAssets(campaignId: number, updates: any) {
+  try {
+    console.log("🔄 Updating AI assets in database...")
+
+    // First get current assets
+    const { data: currentAssets } = await supabaseServer
+      .from("campaign_ai_assets")
+      .select("*")
+      .eq("campaign_id", campaignId)
+      .single()
+
+    if (currentAssets) {
+      // Update existing record
+      const updatedData = {
+        icps: updates.icps || currentAssets.icps,
+        personas: updates.personas || currentAssets.personas,
+        pain_points: updates.pain_points || currentAssets.pain_points,
+        value_propositions: updates.value_propositions || currentAssets.value_propositions,
+        email_sequences: updates.email_sequences || currentAssets.email_sequences,
+        updated_at: new Date().toISOString()
+      }
+
+      const { error } = await supabaseServer
+        .from("campaign_ai_assets")
+        .update(updatedData)
+        .eq("campaign_id", campaignId)
+
+      if (error) {
+        console.error("❌ Error updating AI assets:", error)
+      } else {
+        console.log("✅ AI assets updated successfully")
+      }
+    }
+
+  } catch (error) {
+    console.error("❌ Error in updateAIAssets:", error)
+  }
+}
+
+// Fallback functions
+function getFallbackICPsAndPersonas() {
+  return {
+    icps: [
+      {
+        id: 1,
+        title: "Mid-Market Companies",
+        description: "Growing companies looking to improve their processes",
+        company_size: "50-500 employees",
+        industry: "Technology/Services",
+        budget_range: "$10K-100K",
+        decision_makers: ["CEO", "VP Operations"]
+      }
+    ],
+    personas: [
+      {
+        id: 1,
+        icp_id: 1,
+        name: "Tech-Savvy Manager",
+        title: "Operations Manager",
+        demographics: "35-45 years old, tech-savvy",
+        goals: ["Improve efficiency", "Reduce costs"],
+        challenges: ["Limited resources", "Tight deadlines"],
+        preferred_communication: "Email, direct approach"
+      }
+    ],
+    extracted_keywords: []
+  }
+}
+
+function getFallbackPainPointsAndValueProps() {
+  return {
+    pain_points: [
+      {
+        id: 1,
+        icp_id: 1,
+        title: "Manual Processes",
+        description: "Relying on manual processes that are time-consuming",
+        impact: "Reduced productivity and increased errors",
+        urgency: "high"
+      }
+    ],
+    value_propositions: [
+      {
+        id: 1,
+        pain_point_id: 1,
+        title: "Automation Solution",
+        description: "Automate your processes to save time and reduce errors",
+        benefits: ["Save 10+ hours per week", "Reduce errors by 90%"],
+        proof_points: ["Case studies", "Customer testimonials"]
+      }
+    ]
+  }
+}
+
+function getFallbackEmailSequence() {
+  return {
+    email_sequences: [
+      {
+        step: 1,
+        subject: "Quick question about {{companyName}}",
+        content: "Hi {{firstName}},\n\nI noticed {{companyName}} and thought you might be interested in how we've helped similar companies improve their operations.\n\nWould you be open to a brief conversation?",
+        purpose: "Introduction",
+        timing_days: 0
+      },
+      {
+        step: 2,
+        subject: "Following up - {{companyName}}",
+        content: "Hi {{firstName}},\n\nI wanted to follow up on my previous email. I understand you're busy, but I believe we could really help {{companyName}} streamline operations.\n\nCould we schedule a quick 15-minute call?",
+        purpose: "Value demonstration",
+        timing_days: 3
+      },
+      {
+        step: 3,
+        subject: "Final thoughts for {{companyName}}",
+        content: "Hi {{firstName}},\n\nThis will be my last email in this sequence. I genuinely believe we can help {{companyName}} save significant time and resources.\n\nIf you're interested, I'm here. Otherwise, I won't bother you further.",
+        purpose: "Call to action",
+        timing_days: 6
+      },
+      {
+        step: 4,
+        subject: "New updates for {{companyName}}",
+        content: "Hi {{firstName}},\n\nIt's been a while since we last connected. We've recently launched some new features that I think would be perfect for {{companyName}}.\n\nWould you be interested in learning more?",
+        purpose: "Re-engagement",
+        timing_days: 66
+      },
+      {
+        step: 5,
+        subject: "Special opportunity for {{companyName}}",
+        content: "Hi {{firstName}},\n\nI wanted to share an exclusive opportunity we're offering to companies like {{companyName}}. \n\nWe're seeing incredible results with similar businesses in your industry.",
+        purpose: "Renewed value proposition",
+        timing_days: 69
+      },
+      {
+        step: 6,
+        subject: "Last chance - {{companyName}}",
+        content: "Hi {{firstName}},\n\nThis is my final outreach. We've helped dozens of companies similar to {{companyName}} achieve remarkable results.\n\nIf there's any interest, I'd love to connect. Otherwise, I'll close your file.",
+        purpose: "Last call to action",
+        timing_days: 72
+      }
+    ]
+  }
+}

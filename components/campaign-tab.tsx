@@ -400,28 +400,16 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
   const handleAdvancedCampaignComplete = async (campaignData: any) => {
     try {
-      // Prepare campaign data for the regular campaigns endpoint
-      const campaignPayload = {
-        name: campaignData.formData.campaignName,
-        type: "Email", // Default type
-        trigger: "New Client", // Default trigger
-        outreach_strategy: campaignData.selectedOutreachStrategy,
-        // Include other relevant data
-        company_name: campaignData.formData.companyName,
-        website: campaignData.formData.website,
-        language: campaignData.formData.language,
-        selected_icp: campaignData.selectedICP,
-        selected_persona: campaignData.selectedPersona,
-        selected_pain_point: campaignData.selectedPainPoint,
-      }
+      // Use the correct API endpoint that supports advanced fields
+      console.log('🚀 Creating advanced campaign with data:', campaignData.formData)
       
-      const response = await fetch("/api/campaigns", {
-        method: "POST",
+      const response = await fetch("/api/campaigns/create", {
+        method: "POST", 
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify(campaignPayload),
+        body: JSON.stringify(campaignData.formData), // Send the full form data with keywords, location, industry
       })
 
       const result = await response.json()

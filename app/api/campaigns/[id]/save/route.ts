@@ -55,8 +55,21 @@ export async function GET(
       .single()
 
     if (campaignError || !campaign) {
+      console.error('❌ Campaign fetch error:', campaignError)
       return NextResponse.json({ success: false, error: "Campaign not found" }, { status: 404 })
     }
+    
+    // Debug: Log what campaign data is being fetched
+    console.log('📋 Campaign data fetched:', {
+      id: campaign.id,
+      name: campaign.name,
+      keywords: campaign.keywords,
+      location: campaign.location,
+      industry: campaign.industry,
+      hasKeywords: !!campaign.keywords,
+      hasLocation: !!campaign.location,
+      hasIndustry: !!campaign.industry
+    })
 
     // Fetch all campaign-related data
     const [
