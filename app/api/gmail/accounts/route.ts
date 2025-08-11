@@ -13,13 +13,25 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Try to get connected Gmail accounts for the user from campaign_senders
-    console.log('Fetching Gmail accounts for user:', userId)
+    // Get campaign ID from query parameters
+    const { searchParams } = new URL(request.url)
+    const campaignId = searchParams.get('campaign_id')
+
+    if (!campaignId) {
+      return NextResponse.json(
+        { error: 'Campaign ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Try to get connected Gmail accounts for the specific campaign
+    console.log(`Fetching Gmail accounts for user: ${userId}, campaign: ${campaignId}`)
     
     const { data: accounts, error } = await supabaseServer
       .from('campaign_senders')
       .select('id, email, name, profile_picture, created_at, campaign_id, health_score, daily_limit, warmup_status, is_active')
       .eq('user_id', userId)
+      .eq('campaign_id', campaignId)
       .eq('sender_type', 'email')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
@@ -32,7 +44,7 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    console.log('Found Gmail accounts:', accounts?.length || 0)
+    console.log(`Found Gmail accounts for campaign ${campaignId}:`, accounts?.length || 0)
 
     return NextResponse.json(accounts || [])
   } catch (error) {

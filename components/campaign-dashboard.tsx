@@ -1076,8 +1076,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         if (popup.closed) {
           clearInterval(checkClosed)
           setGmailAuthLoading(false)
-          // Refresh connected accounts
-          loadConnectedAccounts()
+          // Refresh connected accounts with delay to ensure backend processing
+          setTimeout(() => {
+            loadConnectedAccounts()
+            // Additional refresh to catch any race conditions
+            setTimeout(() => {
+              loadConnectedAccounts()
+            }, 1000)
+          }, 500)
         }
       }, 1000)
       
@@ -1089,7 +1095,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           popup.close()
           clearInterval(checkClosed)
           setGmailAuthLoading(false)
-          loadConnectedAccounts()
+          
+          // Add delay to allow backend processing, then refresh accounts multiple times to ensure consistency
+          setTimeout(() => {
+            loadConnectedAccounts()
+            // Refresh again after a short delay to catch any race conditions
+            setTimeout(() => {
+              loadConnectedAccounts()
+            }, 1000)
+          }, 500)
           
           toast({
             title: "Success",
@@ -1655,12 +1669,19 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   // Load connected email accounts
   const loadConnectedAccounts = async () => {
+    if (!campaign?.id) {
+      console.log('⚠️ No campaign ID available, skipping account load')
+      return
+    }
+    
     try {
-      const response = await fetch('/api/gmail/accounts')
+      // Add cache-busting parameter and campaign ID to prevent stale data and get campaign-specific accounts
+      const response = await fetch(`/api/gmail/accounts?campaign_id=${campaign.id}&t=${Date.now()}`)
       if (response.ok) {
         const text = await response.text()
         try {
           const accounts = JSON.parse(text)
+          console.log(`📧 Loaded Gmail accounts for campaign ${campaign.id}:`, accounts.length)
           setConnectedEmailAccounts(accounts)
           setConnectedGmailAccounts(accounts) // Also set Gmail accounts for sender tab
         } catch (jsonError) {
@@ -1970,6 +1991,48 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       })
 
       setSelectedContacts([])
+      fetchContacts()
+    } catch (error) {
+      console.error('Error deleting contacts:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete contacts",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Function to delete selected contacts or specific contact IDs
+  const deleteSelectedContacts = async (contactIds = null) => {
+    const idsToDelete = contactIds || selectedContacts
+    
+    if (!idsToDelete || idsToDelete.length === 0) {
+      toast({
+        title: "No contacts selected",
+        description: "Please select contacts to delete",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!confirm(`Are you sure you want to delete ${idsToDelete.length} contact(s)?`)) return
+
+    try {
+      const deletePromises = idsToDelete.map(contactId =>
+        fetch(`/api/contacts/${contactId}`, { method: 'DELETE' })
+      )
+
+      await Promise.all(deletePromises)
+
+      toast({
+        title: "Contacts deleted",
+        description: `${idsToDelete.length} contact(s) have been deleted successfully`
+      })
+
+      // Clear selection if we were deleting selected contacts
+      if (!contactIds) {
+        setSelectedContacts([])
+      }
       fetchContacts()
     } catch (error) {
       console.error('Error deleting contacts:', error)
