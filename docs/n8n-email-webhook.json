@@ -1,0 +1,301 @@
+{
+  "name": "Email Capture Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "email-capture",
+        "responseMode": "responseNode",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "id": "webhook-receiver",
+      "name": "Email Webhook",
+      "webhookId": "email-capture-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "extract-from",
+              "name": "from_email",
+              "value": "={{ $json.from.match(/<([^>]+)>/)?.[1] || $json.from }}",
+              "type": "string"
+            },
+            {
+              "id": "extract-to",
+              "name": "to_email",
+              "value": "={{ $json.to.match(/<([^>]+)>/)?.[1] || $json.to }}",
+              "type": "string"
+            },
+            {
+              "id": "extract-subject",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "extract-body",
+              "name": "body_text",
+              "value": "={{ $json.text || $json.plain }}",
+              "type": "string"
+            },
+            {
+              "id": "extract-html",
+              "name": "body_html",
+              "value": "={{ $json.html }}",
+              "type": "string"
+            },
+            {
+              "id": "generate-id",
+              "name": "message_id",
+              "value": "={{ 'n8n-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9) }}",
+              "type": "string"
+            },
+            {
+              "id": "timestamp",
+              "name": "received_at",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [300, 300],
+      "id": "extract-data",
+      "name": "Extract Email Data"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "resource": "campaign_senders",
+        "filter": "email=eq.{{ $json.to_email }}",
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "id": "find-sender",
+      "name": "Find Campaign Sender",
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operation": "larger"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [700, 300],
+      "id": "check-campaign",
+      "name": "Is Campaign Email?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "user-id",
+              "name": "user_id",
+              "value": "={{ $json[0].user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "campaign-id",
+              "name": "campaign_id",
+              "value": "={{ $json[0].campaign_id }}",
+              "type": "string"
+            },
+            {
+              "id": "conversation-id",
+              "name": "conversation_id",
+              "value": "={{ Buffer.from([$node['Extract Email Data'].json.from_email, $node['Extract Email Data'].json.to_email].sort().join('|')).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 32) }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 200],
+      "id": "prepare-message",
+      "name": "Prepare Message Data"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "resource": "inbox_messages",
+        "jsonBody": {
+          "user_id": "={{ $json.user_id }}",
+          "message_id": "={{ $node['Extract Email Data'].json.message_id }}",
+          "conversation_id": "={{ $json.conversation_id }}",
+          "campaign_id": "={{ $json.campaign_id }}",
+          "contact_email": "={{ $node['Extract Email Data'].json.from_email }}",
+          "sender_email": "={{ $node['Extract Email Data'].json.to_email }}",
+          "subject": "={{ $node['Extract Email Data'].json.subject }}",
+          "body_text": "={{ $node['Extract Email Data'].json.body_text }}",
+          "body_html": "={{ $node['Extract Email Data'].json.body_html }}",
+          "direction": "inbound",
+          "channel": "email",
+          "status": "unread",
+          "folder": "inbox",
+          "provider": "n8n",
+          "sent_at": "={{ $node['Extract Email Data'].json.received_at }}",
+          "received_at": "={{ $node['Extract Email Data'].json.received_at }}"
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1100, 200],
+      "id": "store-message",
+      "name": "Store in Inbox",
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "resource": "inbox_threads",
+        "jsonBody": {
+          "user_id": "={{ $json.user_id }}",
+          "conversation_id": "={{ $json.conversation_id }}",
+          "campaign_id": "={{ $json.campaign_id }}",
+          "contact_email": "={{ $node['Extract Email Data'].json.from_email }}",
+          "subject": "={{ $node['Extract Email Data'].json.subject }}",
+          "last_message_at": "={{ $node['Extract Email Data'].json.received_at }}",
+          "last_message_preview": "={{ $node['Extract Email Data'].json.body_text.substring(0, 150) }}",
+          "status": "active"
+        },
+        "onConflict": "conversation_id,user_id"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1300, 200],
+      "id": "update-thread",
+      "name": "Update Thread",
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": {
+          "success": true,
+          "message": "Email processed",
+          "message_id": "={{ $node['Extract Email Data'].json.message_id }}",
+          "timestamp": "={{ $node['Extract Email Data'].json.received_at }}"
+        },
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1500, 200],
+      "id": "success-response",
+      "name": "Success Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": {
+          "success": true,
+          "message": "Not a campaign email, ignored"
+        },
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 400],
+      "id": "ignore-response",
+      "name": "Ignore Non-Campaign"
+    },
+    {
+      "parameters": {
+        "message": "=New email received:\nFrom: {{ $node['Extract Email Data'].json.from_email }}\nSubject: {{ $node['Extract Email Data'].json.subject }}",
+        "additionalFields": {
+          "priority": "normal"
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1300, 100],
+      "id": "notify-slack",
+      "name": "Notify Slack (Optional)",
+      "credentials": {
+        "slackApi": {
+          "id": "2",
+          "name": "Slack"
+        }
+      },
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Email Webhook": {
+      "main": [[{"node": "Extract Email Data", "type": "main", "index": 0}]]
+    },
+    "Extract Email Data": {
+      "main": [[{"node": "Find Campaign Sender", "type": "main", "index": 0}]]
+    },
+    "Find Campaign Sender": {
+      "main": [[{"node": "Is Campaign Email?", "type": "main", "index": 0}]]
+    },
+    "Is Campaign Email?": {
+      "main": [
+        [{"node": "Prepare Message Data", "type": "main", "index": 0}],
+        [{"node": "Ignore Non-Campaign", "type": "main", "index": 0}]
+      ]
+    },
+    "Prepare Message Data": {
+      "main": [[{"node": "Store in Inbox", "type": "main", "index": 0}]]
+    },
+    "Store in Inbox": {
+      "main": [[
+        {"node": "Update Thread", "type": "main", "index": 0},
+        {"node": "Notify Slack (Optional)", "type": "main", "index": 0}
+      ]]
+    },
+    "Update Thread": {
+      "main": [[{"node": "Success Response", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "errorWorkflow": "error-handler-workflow-id"
+  },
+  "staticData": null,
+  "meta": {
+    "templateId": "email-capture-webhook"
+  },
+  "tags": ["email", "webhook", "automation"]
+}

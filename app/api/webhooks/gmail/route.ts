@@ -111,9 +111,8 @@ async function parseGmailMessage(gmail: any, messageId: string, userId: string) 
         
         // Try to find the contact
         const { data: contact } = await supabaseServer
-          .from('campaign_leads')
+          .from('contacts')
           .select('id')
-          .eq('campaign_id', campaignId)
           .eq('email', fromEmail)
           .single()
           
