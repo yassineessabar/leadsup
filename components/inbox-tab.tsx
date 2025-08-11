@@ -86,7 +86,6 @@ export default function InboxPage() {
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null)
   const [selectedFolder, setSelectedFolder] = useState("inbox")
   const [dateRange, setDateRange] = useState("30")
-  const [channelFilter, setChannelFilter] = useState("")
   
   // Folder counts state
   const [folderCounts, setFolderCounts] = useState({
@@ -186,7 +185,6 @@ export default function InboxPage() {
       if (selectedCampaign) params.append('campaigns', selectedCampaign) // Fixed: use 'campaigns' not 'campaign_id'
       if (searchQuery) params.append('search', searchQuery)
       if (selectedFolder) params.append('folder', selectedFolder)
-      if (channelFilter) params.append('channel', channelFilter)
       params.append('view', 'threads') // Ensure we use threaded view
       
       console.log('📡 API params:', params.toString())
@@ -247,7 +245,7 @@ export default function InboxPage() {
 
   useEffect(() => {
     fetchEmails()
-  }, [selectedStatus, selectedAccount, selectedCampaign, searchQuery, activeTab, selectedFolder, channelFilter, dateRange])
+  }, [selectedStatus, selectedAccount, selectedCampaign, searchQuery, activeTab, selectedFolder, dateRange])
 
   const handleEmailSelect = async (email: Email) => {
     setSelectedEmail(email)
@@ -381,29 +379,56 @@ export default function InboxPage() {
         from: selectedFolder, 
         to: 'inbox' 
       })
-      // Update the latest message in the thread
-      const messageId = selectedEmail.latest_message?.id || selectedEmail.id
-      const response = await fetch(`/api/inbox/${messageId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folder: 'inbox' })
-      })
+      // Update ALL messages in the thread/conversation to restore the entire thread
+      const conversationId = selectedEmail.conversation_id
+      let response
+      
+      if (conversationId) {
+        // Use a special endpoint to update all messages in a conversation
+        response = await fetch(`/api/inbox/threads/${conversationId}/move-folder`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder: 'inbox' })
+        })
+      } else {
+        // Fallback: update just the latest message
+        const messageId = selectedEmail.latest_message?.id || selectedEmail.id
+        response = await fetch(`/api/inbox/${messageId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder: 'inbox' })
+        })
+      }
       
       const result = await response.json()
       console.log('📧 Restore response:', result)
       
-      // Remove from current list
-      const newEmails = emails.filter(e => e.id !== selectedEmail.id)
-      setEmails(newEmails)
-      setSelectedEmail(newEmails[0] || null)
-      
-      // Update folder counts
-      fetchFolderStats()
-      
-      toast({
-        title: "Email restored",
-        description: "The email has been restored to inbox"
-      })
+      if (result.success) {
+        // Remove from current list immediately
+        const newEmails = emails.filter(e => e.id !== selectedEmail.id)
+        setEmails(newEmails)
+        setSelectedEmail(newEmails[0] || null)
+        
+        // Update folder counts
+        fetchFolderStats()
+        
+        // Refresh current folder view to ensure consistency
+        setTimeout(() => {
+          fetchEmails()
+        }, 500)
+        
+        toast({
+          title: "Email restored",
+          description: "The email has been restored to inbox"
+        })
+      } else {
+        console.error('❌ Restore API failed:', result.error)
+        toast({
+          title: "Error",
+          description: result.error || "Failed to restore email",
+          variant: "destructive"
+        })
+      }
     } catch (error) {
       console.error('Error restoring email:', error)
       toast({
@@ -437,21 +462,44 @@ export default function InboxPage() {
           from: selectedFolder, 
           to: 'trash' 
         })
-        // Update the latest message in the thread
-        const messageId = selectedEmail.latest_message?.id || selectedEmail.id
-        const response = await fetch(`/api/inbox/${messageId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folder: 'trash' })
-        })
+        // Update ALL messages in the thread/conversation to move the entire thread
+        const conversationId = selectedEmail.conversation_id
+        let response
+        
+        if (conversationId) {
+          // Use a special endpoint to update all messages in a conversation
+          response = await fetch(`/api/inbox/threads/${conversationId}/move-folder`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder: 'trash' })
+          })
+        } else {
+          // Fallback: update just the latest message
+          const messageId = selectedEmail.latest_message?.id || selectedEmail.id
+          response = await fetch(`/api/inbox/${messageId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder: 'trash' })
+          })
+        }
         
         const result = await response.json()
         console.log('📧 Move to trash response:', result)
         
-        toast({
-          title: "Email moved to trash",
-          description: "The email has been moved to trash"
-        })
+        if (result.success) {
+          toast({
+            title: "Email moved to trash",
+            description: "The email has been moved to trash"
+          })
+        } else {
+          console.error('❌ Move to trash API failed:', result.error)
+          toast({
+            title: "Error",
+            description: result.error || "Failed to move email to trash",
+            variant: "destructive"
+          })
+          return // Don't proceed with local updates if API failed
+        }
       }
       
       // Remove from current list
@@ -461,6 +509,11 @@ export default function InboxPage() {
       
       // Update folder counts
       fetchFolderStats()
+      
+      // Refresh current folder view to ensure consistency
+      setTimeout(() => {
+        fetchEmails()
+      }, 500)
       
     } catch (error) {
       console.error('Error handling email delete:', error)
@@ -620,19 +673,6 @@ export default function InboxPage() {
             </select>
           </div>
 
-          {/* Channel Filter */}
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-2">Channel</label>
-            <select 
-              value={channelFilter}
-              onChange={(e) => setChannelFilter(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[rgb(87,140,255)]"
-            >
-              <option value="">All Channels</option>
-              <option value="email">Email</option>
-              <option value="sms">SMS</option>
-            </select>
-          </div>
         </div>
 
         {/* Search Section */}
