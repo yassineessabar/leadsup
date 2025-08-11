@@ -454,6 +454,9 @@ Return JSON in this exact format:
     await updateAIAssets(campaignId, {
       email_sequences: result.email_sequences
     })
+    
+    // Save AI-generated sequences to campaign_sequences table
+    await saveAISequencesToCampaignSequences(campaignId, result.email_sequences || [])
 
     console.log("✅ Email Sequence generated successfully")
     return result
@@ -642,5 +645,71 @@ function getFallbackEmailSequence() {
         timing_days: 72
       }
     ]
+  }
+}
+
+async function saveAISequencesToCampaignSequences(campaignId: number, aiSequences: any[]) {
+  try {
+    if (!aiSequences || aiSequences.length === 0) {
+      console.log("ℹ️ No AI sequences to save to campaign_sequences")
+      return
+    }
+
+    console.log(`📧 Saving ${aiSequences.length} AI sequences to campaign_sequences table...`)
+
+    // Delete existing sequences for this campaign
+    const { error: deleteError } = await supabaseServer
+      .from("campaign_sequences")
+      .delete()
+      .eq("campaign_id", campaignId)
+
+    if (deleteError) {
+      console.error("❌ Error deleting existing sequences:", deleteError)
+      throw new Error(`Failed to delete existing sequences: ${deleteError.message}`)
+    }
+
+    // Convert AI sequences to campaign_sequences format
+    const sequenceData = aiSequences.map((aiSeq: any, index: number) => ({
+      campaign_id: campaignId,
+      step_number: aiSeq.step || (index + 1),
+      subject: aiSeq.subject || `Email ${index + 1} Subject`,
+      content: aiSeq.content || "",
+      timing_days: aiSeq.timing_days || (aiSeq.step === 1 ? 0 : 3), // First email immediate, others 3 days apart
+      variants: 1,
+      outreach_method: "email",
+      sequence_number: aiSeq.step <= 3 ? 1 : 2, // First 3 emails are sequence 1, next 3 are sequence 2
+      sequence_step: aiSeq.step <= 3 ? aiSeq.step : (aiSeq.step - 3), // Reset step count for sequence 2
+      title: `Email ${aiSeq.step}`,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }))
+
+    console.log('📝 AI sequences converted to campaign_sequences format:', JSON.stringify(sequenceData.map(s => ({
+      step_number: s.step_number,
+      subject: s.subject,
+      timing_days: s.timing_days,
+      sequence_number: s.sequence_number,
+      sequence_step: s.sequence_step
+    })), null, 2))
+
+    // Insert sequences
+    const { data: insertedData, error: insertError } = await supabaseServer
+      .from("campaign_sequences")
+      .insert(sequenceData)
+      .select()
+
+    if (insertError) {
+      console.error("❌ Error inserting AI sequences:", insertError)
+      throw new Error(`Failed to save AI sequences: ${insertError.message}`)
+    }
+
+    console.log(`✅ Successfully saved ${sequenceData.length} AI sequences to campaign_sequences`)
+    return insertedData
+
+  } catch (error) {
+    console.error("❌ Error in saveAISequencesToCampaignSequences:", error)
+    // Don't throw error to prevent campaign creation from failing
+    console.warn("⚠️ Continuing without saving AI sequences to campaign_sequences...")
   }
 }
