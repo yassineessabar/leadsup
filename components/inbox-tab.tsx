@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Search, MoreHorizontal, Reply, Forward, Archive, Trash2, Star, ChevronDown, Zap, Mail, BookOpen, MoreVertical, Send, X, Filter, Users, MessageSquare, RotateCcw } from 'lucide-react'
+import { Search, MoreHorizontal, Reply, Forward, Archive, Trash2, Star, ChevronDown, Zap, Mail, MoreVertical, Send, X, Filter, Users, MessageSquare, RotateCcw } from 'lucide-react'
 
 interface Email {
   id: number
@@ -644,25 +644,6 @@ export default function InboxPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 text-sm border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
             />
-          </div>
-        </div>
-
-        {/* More Section */}
-        <div className="px-4 pb-4 mt-auto">
-          <div className="text-sm font-medium text-gray-700 mb-3">More</div>
-          
-          <div className="space-y-1">
-            <div 
-              onClick={() => setSelectedAccount(null)}
-              className="flex items-center space-x-2 text-sm text-gray-600 py-1 px-2 hover:bg-gray-50 rounded cursor-pointer"
-            >
-              <Mail className="w-4 h-4" />
-              <span>All Inbox</span>
-            </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-600 py-1 px-2 hover:bg-gray-50 rounded cursor-pointer">
-              <BookOpen className="w-4 h-4" />
-              <span>Unread only</span>
-            </div>
           </div>
         </div>
       </div>
