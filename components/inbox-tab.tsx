@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { Search, MoreHorizontal, Reply, Forward, Archive, Trash2, Star, ChevronDown, Zap, Mail, MoreVertical, Send, X, Filter, Users, MessageSquare, RotateCcw } from 'lucide-react'
 
@@ -71,8 +70,7 @@ export default function InboxPage() {
   const [selectedStatus, setSelectedStatus] = useState("")
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [replyDialog, setReplyDialog] = useState(false)
-  const [forwardDialog, setForwardDialog] = useState(false)
+  const [composeMode, setComposeMode] = useState<'reply' | 'forward' | null>(null)
   const [replyContent, setReplyContent] = useState("")
   const [forwardTo, setForwardTo] = useState("")
   const [forwardContent, setForwardContent] = useState("")
@@ -215,7 +213,7 @@ export default function InboxPage() {
           // Fix sender/recipient mapping based on actual data structure
           // In inbox_messages: contact_email = who sent TO us, sender_email = our email that received it
           sender: email.sender || email.contact_email,  // External person who sent the email
-          to_email: email.to_email || email.sender_email,  // Our email address that received it
+          to_email: email.to_email || email.sender_email || email.recipient_email,  // Our email address that received it
           // Also ensure we have content/preview fields
           content: email.content || email.body_text || email.body_html,
           preview: email.preview || (email.body_text ? email.body_text.substring(0, 100) + '...' : '')
@@ -537,13 +535,13 @@ export default function InboxPage() {
   const handleReply = () => {
     if (!selectedEmail) return
     setReplyContent(`\n\n---\nOn ${selectedEmail.date}, ${selectedEmail.sender} wrote:\n${selectedEmail.preview || ''}`)
-    setReplyDialog(true)
+    setComposeMode('reply')
   }
 
   const handleForward = () => {
     if (!selectedEmail) return
     setForwardContent(`\n\n--- Forwarded message ---\nFrom: ${selectedEmail.sender}\nDate: ${selectedEmail.date}\nSubject: ${selectedEmail.subject}\n\n${selectedEmail.preview || ''}`)
-    setForwardDialog(true)
+    setComposeMode('forward')
   }
 
   const sendReply = async () => {
@@ -555,7 +553,7 @@ export default function InboxPage() {
         title: "Reply sent",
         description: `Your reply to ${selectedEmail.sender} has been sent`
       })
-      setReplyDialog(false)
+      setComposeMode(null)
       setReplyContent("")
     } catch (error) {
       toast({
@@ -575,7 +573,7 @@ export default function InboxPage() {
         title: "Email forwarded",
         description: `Email forwarded to ${forwardTo}`
       })
-      setForwardDialog(false)
+      setComposeMode(null)
       setForwardTo("")
       setForwardContent("")
     } catch (error) {
@@ -585,6 +583,13 @@ export default function InboxPage() {
         variant: "destructive"
       })
     }
+  }
+
+  const cancelCompose = () => {
+    setComposeMode(null)
+    setReplyContent("")
+    setForwardContent("")
+    setForwardTo("")
   }
 
   return (
@@ -891,7 +896,19 @@ export default function InboxPage() {
               
               <div className="text-sm text-gray-600 mt-2">
                 <div>From: {selectedEmail.sender}</div>
-                <div>To: {selectedEmail.to_email || emailAccounts[0]}</div>
+                {composeMode === 'forward' ? (
+                  <div className="flex items-center">
+                    <span className="mr-2">To:</span>
+                    <Input 
+                      value={forwardTo}
+                      onChange={(e) => setForwardTo(e.target.value)}
+                      placeholder="Enter recipient email"
+                      className="flex-1 text-sm border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] h-8"
+                    />
+                  </div>
+                ) : (
+                  <div>To: {selectedEmail.to_email || selectedEmail.sender_email || 'Unknown'}</div>
+                )}
                 {selectedEmail.campaign_name && (
                   <div className="flex items-center space-x-2 mt-1">
                     <span>Campaign:</span>
@@ -908,42 +925,109 @@ export default function InboxPage() {
               </div>
             </div>
 
-            {/* Email Content */}
+            {/* Email Content or Compose View */}
             <div className="flex-1 p-6 overflow-y-auto bg-white">
-              <div className="prose max-w-none">
-                {selectedEmail.content ? (
-                  <div 
-                    className="text-gray-900 whitespace-pre-wrap" 
-                    style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}
-                  >
-                    {selectedEmail.latest_message?.body_text || selectedEmail.content.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')}
+              {composeMode ? (
+                // Compose View
+                <div className="space-y-4">
+                  <div className="flex items-center justify-end mb-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelCompose}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
                   </div>
-                ) : (
-                  <>
-                    <p className="text-gray-900 mb-4">Thank you for contacting Liquorland.</p>
+                  
+                  <div className="flex flex-col h-full">
                     
-                    <p className="text-gray-900 mb-4">This email inbox is no longer monitored.</p>
-                    
-                    <p className="text-gray-900 mb-4">
-                      <a href="#" className="underline" style={{ color: 'rgb(87, 140, 255)' }}>Click here to chat with us</a> or visit our website to find other ways to contact us.
-                    </p>
-                    
-                    <p className="text-gray-900 mb-4">Cheers,</p>
-                    
-                    <p className="text-gray-900 mb-6">The Liquorland Team</p>
-                    
-                    {/* Liquorland Logo */}
-                    <div className="mb-6">
-                      <div className="bg-black text-white px-4 py-2 inline-block font-bold text-lg tracking-wider">
-                        LIQUORLAND
-                      </div>
+                    <div 
+                      className="flex-1 w-full p-4 text-gray-900 bg-transparent border-none outline-none resize-none"
+                      style={{ 
+                        minHeight: '400px',
+                        whiteSpace: 'pre-wrap',
+                        lineHeight: '1.6',
+                        fontFamily: 'inherit'
+                      }}
+                    >
+                      <textarea
+                        value={composeMode === 'reply' ? replyContent : forwardContent}
+                        onChange={(e) => composeMode === 'reply' 
+                          ? setReplyContent(e.target.value) 
+                          : setForwardContent(e.target.value)
+                        }
+                        className="w-full h-full bg-transparent border-none outline-none resize-none text-gray-900"
+                        style={{
+                          minHeight: '400px',
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: '1.6',
+                          fontFamily: 'inherit',
+                          fontSize: '14px'
+                        }}
+                        placeholder={composeMode === 'reply' ? "Type your reply..." : "Add a message..."}
+                      />
                     </div>
-                  </>
-                )}
-              </div>
+                    
+                    <div className="flex items-center space-x-3 pt-4 border-t border-gray-200 mt-auto">
+                      <Button 
+                        className="text-white"
+                        style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+                        onClick={composeMode === 'reply' ? sendReply : sendForward}
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        {composeMode === 'reply' ? 'Send Reply' : 'Forward'}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                        onClick={cancelCompose}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Email Content View
+                <div className="prose max-w-none">
+                  {selectedEmail.content ? (
+                    <div 
+                      className="text-gray-900 whitespace-pre-wrap" 
+                      style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}
+                    >
+                      {selectedEmail.latest_message?.body_text || selectedEmail.content.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')}
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-gray-900 mb-4">Thank you for contacting Liquorland.</p>
+                      
+                      <p className="text-gray-900 mb-4">This email inbox is no longer monitored.</p>
+                      
+                      <p className="text-gray-900 mb-4">
+                        <a href="#" className="underline" style={{ color: 'rgb(87, 140, 255)' }}>Click here to chat with us</a> or visit our website to find other ways to contact us.
+                      </p>
+                      
+                      <p className="text-gray-900 mb-4">Cheers,</p>
+                      
+                      <p className="text-gray-900 mb-6">The Liquorland Team</p>
+                      
+                      {/* Liquorland Logo */}
+                      <div className="mb-6">
+                        <div className="bg-black text-white px-4 py-2 inline-block font-bold text-lg tracking-wider">
+                          LIQUORLAND
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               
               {/* Thread Messages */}
-              {selectedEmail && expandedThreads.has(selectedEmail.conversation_id) && threadMessages[selectedEmail.conversation_id] && (
+              {!composeMode && selectedEmail && expandedThreads.has(selectedEmail.conversation_id) && threadMessages[selectedEmail.conversation_id] && (
                 <div className="border-t border-gray-200 mt-6">
                   <div className="px-6 py-4">
                     <h3 className="text-sm font-medium text-gray-900 mb-4">
@@ -986,7 +1070,7 @@ export default function InboxPage() {
               )}
 
               {/* More messages indicator */}
-              {selectedEmail && selectedEmail.message_count && selectedEmail.message_count > 1 && (
+              {!composeMode && selectedEmail && selectedEmail.message_count && selectedEmail.message_count > 1 && (
                 <div className="text-center py-4 border-t border-gray-200">
                   <button 
                     onClick={() => handleThreadExpansion(selectedEmail.conversation_id)}
@@ -1007,28 +1091,30 @@ export default function InboxPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="p-6 border-t border-gray-200 bg-white">
-              <div className="flex items-center space-x-3">
-                <Button 
-                  className="text-white"
-                  style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
-                  onClick={handleReply}
-                >
-                  <Reply className="w-4 h-4 mr-2" />
-                  Reply
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                  onClick={handleForward}
-                >
-                  <Forward className="w-4 h-4 mr-2" />
-                  Forward
-                </Button>
+            {!composeMode && (
+              <div className="p-6 border-t border-gray-200 bg-white">
+                <div className="flex items-center space-x-3">
+                  <Button 
+                    className="text-white"
+                    style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+                    onClick={handleReply}
+                  >
+                    <Reply className="w-4 h-4 mr-2" />
+                    Reply
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                    onClick={handleForward}
+                  >
+                    <Forward className="w-4 h-4 mr-2" />
+                    Forward
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500">
@@ -1037,84 +1123,6 @@ export default function InboxPage() {
         )}
       </div>
 
-      {/* Reply Dialog */}
-      <Dialog open={replyDialog} onOpenChange={setReplyDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Reply to {selectedEmail?.sender}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">To:</label>
-              <Input value={selectedEmail?.sender || ''} disabled className="mt-1" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Subject:</label>
-              <Input value={`Re: ${selectedEmail?.subject || ''}`} disabled className="mt-1" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Message:</label>
-              <Textarea 
-                value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
-                className="mt-1 min-h-[200px]"
-                placeholder="Type your reply..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReplyDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={sendReply}>
-              <Send className="w-4 h-4 mr-2" />
-              Send Reply
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Forward Dialog */}
-      <Dialog open={forwardDialog} onOpenChange={setForwardDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Forward Email</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">To:</label>
-              <Input 
-                value={forwardTo}
-                onChange={(e) => setForwardTo(e.target.value)}
-                placeholder="Enter recipient email"
-                className="mt-1" 
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Subject:</label>
-              <Input value={`Fwd: ${selectedEmail?.subject || ''}`} disabled className="mt-1" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Message:</label>
-              <Textarea 
-                value={forwardContent}
-                onChange={(e) => setForwardContent(e.target.value)}
-                className="mt-1 min-h-[200px]"
-                placeholder="Add a message..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setForwardDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={sendForward}>
-              <Forward className="w-4 h-4 mr-2" />
-              Forward
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
