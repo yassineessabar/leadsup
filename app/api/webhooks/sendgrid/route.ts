@@ -75,21 +75,26 @@ export async function POST(request: NextRequest) {
     
     // Find which campaign sender this email is responding to
     console.log(`🔍 Looking for campaign_sender with email: "${toEmail}"`)
-    const { data: campaignSender, error: senderError } = await supabaseServer
+    const { data: campaignSenders, error: senderError } = await supabaseServer
       .from('campaign_senders')
       .select('user_id, campaign_id')
       .eq('email', toEmail)
-      .single()
     
-    console.log('🔍 Campaign sender query result:', { campaignSender, senderError })
+    console.log('🔍 Campaign sender query result:', { campaignSenders, senderError })
     
-    if (senderError || !campaignSender) {
+    if (senderError || !campaignSenders || campaignSenders.length === 0) {
       console.log(`⏭️ Email to ${toEmail} is not for a campaign sender, ignoring`)
       // Return success to SendGrid so it doesn't retry
       return NextResponse.json({ 
         success: true, 
         message: 'Not a campaign email, ignored' 
       })
+    }
+    
+    // Use the first campaign sender if multiple exist
+    const campaignSender = campaignSenders[0]
+    if (campaignSenders.length > 1) {
+      console.log(`⚠️ Multiple campaign senders found for ${toEmail}, using first one: Campaign ${campaignSender.campaign_id}`)
     }
     
     console.log(`✅ Found campaign sender: User ${campaignSender.user_id}, Campaign ${campaignSender.campaign_id}`)
