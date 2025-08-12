@@ -23,6 +23,8 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
   const [showPassword, setShowPassword] = useState(false);
   const [detectedProvider, setDetectedProvider] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authenticating, setAuthenticating] = useState(false);
 
   const validateDomain = (domain: string): boolean => {
     // More lenient domain validation regex
@@ -167,6 +169,9 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
     setPassword("");
     setDetectedProvider("");
     setValidationError("");
+    setAuthError("");
+    setAuthenticating(false);
+    setShowPassword(false);
     onClose();
   };
 
@@ -176,13 +181,70 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
   };
 
   const handleLogin = async () => {
-    // Here you would integrate with the Domain Connect flow
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
+    
+    // Validation
+    if (!trimmedUsername) {
+      setAuthError("Username is required");
+      return;
+    }
+    
+    if (!trimmedPassword) {
+      setAuthError("Password is required");
+      return;
+    }
+    
+    setAuthError("");
+    setAuthenticating(true);
+    
     try {
-      // Simulate successful login and domain setup
-      await createDomainManually(); // For now, create manually
-      handleClose();
+      // Authenticate with the provider
+      const response = await fetch('/api/domain-connect/authenticate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          domain: domain.trim(),
+          provider: detectedProvider,
+          username: trimmedUsername,
+          password: trimmedPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success! Domain has been configured
+        onDomainAdded(data.domain);
+        
+        // Show success message and redirect to verification view
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.set("tab", "domain");
+          url.searchParams.set("view", "verification");
+          url.searchParams.set("selectedDomain", domain.trim());
+          window.history.pushState({}, "", url.toString());
+          
+          // Dispatch custom event with domain verification details
+          window.dispatchEvent(new CustomEvent('domain-verification-redirect', { 
+            detail: { 
+              tab: 'domain',
+              view: 'verification',
+              domain: domain.trim()
+            } 
+          }));
+        }
+        
+        handleClose();
+      } else {
+        // Authentication failed
+        setAuthError(data.error || 'Authentication failed. Please check your credentials.');
+      }
     } catch (error) {
       console.error('Login failed:', error);
+      setAuthError('Connection failed. Please try again.');
+    } finally {
+      setAuthenticating(false);
     }
   };
 
@@ -375,7 +437,10 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                     <User className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <Input
                       value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        setAuthError(""); // Clear error when user types
+                      }}
                       placeholder="Username"
                       className="h-14 text-lg border-gray-300 rounded-xl bg-gray-50 pl-12 pr-4 focus:bg-white focus:border-gray-400"
                     />
@@ -386,9 +451,13 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                     <Input
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setAuthError(""); // Clear error when user types
+                      }}
                       placeholder="Password"
                       className="h-14 text-lg border-gray-300 rounded-xl bg-gray-50 pl-12 pr-12 focus:bg-white focus:border-gray-400"
+                      onKeyPress={(e) => e.key === 'Enter' && !authenticating && username.trim() && password.trim() && handleLogin()}
                     />
                     <button
                       onClick={() => setShowPassword(!showPassword)}
@@ -398,17 +467,26 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                     </button>
                   </div>
 
-                  <div className="text-right">
-                    <a href="#" className="text-gray-600 underline hover:text-gray-800">
-                      Forgot password?
-                    </a>
-                  </div>
+
+                  {authError && (
+                    <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+                      {authError}
+                    </div>
+                  )}
 
                   <Button 
                     onClick={handleLogin}
-                    className="w-full h-12 text-lg font-medium bg-blue-600 text-white border-0 rounded-xl hover:bg-blue-700 mt-6"
+                    disabled={authenticating || !username.trim() || !password.trim()}
+                    className="w-full h-12 text-lg font-medium bg-blue-600 text-white border-0 rounded-xl hover:bg-blue-700 mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Continue
+                    {authenticating ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Authenticating...
+                      </>
+                    ) : (
+                      'Continue'
+                    )}
                   </Button>
                 </div>
 

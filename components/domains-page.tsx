@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { DomainSetupModal } from "@/components/domain-setup-modal"
 import { toast } from "sonner"
 
@@ -98,6 +99,18 @@ export default function DomainsPage() {
   const [dmarcEnabled, setDmarcEnabled] = useState(false)
   const [verificationMethod, setVerificationMethod] = useState<"auto" | "manual">("auto")
   const [domainConnectSupported, setDomainConnectSupported] = useState<boolean | null>(null)
+  const [dnsRecords, setDnsRecords] = useState<any[]>([])
+  const [loadingDnsRecords, setLoadingDnsRecords] = useState(false)
+  
+  // Delete modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [domainToDelete, setDomainToDelete] = useState<Domain | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState("")
+  const [isDeleting, setIsDeleting] = useState(false)
+  
+  // Verification results states
+  const [verificationResults, setVerificationResults] = useState<any>(null)
+  const [showVerificationResults, setShowVerificationResults] = useState(false)
 
   useEffect(() => {
     fetchDomains()
@@ -115,6 +128,8 @@ export default function DomainsPage() {
       if (tab === 'domain' && view === 'verification' && selectedDomainFromUrl) {
         setSelectedDomain(selectedDomainFromUrl)
         setCurrentView('verification')
+        checkDomainConnectSupport(selectedDomainFromUrl)
+        fetchDnsRecords(selectedDomainFromUrl)
       } else {
         // Default to domains list view
         setCurrentView('domains')
@@ -128,6 +143,8 @@ export default function DomainsPage() {
       if (view === 'verification' && domain) {
         setSelectedDomain(domain)
         setCurrentView('verification')
+        checkDomainConnectSupport(domain)
+        fetchDnsRecords(domain)
       }
     }
     
@@ -169,11 +186,33 @@ export default function DomainsPage() {
     }
   }
 
+  const fetchDnsRecords = async (domainName: string) => {
+    try {
+      setLoadingDnsRecords(true)
+      const response = await fetch(`/api/domains/${encodeURIComponent(domainName)}/dns-records`)
+      const data = await response.json()
+      
+      if (response.ok) {
+        setDnsRecords(data.dnsRecords || [])
+      } else {
+        console.error('Failed to fetch DNS records:', data.error)
+        // Fallback to default records if API fails
+        setDnsRecords([])
+      }
+    } catch (error) {
+      console.error('Error fetching DNS records:', error)
+      setDnsRecords([])
+    } finally {
+      setLoadingDnsRecords(false)
+    }
+  }
+
   const handleManageDomain = (domain: Domain) => {
     setSelectedDomain(domain.domain)
     if (domain.status !== "verified") {
       setCurrentView("verification")
       checkDomainConnectSupport(domain.domain)
+      fetchDnsRecords(domain.domain)
     } else {
       setCurrentView("dashboard")
     }
@@ -198,6 +237,8 @@ export default function DomainsPage() {
     setCurrentView("domains")
     setSelectedDomain("")
     setDomainConnectSupported(null) // Reset Domain Connect support check
+    setVerificationResults(null) // Reset verification results
+    setShowVerificationResults(false)
   }
 
   const handleDomainAdded = (domain: Domain) => {
@@ -222,13 +263,24 @@ export default function DomainsPage() {
             : d
         ))
         
-        if (data.verified) {
+        // Store verification results
+        setVerificationResults(data.report || data)
+        setShowVerificationResults(true)
+        
+        if (data.verified || data.domainReady) {
           toast.success('Domain verified successfully!')
+          // Redirect to dashboard after successful verification
+          setTimeout(() => {
+            setCurrentView('dashboard')
+          }, 1500)
         } else {
-          toast.error('Domain verification failed. Please check your DNS records.')
+          const failedCount = data.report?.summary?.failedRecords || 0
+          toast.error(`Domain verification failed. ${failedCount} DNS records need attention.`)
         }
       } else {
         toast.error(data.error || 'Verification failed')
+        setVerificationResults(null)
+        setShowVerificationResults(false)
       }
     } catch (error) {
       console.error('Error verifying domain:', error)
@@ -238,16 +290,18 @@ export default function DomainsPage() {
     }
   }
 
-  const handleDeleteDomain = async (domainId: string) => {
-    const domain = domains.find(d => d.id === domainId)
-    if (!domain) return
+  const handleDeleteDomain = (domain: Domain) => {
+    setDomainToDelete(domain)
+    setDeleteConfirmText("")
+    setShowDeleteModal(true)
+  }
 
-    if (!confirm(`Are you sure you want to delete the domain "${domain.domain}"? This action cannot be undone.`)) {
-      return
-    }
+  const confirmDeleteDomain = async () => {
+    if (!domainToDelete || deleteConfirmText !== "delete") return
 
     try {
-      const response = await fetch(`/api/domains?id=${domainId}`, {
+      setIsDeleting(true)
+      const response = await fetch(`/api/domains?id=${domainToDelete.id}`, {
         method: 'DELETE'
       })
 
@@ -255,20 +309,33 @@ export default function DomainsPage() {
 
       if (response.ok) {
         // Remove domain from list
-        setDomains(domains.filter(d => d.id !== domainId))
+        setDomains(domains.filter(d => d.id !== domainToDelete.id))
         toast.success(data.message || 'Domain deleted successfully')
         
         // If we're viewing this domain, go back to domains list
-        if (selectedDomain === domain.domain) {
+        if (selectedDomain === domainToDelete.domain) {
           handleBackToDomains()
         }
+        
+        // Close modal and reset states
+        setShowDeleteModal(false)
+        setDomainToDelete(null)
+        setDeleteConfirmText("")
       } else {
         toast.error(data.error || 'Failed to delete domain')
       }
     } catch (error) {
       console.error('Error deleting domain:', error)
       toast.error('Failed to delete domain')
+    } finally {
+      setIsDeleting(false)
     }
+  }
+
+  const cancelDeleteDomain = () => {
+    setShowDeleteModal(false)
+    setDomainToDelete(null)
+    setDeleteConfirmText("")
   }
 
   const getStatusColor = (status: string) => {
@@ -541,41 +608,81 @@ export default function DomainsPage() {
           onClose={() => setShowDomainSetup(false)}
           onDomainAdded={handleDomainAdded}
         />
+
+        {/* Delete Confirmation Modal */}
+        <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-red-600">Delete Domain</DialogTitle>
+              <DialogDescription>
+                You are about to permanently delete the domain{" "}
+                <span className="font-semibold text-gray-900">
+                  {domainToDelete?.domain}
+                </span>
+                . This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="delete-confirm" className="text-sm font-medium text-gray-700">
+                  To confirm deletion, type <span className="font-mono bg-gray-100 px-1 rounded">delete</span> in the box below:
+                </label>
+                <Input
+                  id="delete-confirm"
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type 'delete' to confirm"
+                  className="font-mono"
+                />
+              </div>
+              
+              <div className="bg-red-50 p-3 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-red-800">
+                    <p className="font-medium mb-1">This will permanently:</p>
+                    <ul className="space-y-1 text-sm list-disc list-inside ml-2">
+                      <li>Remove the domain from your account</li>
+                      <li>Stop all email sending from this domain</li>
+                      <li>Delete all domain verification history</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={cancelDeleteDomain}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDeleteDomain}
+                disabled={deleteConfirmText !== "delete" || isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Domain"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }
 
   if (currentView === "verification") {
-    // Generate unique SendGrid subdomain for this domain (in production, this would come from API)
-    const sendgridSubdomain = `u55053564.wl065.sendgrid.net`
-    const emSubdomain = `em6012.${selectedDomain}`
-    
-    const dnsRecords = [
-      {
-        type: "CNAME",
-        host: emSubdomain,
-        value: sendgridSubdomain,
-        purpose: "Link tracking and branding"
-      },
-      {
-        type: "CNAME", 
-        host: `s1._domainkey.${selectedDomain}`,
-        value: `s1.domainkey.${sendgridSubdomain}`,
-        purpose: "DKIM authentication (key 1)"
-      },
-      {
-        type: "CNAME",
-        host: `s2._domainkey.${selectedDomain}`,
-        value: `s2.domainkey.${sendgridSubdomain}`,
-        purpose: "DKIM authentication (key 2)"
-      },
-      {
-        type: "TXT",
-        host: `_dmarc.${selectedDomain}`,
-        value: "v=DMARC1; p=none; pct=100; rua=mailto:re+klpwxtveezz@dmarc.postmarkapp.com; sp=none; adkim=r; aspf=r; fo=1;",
-        purpose: "DMARC policy"
-      }
-    ]
 
     return (
       <div className="min-h-screen bg-gray-50">
@@ -677,65 +784,87 @@ export default function DomainsPage() {
                   </div>
 
                   {/* DNS Records Table */}
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                      <div className="grid grid-cols-3 gap-4 text-sm font-medium text-gray-700">
-                        <div>Type</div>
-                        <div>Host</div>
-                        <div>Value</div>
+                  {loadingDnsRecords ? (
+                    <div className="border border-gray-200 rounded-lg p-8">
+                      <div className="flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                        <span className="ml-3 text-gray-600">Loading DNS records from SendGrid...</span>
                       </div>
                     </div>
-                    <div className="divide-y divide-gray-200">
-                      {dnsRecords.map((record, index) => (
-                        <div key={index} className="px-4 py-4 hover:bg-gray-50">
-                          <div className="grid grid-cols-3 gap-4 items-start">
-                            <div className="text-sm font-medium text-gray-900">
-                              {record.type}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="text-sm font-mono text-gray-700 break-all flex-1 min-w-0">
-                                {record.host}
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => copyToClipboard(record.host, `host-${index}`)}
-                                className="text-gray-500 hover:text-gray-700 flex-shrink-0"
-                                title="Copy host"
-                              >
-                                {copiedStates[`host-${index}`] ? (
-                                  <Check className="w-4 h-4" />
-                                ) : (
-                                  <Copy className="w-4 h-4" />
-                                )}
-                              </Button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="text-sm font-mono text-gray-700 break-all flex-1 min-w-0">
-                                {record.value}
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => copyToClipboard(record.value, `value-${index}`)}
-                                className="text-gray-500 hover:text-gray-700 flex-shrink-0"
-                                title="Copy value"
-                              >
-                                {copiedStates[`value-${index}`] ? (
-                                  <Check className="w-4 h-4" />
-                                ) : (
-                                  <Copy className="w-4 h-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="mt-2 text-xs text-gray-500">
-                            {record.purpose}
-                          </div>
+                  ) : (
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                        <div className="grid grid-cols-3 gap-4 text-sm font-medium text-gray-700">
+                          <div>Type</div>
+                          <div>Host</div>
+                          <div>Value</div>
                         </div>
-                      ))}
+                      </div>
+                      <div className="divide-y divide-gray-200">
+                        {dnsRecords.length > 0 ? (
+                          dnsRecords.map((record, index) => (
+                            <div key={index} className="px-4 py-4 hover:bg-gray-50">
+                              <div className="grid grid-cols-3 gap-4 items-start">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {record.type}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className="text-sm font-mono text-gray-700 break-all flex-1 min-w-0">
+                                    {record.host}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => copyToClipboard(record.host, `host-${index}`)}
+                                    className="text-gray-500 hover:text-gray-700 flex-shrink-0"
+                                    title="Copy host"
+                                  >
+                                    {copiedStates[`host-${index}`] ? (
+                                      <Check className="w-4 h-4" />
+                                    ) : (
+                                      <Copy className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className="text-sm font-mono text-gray-700 break-all flex-1 min-w-0">
+                                    {record.type === 'MX' && record.priority 
+                                      ? `${record.priority} ${record.value}`
+                                      : record.value}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => copyToClipboard(
+                                      record.type === 'MX' && record.priority 
+                                        ? `${record.priority} ${record.value}`
+                                        : record.value, 
+                                      `value-${index}`
+                                    )}
+                                    className="text-gray-500 hover:text-gray-700 flex-shrink-0"
+                                    title="Copy value"
+                                  >
+                                    {copiedStates[`value-${index}`] ? (
+                                      <Check className="w-4 h-4" />
+                                    ) : (
+                                      <Copy className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="mt-2 text-xs text-gray-500">
+                                {record.purpose}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-4 py-8 text-center text-gray-500">
+                            No DNS records available. Please try refreshing or contact support.
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -780,6 +909,100 @@ export default function DomainsPage() {
                 </div>
               </div>
 
+              {/* Verification Results - Simplified */}
+              {showVerificationResults && verificationResults && (
+                <div className="bg-white rounded-lg border p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Domain Status</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowVerificationResults(false)}
+                    >
+                      ✕
+                    </Button>
+                  </div>
+
+                  {verificationResults.domainReady ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="w-8 h-8 text-green-600" />
+                        <div>
+                          <h4 className="text-green-800 font-semibold">✅ Domain is ready!</h4>
+                          <p className="text-green-700 text-sm">Your domain is properly configured for sending emails.</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <AlertCircle className="w-8 h-8 text-red-600" />
+                          <div>
+                            <h4 className="text-red-800 font-semibold">Setup needed</h4>
+                            <p className="text-red-700 text-sm">
+                              {verificationResults.summary?.failedRecords || 0} DNS record(s) need to be added to your domain.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Simple list of what needs to be fixed */}
+                        <div className="ml-11">
+                          <p className="text-sm text-red-800 font-medium mb-2">What needs to be fixed:</p>
+                          <ul className="space-y-1 text-sm text-red-700">
+                            {verificationResults.records?.filter((r: any) => !r.verified && r.required).map((record: any, index: number) => (
+                              <li key={index} className="flex items-center gap-2">
+                                <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></span>
+                                {record.record.includes('SPF') && 'Email sending authorization (SPF record)'}
+                                {record.record.includes('DKIM') && 'Email authentication (DKIM record)'}
+                                {record.record.includes('MX') && 'Reply handling (MX record)'}
+                                {!record.record.includes('SPF') && !record.record.includes('DKIM') && !record.record.includes('MX') && 'DNS record configuration'}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* Simple next steps */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 className="text-blue-800 font-semibold mb-2">💡 Next steps:</h4>
+                        <ol className="space-y-1 text-sm text-blue-800">
+                          <li>1. Go to your domain provider (Namecheap, GoDaddy, etc.)</li>
+                          <li>2. Add the missing DNS records shown above</li>
+                          <li>3. Wait a few minutes for changes to take effect</li>
+                          <li>4. Click "Verify Domain" again</li>
+                        </ol>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show details button for technical users */}
+                  {!verificationResults.domainReady && (
+                    <details className="mt-4">
+                      <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
+                        Show technical details
+                      </summary>
+                      <div className="mt-3 space-y-2">
+                        {verificationResults.records?.map((record: any, index: number) => (
+                          <div key={index} className="text-xs bg-gray-50 p-2 rounded">
+                            <div className="flex items-center gap-2">
+                              {record.verified ? 
+                                <span className="text-green-600">✓</span> : 
+                                <span className="text-red-600">✗</span>
+                              }
+                              <span className="font-mono">{record.record}</span>
+                            </div>
+                            {!record.verified && record.error && (
+                              <div className="text-red-600 ml-4 mt-1">{record.error}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              )}
+
             {/* Delete Domain Section */}
             <div className="pt-8 border-t border-gray-200">
               <Button 
@@ -788,7 +1011,7 @@ export default function DomainsPage() {
                 onClick={() => {
                   const currentDomain = domains.find(d => d.domain === selectedDomain)
                   if (currentDomain) {
-                    handleDeleteDomain(currentDomain.id)
+                    handleDeleteDomain(currentDomain)
                   }
                 }}
               >
@@ -797,6 +1020,76 @@ export default function DomainsPage() {
             </div>
           </div>
         </div>
+        
+        {/* Delete Confirmation Modal for Verification Page */}
+        <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-red-600">Delete Domain</DialogTitle>
+              <DialogDescription>
+                You are about to permanently delete the domain{" "}
+                <span className="font-semibold text-gray-900">
+                  {domainToDelete?.domain}
+                </span>
+                . This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="delete-confirm-verification" className="text-sm font-medium text-gray-700">
+                  To confirm deletion, type <span className="font-mono bg-gray-100 px-1 rounded">delete</span> in the box below:
+                </label>
+                <Input
+                  id="delete-confirm-verification"
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type 'delete' to confirm"
+                  className="font-mono"
+                />
+              </div>
+              
+              <div className="bg-red-50 p-3 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-red-800">
+                    <p className="font-medium mb-1">This will permanently:</p>
+                    <ul className="space-y-1 text-sm list-disc list-inside ml-2">
+                      <li>Remove the domain from your account</li>
+                      <li>Stop all email sending from this domain</li>
+                      <li>Delete all domain verification history</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={cancelDeleteDomain}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDeleteDomain}
+                disabled={deleteConfirmText !== "delete" || isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Domain"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }
@@ -921,7 +1214,104 @@ export default function DomainsPage() {
               )}
             </div>
           </div>
+
+          {/* Delete Domain Section */}
+          <div className="mt-8 pt-8 border-t border-gray-200">
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 text-red-600">Delete Domain</h3>
+                  <p className="text-gray-600 mt-1">
+                    Permanently remove this domain from your account. This action cannot be undone.
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="text-red-600 border-red-300 hover:bg-red-50 bg-transparent"
+                  onClick={() => {
+                    const currentDomain = domains.find(d => d.domain === selectedDomain)
+                    if (currentDomain) {
+                      handleDeleteDomain(currentDomain)
+                    }
+                  }}
+                >
+                  Delete domain
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Delete Confirmation Modal for Dashboard Page */}
+        <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-red-600">Delete Domain</DialogTitle>
+              <DialogDescription>
+                You are about to permanently delete the domain{" "}
+                <span className="font-semibold text-gray-900">
+                  {domainToDelete?.domain}
+                </span>
+                . This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="delete-confirm-dashboard" className="text-sm font-medium text-gray-700">
+                  To confirm deletion, type <span className="font-mono bg-gray-100 px-1 rounded">delete</span> in the box below:
+                </label>
+                <Input
+                  id="delete-confirm-dashboard"
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type 'delete' to confirm"
+                  className="font-mono"
+                />
+              </div>
+              
+              <div className="bg-red-50 p-3 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-red-800">
+                    <p className="font-medium mb-1">This will permanently:</p>
+                    <ul className="space-y-1 text-sm list-disc list-inside ml-2">
+                      <li>Remove the domain from your account</li>
+                      <li>Stop all email sending from this domain</li>
+                      <li>Delete all domain verification history</li>
+                      <li>Revoke all API tokens for this domain</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={cancelDeleteDomain}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDeleteDomain}
+                disabled={deleteConfirmText !== "delete" || isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Domain"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }

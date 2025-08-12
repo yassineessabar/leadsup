@@ -150,8 +150,8 @@ async function getSendGridDNSRecords(domain: string) {
         })
       }
 
-      // Add subdomain record if exists
-      if (domainConfig.subdomain) {
+      // Add subdomain record if exists (but skip for leadsup.io to use verified records only)
+      if (domainConfig.subdomain && domain !== 'leadsup.io' && !domain.includes('leadsup.io')) {
         const emSubdomain = `em${domainConfig.id}`
         dnsRecords.push({
           type: 'CNAME',
@@ -170,13 +170,22 @@ async function getSendGridDNSRecords(domain: string) {
         purpose: 'Route replies back to LeadsUp for processing'
       })
 
-      // Add DMARC record
-      dnsRecords.push({
-        type: 'TXT',
-        host: '_dmarc',
-        value: 'v=DMARC1; p=none; rua=mailto:dmarc@leadsup.io; ruf=mailto:dmarc@leadsup.io; pct=100; sp=none;',
-        purpose: 'DMARC policy - Email authentication and reporting'
-      })
+      // Add DMARC record (use SendGrid verified format for leadsup.io)
+      if (domain === 'leadsup.io' || domain.includes('leadsup.io')) {
+        dnsRecords.push({
+          type: 'TXT',
+          host: '_dmarc',
+          value: 'v=DMARC1; p=none;',
+          purpose: 'DMARC policy - Email authentication and reporting'
+        })
+      } else {
+        dnsRecords.push({
+          type: 'TXT',
+          host: '_dmarc',
+          value: 'v=DMARC1; p=none; rua=mailto:dmarc@leadsup.io; ruf=mailto:dmarc@leadsup.io; pct=100; sp=none;',
+          purpose: 'DMARC policy - Email authentication and reporting'
+        })
+      }
 
       return dnsRecords
     }
@@ -192,7 +201,7 @@ async function getSendGridDNSRecords(domain: string) {
 
 // Default DNS records for new domains
 function getDefaultDNSRecords(domain: string) {
-  // For leadsup.io, use the actual SendGrid configuration
+  // For leadsup.io, use SendGrid verified records only
   if (domain === 'leadsup.io' || domain.includes('leadsup.io')) {
     return [
       {
@@ -215,14 +224,8 @@ function getDefaultDNSRecords(domain: string) {
       },
       {
         type: 'TXT',
-        host: '@',
-        value: 'v=spf1 include:sendgrid.net ~all',
-        purpose: 'SPF - Authorizes SendGrid to send emails on your behalf'
-      },
-      {
-        type: 'TXT',
         host: '_dmarc',
-        value: 'v=DMARC1; p=none; rua=mailto:dmarc@leadsup.io; ruf=mailto:dmarc@leadsup.io; pct=100; sp=none;',
+        value: 'v=DMARC1; p=none;',
         purpose: 'DMARC policy - Email authentication and reporting'
       },
       {

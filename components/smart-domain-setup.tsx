@@ -19,18 +19,10 @@ import {
   Settings, 
   Globe,
   ArrowRight,
+  ArrowLeft,
   Clock
 } from "lucide-react"
 import { toast } from "sonner"
-
-interface SetupMethod {
-  type: 'domain-connect' | 'direct-api' | 'manual'
-  provider?: string
-  setupUrl?: string
-  requiresAuth?: boolean
-  estimatedTime: string
-  description: string
-}
 
 interface DNSRecord {
   type: string
@@ -47,36 +39,60 @@ interface SmartDomainSetupProps {
 }
 
 export function SmartDomainSetup({ isOpen, onClose, onDomainAdded }: SmartDomainSetupProps) {
-  const [step, setStep] = useState<'input' | 'method-selection' | 'setup' | 'verification'>('input')
+  const [step, setStep] = useState<'domain' | 'method' | 'setup' | 'manual' | 'verification'>('domain')
   const [domain, setDomain] = useState('')
   const [loading, setLoading] = useState(false)
-  const [setupMethods, setSetupMethods] = useState<SetupMethod[]>([])
-  const [selectedMethod, setSelectedMethod] = useState<SetupMethod | null>(null)
   const [dnsRecords, setDnsRecords] = useState<DNSRecord[]>([])
   const [verificationProgress, setVerificationProgress] = useState(0)
   const [copied, setCopied] = useState<Record<string, boolean>>({})
+  const [domainConnectResult, setDomainConnectResult] = useState<any>(null)
+
+  // Supported registrars for automatic setup
+  const supportedRegistrars = [
+    { name: 'GoDaddy', logo: '🌐' },
+    { name: 'Namecheap', logo: '🔶' },
+    { name: 'Google Domains', logo: '🔍' },
+    { name: 'Cloudflare', logo: '☁️' },
+    { name: 'Domain.com', logo: '📡' },
+    { name: 'Name.com', logo: '📝' },
+    { name: 'Network Solutions', logo: '🌍' },
+    { name: 'Hover', logo: '🎯' }
+  ]
 
   // Reset state when dialog opens
   useEffect(() => {
     if (isOpen) {
-      setStep('input')
-      setDomain('')
-      setSetupMethods([])
-      setSelectedMethod(null)
-      setDnsRecords([])
-      setVerificationProgress(0)
+      resetModal()
     }
   }, [isOpen])
 
-  const checkDomainSetupOptions = async () => {
+  const resetModal = () => {
+    setStep('domain')
+    setDomain('')
+    setLoading(false)
+    setDnsRecords([])
+    setVerificationProgress(0)
+    setCopied({})
+    setDomainConnectResult(null)
+  }
+
+  const handleDomainSubmit = async () => {
     if (!domain) {
-      toast.error('Please enter a domain')
+      toast.error('Please enter your domain')
+      return
+    }
+    
+    // Validate domain format
+    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$/
+    if (!domainRegex.test(domain)) {
+      toast.error('Please enter a valid domain (e.g., yourdomain.com)')
       return
     }
 
     setLoading(true)
+    
     try {
-      // Check Domain Connect support
+      // Check Domain Connect support for this specific domain
       const response = await fetch('/api/domain-connect/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -84,106 +100,113 @@ export function SmartDomainSetup({ isOpen, onClose, onDomainAdded }: SmartDomain
       })
 
       const result = await response.json()
-      
-      const methods: SetupMethod[] = []
-
-      if (result.supported && result.method === 'domain-connect') {
-        methods.push({
-          type: 'domain-connect',
-          provider: result.provider,
-          setupUrl: result.setupUrl,
-          estimatedTime: '30 seconds',
-          description: `One-click setup with ${result.provider}. No manual DNS changes needed.`
-        })
-      }
-
-      if (result.method === 'direct-api') {
-        methods.push({
-          type: 'direct-api',
-          provider: result.provider,
-          requiresAuth: result.requiresAuth,
-          estimatedTime: '2 minutes',
-          description: `Automated setup via ${result.provider} API. Requires authentication.`
-        })
-      }
-
-      // Always offer manual setup as fallback
-      methods.push({
-        type: 'manual',
-        estimatedTime: '5-10 minutes',
-        description: 'Manual DNS record setup. Works with any DNS provider.'
-      })
-
-      setSetupMethods(methods)
-      setStep('method-selection')
-
+      setDomainConnectResult(result)
+      setStep('method')
     } catch (error) {
-      console.error('Error checking domain options:', error)
-      toast.error('Failed to check domain setup options')
+      console.error('Error checking domain support:', error)
+      // Still proceed to method selection, but without automated option
+      setDomainConnectResult({ supported: false })
+      setStep('method')
     } finally {
       setLoading(false)
     }
   }
 
-  const startDomainSetup = async (method: SetupMethod) => {
-    setSelectedMethod(method)
+  const startDomainSetup = async (method: 'auto' | 'manual') => {
     setLoading(true)
 
     try {
-      if (method.type === 'domain-connect') {
+      if (method === 'auto' && domainConnectResult?.supported && domainConnectResult?.setupUrl) {
+        setStep('setup')
+        
         // Open Domain Connect popup
         const popup = window.open(
-          method.setupUrl,
-          'domain-connect-setup',
+          domainConnectResult.setupUrl,
+          'domain-setup',
           'width=800,height=600,scrollbars=yes,resizable=yes'
         )
 
         if (!popup) {
-          toast.error('Please allow popups for Domain Connect setup')
+          toast.error('Please allow popups for automated setup')
           return
         }
+
+        // Start verification polling
+        setStep('verification')
+        startVerificationPolling()
 
         // Monitor popup for completion
         const checkClosed = setInterval(() => {
           if (popup.closed) {
             clearInterval(checkClosed)
-            // Wait for callback processing
             setTimeout(() => {
               checkVerificationStatus()
             }, 2000)
           }
         }, 1000)
-
-        setStep('verification')
-        startVerificationPolling()
-
       } else {
-        // For API and manual methods, create domain and get DNS records
-        const response = await fetch('/api/domains', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            domain,
-            verificationType: method.type === 'direct-api' ? 'api' : 'manual'
-          })
-        })
-
-        const data = await response.json()
-
-        if (response.ok) {
-          setDnsRecords(Object.values(data.dnsRecords))
-          setStep('setup')
-          onDomainAdded(data.domain)
-        } else {
-          toast.error(data.error || 'Failed to add domain')
-        }
+        // Manual setup
+        setStep('manual')
+        await createDomainAndGetRecords()
       }
-
     } catch (error) {
-      console.error('Error starting domain setup:', error)
+      console.error('Domain setup error:', error)
       toast.error('Failed to start domain setup')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const createDomainAndGetRecords = async () => {
+    try {
+      const response = await fetch('/api/domains', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          domain,
+          verificationType: 'manual'
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Generate DNS records
+        const records = [
+          {
+            type: 'TXT',
+            name: '@',
+            value: 'v=spf1 include:sendgrid.net ~all',
+            purpose: 'Email authentication (SPF)'
+          },
+          {
+            type: 'CNAME', 
+            name: 's1._domainkey',
+            value: 's1.domainkey.u30435661.wl250.sendgrid.net',
+            purpose: 'Email signing (DKIM)'
+          },
+          {
+            type: 'MX',
+            name: 'reply',
+            value: 'mx.sendgrid.net',
+            priority: 10,
+            purpose: 'Route replies to LeadsUp'
+          },
+          {
+            type: 'TXT',
+            name: '_leadsup-verify',
+            value: `leadsup-verify-${Date.now()}`,
+            purpose: 'Domain verification'
+          }
+        ]
+        setDnsRecords(records)
+        onDomainAdded(data.domain)
+      } else {
+        toast.error(data.error || 'Failed to add domain')
+      }
+    } catch (error) {
+      console.error('Error creating domain:', error)
+      toast.error('Failed to create domain')
     }
   }
 
@@ -202,7 +225,6 @@ export function SmartDomainSetup({ isOpen, onClose, onDomainAdded }: SmartDomain
 
   const checkVerificationStatus = async () => {
     try {
-      // Check if domain was successfully verified
       const response = await fetch(`/api/domains?domain=${domain}`)
       const data = await response.json()
       
@@ -212,15 +234,11 @@ export function SmartDomainSetup({ isOpen, onClose, onDomainAdded }: SmartDomain
         toast.success('Domain verified successfully! 🎉')
         onDomainAdded(domainRecord)
         onClose()
+        resetModal()
       } else if (domainRecord?.status === 'failed') {
         toast.error('Domain verification failed. Please try manual setup.')
-        // Show manual setup option
-        setSelectedMethod({ 
-          type: 'manual', 
-          estimatedTime: '5-10 minutes',
-          description: 'Manual DNS record setup required'
-        })
-        setStep('setup')
+        setStep('manual')
+        await createDomainAndGetRecords()
       }
     } catch (error) {
       console.error('Error checking verification status:', error)
@@ -241,145 +259,232 @@ export function SmartDomainSetup({ isOpen, onClose, onDomainAdded }: SmartDomain
     }
   }
 
-  const getMethodIcon = (type: string) => {
-    switch (type) {
-      case 'domain-connect':
-        return <Zap className="h-5 w-5 text-blue-600" />
-      case 'direct-api':
-        return <Settings className="h-5 w-5 text-green-600" />
-      case 'manual':
-        return <Globe className="h-5 w-5 text-gray-600" />
-      default:
-        return null
-    }
-  }
-
-  const getMethodBadge = (type: string) => {
-    switch (type) {
-      case 'domain-connect':
-        return <Badge className="bg-blue-100 text-blue-700">Instant</Badge>
-      case 'direct-api':
-        return <Badge className="bg-green-100 text-green-700">Automated</Badge>
-      case 'manual':
-        return <Badge className="bg-gray-100 text-gray-700">Manual</Badge>
-      default:
-        return null
-    }
-  }
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        onClose()
+        resetModal()
+      }
+    }}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {step === 'input' && 'Add Your Domain'}
-            {step === 'method-selection' && 'Choose Setup Method'}
-            {step === 'setup' && 'DNS Configuration'}
+            {step === 'domain' && 'Add Your Domain'}
+            {step === 'method' && 'Choose Setup Method'}
+            {step === 'setup' && 'Setting Up Domain'}
+            {step === 'manual' && 'Manual DNS Setup'}
             {step === 'verification' && 'Verifying Domain'}
           </DialogTitle>
         </DialogHeader>
 
         {/* Step 1: Domain Input */}
-        {step === 'input' && (
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="domain">Domain Name</Label>
-              <Input
-                id="domain"
-                placeholder="e.g., yourdomain.com"
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && checkDomainSetupOptions()}
-              />
+        {step === 'domain' && (
+          <div className="space-y-6">
+            <Alert>
+              <Globe className="h-4 w-4" />
+              <AlertDescription>
+                Use your own domain to send emails from your brand instead of LeadsUp's domain.
+                This improves deliverability and recipient trust.
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="domain" className="text-sm font-medium">
+                  Your Domain
+                </Label>
+                <Input
+                  id="domain"
+                  placeholder="e.g., yourdomain.com"
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                  className="mt-2"
+                  onKeyPress={(e) => e.key === 'Enter' && handleDomainSubmit()}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleDomainSubmit}
+                  disabled={!domain || loading}
+                  className="flex-1"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Checking domain...
+                    </>
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={onClose}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button 
-                onClick={checkDomainSetupOptions}
-                disabled={loading || !domain}
-                className="flex-1"
-              >
-                {loading ? (
+          </div>
+        )}
+
+        {/* Step 2: Choose Setup Method */}
+        {step === 'method' && (
+          <div className="space-y-6">
+            <Alert>
+              {domainConnectResult?.supported ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <Globe className="h-4 w-4" />
+              )}
+              <AlertDescription>
+                {domainConnectResult?.supported ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Checking setup options...
+                    Great news! <strong>{domain}</strong> supports automated setup via{' '}
+                    <strong>{domainConnectResult.provider}</strong>.
                   </>
                 ) : (
                   <>
-                    Next
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    Choose how you'd like to set up <strong>{domain}</strong> for sending emails.
                   </>
                 )}
-              </Button>
-              <Button variant="outline" onClick={onClose}>
-                Cancel
+              </AlertDescription>
+            </Alert>
+
+            <div className={`grid gap-6 ${domainConnectResult?.supported ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-md mx-auto'}`}>
+              {/* Automated Setup Option - Only show if supported */}
+              {domainConnectResult?.supported && (
+                <Card 
+                  className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-blue-300"
+                  onClick={() => startDomainSetup('auto')}
+                >
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-blue-600" />
+                      Automated Setup with {domainConnectResult.provider}
+                      <Badge className="bg-blue-100 text-blue-700">Recommended</Badge>
+                    </CardTitle>
+                    <CardDescription>
+                      One-click setup via Domain Connect
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Clock className="h-4 w-4" />
+                      30 seconds
+                    </div>
+                    
+                    <div className="flex items-center justify-center">
+                      {/* Show the specific registrar logo */}
+                      {supportedRegistrars.find(r => r.name === domainConnectResult.provider) && (
+                        <div className="text-center">
+                          <div className="text-3xl mb-2">
+                            {supportedRegistrars.find(r => r.name === domainConnectResult.provider)?.logo}
+                          </div>
+                          <div className="text-sm font-medium text-gray-700">
+                            {domainConnectResult.provider}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <p className="text-sm text-gray-600 text-center">
+                      Automatically configures all DNS records. No manual steps needed!
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Manual Setup Option - Always show */}
+              <Card 
+                className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-gray-300"
+                onClick={() => startDomainSetup('manual')}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-gray-600" />
+                    Manual Setup
+                    {!domainConnectResult?.supported && (
+                      <Badge className="bg-gray-100 text-gray-700">Required</Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription>
+                    Step-by-step DNS configuration
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Clock className="h-4 w-4" />
+                    5-10 minutes
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-600">
+                      {domainConnectResult?.supported 
+                        ? "Prefer to configure DNS yourself? We'll guide you through each step."
+                        : "Works with any DNS provider. We'll guide you through adding the required records."
+                      }
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setStep('domain')}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
               </Button>
             </div>
           </div>
         )}
 
-        {/* Step 2: Method Selection */}
-        {step === 'method-selection' && (
-          <div className="space-y-4">
+        {/* Step 3: Automated Setup in Progress */}
+        {step === 'setup' && (
+          <div className="space-y-6 text-center">
+            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+              <Zap className="h-8 w-8 text-blue-600" />
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-medium">Automated Setup in Progress</h3>
+              <p className="text-gray-600 mt-1">
+                Complete the setup in the popup window to configure <strong>{domain}</strong>
+              </p>
+            </div>
+
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
-                We found {setupMethods.length} setup option{setupMethods.length > 1 ? 's' : ''} for <strong>{domain}</strong>
+                This will automatically add all required DNS records to your domain.
+                No manual configuration needed!
               </AlertDescription>
             </Alert>
 
-            <div className="space-y-3">
-              {setupMethods.map((method, index) => (
-                <Card 
-                  key={index}
-                  className={`cursor-pointer transition-all hover:shadow-md ${
-                    index === 0 ? 'ring-2 ring-blue-500 ring-opacity-20' : ''
-                  }`}
-                  onClick={() => startDomainSetup(method)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {getMethodIcon(method.type)}
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">
-                              {method.provider || 'Manual Setup'}
-                            </span>
-                            {getMethodBadge(method.type)}
-                            {index === 0 && (
-                              <Badge className="bg-yellow-100 text-yellow-700">
-                                Recommended
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {method.description}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Clock className="h-4 w-4" />
-                        {method.estimatedTime}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <Button variant="outline" onClick={() => setStep('input')}>
-              Back
+            <Button 
+              variant="outline" 
+              onClick={onClose}
+            >
+              Continue in Background
             </Button>
           </div>
         )}
 
-        {/* Step 3: DNS Setup (Manual/API) */}
-        {step === 'setup' && selectedMethod?.type !== 'domain-connect' && (
+        {/* Step 4: Manual DNS Setup */}
+        {step === 'manual' && (
           <div className="space-y-6">
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Add these DNS records to complete domain verification for <strong>{domain}</strong>
+                Add these DNS records to your domain provider to complete setup for <strong>{domain}</strong>
               </AlertDescription>
             </Alert>
 
@@ -423,24 +528,56 @@ export function SmartDomainSetup({ isOpen, onClose, onDomainAdded }: SmartDomain
               </Card>
             ))}
 
+            <Alert>
+              <Clock className="h-4 w-4" />
+              <AlertDescription>
+                After adding these records, DNS changes can take up to 24 hours to propagate globally. 
+                Your emails will start using the custom domain once verification is complete.
+              </AlertDescription>
+            </Alert>
+
             <div className="flex gap-2">
               <Button
                 onClick={() => {
-                  setStep('verification')
-                  startVerificationPolling()
+                  toast.success('Domain setup saved! We\'ll verify your DNS records and notify you when ready.')
+                  onClose()
+                  resetModal()
                 }}
                 className="flex-1"
               >
                 I've Added the Records
               </Button>
-              <Button variant="outline" onClick={() => setStep('method-selection')}>
+              <Button 
+                variant="outline" 
+                onClick={() => setStep('method')}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
+            </div>
+
+            <div className="pt-4 border-t">
+              <h4 className="font-medium mb-2">Need help?</h4>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <a href="https://docs.sendgrid.com" target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-2 h-3 w-3" />
+                    SendGrid Docs
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/help/dns-setup" target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-2 h-3 w-3" />
+                    Setup Guide
+                  </a>
+                </Button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Step 4: Verification */}
+        {/* Step 5: Verification */}
         {step === 'verification' && (
           <div className="space-y-6 text-center">
             <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
@@ -450,10 +587,7 @@ export function SmartDomainSetup({ isOpen, onClose, onDomainAdded }: SmartDomain
             <div>
               <h3 className="text-lg font-medium">Verifying {domain}</h3>
               <p className="text-gray-600 mt-1">
-                {selectedMethod?.type === 'domain-connect' 
-                  ? 'Processing Domain Connect setup...'
-                  : 'Checking DNS propagation...'
-                }
+                Processing Domain Connect setup...
               </p>
             </div>
 
@@ -471,7 +605,10 @@ export function SmartDomainSetup({ isOpen, onClose, onDomainAdded }: SmartDomain
               </AlertDescription>
             </Alert>
 
-            <Button variant="outline" onClick={onClose}>
+            <Button 
+              variant="outline" 
+              onClick={onClose}
+            >
               Continue in Background
             </Button>
           </div>

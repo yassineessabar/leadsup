@@ -9,9 +9,22 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Configure DNS with longer timeouts
+dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1'])
+
 const resolveTxt = promisify(dns.resolveTxt)
 const resolveMx = promisify(dns.resolveMx)
 const resolveCname = promisify(dns.resolveCname)
+
+// Helper function to add timeout to DNS operations
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 5000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error(`DNS_TIMEOUT after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ])
+}
 
 // Helper function to get user ID from session
 async function getUserIdFromSession(): Promise<string | null> {
@@ -85,17 +98,17 @@ export async function POST(
     // Verify DNS records
     const verificationResults = await verifyDNSRecords(domain)
     
-    // Calculate domain readiness
+    // Calculate domain readiness - only DKIM is required (matches SendGrid verified records)
     const requiredRecords = verificationResults.filter(r => 
-      r.record.includes('SPF') || r.record.includes('DKIM')
+      r.record.includes('DKIM')
     )
     const passedRequiredRecords = requiredRecords.filter(r => r.verified)
     const optionalRecords = verificationResults.filter(r => 
-      !r.record.includes('SPF') && !r.record.includes('DKIM')
+      !r.record.includes('DKIM')
     )
     const passedOptionalRecords = optionalRecords.filter(r => r.verified)
     
-    // Domain is ready if all required records pass (SPF + DKIM)
+    // Domain is ready if all required records pass (DKIM only - matches SendGrid)
     const domainReady = requiredRecords.length > 0 && passedRequiredRecords.length === requiredRecords.length
     const allVerified = verificationResults.every(result => result.verified)
     const newStatus = domainReady ? 'verified' : 'failed'
@@ -117,7 +130,7 @@ export async function POST(
       records: verificationResults.map(result => ({
         ...result,
         status: result.verified ? 'pass' : (result.error ? 'fail' : 'pending'),
-        required: result.record.includes('SPF') || result.record.includes('DKIM')
+        required: result.record.includes('DKIM')
       })),
       recommendations: generateRecommendations(verificationResults, domainReady)
     }
@@ -181,8 +194,6 @@ export async function POST(
 async function verifyDNSRecords(domain: any): Promise<VerificationResult[]> {
   console.log(`🔍 Starting DNS verification for domain: ${domain.domain}`)
   
-  const results: VerificationResult[] = []
-  
   // Get DNS records from SendGrid configuration or use defaults for leadsup.io
   let dnsRecords = domain.dns_records || []
   
@@ -193,26 +204,25 @@ async function verifyDNSRecords(domain: any): Promise<VerificationResult[]> {
 
   console.log(`📋 Found ${dnsRecords.length} DNS records to verify`)
 
-  // Verify each DNS record with retries
-  for (const record of dnsRecords) {
+  // Verify DNS records in parallel for better performance
+  const verificationPromises = dnsRecords.map(record => {
     console.log(`🔎 Verifying ${record.type} record for ${record.host}`)
-    
-    const verificationResult = await verifyDNSRecordWithRetries(
+    return verifyDNSRecordWithRetries(
       record, 
       domain.domain, 
-      3, // max retries
-      2000 // delay between retries (2 seconds)
+      1, // max retries (minimal since we have timeouts)
+      500 // delay between retries (0.5 seconds)
     )
-    
-    results.push(verificationResult)
-  }
+  })
+  
+  const results = await Promise.all(verificationPromises)
 
   // Calculate overall status
   const passedRecords = results.filter(r => r.verified).length
   const totalRecords = results.length
-  const requiredRecords = results.filter(r => r.record.includes('SPF') || r.record.includes('DKIM')).length
+  const requiredRecords = results.filter(r => r.record.includes('DKIM')).length
   const passedRequiredRecords = results.filter(r => 
-    (r.record.includes('SPF') || r.record.includes('DKIM')) && r.verified
+    r.record.includes('DKIM') && r.verified
   ).length
 
   console.log(`📊 Verification Summary:`)
@@ -248,6 +258,8 @@ async function verifyDNSRecordWithRetries(
     } catch (error) {
       lastError = error.message || 'DNS lookup failed'
       console.log(`⚠️  Attempt ${attempt} failed for ${record.type} ${record.host}: ${lastError}`)
+      console.log(`🔍 Error details: ${JSON.stringify({code: error.code, syscall: error.syscall, hostname: error.hostname})}`)
+      console.log(`🔍 Full error in retry:`, error)
       
       if (attempt === maxRetries) {
         return {
@@ -278,7 +290,9 @@ async function verifyDNSRecordWithRetries(
 }
 
 async function verifyDNSRecord(record: any, domainName: string): Promise<VerificationResult> {
-  switch (record.type) {
+  const recordType = record.type?.toUpperCase()
+  
+  switch (recordType) {
     case 'TXT': {
       return await verifyTXTRecord(record, domainName)
     }
@@ -314,7 +328,7 @@ async function verifyTXTRecord(record: any, domainName: string): Promise<Verific
   console.log(`🔍 Checking TXT record for: ${hostname}`)
   
   try {
-    const txtRecords = await resolveTxt(hostname)
+    const txtRecords = await withTimeout(resolveTxt(hostname), 3000)
     const allRecords = txtRecords.flat()
     
     console.log(`📝 Found ${allRecords.length} TXT records:`, allRecords)
@@ -355,15 +369,15 @@ async function verifyCNAMERecord(record: any, domainName: string): Promise<Verif
   try {
     // For link tracking records, try to find any existing em* subdomain that works
     if (record.purpose?.includes('Link tracking') || record.purpose?.includes('tracking')) {
-      // Try common em prefixes that might be configured
-      const emPrefixes = ['em7895', 'em6012', 'em1487', 'em27056635']
+      // Try common em prefixes that might be configured (prioritize known leadsup.io prefixes)
+      const emPrefixes = ['em7895', 'em1487', 'em6012', 'em27056635']
       
       for (const prefix of emPrefixes) {
         const testHost = `${prefix}.${domainName}`
         console.log(`🔍 Trying link tracking subdomain: ${testHost}`)
         
         try {
-          const cnameRecords = await resolveCname(testHost)
+          const cnameRecords = await withTimeout(resolveCname(testHost), 3000)
           const foundRecord = cnameRecords[0] || null
           
           if (foundRecord && foundRecord.includes('u55053564.wl065.sendgrid.net')) {
@@ -392,7 +406,8 @@ async function verifyCNAMERecord(record: any, domainName: string): Promise<Verif
     }
     
     // For non-tracking records (DKIM, etc.), use exact hostname
-    const cnameRecords = await resolveCname(hostname)
+    console.log(`🔍 Looking up CNAME for: ${hostname}`)
+    const cnameRecords = await withTimeout(resolveCname(hostname), 3000)
     console.log(`📝 Found CNAME records for ${hostname}:`, cnameRecords)
     
     const foundRecord = cnameRecords[0] || null
@@ -415,6 +430,9 @@ async function verifyCNAMERecord(record: any, domainName: string): Promise<Verif
       verified: isVerified
     }
   } catch (error) {
+    console.log(`❌ CNAME lookup error for ${hostname}: ${error.message}`)
+    console.log(`🔍 Error details: ${JSON.stringify({code: error.code, syscall: error.syscall, hostname: error.hostname})}`)
+    console.log(`🔍 Full error object:`, error)
     throw new Error(`CNAME lookup failed: ${error.message}`)
   }
 }
@@ -425,7 +443,7 @@ async function verifyMXRecord(record: any, domainName: string): Promise<Verifica
   console.log(`🔍 Checking MX record for: ${hostname}`)
   
   try {
-    const mxRecords = await resolveMx(hostname)
+    const mxRecords = await withTimeout(resolveMx(hostname), 3000)
     console.log(`📝 Found MX records:`, mxRecords)
     
     const foundRecord = mxRecords.find(mx => mx.exchange === record.value)
@@ -443,7 +461,7 @@ async function verifyMXRecord(record: any, domainName: string): Promise<Verifica
 }
 
 function getLeadsUpDNSRecords(domain: string) {
-  // Default DNS records for leadsup.io (actual SendGrid configuration)
+  // Default DNS records for leadsup.io (SendGrid verified records only)
   if (domain === 'leadsup.io' || domain.includes('leadsup.io')) {
     return [
       {
@@ -466,14 +484,8 @@ function getLeadsUpDNSRecords(domain: string) {
       },
       {
         type: 'TXT',
-        host: '@',
-        value: 'v=spf1 include:sendgrid.net ~all',
-        purpose: 'SPF - Authorizes SendGrid to send emails'
-      },
-      {
-        type: 'TXT',
         host: '_dmarc',
-        value: 'v=DMARC1; p=none; rua=mailto:dmarc@leadsup.io; ruf=mailto:dmarc@leadsup.io; pct=100; sp=none;',
+        value: 'v=DMARC1; p=none;',
         purpose: 'DMARC policy'
       },
       {
@@ -495,7 +507,7 @@ function generateRecommendations(verificationResults: VerificationResult[], doma
   
   if (domainReady) {
     recommendations.push("✅ Domain is ready for email sending!")
-    recommendations.push("All required DNS records (SPF and DKIM) are properly configured.")
+    recommendations.push("All required DNS records (DKIM) are properly configured and verified by SendGrid.")
   } else {
     recommendations.push("❌ Domain is not ready for email sending.")
     

@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
 
 // Helper function to get default DNS records for a domain
 function getDefaultDnsRecords(domain: string) {
-  // For leadsup.io, use the actual SendGrid configuration
+  // For leadsup.io, use SendGrid verified records only
   if (domain === 'leadsup.io' || domain.includes('leadsup.io')) {
     return [
       {
@@ -115,14 +115,8 @@ function getDefaultDnsRecords(domain: string) {
       },
       {
         type: 'TXT',
-        host: '@',
-        value: 'v=spf1 include:sendgrid.net ~all',
-        purpose: 'SPF - Authorizes SendGrid to send emails'
-      },
-      {
-        type: 'TXT',
         host: '_dmarc',
-        value: 'v=DMARC1; p=none; rua=mailto:dmarc@leadsup.io; ruf=mailto:dmarc@leadsup.io; pct=100; sp=none;',
+        value: 'v=DMARC1; p=none;',
         purpose: 'DMARC policy'
       },
       {

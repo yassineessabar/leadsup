@@ -15,7 +15,9 @@ import {
   AlertCircle,
   ExternalLink,
   Clock,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft,
+  Loader2
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -26,57 +28,59 @@ interface DomainSetupButtonProps {
 
 export function DomainSetupButton({ campaignId, campaignName }: DomainSetupButtonProps) {
   const [showSetup, setShowSetup] = useState(false)
-  const [setupMethod, setSetupMethod] = useState<'auto' | 'manual' | null>(null)
+  const [step, setStep] = useState<'domain' | 'method' | 'setup' | 'manual'>('domain')
   const [domain, setDomain] = useState('')
+  const [selectedMethod, setSelectedMethod] = useState<'auto' | 'manual' | null>(null)
   const [loading, setLoading] = useState(false)
   const [dnsRecords, setDnsRecords] = useState<any[]>([])
   const [copied, setCopied] = useState<Record<string, boolean>>({})
+  const [domainConnectResult, setDomainConnectResult] = useState<any>(null)
+
+  // Supported registrars for automatic setup
+  const supportedRegistrars = [
+    { name: 'GoDaddy', logo: '🌐' },
+    { name: 'Namecheap', logo: '🔶' },
+    { name: 'Google Domains', logo: '🔍' },
+    { name: 'Cloudflare', logo: '☁️' },
+    { name: 'Domain.com', logo: '📡' },
+    { name: 'Name.com', logo: '📝' },
+    { name: 'Network Solutions', logo: '🌍' },
+    { name: 'Hover', logo: '🎯' }
+  ]
 
   const startDomainSetup = async (method: 'auto' | 'manual') => {
-    setSetupMethod(method)
     setLoading(true)
 
     try {
-      if (method === 'auto') {
-        // Check Domain Connect support
-        const response = await fetch('/api/domain-connect/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ domain })
-        })
-
-        const result = await response.json()
+      if (method === 'auto' && domainConnectResult?.supported && domainConnectResult?.setupUrl) {
+        setStep('setup')
         
-        if (result.supported && result.setupUrl) {
-          // Open Domain Connect popup
-          const popup = window.open(
-            result.setupUrl,
-            'domain-setup',
-            'width=800,height=600,scrollbars=yes,resizable=yes'
-          )
+        // Open Domain Connect popup
+        const popup = window.open(
+          domainConnectResult.setupUrl,
+          'domain-setup',
+          'width=800,height=600,scrollbars=yes,resizable=yes'
+        )
 
-          if (!popup) {
-            toast.error('Please allow popups for automated setup')
-            return
-          }
-
-          // Monitor popup for completion
-          const checkClosed = setInterval(() => {
-            if (popup.closed) {
-              clearInterval(checkClosed)
-              setTimeout(() => {
-                toast.success('Domain setup completed!')
-                setShowSetup(false)
-              }, 2000)
-            }
-          }, 1000)
-
-        } else {
-          toast.error('Automated setup not available for this domain')
-          setSetupMethod('manual') // Fallback to manual
+        if (!popup) {
+          toast.error('Please allow popups for automated setup')
+          return
         }
+
+        // Monitor popup for completion
+        const checkClosed = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkClosed)
+            setTimeout(() => {
+              toast.success('Domain setup completed!')
+              setShowSetup(false)
+              resetModal()
+            }, 2000)
+          }
+        }, 1000)
       } else {
         // Manual setup - generate DNS records
+        setStep('manual')
         const records = [
           {
             type: 'TXT',
@@ -128,7 +132,17 @@ export function DomainSetupButton({ campaignId, campaignName }: DomainSetupButto
     }
   }
 
-  const handleDomainSubmit = () => {
+  const resetModal = () => {
+    setStep('domain')
+    setDomain('')
+    setSelectedMethod(null)
+    setLoading(false)
+    setDnsRecords([])
+    setCopied({})
+    setDomainConnectResult(null)
+  }
+
+  const handleDomainSubmit = async () => {
     if (!domain) {
       toast.error('Please enter your domain')
       return
@@ -141,7 +155,32 @@ export function DomainSetupButton({ campaignId, campaignName }: DomainSetupButto
       return
     }
 
-    setSetupMethod(null) // Show method selection
+    setLoading(true)
+    
+    try {
+      // Check Domain Connect support for this specific domain
+      const response = await fetch('/api/domain-connect/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain })
+      })
+
+      const result = await response.json()
+      setDomainConnectResult(result)
+      setStep('method')
+    } catch (error) {
+      console.error('Error checking domain support:', error)
+      // Still proceed to method selection, but without automated option
+      setDomainConnectResult({ supported: false })
+      setStep('method')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleMethodSelect = (method: 'auto' | 'manual') => {
+    setSelectedMethod(method)
+    startDomainSetup(method)
   }
 
   return (
@@ -155,14 +194,22 @@ export function DomainSetupButton({ campaignId, campaignName }: DomainSetupButto
         Setup Domain
       </Button>
 
-      <Dialog open={showSetup} onOpenChange={setShowSetup}>
+      <Dialog open={showSetup} onOpenChange={(open) => {
+        setShowSetup(open)
+        if (!open) resetModal()
+      }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Domain Setup for {campaignName}</DialogTitle>
+            <DialogTitle>
+              {step === 'domain' && 'Add Your Domain'}
+              {step === 'method' && 'Choose Setup Method'}
+              {step === 'setup' && 'Setting Up Domain'}
+              {step === 'manual' && 'Manual DNS Setup'}
+            </DialogTitle>
           </DialogHeader>
 
           {/* Step 1: Domain Input */}
-          {!setupMethod && (
+          {step === 'domain' && (
             <div className="space-y-6">
               <Alert>
                 <Globe className="h-4 w-4" />
@@ -187,61 +234,23 @@ export function DomainSetupButton({ campaignId, campaignName }: DomainSetupButto
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Automated Setup Option */}
-                  <Card 
-                    className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-blue-200"
-                    onClick={() => domain && startDomainSetup('auto')}
-                  >
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Zap className="h-5 w-5 text-blue-600" />
-                        Automated Setup
-                        <Badge className="bg-blue-100 text-blue-700">Recommended</Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-600 mb-3">
-                        One-click setup for GoDaddy, Namecheap, Google Domains, and 50+ other providers.
-                      </p>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Clock className="h-4 w-4" />
-                        30 seconds
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Manual Setup Option */}
-                  <Card 
-                    className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-gray-200"
-                    onClick={() => domain && startDomainSetup('manual')}
-                  >
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Settings className="h-5 w-5 text-gray-600" />
-                        Manual Setup
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-600 mb-3">
-                        Step-by-step guide with DNS records. Works with any DNS provider.
-                      </p>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Clock className="h-4 w-4" />
-                        5-10 minutes
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
                 <div className="flex gap-2">
                   <Button 
                     onClick={handleDomainSubmit}
-                    disabled={!domain}
+                    disabled={!domain || loading}
                     className="flex-1"
                   >
-                    Continue
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Checking domain...
+                      </>
+                    ) : (
+                      <>
+                        Continue
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -254,8 +263,154 @@ export function DomainSetupButton({ campaignId, campaignName }: DomainSetupButto
             </div>
           )}
 
-          {/* Step 2: Manual DNS Setup */}
-          {setupMethod === 'manual' && (
+          {/* Step 2: Choose Setup Method */}
+          {step === 'method' && (
+            <div className="space-y-6">
+              <Alert>
+                {domainConnectResult?.supported ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <Globe className="h-4 w-4" />
+                )}
+                <AlertDescription>
+                  {domainConnectResult?.supported ? (
+                    <>
+                      Great news! <strong>{domain}</strong> supports automated setup via{' '}
+                      <strong>{domainConnectResult.provider}</strong>.
+                    </>
+                  ) : (
+                    <>
+                      Choose how you'd like to set up <strong>{domain}</strong> for sending emails.
+                    </>
+                  )}
+                </AlertDescription>
+              </Alert>
+
+              <div className={`grid gap-6 ${domainConnectResult?.supported ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-md mx-auto'}`}>
+                {/* Automated Setup Option - Only show if supported */}
+                {domainConnectResult?.supported && (
+                  <Card 
+                    className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-blue-300"
+                    onClick={() => handleMethodSelect('auto')}
+                  >
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Zap className="h-5 w-5 text-blue-600" />
+                        Automated Setup with {domainConnectResult.provider}
+                        <Badge className="bg-blue-100 text-blue-700">Recommended</Badge>
+                      </CardTitle>
+                      <CardDescription>
+                        One-click setup via Domain Connect
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Clock className="h-4 w-4" />
+                        30 seconds
+                      </div>
+                      
+                      <div className="flex items-center justify-center">
+                        {/* Show the specific registrar logo */}
+                        {supportedRegistrars.find(r => r.name === domainConnectResult.provider) && (
+                          <div className="text-center">
+                            <div className="text-3xl mb-2">
+                              {supportedRegistrars.find(r => r.name === domainConnectResult.provider)?.logo}
+                            </div>
+                            <div className="text-sm font-medium text-gray-700">
+                              {domainConnectResult.provider}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <p className="text-sm text-gray-600 text-center">
+                        Automatically configures all DNS records. No manual steps needed!
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Manual Setup Option - Always show */}
+                <Card 
+                  className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-gray-300"
+                  onClick={() => handleMethodSelect('manual')}
+                >
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Settings className="h-5 w-5 text-gray-600" />
+                      Manual Setup
+                      {!domainConnectResult?.supported && (
+                        <Badge className="bg-gray-100 text-gray-700">Required</Badge>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      Step-by-step DNS configuration
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Clock className="h-4 w-4" />
+                      5-10 minutes
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-gray-600">
+                        {domainConnectResult?.supported 
+                          ? "Prefer to configure DNS yourself? We'll guide you through each step."
+                          : "Works with any DNS provider. We'll guide you through adding the required records."
+                        }
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setStep('domain')}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Automated Setup in Progress */}
+          {step === 'setup' && selectedMethod === 'auto' && (
+            <div className="space-y-6 text-center">
+              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <Zap className="h-8 w-8 text-blue-600" />
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-medium">Automated Setup in Progress</h3>
+                <p className="text-gray-600 mt-1">
+                  Complete the setup in the popup window to configure <strong>{domain}</strong>
+                </p>
+              </div>
+
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  This will automatically add all required DNS records to your domain.
+                  No manual configuration needed!
+                </AlertDescription>
+              </Alert>
+
+              <Button 
+                variant="outline" 
+                onClick={() => setShowSetup(false)}
+              >
+                Continue in Background
+              </Button>
+            </div>
+          )}
+
+          {/* Step 4: Manual DNS Setup */}
+          {step === 'manual' && (
             <div className="space-y-6">
               <Alert>
                 <AlertCircle className="h-4 w-4" />
@@ -317,6 +472,7 @@ export function DomainSetupButton({ campaignId, campaignName }: DomainSetupButto
                   onClick={() => {
                     toast.success('Domain setup saved! We\'ll verify your DNS records and notify you when ready.')
                     setShowSetup(false)
+                    resetModal()
                   }}
                   className="flex-1"
                 >
@@ -324,57 +480,13 @@ export function DomainSetupButton({ campaignId, campaignName }: DomainSetupButto
                 </Button>
                 <Button 
                   variant="outline" 
-                  onClick={() => setSetupMethod(null)}
+                  onClick={() => setStep('method')}
+                  className="flex items-center gap-2"
                 >
+                  <ArrowLeft className="h-4 w-4" />
                   Back
                 </Button>
               </div>
-
-              <div className="pt-4 border-t">
-                <h4 className="font-medium mb-2">Need help?</h4>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" asChild>
-                    <a href="https://docs.sendgrid.com" target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="mr-2 h-3 w-3" />
-                      SendGrid Docs
-                    </a>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <a href="/help/dns-setup" target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="mr-2 h-3 w-3" />
-                      Setup Guide
-                    </a>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Automated Setup (Domain Connect) */}
-          {setupMethod === 'auto' && (
-            <div className="space-y-6 text-center">
-              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                <Zap className="h-8 w-8 text-blue-600" />
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-medium">Automated Setup in Progress</h3>
-                <p className="text-gray-600 mt-1">
-                  Complete the setup in the popup window to configure <strong>{domain}</strong>
-                </p>
-              </div>
-
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  This will automatically add all required DNS records to your domain.
-                  No manual configuration needed!
-                </AlertDescription>
-              </Alert>
-
-              <Button variant="outline" onClick={() => setShowSetup(false)}>
-                Continue in Background
-              </Button>
             </div>
           )}
         </DialogContent>
