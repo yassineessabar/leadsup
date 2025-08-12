@@ -33,6 +33,8 @@ async function parseFormData(request: NextRequest) {
       formData.get('body') || 
       formData.get('plain') || 
       formData.get('body-plain') ||
+      formData.get('stripped-text') ||
+      formData.get('stripped-plain') ||
       ''
     ) as string
     
@@ -40,6 +42,7 @@ async function parseFormData(request: NextRequest) {
       formData.get('html') || 
       formData.get('body-html') || 
       formData.get('html-body') ||
+      formData.get('stripped-html') ||
       ''
     ) as string
     
