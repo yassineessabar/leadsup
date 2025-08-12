@@ -28,7 +28,6 @@ async function createTestCompletedCampaign() {
         type: 'Email',
         trigger_type: 'Manual',
         status: 'Completed', // This will show the Domain Setup button
-        outreach_strategy: 'email',
         description: 'Completed summer outreach campaign for testing domain setup'
       })
       .select()
