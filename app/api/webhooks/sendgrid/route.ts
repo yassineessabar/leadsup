@@ -32,8 +32,10 @@ function extractActualReply(text: string): string {
   // First, decode quoted-printable
   cleanText = decodeQuotedPrintable(cleanText)
   
-  // Remove "Content-Transfer-Encoding" lines
+  // Remove "Content-Transfer-Encoding" lines and other headers
   cleanText = cleanText.replace(/Content-Transfer-Encoding: .+?\n/gi, '')
+  cleanText = cleanText.replace(/Content-Type: .+?\n/gi, '')
+  cleanText = cleanText.replace(/MIME-Version: .+?\n/gi, '')
   
   // Find the actual reply by splitting on "On ... wrote:" pattern
   const onWroteMatch = cleanText.match(/(.*?)On .+? wrote:/is)
@@ -48,7 +50,29 @@ function extractActualReply(text: string): string {
     return trimmed && !trimmed.startsWith('>')
   })
   
-  return replyLines.join('\n').trim()
+  let result = replyLines.join('\n').trim()
+  
+  // Final cleanup - remove any remaining header-like content at the start
+  const finalLines = result.split('\n')
+  const contentLines = []
+  let pastHeaders = false
+  
+  for (const line of finalLines) {
+    const trimmed = line.trim()
+    
+    // Skip header-like lines at the start
+    if (!pastHeaders) {
+      if (trimmed === '' || trimmed.includes('Content-') || trimmed.includes('MIME-') || 
+          (trimmed.includes(':') && trimmed.length < 50 && !trimmed.includes(' '))) {
+        continue
+      }
+      pastHeaders = true
+    }
+    
+    contentLines.push(trimmed)
+  }
+  
+  return contentLines.join('\n').trim()
 }
 
 // Parse raw email content to extract message body
