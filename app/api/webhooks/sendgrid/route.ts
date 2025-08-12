@@ -15,13 +15,21 @@ async function parseFormData(request: NextRequest) {
     
     // Debug: Log all form fields that SendGrid sent
     console.log('📝 ALL SendGrid form fields:')
+    console.log('========================================')
     for (const [key, value] of formData.entries()) {
       if (typeof value === 'string') {
-        console.log(`   ${key}: "${value.substring(0, 100)}${value.length > 100 ? '...' : ''}"`)
+        console.log(`🔍 Field: ${key}`)
+        console.log(`   Type: string`)
+        console.log(`   Length: ${value.length}`)
+        console.log(`   Content: "${value.substring(0, 200)}${value.length > 200 ? '...' : ''}"`)
+        console.log('')
       } else {
-        console.log(`   ${key}: [File object]`)
+        console.log(`🔍 Field: ${key}`)
+        console.log(`   Type: File object`)
+        console.log('')
       }
     }
+    console.log('========================================')
     
     // Extract all the fields SendGrid sends
     const envelope = formData.get('envelope') as string
