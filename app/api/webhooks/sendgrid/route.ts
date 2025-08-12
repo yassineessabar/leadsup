@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     console.log(`🔍 Looking for campaign_sender with email: "${toEmail}"`)
     const { data: campaignSenders, error: senderError } = await supabaseServer
       .from('campaign_senders')
-      .select('user_id, campaign_id')
+      .select('id, user_id, campaign_id')
       .eq('email', toEmail)
     
     console.log('🔍 Campaign sender query result:', { campaignSenders, senderError })
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     const contactId = contact?.id || null
     
     // Generate conversation ID for threading
-    const conversationId = generateConversationId(fromEmail, toEmail, campaignSender.campaign_id)
+    const conversationId = generateConversationId(fromEmail, toEmail, campaignSender.campaign_id.toString())
     const messageId = `sendgrid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     
     console.log(`🔗 Conversation ID: ${conversationId}`)
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Create or update thread FIRST (required for foreign key constraint)
-    await supabaseServer
+    const { data: threadData, error: threadError } = await supabaseServer
       .from('inbox_threads')
       .upsert({
         user_id: campaignSender.user_id,
@@ -137,6 +137,15 @@ export async function POST(request: NextRequest) {
         onConflict: 'conversation_id,user_id'
       })
     
+    if (threadError) {
+      console.error('❌ Error creating thread:', threadError)
+      return NextResponse.json({ 
+        success: false,
+        error: 'Failed to create thread',
+        debug: threadError.message
+      }, { status: 500 })
+    }
+    
     console.log(`✅ Thread created/updated for conversation ${conversationId}`)
     
     // Store the inbound message
@@ -149,6 +158,7 @@ export async function POST(request: NextRequest) {
         campaign_id: campaignSender.campaign_id,
         contact_id: contactId,
         contact_email: fromEmail,
+        sender_id: campaignSender.id,
         sender_email: toEmail,
         subject: emailData.subject,
         body_text: emailData.text,
@@ -157,7 +167,7 @@ export async function POST(request: NextRequest) {
         channel: 'email',
         status: 'unread',
         folder: 'inbox',
-        has_attachments: parseInt(emailData.attachments) > 0,
+        has_attachments: parseInt(emailData.attachments || '0') > 0,
         provider: 'smtp', // Use 'smtp' as it's in the allowed values per schema
         provider_data: {
           spam_score: spamScore,
