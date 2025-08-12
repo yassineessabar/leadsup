@@ -1,11 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase'
+import { cookies } from "next/headers"
+import { createClient } from "@supabase/supabase-js"
 import dns from 'dns'
 import { promisify } from 'util'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 const resolveTxt = promisify(dns.resolveTxt)
 const resolveMx = promisify(dns.resolveMx)
 const resolveCname = promisify(dns.resolveCname)
+
+// Helper function to get user ID from session
+async function getUserIdFromSession(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get("session")?.value
+
+    if (!sessionToken) {
+      return null
+    }
+
+    // Query user_sessions table to get user_id
+    const { data, error } = await supabase
+      .from("user_sessions")
+      .select("user_id")
+      .eq("session_token", sessionToken)
+      .single()
+
+    if (error || !data) {
+      console.error("Error fetching user from session:", error)
+      return null
+    }
+
+    return data.user_id
+  } catch (error) {
+    console.error("Error in getUserIdFromSession:", error)
+    return null
+  }
+}
 
 interface VerificationResult {
   record: string
@@ -17,21 +52,30 @@ interface VerificationResult {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const domainId = params.id
+    const userId = await getUserIdFromSession()
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    const { id: domainId } = await params
 
     // Get domain from database
-    const { data: domain, error: domainError } = await supabaseServer
+    const { data: domain, error: domainError } = await supabase
       .from('domains')
       .select('*')
       .eq('id', domainId)
+      .eq('user_id', userId) // Ensure user owns this domain
       .single()
 
     if (domainError || !domain) {
       return NextResponse.json(
-        { error: 'Domain not found' },
+        { success: false, error: 'Domain not found' },
         { status: 404 }
       )
     }
@@ -44,12 +88,13 @@ export async function POST(
     const newStatus = allVerified ? 'verified' : 'failed'
 
     // Update domain status
-    const { error: updateError } = await supabaseServer
+    const { error: updateError } = await supabase
       .from('domains')
       .update({
         status: newStatus,
-        last_checked_at: new Date().toISOString(),
-        verified_at: allVerified ? new Date().toISOString() : null
+        last_verification_attempt: new Date().toISOString(),
+        verified_at: allVerified ? new Date().toISOString() : null,
+        verification_error: allVerified ? null : 'DNS records not found or incorrect'
       })
       .eq('id', domainId)
 
@@ -58,13 +103,15 @@ export async function POST(
     }
 
     // Log verification attempt
-    await supabaseServer
-      .from('domain_verification_logs')
+    await supabase
+      .from('domain_verification_history')
       .insert({
         domain_id: domainId,
         verification_type: 'manual',
-        status: newStatus,
-        dns_records_checked: verificationResults
+        status: allVerified ? 'success' : 'failed',
+        error_message: allVerified ? null : 'DNS records not found or incorrect',
+        dns_records_checked: verificationResults,
+        verification_details: { results: verificationResults }
       })
 
     // If verified, set up SendGrid integration
@@ -73,6 +120,7 @@ export async function POST(
     }
 
     return NextResponse.json({
+      success: true,
       status: newStatus,
       verified: allVerified,
       results: verificationResults
@@ -81,7 +129,7 @@ export async function POST(
   } catch (error) {
     console.error('Domain verification error:', error)
     return NextResponse.json(
-      { error: 'Verification failed' },
+      { success: false, error: 'Verification failed' },
       { status: 500 }
     )
   }
@@ -89,73 +137,79 @@ export async function POST(
 
 async function verifyDNSRecords(domain: any): Promise<VerificationResult[]> {
   const results: VerificationResult[] = []
+  const dnsRecords = domain.dns_records || []
 
-  try {
-    // Verify SPF record
-    const txtRecords = await resolveTxt(domain.domain)
-    const spfRecord = txtRecords.flat().find(record => record.startsWith('v=spf1'))
-    
-    results.push({
-      record: 'SPF',
-      expected: domain.spf_record,
-      found: spfRecord || null,
-      verified: spfRecord?.includes('sendgrid.net') || false
-    })
+  // Verify each DNS record
+  for (const record of dnsRecords) {
+    if (!record.required) continue
 
-  } catch (error) {
-    results.push({
-      record: 'SPF',
-      expected: domain.spf_record,
-      found: null,
-      verified: false,
-      error: 'DNS lookup failed'
-    })
-  }
-
-  try {
-    // Verify DKIM record
-    const dkimHost = domain.dkim_record.split(' ')[0] // Extract host from CNAME record
-    const cnameRecords = await resolveCname(`${dkimHost}.${domain.domain}`)
-    const dkimVerified = cnameRecords.some(record => record.includes('sendgrid.net'))
-    
-    results.push({
-      record: 'DKIM',
-      expected: domain.dkim_record,
-      found: cnameRecords?.[0] || null,
-      verified: dkimVerified
-    })
-
-  } catch (error) {
-    results.push({
-      record: 'DKIM',
-      expected: domain.dkim_record,
-      found: null,
-      verified: false,
-      error: 'DNS lookup failed'
-    })
-  }
-
-  try {
-    // Verify MX record for reply subdomain
-    const replyDomain = `${domain.subdomain}.${domain.domain}`
-    const mxRecords = await resolveMx(replyDomain)
-    const mxVerified = mxRecords.some(record => record.exchange === 'mx.sendgrid.net')
-    
-    results.push({
-      record: 'MX',
-      expected: domain.mx_record,
-      found: mxRecords?.[0]?.exchange || null,
-      verified: mxVerified
-    })
-
-  } catch (error) {
-    results.push({
-      record: 'MX',
-      expected: domain.mx_record,
-      found: null,
-      verified: false,
-      error: 'DNS lookup failed'
-    })
+    try {
+      switch (record.type) {
+        case 'TXT': {
+          if (record.name === '@') {
+            // SPF record verification
+            const txtRecords = await resolveTxt(domain.domain)
+            const spfRecord = txtRecords.flat().find(r => r.startsWith('v=spf1'))
+            
+            results.push({
+              record: `TXT (${record.purpose})`,
+              expected: record.value,
+              found: spfRecord || null,
+              verified: spfRecord?.includes('sendgrid.net') || false
+            })
+          } else if (record.name === '_leadsup-verify') {
+            // Verification token check
+            const txtRecords = await resolveTxt(`${record.name}.${domain.domain}`)
+            const verifyRecord = txtRecords.flat().find(r => r.startsWith('leadsup-verify-'))
+            
+            results.push({
+              record: `TXT (${record.purpose})`,
+              expected: record.value,
+              found: verifyRecord || null,
+              verified: verifyRecord === record.value
+            })
+          }
+          break
+        }
+        
+        case 'CNAME': {
+          // DKIM record verification
+          const cnameRecords = await resolveCname(`${record.name}.${domain.domain}`)
+          const dkimVerified = cnameRecords.some(r => r.includes('sendgrid.net'))
+          
+          results.push({
+            record: `CNAME (${record.purpose})`,
+            expected: record.value,
+            found: cnameRecords?.[0] || null,
+            verified: dkimVerified
+          })
+          break
+        }
+        
+        case 'MX': {
+          // MX record verification (optional)
+          const replyDomain = `${record.name}.${domain.domain}`
+          const mxRecords = await resolveMx(replyDomain)
+          const mxVerified = mxRecords.some(r => r.exchange === record.value)
+          
+          results.push({
+            record: `MX (${record.purpose})`,
+            expected: record.value,
+            found: mxRecords?.[0]?.exchange || null,
+            verified: mxVerified
+          })
+          break
+        }
+      }
+    } catch (error) {
+      results.push({
+        record: `${record.type} (${record.purpose})`,
+        expected: record.value,
+        found: null,
+        verified: false,
+        error: 'DNS lookup failed'
+      })
+    }
   }
 
   return results
