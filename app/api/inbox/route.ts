@@ -62,7 +62,8 @@ export async function GET(request: NextRequest) {
     const view = searchParams.get('view') || 'threads' // 'threads' or 'messages'
     const conversationId = searchParams.get('conversation_id') // for fetching thread messages
 
-    console.log('📧 Inbox API called with filters:', {
+    console.log('🚨 INBOX API DEBUG - Called with filters:', {
+      userId,
       campaigns, senders, leadStatuses, folder, channel, search, dateFrom, dateTo, status, view, conversationId,
       rawParams: Object.fromEntries(searchParams.entries())
     })
@@ -371,7 +372,12 @@ async function getThreadedMessages(userId: string, filters: any) {
       })
     ).then(results => results.filter(thread => thread !== null)) // Filter out null threads
 
-    console.log(`✅ Returning ${formattedThreads.length} threads for folder '${folder}'`)
+    console.log(`🚨 INBOX API DEBUG - Returning ${formattedThreads.length} threads for folder '${folder}'`)
+    console.log(`🚨 FIRST 3 THREADS:`, formattedThreads.slice(0, 3).map(t => ({ 
+      conversation_id: t.conversation_id, 
+      sender: t.sender, 
+      subject: t.subject 
+    })))
     
     return NextResponse.json({
       success: true,
