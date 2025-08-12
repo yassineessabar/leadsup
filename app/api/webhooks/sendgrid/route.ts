@@ -27,24 +27,55 @@ async function parseFormData(request: NextRequest) {
     const envelope = formData.get('envelope') as string
     const parsedEnvelope = envelope ? JSON.parse(envelope) : {}
     
-    // Try multiple field name variations that SendGrid might use
-    const textContent = (
-      formData.get('text') || 
-      formData.get('body') || 
-      formData.get('plain') || 
-      formData.get('body-plain') ||
-      formData.get('stripped-text') ||
-      formData.get('stripped-plain') ||
-      ''
-    ) as string
+    // Try ALL possible field name variations that SendGrid/Gmail might use
+    const possibleTextFields = [
+      'text', 'body', 'plain', 'body-plain', 'stripped-text', 'stripped-plain',
+      'body_text', 'text_body', 'content', 'message', 'email', 'reply',
+      'stripped-signature', 'body_stripped'
+    ]
     
-    const htmlContent = (
-      formData.get('html') || 
-      formData.get('body-html') || 
-      formData.get('html-body') ||
-      formData.get('stripped-html') ||
-      ''
-    ) as string
+    const possibleHtmlFields = [
+      'html', 'body-html', 'html-body', 'stripped-html', 'body_html', 
+      'html_body', 'content_html', 'message_html'
+    ]
+    
+    let textContent = ''
+    let htmlContent = ''
+    
+    // Try to find text content in any of these fields
+    for (const field of possibleTextFields) {
+      const value = formData.get(field) as string
+      if (value && value.trim()) {
+        textContent = value
+        console.log(`✅ Found text content in field: ${field}`)
+        break
+      }
+    }
+    
+    // Try to find HTML content in any of these fields  
+    for (const field of possibleHtmlFields) {
+      const value = formData.get(field) as string
+      if (value && value.trim()) {
+        htmlContent = value
+        console.log(`✅ Found HTML content in field: ${field}`)
+        break
+      }
+    }
+    
+    // If still no content, try extracting from any field that contains text-like content
+    if (!textContent && !htmlContent) {
+      console.log('🔍 No content in standard fields, checking all fields for text...')
+      for (const [key, value] of formData.entries()) {
+        if (typeof value === 'string' && value.length > 10 && 
+            !['envelope', 'headers', 'spam_report', 'charsets'].includes(key)) {
+          console.log(`🔍 Potential content in field "${key}": "${value.substring(0, 100)}..."`)
+          if (!textContent && value.length > 0) {
+            textContent = value
+            console.log(`✅ Using content from field: ${key}`)
+          }
+        }
+      }
+    }
     
     console.log('🔍 Content extraction:')
     console.log(`   text length: ${textContent.length}`)
