@@ -1,5 +1,5 @@
 "use client"
-import { BarChart3, MessageSquare, User, Plug, Mail, Link, LogOut, Send, Crown, Sparkles, Settings, Users, Menu, Palette, BarChart2, Lock, Zap, Inbox, UserCheck, Plus, ChevronRight, ChevronDown, SidebarOpen, SidebarClose } from "lucide-react"
+import { BarChart3, MessageSquare, User, Plug, Mail, Link, LogOut, Send, Crown, Sparkles, Settings, Users, Menu, Palette, BarChart2, Lock, Zap, Inbox, UserCheck, Plus, ChevronRight, ChevronDown, SidebarOpen, SidebarClose, Globe } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -127,7 +127,8 @@ export function DashboardSidebar({
   ]
 
   const toolsMenuItems = [
-    { id: "integrations", label: "Integrations", icon: Plug }
+    { id: "integrations", label: "Integrations", icon: Plug },
+    { id: "domain", label: "Domain", icon: Globe }
   ]
 
   // Removed settings menu item - now accessed via company button

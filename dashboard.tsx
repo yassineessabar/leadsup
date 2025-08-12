@@ -10,6 +10,7 @@ import { CustomizationTab } from "@/components/customization-tab"
 import { AccountTab } from "@/components/account-tab"
 import { UpgradePage } from "@/components/upgrade-page"
 import { IntegrationsTab } from "@/components/integrations-tab"
+import { DomainTab } from "@/components/domain-tab"
 import { BillingSubscriptionPage } from "@/components/billing-subscription-page"
 import { ReviewLinkTab } from "@/components/review-link-tab"
 import CampaignsList from "@/components/campaign-tab"
@@ -38,6 +39,8 @@ export default function Dashboard() {
         return <UpgradePage />
       case "integrations":
         return <IntegrationsTab />
+      case "domain":
+        return <DomainTab />
       case "billing":
         return <BillingSubscriptionPage />
       case "review-link":
