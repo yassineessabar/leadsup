@@ -8,6 +8,99 @@ import { supabaseServer } from "@/lib/supabase"
  * replies to your campaign emails sent to your parse domain.
  */
 
+// Parse raw email content to extract message body
+function parseRawEmail(rawEmail: string): { text: string; html: string } {
+  try {
+    console.log('🔍 Parsing raw email for content extraction...')
+    
+    // Split email into sections by double newlines (typical email structure)
+    const sections = rawEmail.split('\n\n')
+    
+    let textContent = ''
+    let htmlContent = ''
+    let inBody = false
+    let currentContentType = ''
+    
+    for (let i = 0; i < sections.length; i++) {
+      const section = sections[i]
+      
+      // Check if this section contains content-type headers
+      if (section.includes('Content-Type:')) {
+        if (section.includes('text/plain')) {
+          currentContentType = 'text'
+          inBody = true
+          continue
+        } else if (section.includes('text/html')) {
+          currentContentType = 'html'
+          inBody = true
+          continue
+        } else {
+          inBody = false
+          currentContentType = ''
+        }
+      }
+      
+      // If we're in the body section and it's not headers, extract content
+      if (inBody && section.trim() && 
+          !section.includes('Content-Type:') && 
+          !section.includes('Received:') &&
+          !section.includes('DKIM-Signature:') &&
+          !section.includes('Return-Path:') &&
+          !section.startsWith('--')) { // Skip MIME boundaries
+        
+        if (currentContentType === 'text' && !textContent) {
+          textContent = section.trim()
+          console.log(`✅ Extracted text content: "${textContent.substring(0, 100)}..."`)
+        } else if (currentContentType === 'html' && !htmlContent) {
+          htmlContent = section.trim()
+          console.log(`✅ Extracted HTML content: "${htmlContent.substring(0, 100)}..."`)
+        }
+      }
+    }
+    
+    // If no structured content found, try simple extraction
+    if (!textContent && !htmlContent) {
+      console.log('🔍 No structured content found, trying simple extraction...')
+      
+      // Look for lines that don't look like headers
+      const lines = rawEmail.split('\n')
+      let bodyLines: string[] = []
+      let pastHeaders = false
+      
+      for (const line of lines) {
+        // Skip header section
+        if (!pastHeaders) {
+          if (line.trim() === '') {
+            pastHeaders = true
+          }
+          continue
+        }
+        
+        // Skip lines that look like email infrastructure
+        if (!line.includes('Received:') && 
+            !line.includes('DKIM-Signature:') &&
+            !line.includes('Content-Type:') &&
+            !line.includes('Return-Path:') &&
+            !line.startsWith('--') &&
+            line.trim().length > 0) {
+          bodyLines.push(line)
+        }
+      }
+      
+      if (bodyLines.length > 0) {
+        textContent = bodyLines.join('\n').trim()
+        console.log(`✅ Extracted simple text: "${textContent.substring(0, 100)}..."`)
+      }
+    }
+    
+    return { text: textContent, html: htmlContent }
+    
+  } catch (error) {
+    console.error('❌ Error parsing raw email:', error)
+    return { text: '', html: '' }
+  }
+}
+
 // Parse multipart form data from SendGrid
 async function parseFormData(request: NextRequest) {
   try {
@@ -35,38 +128,63 @@ async function parseFormData(request: NextRequest) {
     const envelope = formData.get('envelope') as string
     const parsedEnvelope = envelope ? JSON.parse(envelope) : {}
     
-    // Try ALL possible field name variations that SendGrid/Gmail might use
-    const possibleTextFields = [
-      'text', 'body', 'plain', 'body-plain', 'stripped-text', 'stripped-plain',
-      'body_text', 'text_body', 'content', 'message', 'email', 'reply',
-      'stripped-signature', 'body_stripped'
-    ]
+    // Check for SendGrid's standard parsed fields first
+    let textContent = (formData.get('text') as string) || ''
+    let htmlContent = (formData.get('html') as string) || ''
     
-    const possibleHtmlFields = [
-      'html', 'body-html', 'html-body', 'stripped-html', 'body_html', 
-      'html_body', 'content_html', 'message_html'
-    ]
+    console.log(`📋 Standard SendGrid fields:`)
+    console.log(`   text field: ${textContent.length} characters`)
+    console.log(`   html field: ${htmlContent.length} characters`)
     
-    let textContent = ''
-    let htmlContent = ''
-    
-    // Try to find text content in any of these fields
-    for (const field of possibleTextFields) {
-      const value = formData.get(field) as string
-      if (value && value.trim()) {
-        textContent = value
-        console.log(`✅ Found text content in field: ${field}`)
-        break
-      }
+    // If standard fields are empty, check if SendGrid is using "Send Raw" mode
+    const rawEmail = formData.get('email') as string
+    if ((!textContent && !htmlContent) && rawEmail) {
+      console.log('🔍 Standard fields empty, checking raw email field...')
+      console.log(`   Raw email field: ${rawEmail.length} characters`)
+      
+      // Parse the raw email to extract the actual message content
+      const parsedContent = parseRawEmail(rawEmail)
+      textContent = parsedContent.text
+      htmlContent = parsedContent.html
+      
+      console.log('📧 Parsed from raw email:')
+      console.log(`   Extracted text: ${textContent.length} characters`)
+      console.log(`   Extracted HTML: ${htmlContent.length} characters`)
     }
     
-    // Try to find HTML content in any of these fields  
-    for (const field of possibleHtmlFields) {
-      const value = formData.get(field) as string
-      if (value && value.trim()) {
-        htmlContent = value
-        console.log(`✅ Found HTML content in field: ${field}`)
-        break
+    // If still no content, try alternative field names
+    if (!textContent && !htmlContent) {
+      console.log('🔍 No content in standard or raw fields, checking alternatives...')
+      
+      const possibleTextFields = [
+        'body', 'plain', 'body-plain', 'stripped-text', 'stripped-plain',
+        'body_text', 'text_body', 'content', 'message', 'reply',
+        'stripped-signature', 'body_stripped'
+      ]
+      
+      const possibleHtmlFields = [
+        'body-html', 'html-body', 'stripped-html', 'body_html', 
+        'html_body', 'content_html', 'message_html'
+      ]
+      
+      // Try to find text content in alternative fields
+      for (const field of possibleTextFields) {
+        const value = formData.get(field) as string
+        if (value && value.trim()) {
+          textContent = value
+          console.log(`✅ Found text content in field: ${field}`)
+          break
+        }
+      }
+      
+      // Try to find HTML content in alternative fields  
+      for (const field of possibleHtmlFields) {
+        const value = formData.get(field) as string
+        if (value && value.trim()) {
+          htmlContent = value
+          console.log(`✅ Found HTML content in field: ${field}`)
+          break
+        }
       }
     }
     
