@@ -44,9 +44,46 @@ function extractEmail(emailString: string): string {
 
 // Generate deterministic conversation ID
 function generateConversationId(contactEmail: string, senderEmail: string, campaignId?: string): string {
-  const participants = [contactEmail, senderEmail].sort().join('|')
-  const base = participants + (campaignId ? `|${campaignId}` : '')
-  return Buffer.from(base).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 32)
+  try {
+    console.log(`📝 generateConversationId called with:`)
+    console.log(`   contactEmail: "${contactEmail}" (${typeof contactEmail})`)
+    console.log(`   senderEmail: "${senderEmail}" (${typeof senderEmail})`)
+    console.log(`   campaignId: "${campaignId}" (${typeof campaignId})`)
+    
+    // Ensure we have valid string inputs
+    const safeContactEmail = String(contactEmail || '')
+    const safeSenderEmail = String(senderEmail || '')
+    const safeCampaignId = String(campaignId || '')
+    
+    const participants = [safeContactEmail, safeSenderEmail].sort().join('|')
+    const base = participants + (safeCampaignId ? `|${safeCampaignId}` : '')
+    const base64 = Buffer.from(base).toString('base64')
+    const cleaned = base64.replace(/[^a-zA-Z0-9]/g, '')
+    
+    // Ensure we have at least 32 characters, pad if necessary
+    const padded = cleaned.length >= 32 ? cleaned : cleaned.padEnd(32, '0')
+    const result = String(padded).substring(0, 32)
+    
+    console.log(`📝 Conversation ID steps:`)
+    console.log(`   participants: "${participants}"`)
+    console.log(`   base: "${base}"`)
+    console.log(`   base64: "${base64}"`)
+    console.log(`   cleaned: "${cleaned}"`)
+    console.log(`   result: "${result}" (length: ${result.length})`)
+    
+    // Validate result
+    if (typeof result !== 'string' || result.length !== 32) {
+      throw new Error(`Invalid conversation ID generated: "${result}" (type: ${typeof result}, length: ${result?.length})`)
+    }
+    
+    return result
+  } catch (error) {
+    console.error('❌ Error in generateConversationId:', error)
+    // Fallback to a simple hash
+    const fallback = `fallback${Date.now()}`.substring(0, 32).padEnd(32, '0')
+    console.log(`🚨 Using fallback conversation ID: "${fallback}"`)
+    return fallback
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -109,10 +146,15 @@ export async function POST(request: NextRequest) {
     const contactId = contact?.id || null
     
     // Generate conversation ID for threading
+    console.log(`🔍 Generating conversation ID for:`)
+    console.log(`   fromEmail: ${fromEmail}`)
+    console.log(`   toEmail: ${toEmail}`) 
+    console.log(`   campaignId: ${campaignSender.campaign_id} (type: ${typeof campaignSender.campaign_id})`)
+    
     const conversationId = generateConversationId(fromEmail, toEmail, campaignSender.campaign_id.toString())
     const messageId = `sendgrid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     
-    console.log(`🔗 Conversation ID: ${conversationId}`)
+    console.log(`🔗 Generated Conversation ID: "${conversationId}" (type: ${typeof conversationId}, length: ${conversationId?.length})`)
     
     // Check spam score
     const spamScore = parseFloat(emailData.spam_score || '0')
@@ -121,19 +163,26 @@ export async function POST(request: NextRequest) {
     }
     
     // Create or update thread FIRST (required for foreign key constraint)
+    const threadInsertData = {
+      user_id: campaignSender.user_id,
+      conversation_id: conversationId,
+      campaign_id: campaignSender.campaign_id,
+      contact_id: contactId,
+      contact_email: fromEmail,
+      subject: emailData.subject,
+      last_message_at: new Date().toISOString(),
+      last_message_preview: (emailData.text || '').substring(0, 150),
+      status: 'active'
+    }
+    
+    console.log(`🧵 Creating thread with data:`)
+    Object.entries(threadInsertData).forEach(([key, value]) => {
+      console.log(`   ${key}: "${value}" (${typeof value})`)
+    })
+    
     const { data: threadData, error: threadError } = await supabaseServer
       .from('inbox_threads')
-      .upsert({
-        user_id: campaignSender.user_id,
-        conversation_id: conversationId,
-        campaign_id: campaignSender.campaign_id,
-        contact_id: contactId,
-        contact_email: fromEmail,
-        subject: emailData.subject,
-        last_message_at: new Date().toISOString(),
-        last_message_preview: (emailData.text || '').substring(0, 150),
-        status: 'active'
-      }, {
+      .upsert(threadInsertData, {
         onConflict: 'conversation_id,user_id'
       })
     
