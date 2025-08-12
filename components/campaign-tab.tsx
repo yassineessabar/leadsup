@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from "@/hooks/use-toast"
 import CampaignDashboard from "./campaign-dashboard"
 import AddCampaignPopup from "./add-campaign-popup"
+import { DomainSetupButton } from "./domain-setup-button"
 
 interface Campaign {
   id: string | number
@@ -736,7 +737,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         <div className="bg-white rounded-lg border">
           {(!activeSubTab || activeSubTab === "campaigns-email") && (
             <>
-              <div className="grid gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600" style={{ gridTemplateColumns: '120px 1fr 120px 100px 100px 100px 100px 100px' }}>
+              <div className="grid gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600" style={{ gridTemplateColumns: '120px 1fr 120px 100px 100px 100px 100px 100px 140px' }}>
                 <div>Status</div>
                 <div>Name</div>
                 <div className="flex items-center gap-2">
@@ -763,13 +764,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                   <TrendingDown className="h-4 w-4" />
                   Bounced
                 </div>
+                <div>Actions</div>
               </div>
             </>
           )}
 
           {activeSubTab === "campaigns-linkedin" && (
             <>
-              <div className="grid grid-cols-7 gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600">
+              <div className="grid grid-cols-8 gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600">
                 <div>Status</div>
                 <div>Name</div>
                 <div className="flex items-center gap-2">
@@ -792,13 +794,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                   <Reply className="h-4 w-4" />
                   Replies
                 </div>
+                <div>Actions</div>
               </div>
             </>
           )}
 
           {activeSubTab === "campaigns-multi-channel" && (
             <>
-              <div className="grid grid-cols-6 gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600">
+              <div className="grid grid-cols-7 gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600">
                 <div>Status</div>
                 <div>Name</div>
                 <div className="flex items-center gap-2">
@@ -817,6 +820,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                   <Reply className="h-4 w-4" />
                   Replied
                 </div>
+                <div>Actions</div>
               </div>
             </>
           )}
@@ -845,7 +849,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                 >
                   {/* Email Campaign Layout */}
                   {(!activeSubTab || activeSubTab === "campaigns-email") && (
-                    <div className="grid gap-4 p-4" style={{ gridTemplateColumns: '120px 1fr 120px 100px 100px 100px 100px 100px' }}>
+                    <div className="grid gap-4 p-4" style={{ gridTemplateColumns: '120px 1fr 120px 100px 100px 100px 100px 100px 140px' }}>
                       <div>
                         <div className="px-3 py-1 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 border border-gray-300 w-fit">
                           {campaign.status || 'Draft'}
@@ -901,12 +905,20 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         <div className="text-red-500 font-semibold">0%</div>
                         <div className="text-xs text-gray-500">Bounces</div>
                       </div>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        {campaign.status === 'Completed' && (
+                          <DomainSetupButton 
+                            campaignId={campaign.id}
+                            campaignName={campaign.name}
+                          />
+                        )}
+                      </div>
                     </div>
                   )}
 
                   {/* LinkedIn Campaign Layout */}
                   {activeSubTab === "campaigns-linkedin" && (
-                    <div className="grid grid-cols-7 gap-4 p-4">
+                    <div className="grid grid-cols-8 gap-4 p-4">
                       <div>
                         <div className="px-3 py-1 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 border border-gray-300 w-fit">
                           {campaign.status || 'Draft'}
@@ -935,12 +947,20 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         <div className="text-green-500 font-semibold">0</div>
                         <div className="text-xs text-gray-500">Replies</div>
                       </div>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        {campaign.status === 'Completed' && (
+                          <DomainSetupButton 
+                            campaignId={campaign.id}
+                            campaignName={campaign.name}
+                          />
+                        )}
+                      </div>
                     </div>
                   )}
 
                   {/* Multi-Channel Campaign Layout */}
                   {activeSubTab === "campaigns-multi-channel" && (
-                    <div className="grid grid-cols-6 gap-4 p-4">
+                    <div className="grid grid-cols-7 gap-4 p-4">
                       <div>
                         <div className="px-3 py-1 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 border border-gray-300 w-fit">
                           {campaign.status || 'Draft'}
@@ -964,6 +984,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                       <div>
                         <div className="text-green-500 font-semibold">0</div>
                         <div className="text-xs text-gray-500">Replied</div>
+                      </div>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        {campaign.status === 'Completed' && (
+                          <DomainSetupButton 
+                            campaignId={campaign.id}
+                            campaignName={campaign.name}
+                          />
+                        )}
                       </div>
                     </div>
                   )}
