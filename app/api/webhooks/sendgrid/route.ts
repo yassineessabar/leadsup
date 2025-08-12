@@ -62,16 +62,45 @@ async function parseFormData(request: NextRequest) {
       }
     }
     
-    // If still no content, try extracting from any field that contains text-like content
+    // If still no content, try extracting from any field that contains actual message content
     if (!textContent && !htmlContent) {
-      console.log('🔍 No content in standard fields, checking all fields for text...')
+      console.log('🔍 No content in standard fields, checking all fields for actual message content...')
+      
+      // Fields to exclude - these contain metadata, not actual email content
+      const excludedFields = [
+        'envelope', 'headers', 'spam_report', 'charsets', 'attachments',
+        'dkim', 'spf', 'spam_score', 'from', 'to', 'subject', 'cc', 'bcc'
+      ]
+      
       for (const [key, value] of formData.entries()) {
         if (typeof value === 'string' && value.length > 10 && 
-            !['envelope', 'headers', 'spam_report', 'charsets'].includes(key)) {
-          console.log(`🔍 Potential content in field "${key}": "${value.substring(0, 100)}..."`)
-          if (!textContent && value.length > 0) {
-            textContent = value
-            console.log(`✅ Using content from field: ${key}`)
+            !excludedFields.includes(key.toLowerCase())) {
+          
+          // Check if this looks like email headers vs actual content
+          const looksLikeHeaders = value.includes('Received: from') || 
+                                   value.includes('Return-Path:') ||
+                                   value.includes('DKIM-Signature:') ||
+                                   value.includes('X-Google-DKIM-Signature:') ||
+                                   value.match(/^[A-Za-z-]+:\s/m) // Starts with header pattern
+          
+          if (!looksLikeHeaders) {
+            console.log(`🔍 Potential message content in field "${key}": "${value.substring(0, 100)}..."`)
+            if (!textContent && value.length > 0) {
+              textContent = value
+              console.log(`✅ Using message content from field: ${key}`)
+            }
+          } else {
+            console.log(`⏭️ Skipping field "${key}" - contains email headers, not message content`)
+          }
+        }
+      }
+      
+      // If we still have no content, log all available fields for debugging
+      if (!textContent && !htmlContent) {
+        console.log('🚨 No content found in any field. Available fields:')
+        for (const [key, value] of formData.entries()) {
+          if (typeof value === 'string') {
+            console.log(`   ${key}: "${value.substring(0, 50)}${value.length > 50 ? '...' : ''}"`)
           }
         }
       }
