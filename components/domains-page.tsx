@@ -19,6 +19,7 @@ import {
   Zap,
   Plus,
   Loader2,
+  AlertCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -545,8 +546,36 @@ export default function DomainsPage() {
   }
 
   if (currentView === "verification") {
-    const spfRecord = "v=spf1 include:_spf.mailersend.net ~all"
-    const dkimRecord = "mlsend2._domainkey.mailersend.net"
+    // Generate unique SendGrid subdomain for this domain (in production, this would come from API)
+    const sendgridSubdomain = `u55053564.wl065.sendgrid.net`
+    const emSubdomain = `em6012.${selectedDomain}`
+    
+    const dnsRecords = [
+      {
+        type: "CNAME",
+        host: emSubdomain,
+        value: sendgridSubdomain,
+        purpose: "Link tracking and branding"
+      },
+      {
+        type: "CNAME", 
+        host: `s1._domainkey.${selectedDomain}`,
+        value: `s1.domainkey.${sendgridSubdomain}`,
+        purpose: "DKIM authentication (key 1)"
+      },
+      {
+        type: "CNAME",
+        host: `s2._domainkey.${selectedDomain}`,
+        value: `s2.domainkey.${sendgridSubdomain}`,
+        purpose: "DKIM authentication (key 2)"
+      },
+      {
+        type: "TXT",
+        host: `_dmarc.${selectedDomain}`,
+        value: "v=DMARC1; p=none; pct=100; rua=mailto:re+klpwxtveezz@dmarc.postmarkapp.com; sp=none; adkim=r; aspf=r; fo=1;",
+        purpose: "DMARC policy"
+      }
+    ]
 
     return (
       <div className="min-h-screen bg-gray-50">
@@ -561,10 +590,8 @@ export default function DomainsPage() {
         </div>
 
 
-        <div className="max-w-7xl mx-auto p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="space-y-6">
               {/* Domain Header */}
               <div className="bg-white rounded-lg p-6 border">
                 <h1 className="text-2xl font-semibold text-gray-900 mb-2">{selectedDomain}</h1>
@@ -572,9 +599,9 @@ export default function DomainsPage() {
                   {domainConnectSupported === null ? (
                     "Checking domain configuration options..."
                   ) : domainConnectSupported ? (
-                    "Verify your domain automatically, manually, or share the DNS records with your admin to handle it."
+                    "Set up your domain to start sending emails from your custom address."
                   ) : (
-                    "Configure DNS records manually or share them with your admin to verify your domain."
+                    "Add the DNS records below to verify your domain and start sending emails."
                   )}
                 </p>
               </div>
@@ -625,238 +652,148 @@ export default function DomainsPage() {
 
               {/* Manual Verification */}
               <div className="bg-white rounded-lg border p-6">
-                <h2 className="text-lg font-semibold mb-4">Verify manually</h2>
-                <div className="space-y-6">
-                  <div className="text-sm text-gray-600 mb-4">
-                    1. Head over to your DNS provider and add the provided DNS records to verify your domain. Please note,
-                    due to TTL (Time To Live) rules, it can take some time for these records to update across the internet.
-                  </div>
-
-                  {/* SPF Record */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-gray-400" />
-                      <h3 className="font-semibold text-gray-900">SPF</h3>
-                    </div>
-                    <div className="ml-7 space-y-2">
-                      <p className="text-sm text-gray-600">
-                        Paste the following value in your domain's current SPF record. This will merge MailerSend value with
-                        any pre-existing SPF record values. If you don't already have an SPF record, then{" "}
-                        <span className="font-medium">create a new TXT record</span> for{" "}
-                        <span className="font-mono bg-gray-100 px-1 rounded">{selectedDomain}</span> with this value:
-                      </p>
-                      <div className="bg-gray-100 p-3 rounded-lg font-mono text-sm flex items-center justify-between">
-                        <span>{spfRecord}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(spfRecord, "spf")}
-                        >
-                          {copiedStates.spf ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* DKIM Record */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-gray-400" />
-                      <h3 className="font-semibold text-gray-900">DKIM</h3>
-                    </div>
-                    <div className="ml-7 space-y-2">
-                      <p className="text-sm text-gray-600">
-                        Create a <span className="font-medium">CNAME</span> record for{" "}
-                        <span className="font-mono bg-gray-100 px-1 rounded">mlsend2._domainkey.{selectedDomain}</span> with
-                        this value:
-                      </p>
-                      <div className="bg-gray-100 p-3 rounded-lg font-mono text-sm flex items-center justify-between">
-                        <span>{dkimRecord}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(dkimRecord, "dkim")}
-                        >
-                          {copiedStates.dkim ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">DNS Records</h2>
+                  <p className="text-gray-700 mb-4">
+                    Add these DNS records to your domain provider to verify and authenticate your domain.
+                  </p>
                 </div>
-              </div>
-
-              {/* DNS Configuration Options */}
-              <div className="bg-white rounded-lg border p-6">
+                
                 <div className="space-y-6">
-                  {/* Custom DNS Records */}
-                  <div className="flex items-start gap-4">
-                    <Switch checked={customDnsTracking} onCheckedChange={setCustomDnsTracking} />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 mb-1">Custom DNS records for tracking</h3>
-                      <p className="text-sm text-gray-600">
-                        Display a different URL in your emails with your own custom domain to track opens and clicks.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Inbound Domain Forwarding */}
-                  <div className="flex items-start gap-4">
-                    <Switch
-                      checked={inboundForwarding}
-                      onCheckedChange={setInboundForwarding}
-                      className="data-[state=checked]:bg-blue-600"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 mb-1">Inbound domain forwarding</h3>
-                      <p className="text-sm text-gray-600">
-                        Choose a dedicated subdomain that you plan to use exclusively for inbound email processing.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Inbound Subdomain Configuration */}
-                  {inboundForwarding && (
-                    <div className="ml-8 p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-3">
-                        <CheckCircle className="w-5 h-5 text-gray-400" />
-                        <h4 className="font-medium text-gray-900">Customize the inbound subdomain</h4>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-medium text-blue-900 mb-2">Setup Instructions:</p>
+                        <ol className="space-y-2 text-blue-800">
+                          <li><strong>1.</strong> Log in to your domain provider (like GoDaddy, Namecheap, etc.)</li>
+                          <li><strong>2.</strong> Find the "DNS Management" or "DNS Settings" section</li>
+                          <li><strong>3.</strong> Add each record below using the exact Type, Host, and Value</li>
+                          <li><strong>4.</strong> Save your changes and wait for them to take effect (up to 48 hours)</li>
+                          <li><strong>5.</strong> Come back here and click "Finish verification" when ready</li>
+                        </ol>
                       </div>
-                      <p className="text-sm text-gray-600 mb-4">Create a new record with the following information:</p>
+                    </div>
+                  </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-600 mb-2">
-                            Create a <span className="font-medium">MX</span> record with this name:
-                          </p>
-                          <div className="bg-white p-3 rounded border flex items-center justify-between">
-                            <span className="font-mono">inbound.</span>
-                            <Button variant="ghost" size="sm" className="text-blue-600">
-                              Edit
-                            </Button>
+                  {/* DNS Records Table */}
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                      <div className="grid grid-cols-3 gap-4 text-sm font-medium text-gray-700">
+                        <div>Type</div>
+                        <div>Host</div>
+                        <div>Value</div>
+                      </div>
+                    </div>
+                    <div className="divide-y divide-gray-200">
+                      {dnsRecords.map((record, index) => (
+                        <div key={index} className="px-4 py-4 hover:bg-gray-50">
+                          <div className="grid grid-cols-3 gap-4 items-start">
+                            <div className="text-sm font-medium text-gray-900">
+                              {record.type}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-mono text-gray-700 break-all flex-1 min-w-0">
+                                {record.host}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyToClipboard(record.host, `host-${index}`)}
+                                className="text-gray-500 hover:text-gray-700 flex-shrink-0"
+                                title="Copy host"
+                              >
+                                {copiedStates[`host-${index}`] ? (
+                                  <Check className="w-4 h-4" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-mono text-gray-700 break-all flex-1 min-w-0">
+                                {record.value}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyToClipboard(record.value, `value-${index}`)}
+                                className="text-gray-500 hover:text-gray-700 flex-shrink-0"
+                                title="Copy value"
+                              >
+                                {copiedStates[`value-${index}`] ? (
+                                  <Check className="w-4 h-4" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-xs text-gray-500">
+                            {record.purpose}
                           </div>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-600 mb-2">
-                            Record value with priority <span className="font-medium">10</span>:
-                          </p>
-                          <div className="bg-white p-3 rounded border">
-                            <span className="font-mono">inbound.mailersend.net</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* DMARC */}
-                  <div className="flex items-start gap-4">
-                    <Switch checked={dmarcEnabled} onCheckedChange={setDmarcEnabled} />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 mb-1">Improve deliverability with DMARC</h3>
-                      <p className="text-sm text-gray-600">
-                        Troubleshoot deliverability issues, protect your account against unauthorized activity, and prevent
-                        emails from being blocked by mailbox providers.
-                      </p>
+                      ))}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Completion */}
-              <div className="space-y-4">
-                <p className="text-sm text-gray-700">
-                  2. Once you're done, confirm that you've added the DNS records and finish the verification.
-                </p>
 
-                <div className="flex items-center gap-3">
-                  <Checkbox 
-                    id="dns-added" 
-                    checked={dnsRecordsAdded} 
-                    onCheckedChange={(checked) => setDnsRecordsAdded(checked as boolean)}
-                  />
-                  <label htmlFor="dns-added" className="text-sm text-gray-700">
-                    I have added DNS records.
-                  </label>
-                </div>
-
-                <Button 
-                  className="bg-teal-600 hover:bg-teal-700" 
-                  disabled={!dnsRecordsAdded || verifying !== null}
-                  onClick={() => {
-                    const currentDomain = domains.find(d => d.domain === selectedDomain)
-                    if (currentDomain) {
-                      handleVerifyDomain(currentDomain.id)
-                    }
-                  }}
-                >
-                  {verifying ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Verifying...
-                    </>
-                  ) : (
-                    'Finish verification'
-                  )}
-                </Button>
-              </div>
-
-              {/* Delete Domain Section */}
-              <div className="pt-8 border-t border-gray-200">
-                <Button 
-                  variant="outline" 
-                  className="text-red-600 border-red-300 hover:bg-red-50 bg-transparent"
-                  onClick={() => {
-                    const currentDomain = domains.find(d => d.domain === selectedDomain)
-                    if (currentDomain) {
-                      handleDeleteDomain(currentDomain.id)
-                    }
-                  }}
-                >
-                  Delete domain
-                </Button>
-              </div>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6 bg-gray-50 p-6 rounded-lg">
-              <div className="bg-white rounded-lg border p-6">
-                <h3 className="text-lg font-semibold mb-4">How long does it take to verify the domain?</h3>
+              {/* Verification Actions */}
+              <div className="bg-gray-50 p-6 rounded-lg">
                 <div className="space-y-4">
-                  <div>
-                    <p className="font-medium text-gray-900">Your part: 5 minutes</p>
+                  <div className="flex items-center gap-3">
+                    <Checkbox 
+                      id="dns-added" 
+                      checked={dnsRecordsAdded} 
+                      onCheckedChange={(checked) => setDnsRecordsAdded(checked as boolean)}
+                    />
+                    <label htmlFor="dns-added" className="text-gray-700 font-medium">
+                      I have added all DNS records to my domain provider
+                    </label>
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Time until the domain is fully verified: up to 48 hours.</p>
-                  </div>
+
+                  <Button 
+                    className="bg-teal-600 hover:bg-teal-700" 
+                    disabled={!dnsRecordsAdded || verifying !== null}
+                    onClick={() => {
+                      const currentDomain = domains.find(d => d.domain === selectedDomain)
+                      if (currentDomain) {
+                        handleVerifyDomain(currentDomain.id)
+                      }
+                    }}
+                  >
+                    {verifying ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      'Verify Domain'
+                    )}
+                  </Button>
+                  
+                  <p className="text-sm text-gray-600">
+                    Note: It may take up to 48 hours for DNS changes to take effect.
+                  </p>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg border p-6">
-                <h3 className="text-lg font-semibold mb-4">Does it always take 48 hours?</h3>
-                <p className="text-sm text-gray-600">
-                  Once you update your domain settings, verifying the domain can take up to 48 hours. It's an automated
-                  process that we can't speed up but sometimes finishes faster.
-                </p>
-                <p className="text-sm text-gray-600 mt-3">
-                  If your domain is still not verified after 48 hours, ensure the records are correct by checking the SPF
-                  and DKIM records on{" "}
-                  <a href="#" className="text-teal-600 hover:underline">
-                    Mailertest.com
-                  </a>{" "}
-                  or ask your domain administrator to take a look before contacting Customer Support.
-                </p>
-              </div>
-
-              <div className="bg-white rounded-lg border p-6">
-                <h3 className="text-lg font-semibold mb-4">Frequently asked questions</h3>
-                <div className="space-y-3">
-                  <a href="#" className="block text-sm text-teal-600 hover:underline">
-                    How to add and verify a domain?
-                  </a>
-                  <a href="#" className="block text-sm text-teal-600 hover:underline">
-                    What is a sending domain?
-                  </a>
-                </div>
-              </div>
+            {/* Delete Domain Section */}
+            <div className="pt-8 border-t border-gray-200">
+              <Button 
+                variant="outline" 
+                className="text-red-600 border-red-300 hover:bg-red-50 bg-transparent"
+                onClick={() => {
+                  const currentDomain = domains.find(d => d.domain === selectedDomain)
+                  if (currentDomain) {
+                    handleDeleteDomain(currentDomain.id)
+                  }
+                }}
+              >
+                Delete domain
+              </Button>
             </div>
           </div>
         </div>
