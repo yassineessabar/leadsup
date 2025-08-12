@@ -13,16 +13,48 @@ async function parseFormData(request: NextRequest) {
   try {
     const formData = await request.formData()
     
+    // Debug: Log all form fields that SendGrid sent
+    console.log('📝 ALL SendGrid form fields:')
+    for (const [key, value] of formData.entries()) {
+      if (typeof value === 'string') {
+        console.log(`   ${key}: "${value.substring(0, 100)}${value.length > 100 ? '...' : ''}"`)
+      } else {
+        console.log(`   ${key}: [File object]`)
+      }
+    }
+    
     // Extract all the fields SendGrid sends
     const envelope = formData.get('envelope') as string
     const parsedEnvelope = envelope ? JSON.parse(envelope) : {}
+    
+    // Try multiple field name variations that SendGrid might use
+    const textContent = (
+      formData.get('text') || 
+      formData.get('body') || 
+      formData.get('plain') || 
+      formData.get('body-plain') ||
+      ''
+    ) as string
+    
+    const htmlContent = (
+      formData.get('html') || 
+      formData.get('body-html') || 
+      formData.get('html-body') ||
+      ''
+    ) as string
+    
+    console.log('🔍 Content extraction:')
+    console.log(`   text length: ${textContent.length}`)
+    console.log(`   html length: ${htmlContent.length}`)
+    console.log(`   text preview: "${textContent.substring(0, 100)}"`)
+    console.log(`   html preview: "${htmlContent.substring(0, 100)}"`)
     
     return {
       from: formData.get('from') as string || '',
       to: formData.get('to') as string || '',
       subject: formData.get('subject') as string || '',
-      text: formData.get('text') as string || '',
-      html: formData.get('html') as string || '',
+      text: textContent,
+      html: htmlContent,
       headers: formData.get('headers') as string || '',
       envelope: parsedEnvelope,
       spam_score: formData.get('spam_score') as string || '0',
