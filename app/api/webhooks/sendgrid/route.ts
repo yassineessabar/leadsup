@@ -163,16 +163,21 @@ export async function POST(request: NextRequest) {
     }
     
     // Create or update thread FIRST (required for foreign key constraint)
+    // Ensure all UUIDs are strings and valid
+    const safeUserId = String(campaignSender.user_id)
+    const safeCampaignId = String(campaignSender.campaign_id)
+    const safeContactId = contactId ? String(contactId) : null
+    
     const threadInsertData = {
-      user_id: campaignSender.user_id,
-      conversation_id: conversationId,
-      campaign_id: campaignSender.campaign_id,
-      contact_id: contactId,
-      contact_email: fromEmail,
-      subject: emailData.subject,
+      user_id: safeUserId,
+      conversation_id: String(conversationId), // Ensure string
+      campaign_id: safeCampaignId,
+      contact_id: safeContactId,
+      contact_email: String(fromEmail),
+      subject: String(emailData.subject || ''),
       last_message_at: new Date().toISOString(),
-      last_message_preview: (emailData.text || '').substring(0, 150),
-      status: 'active'
+      last_message_preview: String(emailData.text || '').substring(0, 150),
+      status: 'active' as const
     }
     
     console.log(`🧵 Creating thread with data:`)
@@ -198,36 +203,43 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Thread created/updated for conversation ${conversationId}`)
     
     // Store the inbound message
+    const messageInsertData = {
+      user_id: safeUserId,
+      message_id: String(messageId),
+      conversation_id: String(conversationId),
+      campaign_id: safeCampaignId,
+      contact_id: safeContactId,
+      contact_email: String(fromEmail),
+      sender_id: String(campaignSender.id),
+      sender_email: String(toEmail),
+      subject: String(emailData.subject || ''),
+      body_text: String(emailData.text || ''),
+      body_html: String(emailData.html || ''),
+      direction: 'inbound' as const,
+      channel: 'email' as const,
+      status: 'unread' as const,
+      folder: 'inbox' as const,
+      has_attachments: parseInt(String(emailData.attachments || '0')) > 0,
+      provider: 'smtp' as const,
+      provider_data: {
+        spam_score: spamScore,
+        spam_report: String(emailData.spam_report || ''),
+        headers: String(emailData.headers || ''),
+        envelope: emailData.envelope || {},
+        charsets: JSON.parse(String(emailData.charsets || '{}'))
+      },
+      sent_at: new Date().toISOString(),
+      received_at: new Date().toISOString()
+    }
+    
+    console.log(`📨 Creating message with data:`)
+    Object.entries(messageInsertData).forEach(([key, value]) => {
+      console.log(`   ${key}: "${JSON.stringify(value)}" (${typeof value})`)
+    })
+    
     const { data: message, error: insertError } = await supabaseServer
       .from('inbox_messages')
-      .insert({
-        user_id: campaignSender.user_id,
-        message_id: messageId,
-        conversation_id: conversationId,
-        campaign_id: campaignSender.campaign_id,
-        contact_id: contactId,
-        contact_email: fromEmail,
-        sender_id: campaignSender.id,
-        sender_email: toEmail,
-        subject: emailData.subject,
-        body_text: emailData.text,
-        body_html: emailData.html,
-        direction: 'inbound',
-        channel: 'email',
-        status: 'unread',
-        folder: 'inbox',
-        has_attachments: parseInt(emailData.attachments || '0') > 0,
-        provider: 'smtp', // Use 'smtp' as it's in the allowed values per schema
-        provider_data: {
-          spam_score: spamScore,
-          spam_report: emailData.spam_report,
-          headers: emailData.headers,
-          envelope: emailData.envelope,
-          charsets: JSON.parse(emailData.charsets || '{}')
-        },
-        sent_at: new Date().toISOString(),
-        received_at: new Date().toISOString()
-      })
+      .insert(messageInsertData)
       .select()
       .single()
     
