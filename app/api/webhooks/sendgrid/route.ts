@@ -8,6 +8,49 @@ import { supabaseServer } from "@/lib/supabase"
  * replies to your campaign emails sent to your parse domain.
  */
 
+// Decode quoted-printable encoding
+function decodeQuotedPrintable(text: string): string {
+  if (!text) return text
+  
+  return text
+    // Decode soft line breaks (=\n)
+    .replace(/=\r?\n/g, '')
+    // Decode hex-encoded characters (=XX)
+    .replace(/=([0-9A-F]{2})/g, (match, hex) => {
+      return String.fromCharCode(parseInt(hex, 16))
+    })
+    // Clean up any remaining quoted-printable artifacts
+    .replace(/=$/gm, '')
+}
+
+// Extract actual reply content from email
+function extractActualReply(text: string): string {
+  if (!text) return ''
+  
+  let cleanText = text
+  
+  // First, decode quoted-printable
+  cleanText = decodeQuotedPrintable(cleanText)
+  
+  // Remove "Content-Transfer-Encoding" lines
+  cleanText = cleanText.replace(/Content-Transfer-Encoding: .+?\n/gi, '')
+  
+  // Find the actual reply by splitting on "On ... wrote:" pattern
+  const onWroteMatch = cleanText.match(/(.*?)On .+? wrote:/is)
+  if (onWroteMatch) {
+    cleanText = onWroteMatch[1].trim()
+  }
+  
+  // Remove quoted lines (lines starting with >)
+  const lines = cleanText.split('\n')
+  const replyLines = lines.filter(line => {
+    const trimmed = line.trim()
+    return trimmed && !trimmed.startsWith('>')
+  })
+  
+  return replyLines.join('\n').trim()
+}
+
 // Parse raw email content to extract message body
 function parseRawEmail(rawEmail: string): { text: string; html: string } {
   try {
@@ -413,7 +456,7 @@ export async function POST(request: NextRequest) {
       contact_email: String(fromEmail),
       subject: String(emailData.subject || ''),
       last_message_at: new Date().toISOString(),
-      last_message_preview: String(emailData.text || '').substring(0, 150),
+      last_message_preview: String(extractActualReply(emailData.text) || emailData.text || '').substring(0, 150),
       status: 'active' as const
     }
     
@@ -458,8 +501,8 @@ export async function POST(request: NextRequest) {
       sender_id: String(campaignSender.id),
       sender_email: String(toEmail),
       subject: String(emailData.subject || ''),
-      body_text: String(emailData.text || ''),
-      body_html: String(emailData.html || ''),
+      body_text: String(extractActualReply(emailData.text) || emailData.text || ''),
+      body_html: String(extractActualReply(emailData.html) || emailData.html || ''),
       direction: 'inbound' as const,
       channel: 'email' as const,
       status: 'unread' as const,
@@ -506,7 +549,7 @@ export async function POST(request: NextRequest) {
       .from('inbox_threads')
       .update({
         last_message_at: new Date().toISOString(),
-        last_message_preview: (emailData.text || '').substring(0, 150),
+        last_message_preview: (extractActualReply(emailData.text) || emailData.text || '').substring(0, 150),
         status: 'active'
       })
       .eq('conversation_id', conversationId)
