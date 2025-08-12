@@ -307,7 +307,7 @@ export async function POST(request: NextRequest) {
             to: contact.email,
             subject: subject,
             html: htmlContent,
-            replyTo: senderData.email
+            replyTo: 'test@reply.leadsup.io' // All replies go to webhook for capture
           }
 
           const emailResult = await sendEmail(senderData, mailOptions)
