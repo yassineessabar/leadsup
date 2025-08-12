@@ -90,6 +90,35 @@ export async function POST(request: NextRequest) {
   try {
     console.log('📨 SendGrid Inbound Parse webhook received')
     
+    // EMERGENCY DEBUG: Try minimal test first
+    console.log('🚨 EMERGENCY DEBUG MODE - Testing minimal thread creation')
+    
+    try {
+      const testResult = await supabaseServer
+        .from('inbox_threads')
+        .insert({
+          user_id: '6dae1cdc-2dbc-44ce-9145-4584981eef44',
+          conversation_id: 'test123emergency',
+          campaign_id: '6eca8e2e-dc92-4e4d-9b60-c7b37c6d74e4',
+          contact_email: 'test@emergency.com',
+          subject: 'Emergency Test',
+          last_message_at: new Date().toISOString(),
+          last_message_preview: 'Emergency test',
+          status: 'active'
+        })
+        .select()
+        .single()
+      
+      console.log('🚨 Emergency test SUCCESS:', testResult)
+    } catch (emergencyError) {
+      console.error('🚨 Emergency test FAILED:', emergencyError)
+      return NextResponse.json({ 
+        success: false,
+        error: 'Emergency test failed',
+        debug: emergencyError
+      })
+    }
+    
     // Parse the form data from SendGrid
     const emailData = await parseFormData(request)
     
@@ -193,10 +222,18 @@ export async function POST(request: NextRequest) {
     
     if (threadError) {
       console.error('❌ Error creating thread:', threadError)
+      console.error('❌ Full thread error details:', JSON.stringify(threadError, null, 2))
+      
+      // Try to continue without thread creation for debugging
+      console.log('🚨 Attempting to proceed without thread creation for debugging...')
+      
       return NextResponse.json({ 
         success: false,
         error: 'Failed to create thread',
-        debug: threadError.message
+        debug: threadError.message,
+        threadData: threadInsertData,
+        conversationId: conversationId,
+        fullError: threadError
       }, { status: 500 })
     }
     
