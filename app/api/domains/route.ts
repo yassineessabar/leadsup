@@ -92,35 +92,90 @@ export async function GET(request: NextRequest) {
 
 // Helper function to get default DNS records for a domain
 function getDefaultDnsRecords(domain: string) {
+  // For leadsup.io, use the actual SendGrid configuration
+  if (domain === 'leadsup.io' || domain.includes('leadsup.io')) {
+    return [
+      {
+        type: 'CNAME',
+        host: 'em7895',
+        value: 'u55053564.wl065.sendgrid.net',
+        purpose: 'Link tracking and email branding'
+      },
+      {
+        type: 'CNAME',
+        host: 's1._domainkey',
+        value: 's1.domainkey.u55053564.wl065.sendgrid.net',
+        purpose: 'DKIM authentication (key 1)'
+      },
+      {
+        type: 'CNAME',
+        host: 's2._domainkey',
+        value: 's2.domainkey.u55053564.wl065.sendgrid.net',
+        purpose: 'DKIM authentication (key 2)'
+      },
+      {
+        type: 'TXT',
+        host: '@',
+        value: 'v=spf1 include:sendgrid.net ~all',
+        purpose: 'SPF - Authorizes SendGrid to send emails'
+      },
+      {
+        type: 'TXT',
+        host: '_dmarc',
+        value: 'v=DMARC1; p=none; rua=mailto:dmarc@leadsup.io; ruf=mailto:dmarc@leadsup.io; pct=100; sp=none;',
+        purpose: 'DMARC policy'
+      },
+      {
+        type: 'MX',
+        host: 'reply',
+        value: 'mx.sendgrid.net',
+        priority: 10,
+        purpose: 'Route replies back to LeadsUp'
+      }
+    ]
+  }
+
+  // Generate default records for other domains
+  const sendgridSubdomain = `u${Math.random().toString(36).substring(2, 10)}.wl${Math.floor(Math.random() * 900) + 100}.sendgrid.net`
+  const emPrefix = `em${Math.floor(Math.random() * 9000) + 1000}`
+  
   return [
     {
-      type: 'TXT',
-      name: '@',
-      value: 'v=spf1 include:sendgrid.net ~all',
-      purpose: 'Email authentication (SPF)',
-      required: true
+      type: 'CNAME',
+      host: emPrefix,
+      value: sendgridSubdomain,
+      purpose: 'Link tracking and email branding'
     },
     {
       type: 'CNAME',
-      name: 's1._domainkey',
-      value: 's1.domainkey.u30435661.wl250.sendgrid.net',
-      purpose: 'Email signing (DKIM)',
-      required: true
+      host: 's1._domainkey',
+      value: `s1.domainkey.${sendgridSubdomain}`,
+      purpose: 'DKIM authentication (key 1)'
     },
     {
-      type: 'MX',
-      name: 'reply',
-      value: 'mx.sendgrid.net',
-      priority: 10,
-      purpose: 'Route replies to LeadsUp',
-      required: false
+      type: 'CNAME',
+      host: 's2._domainkey',
+      value: `s2.domainkey.${sendgridSubdomain}`,
+      purpose: 'DKIM authentication (key 2)'
     },
     {
       type: 'TXT',
-      name: '_leadsup-verify',
-      value: `leadsup-verify-${Date.now()}`,
-      purpose: 'Domain verification',
-      required: true
+      host: '@',
+      value: 'v=spf1 include:sendgrid.net ~all',
+      purpose: 'SPF - Authorizes SendGrid to send emails'
+    },
+    {
+      type: 'TXT',
+      host: '_dmarc',
+      value: 'v=DMARC1; p=none; rua=mailto:dmarc@leadsup.io; ruf=mailto:dmarc@leadsup.io; pct=100; sp=none;',
+      purpose: 'DMARC policy'
+    },
+    {
+      type: 'MX',
+      host: 'reply',
+      value: 'mx.sendgrid.net',
+      priority: 10,
+      purpose: 'Route replies back to LeadsUp'
     }
   ]
 }
