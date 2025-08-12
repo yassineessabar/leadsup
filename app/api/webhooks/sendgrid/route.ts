@@ -90,20 +90,8 @@ export async function POST(request: NextRequest) {
   try {
     console.log('📨 SendGrid Inbound Parse webhook received')
     
-    // Parse form data first to see what we're getting
+    // Parse the form data from SendGrid
     const emailData = await parseFormData(request)
-    
-    console.log('📨 Parsed email data:', JSON.stringify(emailData, null, 2))
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Webhook received successfully - debugging mode', 
-      emailData: emailData,
-      timestamp: new Date().toISOString()
-    })
-    
-    /*
-    // COMMENTED OUT FOR DEBUGGING - The rest of the webhook logic
     
     console.log('📧 SendGrid parsed data:', {
       from: emailData.from,
@@ -149,13 +137,29 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Found campaign sender: User ${campaignSender.user_id}, Campaign ${campaignSender.campaign_id}`)
     
     // Check if this contact exists
-    const { data: contact } = await supabaseServer
-      .from('contacts')
-      .select('id')
-      .eq('email', fromEmail)
-      .single()
+    let contactId = null
+    try {
+      const { data: contact, error: contactError } = await supabaseServer
+        .from('contacts')
+        .select('id')
+        .eq('email', fromEmail)
+        .single()
+      
+      console.log(`🔍 Contact lookup result:`, { contact, contactError })
+      
+      // Validate that contact ID is a proper UUID or null
+      if (contact?.id && typeof contact.id === 'string' && contact.id.length === 36) {
+        contactId = contact.id
+      } else {
+        console.log(`⚠️ Invalid or missing contact ID: ${contact?.id}`)
+        contactId = null
+      }
+    } catch (contactError) {
+      console.log(`⚠️ Contact lookup failed:`, contactError)
+      contactId = null
+    }
     
-    const contactId = contact?.id || null
+    console.log(`📋 Final contactId: ${contactId} (type: ${typeof contactId})`)
     
     // Generate conversation ID for threading
     console.log(`🔍 Generating conversation ID for:`)
@@ -307,14 +311,12 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     })
     
-    */
-    
   } catch (error) {
     console.error('❌ SendGrid webhook error:', error)
+    // Return success to prevent SendGrid retries for malformed data
     return NextResponse.json({ 
       success: false,
-      error: 'Webhook error in debug mode',
-      debug: error.message,
+      error: 'Processing failed but acknowledged',
       timestamp: new Date().toISOString()
     })
   }
