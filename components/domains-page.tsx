@@ -28,9 +28,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { DomainSetupModal } from "@/components/domain-setup-modal"
+import { SenderManagement } from "@/components/sender-management"
 import { toast } from "sonner"
 
-type ViewType = "domains" | "verification" | "dashboard"
+type ViewType = "domains" | "verification" | "dashboard" | "senders"
 
 interface Domain {
   id: string
@@ -82,6 +83,7 @@ const emailStats = [
 export default function DomainsPage() {
   const [currentView, setCurrentView] = useState<ViewType>("domains")
   const [selectedDomain, setSelectedDomain] = useState<string>("")
+  const [selectedDomainId, setSelectedDomainId] = useState<string>("")
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState("date-created")
   const [dnsRecordsAdded, setDnsRecordsAdded] = useState(false)
@@ -209,12 +211,13 @@ export default function DomainsPage() {
 
   const handleManageDomain = (domain: Domain) => {
     setSelectedDomain(domain.domain)
+    setSelectedDomainId(domain.id)
     if (domain.status !== "verified") {
       setCurrentView("verification")
       checkDomainConnectSupport(domain.domain)
       fetchDnsRecords(domain.domain)
     } else {
-      setCurrentView("dashboard")
+      setCurrentView("senders")
     }
   }
 
@@ -271,7 +274,7 @@ export default function DomainsPage() {
           toast.success('Domain verified successfully!')
           // Redirect to dashboard after successful verification
           setTimeout(() => {
-            setCurrentView('dashboard')
+            setCurrentView('senders')
           }, 1500)
         } else {
           const failedCount = data.report?.summary?.failedRecords || 0
@@ -388,22 +391,6 @@ export default function DomainsPage() {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto space-y-8">
-          {/* Email Statistics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {emailStats.map((stat) => (
-              <div key={stat.label} className="bg-white rounded-lg border border-gray-200 p-6">
-                <div className="flex items-center space-x-3">
-                  <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                    <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-semibold text-gray-900">{stat.value}</div>
-                    <div className="text-sm text-gray-600">{stat.label}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
 
           {/* Domains Table */}
           <div className="bg-white rounded-lg border border-gray-200">
@@ -471,20 +458,6 @@ export default function DomainsPage() {
                     <tr>
                       <th className="text-left py-3 px-6 text-sm font-medium text-gray-700">Domain</th>
                       <th className="text-left py-3 px-6 text-sm font-medium text-gray-700">Status</th>
-                      <th className="text-center py-3 px-6 text-sm font-medium text-gray-700">
-                        <div>Sending</div>
-                        <div className="flex justify-center gap-8 mt-1 text-xs text-gray-500">
-                          <span>Sent</span>
-                          <span>Delivered</span>
-                        </div>
-                      </th>
-                      <th className="text-center py-3 px-6 text-sm font-medium text-gray-700">
-                        <div>Receiving</div>
-                        <div className="flex justify-center gap-8 mt-1 text-xs text-gray-500">
-                          <span>Rejected</span>
-                          <span>Received</span>
-                        </div>
-                      </th>
                       <th className="text-right py-3 px-6 text-sm font-medium text-gray-700"></th>
                     </tr>
                   </thead>
@@ -525,26 +498,6 @@ export default function DomainsPage() {
                           <span className={`font-medium ${getStatusColor(domain.status)}`}>
                             {getStatusText(domain.status)}
                           </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex justify-center gap-8">
-                            <div className="text-center">
-                              <div className="text-lg font-medium text-gray-900">{domain.stats.sent}</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-lg font-medium text-gray-900">{domain.stats.delivered}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex justify-center gap-8">
-                            <div className="text-center">
-                              <div className="text-lg font-medium text-gray-900">{domain.stats.rejected}</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-lg font-medium text-gray-900">{domain.stats.received}</div>
-                            </div>
-                          </div>
                         </td>
                         <td className="py-4 px-6 text-right">
                           <div className="flex items-center gap-2 justify-end">
@@ -852,9 +805,6 @@ export default function DomainsPage() {
                                   </Button>
                                 </div>
                               </div>
-                              <div className="mt-2 text-xs text-gray-500">
-                                {record.purpose}
-                              </div>
                             </div>
                           ))
                         ) : (
@@ -922,6 +872,7 @@ export default function DomainsPage() {
                       ✕
                     </Button>
                   </div>
+                  
 
                   {verificationResults.domainReady ? (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -946,19 +897,20 @@ export default function DomainsPage() {
                           </div>
                         </div>
 
-                        {/* Simple list of what needs to be fixed */}
+                        {/* Simple list of failed records */}
                         <div className="ml-11">
-                          <p className="text-sm text-red-800 font-medium mb-2">What needs to be fixed:</p>
+                          <p className="text-sm text-red-800 font-medium mb-2">Missing DNS records:</p>
                           <ul className="space-y-1 text-sm text-red-700">
-                            {verificationResults.records?.filter((r: any) => !r.verified && r.required).map((record: any, index: number) => (
-                              <li key={index} className="flex items-center gap-2">
-                                <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></span>
-                                {record.record.includes('SPF') && 'Email sending authorization (SPF record)'}
-                                {record.record.includes('DKIM') && 'Email authentication (DKIM record)'}
-                                {record.record.includes('MX') && 'Reply handling (MX record)'}
-                                {!record.record.includes('SPF') && !record.record.includes('DKIM') && !record.record.includes('MX') && 'DNS record configuration'}
-                              </li>
-                            ))}
+                            {verificationResults.recommendations
+                              ?.filter((msg: string) => msg.includes('🔴'))
+                              .map((message: string, index: number) => (
+                                <li key={index} className="flex items-start gap-2">
+                                  <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0 mt-1.5"></span>
+                                  <div className="text-xs">
+                                    {message.replace('🔴 ', '').split(':')[0]}
+                                  </div>
+                                </li>
+                              ))}
                           </ul>
                         </div>
                       </div>
@@ -1091,6 +1043,15 @@ export default function DomainsPage() {
           </DialogContent>
         </Dialog>
       </div>
+    )
+  }
+
+  if (currentView === "senders") {
+    return (
+      <SenderManagement
+        domainId={selectedDomainId}
+        onBack={handleBackToDomains}
+      />
     )
   }
 
