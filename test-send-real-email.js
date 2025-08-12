@@ -6,6 +6,9 @@
  * Usage: node test-send-real-email.js your-email@example.com
  */
 
+// Load environment variables
+require('dotenv').config({ path: '.env.local' })
+
 const sgMail = require('@sendgrid/mail')
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY
@@ -28,13 +31,12 @@ async function sendRealTestEmail(recipientEmail) {
     sgMail.setApiKey(SENDGRID_API_KEY)
     
     const testId = Date.now()
+    
+    // Try with the default sender that should be verified
     const email = {
       to: recipientEmail,
-      from: {
-        email: 'noreply@leadsup.io', // Update with your verified sender
-        name: 'LeadsUp Test'
-      },
-      replyTo: 'test@reply.leadsup.io', // Your inbound parse domain
+      from: 'noreply@leadsup.io', // This should be verified in your SendGrid account
+      replyTo: 'test@reply.leadsup.io',
       subject: `Test Email #${testId} - Please Reply`,
       text: `This is test email #${testId}.
 
