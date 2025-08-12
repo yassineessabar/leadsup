@@ -96,6 +96,7 @@ export default function DomainsPage() {
   const [inboundForwarding, setInboundForwarding] = useState(true)
   const [dmarcEnabled, setDmarcEnabled] = useState(false)
   const [verificationMethod, setVerificationMethod] = useState<"auto" | "manual">("auto")
+  const [domainConnectSupported, setDomainConnectSupported] = useState<boolean | null>(null)
 
   useEffect(() => {
     fetchDomains()
@@ -171,14 +172,31 @@ export default function DomainsPage() {
     setSelectedDomain(domain.domain)
     if (domain.status !== "verified") {
       setCurrentView("verification")
+      checkDomainConnectSupport(domain.domain)
     } else {
       setCurrentView("dashboard")
+    }
+  }
+
+  const checkDomainConnectSupport = async (domainName: string) => {
+    try {
+      const response = await fetch(`/api/domain-connect/check?domain=${encodeURIComponent(domainName)}`)
+      if (response.ok) {
+        const data = await response.json()
+        setDomainConnectSupported(data.success && data.supported)
+      } else {
+        setDomainConnectSupported(false)
+      }
+    } catch (error) {
+      console.error('Error checking Domain Connect support:', error)
+      setDomainConnectSupported(false)
     }
   }
 
   const handleBackToDomains = () => {
     setCurrentView("domains")
     setSelectedDomain("")
+    setDomainConnectSupported(null) // Reset Domain Connect support check
   }
 
   const handleDomainAdded = (domain: Domain) => {
@@ -551,51 +569,59 @@ export default function DomainsPage() {
               <div className="bg-white rounded-lg p-6 border">
                 <h1 className="text-2xl font-semibold text-gray-900 mb-2">{selectedDomain}</h1>
                 <p className="text-gray-600">
-                  Verify your domain automatically, manually, or share the DNS records with your admin to handle it.
+                  {domainConnectSupported === null ? (
+                    "Checking domain configuration options..."
+                  ) : domainConnectSupported ? (
+                    "Verify your domain automatically, manually, or share the DNS records with your admin to handle it."
+                  ) : (
+                    "Configure DNS records manually or share them with your admin to verify your domain."
+                  )}
                 </p>
               </div>
 
-              {/* Verification Method Selection */}
-              <div className="bg-white rounded-lg border p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <h2 className="text-lg font-semibold">Verify automatically</h2>
-                  <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2.5 py-0.5 rounded">
-                    Recommended
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="flex gap-2">
-                      <Globe className="w-5 h-5 text-gray-400" />
-                      <Zap className="w-5 h-5 text-gray-400" />
-                      <Mail className="w-5 h-5 text-gray-400" />
-                    </div>
-                    <span className="text-gray-700">
-                      Follow a few steps to get your domain set up correctly and ready for action.
+              {/* Verification Method Selection - Only show if Domain Connect is supported */}
+              {domainConnectSupported && (
+                <div className="bg-white rounded-lg border p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <h2 className="text-lg font-semibold">Verify automatically</h2>
+                    <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2.5 py-0.5 rounded">
+                      Recommended
                     </span>
                   </div>
-                  <Button 
-                    className="bg-teal-600 hover:bg-teal-700" 
-                    onClick={() => {
-                      setVerificationMethod("auto")
-                      const currentDomain = domains.find(d => d.domain === selectedDomain)
-                      if (currentDomain) {
-                        handleVerifyDomain(currentDomain.id)
-                      }
-                    }}
-                    disabled={verifying !== null}
-                  >
-                    {verifying ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verifying...
-                      </>
-                    ) : (
-                      'Start verification'
-                    )}
-                  </Button>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <div className="flex gap-2">
+                        <Globe className="w-5 h-5 text-gray-400" />
+                        <Zap className="w-5 h-5 text-gray-400" />
+                        <Mail className="w-5 h-5 text-gray-400" />
+                      </div>
+                      <span className="text-gray-700">
+                        Follow a few steps to get your domain set up correctly and ready for action.
+                      </span>
+                    </div>
+                    <Button 
+                      className="bg-teal-600 hover:bg-teal-700" 
+                      onClick={() => {
+                        setVerificationMethod("auto")
+                        const currentDomain = domains.find(d => d.domain === selectedDomain)
+                        if (currentDomain) {
+                          handleVerifyDomain(currentDomain.id)
+                        }
+                      }}
+                      disabled={verifying !== null}
+                    >
+                      {verifying ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        'Start verification'
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Manual Verification */}
               <div className="bg-white rounded-lg border p-6">
