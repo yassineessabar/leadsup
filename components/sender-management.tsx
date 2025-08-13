@@ -188,161 +188,181 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-6">
-          <button 
+        <div className="mb-8">
+          <Button 
+            variant="ghost"
             onClick={onBack} 
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium mb-4"
+            className="text-gray-600 hover:text-gray-900 -ml-2 mb-6"
           >
-            <ArrowLeft className="inline h-4 w-4 mr-1" />
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Domains
-          </button>
+          </Button>
           
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Sender Accounts</h1>
-              <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-light text-gray-900 mb-2">Email Senders</h1>
+              <div className="flex items-center gap-3 mb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-green-600 font-medium">{domain?.domain}</span>
-                  <Badge variant="secondary" className="bg-green-100 text-green-700">Verified</Badge>
+                  <span className="text-gray-700 font-medium">{domain?.domain}</span>
+                  <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Connected</span>
                 </div>
               </div>
-              <p className="text-gray-600 mt-2">
-                Manage sender email addresses for this domain. All emails will be sent through SendGrid.
+              <p className="text-gray-500 text-lg">
+                Manage who can send emails from this domain
               </p>
             </div>
 
-            <Button onClick={() => setShowAddSender(true)} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
+            <Button 
+              onClick={() => setShowAddSender(true)} 
+              className="bg-black hover:bg-gray-800 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+            >
+              <Plus className="h-4 w-4 mr-2" />
               Add Sender
             </Button>
           </div>
         </div>
 
-        {/* Senders Grid */}
-        {senders.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Mail className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Sender Accounts</h3>
-              <p className="text-gray-600 text-center mb-6">
-                Add sender email addresses to start sending emails from this domain.
+        {/* Senders */}
+        <div>
+          {senders.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No senders yet</h3>
+              <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                Add email addresses that can send from this domain. Each sender gets their own email identity.
               </p>
-              <Button onClick={() => setShowAddSender(true)} className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
+              <Button 
+                onClick={() => setShowAddSender(true)} 
+                className="bg-black hover:bg-gray-800 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+              >
+                <Plus className="h-4 w-4 mr-2" />
                 Add Your First Sender
               </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {senders.map((sender) => (
-              <Card key={sender.id} className={`${sender.is_default ? 'ring-2 ring-blue-200 border-blue-200' : ''}`}>
-                <CardContent className="flex items-center justify-between p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="h-5 w-5 text-blue-600" />
-                    </div>
-                    
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-gray-900">{sender.display_name}</h3>
-                        {sender.is_default && (
-                          <Badge className="bg-blue-100 text-blue-700">Default</Badge>
-                        )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {senders.map((sender) => (
+                <div key={sender.id} className={`bg-white border rounded-xl p-6 hover:shadow-md transition-shadow ${sender.is_default ? 'ring-2 ring-gray-200' : ''}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <User className="h-6 w-6 text-gray-600" />
                       </div>
-                      <p className="text-gray-600">{sender.email}</p>
-                      <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-                        <span>{sender.emails_sent} emails sent</span>
-                        <span>Added {new Date(sender.created_at).toLocaleDateString()}</span>
+                      
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="text-lg font-medium text-gray-900">{sender.display_name || sender.email.split('@')[0]}</h3>
+                          {sender.is_default && (
+                            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full">Primary</span>
+                          )}
+                        </div>
+                        <p className="text-gray-600 mb-1">{sender.email}</p>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span>{sender.emails_sent || 0} emails sent</span>
+                          <span>Added {new Date(sender.created_at).toLocaleDateString()}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowDeleteDialog(sender.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowDeleteDialog(sender.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 px-3 py-2 rounded-lg font-medium transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Add Sender Dialog */}
         <Dialog open={showAddSender} onOpenChange={setShowAddSender}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add Sender Account</DialogTitle>
-              <DialogDescription>
-                Create a new sender email address for {domain?.domain}
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader className="text-center pb-4">
+              <DialogTitle className="text-xl font-medium text-gray-900">Add New Sender</DialogTitle>
+              <DialogDescription className="text-gray-500">
+                Create a new email sender for {domain?.domain}
               </DialogDescription>
             </DialogHeader>
 
-            <form onSubmit={handleAddSender} className="space-y-4">
+            <form onSubmit={handleAddSender} className="space-y-6">
               <div>
-                <Label htmlFor="localPart">Email Address</Label>
-                <div className="flex mt-1 border rounded-md overflow-hidden">
+                <Label htmlFor="localPart" className="text-sm font-medium text-gray-700 mb-2 block">
+                  Email Address
+                </Label>
+                <div className="flex border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-black focus-within:border-black transition-colors">
                   <Input
                     id="localPart"
                     type="text"
                     value={addSenderForm.localPart}
                     onChange={(e) => handleLocalPartChange(e.target.value)}
-                    placeholder="sender"
-                    className="flex-1 border-none rounded-none focus:ring-0"
+                    placeholder="support"
+                    className="flex-1 border-none rounded-none focus:ring-0 focus:border-transparent"
                     required
                   />
-                  <div className="bg-gray-50 px-3 py-2 text-gray-600 border-l flex items-center">
+                  <div className="bg-gray-50 px-4 py-2.5 text-gray-600 flex items-center border-l border-gray-300">
                     @{domain?.domain || 'loading...'}
                   </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  Enter the part before @{domain?.domain}
+                <p className="text-sm text-gray-500 mt-2">
+                  This will create: {addSenderForm.localPart || 'example'}@{domain?.domain}
                 </p>
               </div>
 
               <div>
-                <Label htmlFor="display_name">Display Name</Label>
+                <Label htmlFor="display_name" className="text-sm font-medium text-gray-700 mb-2 block">
+                  Display Name (Optional)
+                </Label>
                 <Input
                   id="display_name"
                   value={addSenderForm.display_name}
                   onChange={(e) => setAddSenderForm(prev => ({ ...prev, display_name: e.target.value }))}
-                  placeholder="Sender Name"
-                  className="mt-1"
+                  placeholder="Support Team"
+                  className="border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-colors"
                 />
-                <p className="text-sm text-gray-500 mt-1">
-                  How this sender will appear in emails
+                <p className="text-sm text-gray-500 mt-2">
+                  How this sender will appear in recipient emails
                 </p>
               </div>
 
               {senders.length === 0 && (
-                <Alert>
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    This will be your default sender since it's the first one.
-                  </AlertDescription>
-                </Alert>
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                    <p className="text-sm text-blue-800">
+                      This will be your primary sender since it's the first one.
+                    </p>
+                  </div>
+                </div>
               )}
 
-              <DialogFooter className="gap-2">
+              <DialogFooter className="gap-3 pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setShowAddSender(false)}
                   disabled={submitting}
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={submitting}>
+                <Button 
+                  type="submit" 
+                  disabled={submitting}
+                  className="bg-black hover:bg-gray-800 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                >
                   {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Add Sender
                 </Button>
@@ -354,27 +374,28 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
         {/* Delete Confirmation Dialog */}
         <Dialog open={!!showDeleteDialog} onOpenChange={() => setShowDeleteDialog(null)}>
           <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Delete Sender Account</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this sender account? This action cannot be undone.
+            <DialogHeader className="text-center pb-4">
+              <DialogTitle className="text-xl font-medium text-gray-900">Remove Sender</DialogTitle>
+              <DialogDescription className="text-gray-500">
+                Are you sure you want to remove this email sender? This action cannot be undone.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex justify-end gap-2 mt-6">
+            <DialogFooter className="gap-3 pt-4">
               <Button
                 variant="outline"
                 onClick={() => setShowDeleteDialog(null)}
+                className="border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors"
               >
                 Cancel
               </Button>
               <Button
-                variant="destructive"
                 onClick={() => showDeleteDialog && handleDeleteSender(showDeleteDialog)}
+                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
               >
-                Delete Sender
+                Remove Sender
               </Button>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

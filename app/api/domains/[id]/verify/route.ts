@@ -356,8 +356,25 @@ async function verifyTXTRecord(record: any, domainName: string): Promise<Verific
       found: foundRecord,
       verified: isVerified
     }
-  } catch (error) {
-    throw new Error(`TXT lookup failed: ${error.message}`)
+  } catch (error: any) {
+    // Handle DNS ENODATA or ENOTFOUND errors gracefully
+    if (error.code === 'ENODATA' || error.code === 'ENOTFOUND' || error.code === 'DNS_TIMEOUT') {
+      return {
+        record: `TXT (${record.purpose})`,
+        expected: record.value,
+        found: null,
+        verified: false,
+        error: 'No TXT records found'
+      }
+    }
+    // For other errors, return a generic failure
+    return {
+      record: `TXT (${record.purpose})`,
+      expected: record.value,
+      found: null,
+      verified: false,
+      error: `TXT lookup failed: ${error.message || error}`
+    }
   }
 }
 
@@ -429,11 +446,28 @@ async function verifyCNAMERecord(record: any, domainName: string): Promise<Verif
       found: foundRecord,
       verified: isVerified
     }
-  } catch (error) {
+  } catch (error: any) {
     console.log(`❌ CNAME lookup error for ${hostname}: ${error.message}`)
-    console.log(`🔍 Error details: ${JSON.stringify({code: error.code, syscall: error.syscall, hostname: error.hostname})}`)
-    console.log(`🔍 Full error object:`, error)
-    throw new Error(`CNAME lookup failed: ${error.message}`)
+    
+    // Handle DNS ENODATA or ENOTFOUND errors gracefully
+    if (error.code === 'ENODATA' || error.code === 'ENOTFOUND' || error.code === 'DNS_TIMEOUT') {
+      return {
+        record: `CNAME ${record.host} (${record.purpose})`,
+        expected: record.value,
+        found: null,
+        verified: false,
+        error: 'No CNAME record found'
+      }
+    }
+    
+    // For other errors, return a generic failure
+    return {
+      record: `CNAME ${record.host} (${record.purpose})`,
+      expected: record.value,
+      found: null,
+      verified: false,
+      error: `CNAME lookup failed: ${error.message || error}`
+    }
   }
 }
 
@@ -455,8 +489,25 @@ async function verifyMXRecord(record: any, domainName: string): Promise<Verifica
       found: foundRecord ? `${foundRecord.priority} ${foundRecord.exchange}` : foundExchange,
       verified: !!foundRecord
     }
-  } catch (error) {
-    throw new Error(`MX lookup failed: ${error.message}`)
+  } catch (error: any) {
+    // Handle DNS ENODATA or ENOTFOUND errors gracefully
+    if (error.code === 'ENODATA' || error.code === 'ENOTFOUND' || error.code === 'DNS_TIMEOUT') {
+      return {
+        record: `MX (${record.purpose})`,
+        expected: `${record.priority} ${record.value}`,
+        found: null,
+        verified: false,
+        error: 'No MX records found'
+      }
+    }
+    // For other errors, return a generic failure
+    return {
+      record: `MX (${record.purpose})`,
+      expected: `${record.priority} ${record.value}`,
+      found: null,
+      verified: false,
+      error: `MX lookup failed: ${error.message || error}`
+    }
   }
 }
 
