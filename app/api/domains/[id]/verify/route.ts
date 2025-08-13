@@ -756,6 +756,20 @@ async function setupSendGridIntegration(domain: any) {
     
     console.log(`✅ SendGrid integration complete for ${domain.domain}`)
     
+    // Auto-verify any unverified senders for this domain
+    try {
+      console.log(`🔄 Running auto-verification for ${domain.domain}`)
+      const { autoVerifyDomainSenders } = await import('@/lib/auto-verify-senders')
+      const verifyResult = await autoVerifyDomainSenders(domain.domain)
+      
+      if (verifyResult.success && verifyResult.processed > 0) {
+        console.log(`✅ Auto-verified ${verifyResult.processed} senders for ${domain.domain}`)
+      }
+    } catch (autoVerifyError) {
+      console.error('Auto-verification failed:', autoVerifyError)
+      // Don't fail domain verification if auto-verify fails
+    }
+    
   } catch (error) {
     console.error('SendGrid setup failed:', error)
   }
