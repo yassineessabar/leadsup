@@ -199,7 +199,7 @@ export async function POST(
 
     const shouldBeDefault = is_default || (existingSenders?.length === 0)
 
-    // Create the sender account
+    // Create the sender account (never set is_default in INSERT to avoid constraint violations)
     const { data: newSender, error: createError } = await supabase
       .from('sender_accounts')
       .insert({
@@ -207,7 +207,7 @@ export async function POST(
         user_id: userId,
         email,
         display_name: display_name || email.split('@')[0],
-        is_default: shouldBeDefault
+        is_default: false  // Always start as false
       })
       .select()
       .single()
@@ -222,7 +222,14 @@ export async function POST(
 
     // If this should be default, use the function to ensure only one default
     if (shouldBeDefault) {
-      await supabase.rpc('set_default_sender', { sender_id: newSender.id })
+      const { error: defaultError } = await supabase.rpc('set_default_sender', { 
+        sender_id: newSender.id 
+      })
+      
+      if (defaultError) {
+        console.error('Error setting default sender:', defaultError)
+        // Don't fail the request, just log the error
+      }
     }
 
     return NextResponse.json({

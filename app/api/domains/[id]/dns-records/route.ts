@@ -94,7 +94,7 @@ function stripDomainFromHost(host: string, domain: string): string {
 }
 
 // Helper function to get DNS records for a specific domain from SendGrid
-async function getSendGridDNSRecords(domain: string) {
+async function getSendGridDNSRecords(domain: string, replySubdomain: string = 'reply') {
   try {
     // First, fetch all authenticated domains
     const authenticatedDomains = await fetchSendGridAuthenticatedDomains()
@@ -164,10 +164,10 @@ async function getSendGridDNSRecords(domain: string) {
       // Add MX record for reply routing
       dnsRecords.push({
         type: 'MX',
-        host: 'reply',
+        host: replySubdomain,
         value: 'mx.sendgrid.net',
         priority: 10,
-        purpose: 'Route replies back to LeadsUp for processing'
+        purpose: `Route replies from ${replySubdomain}.${domain} back to LeadsUp for processing`
       })
 
       // Add DMARC record (use SendGrid verified format for leadsup.io)
@@ -191,16 +191,16 @@ async function getSendGridDNSRecords(domain: string) {
     }
 
     // If no authenticated domain found in SendGrid, return default records
-    return getDefaultDNSRecords(domain)
+    return getDefaultDNSRecords(domain, replySubdomain)
   } catch (error) {
     console.error('Error fetching SendGrid DNS records:', error)
     // Fallback to default records if SendGrid API fails
-    return getDefaultDNSRecords(domain)
+    return getDefaultDNSRecords(domain, replySubdomain)
   }
 }
 
 // Default DNS records for new domains
-function getDefaultDNSRecords(domain: string) {
+function getDefaultDNSRecords(domain: string, replySubdomain: string = 'reply') {
   // For leadsup.io, use SendGrid verified records only
   if (domain === 'leadsup.io' || domain.includes('leadsup.io')) {
     return [
@@ -230,10 +230,10 @@ function getDefaultDNSRecords(domain: string) {
       },
       {
         type: 'MX',
-        host: 'reply',
+        host: replySubdomain,
         value: 'mx.sendgrid.net',
         priority: 10,
-        purpose: 'Route replies back to LeadsUp for processing'
+        purpose: `Route replies from ${replySubdomain}.${domain} back to LeadsUp for processing`
       }
     ]
   }
@@ -275,10 +275,10 @@ function getDefaultDNSRecords(domain: string) {
     },
     {
       type: 'MX',
-      host: 'reply',
+      host: replySubdomain,
       value: 'mx.sendgrid.net',
       priority: 10,
-      purpose: 'Route replies back to LeadsUp for processing'
+      purpose: `Route replies from ${replySubdomain}.${domain} back to LeadsUp for processing`
     }
   ]
 }
@@ -317,23 +317,44 @@ export async function GET(
       )
     }
 
-    // Fetch DNS records from SendGrid or use defaults
-    const dnsRecords = await getSendGridDNSRecords(domain)
-
-    // Store the DNS records in the database for reference
-    await supabase
-      .from('domains')
-      .update({
-        dns_records: dnsRecords,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', domainRecord.id)
+    // Extract reply subdomain from domain description
+    let replySubdomain = 'reply' // default
+    if (domainRecord.description) {
+      const replyMatch = domainRecord.description.match(/Reply:\s*([^.\s)]+)/)
+      if (replyMatch && replyMatch[1]) {
+        replySubdomain = replyMatch[1].split('.')[0] // Get just the subdomain part
+      }
+    }
+    
+    console.log(`Using reply subdomain '${replySubdomain}' for domain ${domain}`)
+    
+    // Use stored DNS records from domain creation first, fallback to SendGrid
+    let dnsRecords = domainRecord.dns_records || []
+    let source = 'stored'
+    
+    // If no stored records, fetch from SendGrid or use defaults
+    if (!dnsRecords || dnsRecords.length === 0) {
+      console.log(`No stored DNS records for ${domain}, fetching from SendGrid`)
+      dnsRecords = await getSendGridDNSRecords(domain, replySubdomain)
+      source = 'sendgrid'
+      
+      // Store the fetched DNS records in the database for future use
+      await supabase
+        .from('domains')
+        .update({
+          dns_records: dnsRecords,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', domainRecord.id)
+    } else {
+      console.log(`Using stored DNS records for ${domain} (${dnsRecords.length} records)`)
+    }
 
     return NextResponse.json({
       success: true,
       domain,
-      dnsRecords,
-      source: dnsRecords.length > 0 ? 'sendgrid' : 'default'
+      records: dnsRecords, // Changed from dnsRecords to records to match frontend expectation
+      source
     })
   } catch (error) {
     console.error("Error in GET /api/domains/[domain]/dns-records:", error)
