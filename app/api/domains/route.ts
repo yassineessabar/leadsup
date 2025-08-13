@@ -216,16 +216,38 @@ export async function POST(request: NextRequest) {
     // Check if domain already exists for this user
     const { data: existingDomain } = await supabase
       .from('domains')
-      .select('id')
+      .select('*')
       .eq('user_id', userId)
       .eq('domain', domain)
       .single()
 
     if (existingDomain) {
-      return NextResponse.json(
-        { success: false, error: "Domain already exists" },
-        { status: 409 }
-      )
+      console.log(`✅ Domain ${domain} already exists, returning existing domain`)
+      
+      // Transform existing domain to match frontend interface
+      const transformedDomain = {
+        id: existingDomain.id,
+        domain: existingDomain.domain,
+        status: existingDomain.status,
+        description: existingDomain.description,
+        isTestDomain: existingDomain.is_test_domain,
+        verification_type: existingDomain.verification_type,
+        created_at: existingDomain.created_at,
+        stats: {
+          sent: existingDomain.emails_sent || 0,
+          delivered: existingDomain.emails_delivered || 0,
+          rejected: existingDomain.emails_rejected || 0,
+          received: existingDomain.emails_received || 0
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        domain: transformedDomain,
+        dnsRecords: existingDomain.dns_records || getDefaultDnsRecords(domain, replySubdomain),
+        message: "Domain already exists - redirecting to setup",
+        existingDomain: true
+      })
     }
 
     // Construct the full reply hostname for inbound parse

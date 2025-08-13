@@ -677,9 +677,12 @@ async function setupSendGridIntegration(domain: any) {
     console.log(`🚀 Setting up SendGrid integration for ${domain.domain}`)
     
     // Import SendGrid functions
-    const { createSenderIdentity } = await import('@/lib/sendgrid')
+    const { createSenderIdentity, getDomainAuthentication, createDomainAuthentication, validateDomainAuthentication } = await import('@/lib/sendgrid')
     
-    // Get all existing sender accounts for this domain
+    // Step 1: Force SendGrid domain authentication
+    await forceSendGridDomainAuthentication(domain.domain, getDomainAuthentication, createDomainAuthentication, validateDomainAuthentication)
+    
+    // Step 2: Get all existing sender accounts for this domain
     // Process all senders, including those with failed status (to retry)
     const { data: senderAccounts, error: fetchError } = await supabase
       .from('sender_accounts')
@@ -772,5 +775,71 @@ async function setupSendGridIntegration(domain: any) {
     
   } catch (error) {
     console.error('SendGrid setup failed:', error)
+  }
+}
+
+async function forceSendGridDomainAuthentication(domainName: string, getDomainAuthentication: any, createDomainAuthentication: any, validateDomainAuthentication: any) {
+  try {
+    console.log(`🔐 Forcing SendGrid domain authentication for ${domainName}`)
+    
+    // Step 1: Check if domain authentication already exists
+    const existingAuth = await getDomainAuthentication(domainName)
+    
+    if (existingAuth.domain) {
+      console.log(`✅ Domain authentication already exists for ${domainName} (ID: ${existingAuth.domain.id})`)
+      
+      // Force validation of existing domain authentication
+      try {
+        console.log(`🔄 Forcing validation of existing domain authentication...`)
+        const validationResult = await validateDomainAuthentication(existingAuth.domain.id)
+        
+        if (validationResult.valid) {
+          console.log(`✅ Domain authentication is VALID for ${domainName}`)
+        } else {
+          console.log(`⚠️ Domain authentication validation failed for ${domainName}:`, validationResult.validation_results)
+          // Continue anyway - DNS might still be propagating
+        }
+      } catch (validationError) {
+        console.error(`❌ Failed to validate domain authentication for ${domainName}:`, validationError.message)
+        // Continue anyway - the domain authentication exists
+      }
+      
+      return existingAuth.domain
+    }
+    
+    // Step 2: Create new domain authentication if it doesn't exist
+    console.log(`📝 Creating new domain authentication for ${domainName}`)
+    
+    const newAuth = await createDomainAuthentication({
+      domain: domainName,
+      subdomain: 'mail' // Use 'mail' subdomain for better deliverability
+    })
+    
+    if (newAuth.success) {
+      console.log(`✅ Created domain authentication for ${domainName} (ID: ${newAuth.domain_id})`)
+      
+      // Step 3: Immediately try to validate the new domain authentication
+      try {
+        console.log(`🔄 Attempting immediate validation of new domain authentication...`)
+        const validationResult = await validateDomainAuthentication(newAuth.domain_id)
+        
+        if (validationResult.valid) {
+          console.log(`✅ New domain authentication is VALID for ${domainName}`)
+        } else {
+          console.log(`⚠️ New domain authentication validation pending for ${domainName} - DNS may still be propagating`)
+        }
+      } catch (validationError) {
+        console.log(`⚠️ Validation pending for ${domainName} - DNS records may still be propagating`)
+      }
+      
+      return newAuth
+    } else {
+      throw new Error('Failed to create domain authentication')
+    }
+    
+  } catch (error: any) {
+    console.error(`❌ Failed to force domain authentication for ${domainName}:`, error.message)
+    // Don't throw - continue with sender identity creation even if domain auth fails
+    return null
   }
 }
