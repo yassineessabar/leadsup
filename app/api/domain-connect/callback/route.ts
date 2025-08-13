@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabase'
+import dns from 'dns'
+import { promisify } from 'util'
 
 export async function GET(request: NextRequest) {
   try {
@@ -123,11 +125,9 @@ async function processDomainConnectSuccess(domain: string) {
 
 async function verifyDomainConnectSetup(domain: string) {
   try {
-    const dns = await import('dns')
-    const util = await import('util')
-    const resolveTxt = util.promisify(dns.resolveTxt)
-    const resolveMx = util.promisify(dns.resolveMx)
-    const resolveCname = util.promisify(dns.resolveCname)
+    const resolveTxt = promisify(dns.resolveTxt)
+    const resolveMx = promisify(dns.resolveMx)
+    const resolveCname = promisify(dns.resolveCname)
 
     const results: any[] = []
 

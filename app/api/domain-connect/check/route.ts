@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import dns from 'dns'
+import { promisify } from 'util'
 
 export async function GET(request: NextRequest) {
   try {
@@ -82,9 +84,7 @@ async function checkDomainConnect(domain: string) {
 
 async function checkDirectApiSupport(domain: string) {
   try {
-    const dns = await import('dns')
-    const util = await import('util')
-    const resolve = util.promisify(dns.resolve)
+    const resolve = promisify(dns.resolve)
     
     const nameservers = await resolve(domain, 'NS')
     const nsString = nameservers.join(' ').toLowerCase()
