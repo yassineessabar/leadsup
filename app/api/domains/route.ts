@@ -258,8 +258,11 @@ export async function POST(request: NextRequest) {
       }
       
       // Extract REAL DNS records from SendGrid response
+      console.log(`🔍 Debug: domainAuthResult structure:`, JSON.stringify(domainAuthResult, null, 2))
+      
       if (domainAuthResult?.dns_records || domainAuthResult?.dns) {
         const dns = domainAuthResult.dns_records || domainAuthResult.dns
+        console.log(`🔍 Debug: DNS structure:`, JSON.stringify(dns, null, 2))
         
         // Add DKIM records
         if (dns.dkim1) {
@@ -316,6 +319,9 @@ export async function POST(request: NextRequest) {
         })
         
         console.log(`✅ Generated ${realDnsRecords.length} real DNS records from SendGrid`)
+      } else {
+        console.log(`⚠️ No DNS records found in domainAuthResult, using defaults`)
+        realDnsRecords = getDefaultDnsRecords(domain, replySubdomain)
       }
       
     } catch (sendgridError) {
@@ -326,9 +332,12 @@ export async function POST(request: NextRequest) {
     
     // If no real records were generated, use defaults as fallback
     if (realDnsRecords.length === 0) {
-      console.log(`⚠️ No real DNS records generated, using defaults`)
+      console.log(`⚠️ No real DNS records generated, using defaults as final fallback`)
       realDnsRecords = getDefaultDnsRecords(domain, replySubdomain)
     }
+    
+    console.log(`🔍 Final DNS records count: ${realDnsRecords.length}`)
+    console.log(`🔍 Final DNS records:`, JSON.stringify(realDnsRecords, null, 2))
 
     // Insert domain into database with REAL DNS records
     const { data: newDomain, error } = await supabase
