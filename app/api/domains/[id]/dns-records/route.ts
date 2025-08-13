@@ -330,12 +330,16 @@ export async function GET(
     let dnsRecords = domainRecord.dns_records || []
     let source = 'stored'
     
+    console.log(`📋 Stored DNS records for ${domain}:`, JSON.stringify(dnsRecords, null, 2))
+    
     // Check if stored records are FAKE (contain fake placeholders)
     const hasFakeRecords = dnsRecords.some(record => 
       record.host === 'mail' || 
       record.host === 'url1234' || 
       (record.value && record.value.includes('u1234567.wl123.sendgrid.net'))
     )
+    
+    console.log(`🔍 Fake records detection for ${domain}: ${hasFakeRecords}`)
     
     // If no stored records OR stored records are fake, fetch from SendGrid
     if (!dnsRecords || dnsRecords.length === 0 || hasFakeRecords) {
