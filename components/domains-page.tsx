@@ -118,9 +118,27 @@ export default function DomainsPage() {
       const response = await fetch(`/api/domains/${domainId}/dns-records`)
       const data = await response.json()
       
+      console.log('DNS Records API Response:', { response: response.ok, data }) // Debug log
+      
       if (response.ok && data.records) {
+        console.log('Using API DNS records:', data.records) // Debug log
         setDnsRecords(data.records)
       } else {
+        console.log('API failed, using fallback records') // Debug log
+        
+        // Try to extract reply subdomain from domain description
+        const currentDomain = domains.find(d => d.id === domainId)
+        let replySubdomain = 'reply' // default
+        
+        if (currentDomain?.description) {
+          const replyMatch = currentDomain.description.match(/Reply:\s*([^.\s)]+)/)
+          if (replyMatch && replyMatch[1]) {
+            replySubdomain = replyMatch[1].split('.')[0] // Get just the subdomain part
+          }
+        }
+        
+        console.log('Using reply subdomain for fallback:', replySubdomain) // Debug log
+        
         // Set comprehensive DNS records for proper email setup
         setDnsRecords([
           {
@@ -161,14 +179,29 @@ export default function DomainsPage() {
           },
           {
             type: 'MX',
-            host: '@',
+            host: replySubdomain,
             value: 'mx.sendgrid.net',
             priority: 10,
-            description: 'Mail exchange'
+            description: `Route replies from ${replySubdomain}.${currentDomain?.domain || selectedDomain} back to LeadsUp`
           }
         ])
       }
     } catch (error) {
+      console.log('DNS Records API error:', error) // Debug log
+      
+      // Try to extract reply subdomain from domain description
+      const currentDomain = domains.find(d => d.id === domainId)
+      let replySubdomain = 'reply' // default
+      
+      if (currentDomain?.description) {
+        const replyMatch = currentDomain.description.match(/Reply:\s*([^.\s)]+)/)
+        if (replyMatch && replyMatch[1]) {
+          replySubdomain = replyMatch[1].split('.')[0] // Get just the subdomain part
+        }
+      }
+      
+      console.log('Using reply subdomain for error fallback:', replySubdomain) // Debug log
+      
       // Set comprehensive DNS records for proper email setup
       setDnsRecords([
         {
@@ -209,10 +242,10 @@ export default function DomainsPage() {
         },
         {
           type: 'MX',
-          host: '@',
+          host: replySubdomain,
           value: 'mx.sendgrid.net',
           priority: 10,
-          description: 'Mail exchange'
+          description: `Route replies from ${replySubdomain}.${currentDomain?.domain || selectedDomain} back to LeadsUp`
         }
       ])
     } finally {

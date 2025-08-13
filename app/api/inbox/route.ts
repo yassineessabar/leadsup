@@ -95,7 +95,7 @@ async function getThreadMessages(userId: string, conversationId: string) {
   try {
     console.log(`📧 Fetching all messages for conversation: ${conversationId}`)
 
-    // Fetch all messages for this conversation
+    // Fetch all messages for this conversation (exclude trashed messages)
     const { data: messages, error } = await supabaseServer
       .from('inbox_messages')
       .select(`
@@ -105,6 +105,7 @@ async function getThreadMessages(userId: string, conversationId: string) {
       `)
       .eq('user_id', userId)
       .eq('conversation_id', conversationId)
+      .neq('folder', 'trash')  // Exclude messages in trash folder
       .order('sent_at', { ascending: true, nullsLast: true })
       .order('created_at', { ascending: true })
 
@@ -167,62 +168,83 @@ async function getThreadedMessages(userId: string, filters: any) {
   const { page, limit, offset, campaigns, senders, leadStatuses, folder, channel, search, dateFrom, dateTo, status } = filters
 
   try {
-    // First, get thread IDs that have messages in the specified folder
-    let threadIds: string[] = []
-    
-    if (folder && folder !== 'all') {
-      let folderQuery = supabaseServer
-        .from('inbox_messages')
-        .select('conversation_id')
-        .eq('user_id', userId)
-        .eq('channel', channel)
-      
-      // Apply folder-specific filtering
-      if (folder === 'sent') {
-        // For sent folder, show outbound messages that are NOT in trash
-        folderQuery = folderQuery
-          .eq('direction', 'outbound')
-          .neq('folder', 'trash')
-      } else {
-        // For other folders, use the folder field directly
-        folderQuery = folderQuery.eq('folder', folder)
-      }
-        
-      const { data: messagesInFolder, error: folderError } = await folderQuery
-        
-      if (folderError) {
-        console.error('❌ Error fetching messages by folder:', folderError)
-        return NextResponse.json({ success: false, error: folderError.message }, { status: 500 })
-      }
-      
-      threadIds = [...new Set(messagesInFolder.map(m => m.conversation_id))]
-      console.log(`📁 Found ${messagesInFolder.length} messages in folder '${folder}', ${threadIds.length} unique threads`)
-      
-      if (threadIds.length === 0) {
-        // No messages in this folder, return empty result
-        return NextResponse.json({
-          success: true,
-          data: [],
-          pagination: {
-            page,
-            limit,
-            total: 0,
-            totalPages: 0
-          }
-        })
-      }
-    }
+    // Use thread-based filtering instead of message-based filtering
+    // This is more consistent and avoids the inbox_messages dependency issues
 
-    // Build the main query for threads (without the problematic inner join)
+    // Build the main query for threads
     let query = supabaseServer
       .from('inbox_threads')
       .select('*')
       .eq('user_id', userId)
       .order('last_message_at', { ascending: false })
 
-    // Apply thread ID filter if we have folder restrictions
-    if (threadIds.length > 0) {
-      query = query.in('conversation_id', threadIds)
+    // Helper function to find fully trashed conversations
+    const getFullyTrashedConversations = async () => {
+      const { data: trashMessageIds, error: trashError } = await supabaseServer
+        .from('inbox_messages')
+        .select('conversation_id')
+        .eq('user_id', userId)
+        .eq('folder', 'trash');
+        
+      if (trashError || !trashMessageIds) return [];
+      
+      const trashConversationIds = [...new Set(trashMessageIds.map(m => m.conversation_id))];
+      const fullyTrashedConversations = [];
+      
+      for (const convId of trashConversationIds) {
+        const { data: allMessages, error: allMsgError } = await supabaseServer
+          .from('inbox_messages')
+          .select('folder')
+          .eq('user_id', userId)
+          .eq('conversation_id', convId);
+          
+        if (!allMsgError && allMessages) {
+          const nonTrashMessages = allMessages.filter(m => m.folder !== 'trash');
+          if (nonTrashMessages.length === 0) {
+            fullyTrashedConversations.push(convId);
+          }
+        }
+      }
+      
+      return fullyTrashedConversations;
+    }
+    
+    // Apply folder-specific filtering with trash logic
+    let fullyTrashedConversations = [];
+    let threadIds: string[] = []
+    
+    if (folder && folder !== 'all') {
+      fullyTrashedConversations = await getFullyTrashedConversations();
+      
+      if (folder === 'trash') {
+        // For trash folder, show only fully trashed conversations
+        console.log('🗑️ Showing trash conversations')
+        
+        if (fullyTrashedConversations.length > 0) {
+          query = query.in('conversation_id', fullyTrashedConversations);
+          threadIds = fullyTrashedConversations;
+        } else {
+          // No trash conversations, return empty
+          query = query.in('conversation_id', ['no-matches']);
+          threadIds = ['no-matches'];
+        }
+      } else {
+        // For inbox and sent folders, exclude fully trashed conversations
+        console.log(`📁 Showing ${folder} conversations (excluding trash)`)
+        
+        if (fullyTrashedConversations.length > 0) {
+          // Use multiple .neq() calls to exclude trashed conversations
+          fullyTrashedConversations.forEach(conversationId => {
+            query = query.neq('conversation_id', conversationId);
+          });
+        }
+        
+        // Apply folder-specific logic
+        if (folder === 'inbox') {
+          query = query.gt('unread_count', 0);
+          console.log('📥 + filtering for unread conversations');
+        }
+      }
     }
 
     // Apply campaign filter
@@ -275,6 +297,31 @@ async function getThreadedMessages(userId: string, filters: any) {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
 
+    // Apply same folder filtering logic to count
+    if (folder && folder !== 'all') {
+      if (folder === 'trash') {
+        // Count only fully trashed conversations
+        if (threadIds.length > 0 && threadIds[0] !== 'no-matches') {
+          countQuery = countQuery.in('conversation_id', threadIds)
+        } else {
+          // No trash conversations, set count to 0
+          countQuery = countQuery.in('conversation_id', ['no-matches'])
+        }
+      } else {
+        // For inbox and sent, exclude fully trashed conversations
+        if (fullyTrashedConversations.length > 0) {
+          // Use multiple .neq() calls for count query too
+          fullyTrashedConversations.forEach(conversationId => {
+            countQuery = countQuery.neq('conversation_id', conversationId);
+          });
+        }
+        
+        if (folder === 'inbox') {
+          countQuery = countQuery.gt('unread_count', 0)
+        }
+      }
+    }
+
     // Apply same filters for count
     if (campaigns.length > 0) {
       countQuery = countQuery.in('campaign_id', campaigns)
@@ -297,51 +344,36 @@ async function getThreadedMessages(userId: string, filters: any) {
     // Get latest messages for each thread
     const formattedThreads = await Promise.all(
       (threads || []).map(async (thread) => {
-        // Get the latest message for this conversation
-        let messageQuery = supabaseServer
-          .from('inbox_messages')
-          .select('id, subject, body_text, body_html, direction, status, sent_at, received_at, sender_id, sender_email, contact_name, contact_email, has_attachments, folder')
-          .eq('user_id', userId)
-          .eq('conversation_id', thread.conversation_id)
-          
-        // If filtering by folder, only get messages from that folder
-        if (folder && folder !== 'all') {
-          if (folder === 'sent') {
-            // For sent folder, show outbound messages that are NOT in trash
-            messageQuery = messageQuery
-              .eq('direction', 'outbound')
-              .neq('folder', 'trash')
-          } else {
-            messageQuery = messageQuery.eq('folder', folder)
+        // Try to get the latest message for this conversation (optional - use thread data as fallback)
+        let latestMessage = null
+        try {
+          const { data: message, error: messageError } = await supabaseServer
+            .from('inbox_messages')
+            .select('id, subject, body_text, body_html, direction, status, sent_at, received_at, sender_id, sender_email, contact_name, contact_email, has_attachments, folder')
+            .eq('user_id', userId)
+            .eq('conversation_id', thread.conversation_id)
+            .order('sent_at', { ascending: false, nullsLast: true })
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+            
+          if (!messageError) {
+            latestMessage = message
           }
-        }
-        
-        const { data: latestMessage, error: messageError } = await messageQuery
-          .order('sent_at', { ascending: false, nullsLast: true })
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single()
-
-        // Debug message fetching
-        if (messageError) {
-          console.log(`⚠️ No message found for thread ${thread.conversation_id} in folder ${folder}:`, messageError.message)
-        }
-
-        // Only return threads that have a message in the specified folder
-        if (!latestMessage && folder && folder !== 'all') {
-          console.log(`❌ Skipping thread ${thread.conversation_id} - no message in folder ${folder}`)
-          return null // Skip this thread if no message in the folder
+        } catch (e) {
+          // If message fetch fails, we'll use thread data as fallback
+          console.log(`📝 Using thread data as fallback for ${thread.conversation_id}`)
         }
         
         return {
           id: thread.id,
           conversation_id: thread.conversation_id,
           
-          // UI expects these fields for email display
+          // UI expects these fields for email display - use thread data as primary source
           sender: thread.contact_email?.trim() || 'Unknown',
           subject: thread.subject || 'No subject',
-          preview: thread.last_message_preview || (latestMessage?.body_text?.substring(0, 100) + '...' || ''),
-          date: latestMessage?.sent_at ? new Date(latestMessage.sent_at).toLocaleDateString('en-US', {
+          preview: thread.last_message_preview || 'No preview available',
+          date: new Date(thread.last_message_at).toLocaleDateString('en-US', {
             weekday: 'long',
             month: 'short', 
             day: 'numeric',
@@ -349,11 +381,11 @@ async function getThreadedMessages(userId: string, filters: any) {
             hour: 'numeric',
             minute: '2-digit',
             hour12: true
-          }) : new Date(thread.last_message_at).toLocaleDateString(),
+          }),
           isRead: thread.unread_count === 0,
           hasAttachment: latestMessage?.has_attachments || false,
-          content: latestMessage?.body_html || latestMessage?.body_text || thread.last_message_preview || 'No content available',
-          folder: latestMessage?.folder || 'inbox', // Include folder from latest message
+          content: thread.last_message_preview || latestMessage?.body_html || latestMessage?.body_text || 'No content available',
+          folder: folder || 'inbox', // Use the requested folder
           
           // Keep original thread data for compatibility
           contact_name: thread.contact_name,

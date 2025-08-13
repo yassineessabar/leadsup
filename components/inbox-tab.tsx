@@ -264,11 +264,29 @@ export default function InboxPage() {
   const handleEmailSelect = async (email: Email) => {
     setSelectedEmail(email)
     
+    // Auto-expand thread if it has multiple messages
+    const conversationId = (email as any).conversation_id
+    if (conversationId) {
+      const threadMessagesForEmail = threadMessages[conversationId]
+      const totalMessages = threadMessagesForEmail && Array.isArray(threadMessagesForEmail) 
+        ? threadMessagesForEmail.length 
+        : (email as any).message_count
+      
+      // Auto-expand if there are multiple messages and not already expanded
+      if (totalMessages > 1 && !expandedThreads.has(conversationId)) {
+        // Fetch thread messages if not already loaded
+        if (!threadMessages[conversationId]) {
+          await fetchThreadMessages(conversationId)
+        }
+        // Expand the thread
+        setExpandedThreads(prev => new Set(prev).add(conversationId))
+      }
+    }
+    
     // Mark thread as read if it has unread messages
     if (!email.isRead && !email.is_read) {
       try {
         // Mark all unread messages in this conversation as read
-        const conversationId = (email as any).conversation_id
         if (conversationId) {
           const response = await fetch(`/api/inbox/threads/${conversationId}/mark-read`, {
             method: 'POST',

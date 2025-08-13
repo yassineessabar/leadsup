@@ -3,18 +3,59 @@ import { cookies } from "next/headers"
 import { createClient } from "@supabase/supabase-js"
 import dns from 'dns'
 import { promisify } from 'util'
+import { exec } from 'child_process'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Configure DNS with longer timeouts
+// Configure DNS with longer timeouts and clear cache
 dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1'])
+
+// Force DNS cache clear by cycling servers multiple times
+const clearDNSCache = async () => {
+  // Cycle through different DNS servers to force cache invalidation
+  const servers = [
+    ['1.1.1.1', '1.0.0.1'],           // Cloudflare
+    ['8.8.8.8', '8.8.4.4'],          // Google
+    ['208.67.222.222', '208.67.220.220'], // OpenDNS
+    ['8.8.8.8', '8.8.4.4', '1.1.1.1'] // Final mix
+  ]
+  
+  for (const serverSet of servers) {
+    dns.setServers(serverSet)
+    await new Promise(resolve => setTimeout(resolve, 50))
+  }
+}
 
 const resolveTxt = promisify(dns.resolveTxt)
 const resolveMx = promisify(dns.resolveMx)
 const resolveCname = promisify(dns.resolveCname)
+const execAsync = promisify(exec)
+
+// Bypass Node.js DNS caching by using external dig command
+async function resolveCnameBypass(hostname: string): Promise<string[]> {
+  try {
+    console.log(`🔍 Running dig command for ${hostname}`)
+    const { stdout, stderr } = await execAsync(`dig +short ${hostname} CNAME @1.1.1.1`)
+    console.log(`📋 Dig output: "${stdout.trim()}"`)
+    if (stderr) console.log(`⚠️  Dig stderr: "${stderr.trim()}"`)
+    
+    const result = stdout.trim()
+    if (result && !result.includes('NXDOMAIN') && !result.includes('SERVFAIL')) {
+      // Remove trailing dots and return as array
+      const cleanResult = result.replace(/\.$/, '')
+      console.log(`✅ Dig result cleaned: "${cleanResult}"`)
+      return [cleanResult]
+    }
+    throw new Error('No CNAME record found')
+  } catch (error) {
+    console.log(`❌ Dig failed, falling back to Node.js DNS:`, error.message)
+    // Fallback to regular DNS if dig fails
+    return await resolveCname(hostname)
+  }
+}
 
 // Helper function to add timeout to DNS operations
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 5000): Promise<T> {
@@ -68,6 +109,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Clear DNS cache at start of verification
+    await clearDNSCache()
+    console.log(`🔄 DNS cache cleared, servers now: ${dns.getServers().join(', ')}`)
+    
     const userId = await getUserIdFromSession()
     if (!userId) {
       return NextResponse.json(
@@ -194,12 +239,46 @@ export async function POST(
 async function verifyDNSRecords(domain: any): Promise<VerificationResult[]> {
   console.log(`🔍 Starting DNS verification for domain: ${domain.domain}`)
   
-  // Get DNS records from SendGrid configuration or use defaults for leadsup.io
+  // Get DNS records from stored configuration first, then fetch real ones if needed
   let dnsRecords = domain.dns_records || []
   
-  // If no DNS records or empty, get them from our DNS records API
-  if (!dnsRecords || dnsRecords.length === 0) {
-    dnsRecords = getLeadsUpDNSRecords(domain.domain)
+  // Check if stored records are FAKE (contain fake placeholders)
+  const hasFakeRecords = dnsRecords.some(record => 
+    record.host === 'mail' || 
+    record.host === 'url1234' || 
+    (record.value && record.value.includes('u1234567.wl123.sendgrid.net'))
+  )
+  
+  // If no DNS records, empty, or fake records, fetch real ones from DNS records API
+  if (!dnsRecords || dnsRecords.length === 0 || hasFakeRecords) {
+    if (hasFakeRecords) {
+      console.log(`🔄 Detected fake DNS records for ${domain.domain}, fetching real ones`)
+    }
+    console.log(`Fetching real DNS records for verification of ${domain.domain}`)
+    
+    // Call our own DNS records API to get the real/current records
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/domains/${domain.id}/dns-records`, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const apiData = await response.json()
+        if (apiData.success && apiData.records) {
+          dnsRecords = apiData.records
+          console.log(`✅ Fetched ${dnsRecords.length} real DNS records for verification`)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch DNS records from API:', error)
+    }
+    
+    // Final fallback to leadsup.io defaults if API fails
+    if (!dnsRecords || dnsRecords.length === 0) {
+      dnsRecords = getLeadsUpDNSRecords(domain.domain)
+    }
   }
 
   console.log(`📋 Found ${dnsRecords.length} DNS records to verify`)
@@ -422,18 +501,28 @@ async function verifyCNAMERecord(record: any, domainName: string): Promise<Verif
       }
     }
     
-    // For non-tracking records (DKIM, etc.), use exact hostname
+    // For non-tracking records (DKIM, etc.), use exact hostname with bypass for DKIM
     console.log(`🔍 Looking up CNAME for: ${hostname}`)
-    const cnameRecords = await withTimeout(resolveCname(hostname), 3000)
+    let cnameRecords: string[]
+    
+    // Use bypass for DKIM records to avoid caching issues
+    if (record.purpose?.includes('DKIM')) {
+      console.log(`🔄 Using DNS bypass for DKIM record: ${hostname}`)
+      cnameRecords = await withTimeout(resolveCnameBypass(hostname), 3000)
+    } else {
+      cnameRecords = await withTimeout(resolveCname(hostname), 3000)
+    }
+    
     console.log(`📝 Found CNAME records for ${hostname}:`, cnameRecords)
     
     const foundRecord = cnameRecords[0] || null
     let isVerified = false
     
     if (foundRecord) {
-      // For DKIM records, check if it points to SendGrid
+      // For DKIM records, require EXACT match (not just sendgrid.net)
       if (record.purpose?.includes('DKIM')) {
-        isVerified = foundRecord.includes('sendgrid.net')
+        isVerified = foundRecord === record.value
+        console.log(`🔍 DKIM verification: found '${foundRecord}' vs expected '${record.value}' → ${isVerified ? 'MATCH' : 'MISMATCH'}`)
       } else {
         // Exact match for other CNAME records
         isVerified = foundRecord === record.value

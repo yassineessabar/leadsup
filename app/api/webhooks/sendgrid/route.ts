@@ -481,6 +481,7 @@ export async function POST(request: NextRequest) {
     
     console.log(`✅ Found campaign sender: User ${campaignSender.user_id}, Campaign ${campaignSender.campaign_id}`)
     
+    
     // Check if this contact exists
     let contactId = null
     try {
@@ -615,6 +616,28 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       console.error('❌ Error storing message:', insertError)
       console.error('❌ Insert error details:', JSON.stringify(insertError, null, 2))
+      console.error('❌ Failed message data:', JSON.stringify(messageInsertData, null, 2))
+      
+      // Also log to a persistent place for debugging
+      try {
+        await supabaseServer
+          .from('webhook_errors')
+          .insert({
+            webhook_type: 'sendgrid_inbound',
+            error_code: insertError.code,
+            error_message: insertError.message,
+            error_details: insertError.details,
+            error_hint: insertError.hint,
+            failed_data: messageInsertData,
+            conversation_id: conversationId,
+            from_email: fromEmail,
+            to_email: toEmail,
+            created_at: new Date().toISOString()
+          });
+      } catch (logError) {
+        console.error('Failed to log webhook error:', logError);
+      }
+      
       // Return success to SendGrid anyway to prevent retries
       return NextResponse.json({ 
         success: false,

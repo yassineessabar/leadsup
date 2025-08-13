@@ -14,6 +14,7 @@ interface DomainSetupModalProps {
 
 export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetupModalProps) {
   const [domain, setDomain] = useState("");
+  const [replySubdomain, setReplySubdomain] = useState("reply");
   const [isChecking, setIsChecking] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -119,6 +120,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           domain,
+          replySubdomain,
           verificationType: 'manual'
         })
       });
@@ -349,6 +351,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                           domain,
+                          replySubdomain,
                           verificationType: 'manual'
                         })
                       });
@@ -584,6 +587,28 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                   {validationError && (
                     <p className="text-red-500 text-sm mt-2">{validationError}</p>
                   )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Reply Subdomain
+                    <span className="text-gray-500 text-xs ml-2">(where replies will be routed)</span>
+                  </label>
+                  <div className="flex items-center">
+                    <Input
+                      value={replySubdomain}
+                      onChange={(e) => setReplySubdomain(e.target.value.replace(/[^a-zA-Z0-9-]/g, ''))}
+                      placeholder="reply"
+                      className="h-12 border-gray-300 rounded-l-lg focus:ring-2 focus:ring-black focus:border-black transition-colors flex-shrink-0"
+                      style={{ maxWidth: '120px' }}
+                    />
+                    <div className="bg-gray-50 border border-l-0 border-gray-300 h-12 px-3 flex items-center rounded-r-lg">
+                      <span className="text-gray-600 text-sm">.{domain || 'yourdomain.com'}</span>
+                    </div>
+                  </div>
+                  <p className="text-gray-500 text-xs mt-2">
+                    Full address will be: <strong>{replySubdomain}.{domain || 'yourdomain.com'}</strong>
+                  </p>
                 </div>
 
                 <div className="flex gap-3 pt-2">
