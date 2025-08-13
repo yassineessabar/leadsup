@@ -999,7 +999,7 @@ export default function InboxPage() {
                       className="text-gray-900 whitespace-pre-wrap" 
                       style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}
                     >
-                      {selectedEmail.latest_message?.body_text || selectedEmail.content.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')}
+                      {selectedEmail.preview || selectedEmail.content?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '') || selectedEmail.latest_message?.body_text}
                     </div>
                   ) : (
                     <>
@@ -1070,17 +1070,27 @@ export default function InboxPage() {
               )}
 
               {/* More messages indicator */}
-              {!composeMode && selectedEmail && selectedEmail.message_count && selectedEmail.message_count > 1 && (
+              {!composeMode && selectedEmail && (() => {
+                // Use thread messages count if available, otherwise fall back to selectedEmail.message_count
+                const threadMessagesForEmail = threadMessages[selectedEmail.conversation_id] || []
+                const totalMessages = threadMessagesForEmail.length > 0 ? threadMessagesForEmail.length : selectedEmail.message_count
+                return totalMessages && totalMessages > 1
+              })() && (
                 <div className="text-center py-4 border-t border-gray-200">
                   <button 
                     onClick={() => handleThreadExpansion(selectedEmail.conversation_id)}
                     className="text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center space-x-1"
                   >
                     <span>
-                      {expandedThreads.has(selectedEmail.conversation_id) 
-                        ? 'Hide messages' 
-                        : `${selectedEmail.message_count - 1} more message${selectedEmail.message_count - 1 !== 1 ? 's' : ''}`
-                      }
+                      {(() => {
+                        const threadMessagesForEmail = threadMessages[selectedEmail.conversation_id] || []
+                        const totalMessages = threadMessagesForEmail.length > 0 ? threadMessagesForEmail.length : selectedEmail.message_count
+                        const moreCount = totalMessages - 1
+                        
+                        return expandedThreads.has(selectedEmail.conversation_id) 
+                          ? 'Hide messages' 
+                          : `${moreCount} more message${moreCount !== 1 ? 's' : ''}`
+                      })()}
                     </span>
                     <ChevronDown className={`w-4 h-4 transition-transform ${
                       expandedThreads.has(selectedEmail.conversation_id) ? 'rotate-180' : ''
