@@ -55,10 +55,53 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
     is_default: false
   })
   const [submitting, setSubmitting] = useState(false)
+  const [creatingPresets, setCreatingPresets] = useState(false)
 
   useEffect(() => {
     fetchSenders()
   }, [domainId])
+
+  const createPresetSenders = async (domainName: string) => {
+    const presetAccounts = [
+      { localPart: 'contact', displayName: 'Contact' },
+      { localPart: 'hello', displayName: 'Hello' },
+      { localPart: 'info', displayName: 'Info' }
+    ]
+
+    try {
+      setCreatingPresets(true)
+      
+      // Create all preset accounts in parallel
+      const createPromises = presetAccounts.map((account, index) => 
+        fetch(`/api/domains/${domainId}/senders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: `${account.localPart}@${domainName}`,
+            display_name: account.displayName,
+            is_default: index === 0 // Make 'contact' the default
+          })
+        })
+      )
+
+      const responses = await Promise.all(createPromises)
+      const successCount = responses.filter(r => r.ok).length
+      
+      if (successCount > 0) {
+        toast.success(`Created ${successCount} preset email accounts`)
+        // Refresh the senders list after creating presets
+        const updatedResponse = await fetch(`/api/domains/${domainId}/senders`)
+        const updatedData = await updatedResponse.json()
+        if (updatedResponse.ok) {
+          setSenders(updatedData.senders)
+        }
+      }
+    } catch (error) {
+      console.error('Error creating preset senders:', error)
+    } finally {
+      setCreatingPresets(false)
+    }
+  }
 
   const fetchSenders = async () => {
     try {
@@ -69,6 +112,11 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
       if (response.ok) {
         setDomain(data.domain)
         setSenders(data.senders)
+        
+        // If no senders exist and domain is loaded, create preset accounts
+        if (data.senders.length === 0 && data.domain) {
+          await createPresetSenders(data.domain.domain)
+        }
       } else {
         toast.error(data.error || 'Failed to load sender accounts')
       }
@@ -179,7 +227,9 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="flex items-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              <span className="text-gray-600">Loading sender accounts...</span>
+              <span className="text-gray-600">
+                {creatingPresets ? 'Setting up your email accounts...' : 'Loading sender accounts...'}
+              </span>
             </div>
           </div>
         </div>
@@ -247,6 +297,21 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Show info about preset accounts if they were just created */}
+              {senders.length === 3 && 
+               senders.some(s => s.email.startsWith('contact@')) && 
+               senders.some(s => s.email.startsWith('hello@')) && 
+               senders.some(s => s.email.startsWith('info@')) && (
+                <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                    <p className="text-sm text-blue-800">
+                      We've created 3 common email accounts for you. You can add more or customize these as needed.
+                    </p>
+                  </div>
+                </div>
+              )}
+              
               {senders.map((sender) => (
                 <div key={sender.id} className={`bg-white border rounded-xl p-6 hover:shadow-md transition-shadow ${sender.is_default ? 'ring-2 ring-gray-200' : ''}`}>
                   <div className="flex items-center justify-between">
