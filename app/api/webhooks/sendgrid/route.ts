@@ -462,7 +462,6 @@ export async function POST(request: NextRequest) {
               user_id: null, // Will need to be handled
               campaign_id: null
             }]
-          }
         }
       } else {
         console.log(`⏭️ Email to ${toEmail} is not for a campaign sender or reply address, ignoring`)
