@@ -1,3 +1,5 @@
+import { useState } from "react"
+
 // Modern Sender Tab Component
 export const SenderTabContent = ({
   connectedEmailAccounts,
@@ -6,9 +8,79 @@ export const SenderTabContent = ({
   gmailAuthLoading,
   initiateGmailOAuth,
   testGmailConnection,
+  campaignId,
   Send,
   toast
 }) => {
+  const [showTestModal, setShowTestModal] = useState(false)
+  const [testModalEmail, setTestModalEmail] = useState('')
+  const [testModalSender, setTestModalSender] = useState(null)
+  const [testModalLoading, setTestModalLoading] = useState(false)
+
+  // Handle test button click
+  const handleTestClick = (account) => {
+    setTestModalSender(account)
+    setTestModalEmail('ecomm2405@gmail.com') // Pre-fill with test email
+    setShowTestModal(true)
+  }
+
+  // Send test email
+  const sendTestEmail = async () => {
+    if (!testModalEmail.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please enter an email address to send the test to.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!testModalSender) {
+      toast({
+        title: "Sender Required",
+        description: "No sender selected for test email.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setTestModalLoading(true)
+    try {
+      const response = await fetch('/api/campaigns/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          senderEmail: testModalSender.email,
+          testEmail: testModalEmail,
+          campaignId: campaignId
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        toast({
+          title: "Test Email Sent!",
+          description: `Test email sent from ${testModalSender.email} to ${testModalEmail}. Reply to test the complete flow!`,
+          variant: "default"
+        })
+        setShowTestModal(false)
+        setTestModalEmail('')
+      } else {
+        throw new Error(data.error || 'Failed to send test email')
+      }
+    } catch (error) {
+      console.error('Test email error:', error)
+      toast({
+        title: "Test Failed",
+        description: error.message || "Failed to send test email. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setTestModalLoading(false)
+    }
+  }
+
   return (
     <div style={{ padding: '32px' }}>
       <div style={{ 
@@ -211,7 +283,7 @@ export const SenderTabContent = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        testGmailConnection(account.id)
+                        handleTestClick(account)
                       }}
                       style={{
                         padding: '8px 16px',
@@ -233,7 +305,7 @@ export const SenderTabContent = ({
                         e.target.style.color = 'rgb(37, 99, 235)'
                       }}
                     >
-                      Test
+                      Test Email
                     </button>
                   </div>
                 </div>
@@ -427,6 +499,159 @@ export const SenderTabContent = ({
           </div>
         </div>
       </div>
+
+      {/* Test Email Modal */}
+      {showTestModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            width: '500px',
+            maxWidth: '90vw',
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'between',
+              marginBottom: '24px'
+            }}>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: '#1F2937',
+                margin: 0,
+                flex: 1
+              }}>
+                Send Test Email
+              </h3>
+              <button
+                onClick={() => setShowTestModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#6B7280',
+                  padding: '4px'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {testModalSender && (
+              <div style={{
+                backgroundColor: 'rgba(37, 99, 235, 0.05)',
+                border: '1px solid rgba(37, 99, 235, 0.2)',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '20px'
+              }}>
+                <div style={{ fontSize: '14px', color: '#1F2937', marginBottom: '4px' }}>
+                  <strong>From:</strong> {testModalSender.email}
+                </div>
+                <div style={{ fontSize: '13px', color: '#6B7280' }}>
+                  {testModalSender.name || 'Gmail Account'}
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#1F2937',
+                marginBottom: '8px'
+              }}>
+                Send test email to:
+              </label>
+              <input
+                type="email"
+                value={testModalEmail}
+                onChange={(e) => setTestModalEmail(e.target.value)}
+                placeholder="Enter email address"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{
+              backgroundColor: '#FEF3C7',
+              border: '1px solid #F59E0B',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '24px'
+            }}>
+              <div style={{ fontSize: '13px', color: '#92400E', marginBottom: '4px' }}>
+                <strong>💡 Test Instructions:</strong>
+              </div>
+              <div style={{ fontSize: '12px', color: '#92400E' }}>
+                1. Click "Send Test Email" below<br/>
+                2. Check your email and reply to the test message<br/>
+                3. Your reply should appear in both "Sent" and "Inbox" folders in LeadsUp
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setShowTestModal(false)}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: 'white',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#6B7280',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendTestEmail}
+                disabled={testModalLoading}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: testModalLoading ? '#9CA3AF' : 'rgb(37, 99, 235)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: 'white',
+                  cursor: testModalLoading ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {testModalLoading ? 'Sending...' : 'Send Test Email'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

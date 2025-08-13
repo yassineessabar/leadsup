@@ -1,0 +1,286 @@
+import { type NextRequest, NextResponse } from "next/server"
+import { cookies } from "next/headers"
+import { supabaseServer } from "@/lib/supabase"
+import { sendEmailWithSendGrid } from "@/lib/sendgrid"
+
+async function getUserIdFromSession(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get("session")?.value
+
+    if (!sessionToken) {
+      return null
+    }
+
+    const { data: session, error } = await supabaseServer
+      .from("user_sessions")
+      .select("user_id, expires_at")
+      .eq("session_token", sessionToken)
+      .single()
+    
+    if (error || !session) {
+      return null
+    }
+    
+    // Check if session is expired
+    if (new Date(session.expires_at) < new Date()) {
+      return null
+    }
+
+    return session.user_id
+  } catch (err) {
+    console.error("Error in getUserIdFromSession:", err)
+    return null
+  }
+}
+
+// POST - Send a test email from campaign sender
+export async function POST(request: NextRequest) {
+  try {
+    const userId = await getUserIdFromSession()
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { senderEmail, testEmail, campaignId } = body
+
+    if (!senderEmail || !testEmail) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Sender email and test email are required" 
+      }, { status: 400 })
+    }
+
+    console.log(`🧪 Sending test email from ${senderEmail} to ${testEmail}`)
+
+    // Get sender information - try multiple approaches
+    let senderData
+    try {
+      console.log(`🔍 Looking for sender: ${senderEmail}, campaign: ${campaignId}`)
+
+      // Try 1: Get sender from campaign_senders for this specific campaign
+      if (campaignId) {
+        const { data: campaignSender, error: campaignError } = await supabaseServer
+          .from('campaign_senders')
+          .select(`id, email, name, access_token, refresh_token, app_password, auth_type, daily_limit, updated_at`)
+          .eq('campaign_id', campaignId)
+          .eq('email', senderEmail)
+          .eq('is_active', true)
+          .single()
+
+        if (!campaignError && campaignSender) {
+          console.log('✅ Found sender in campaign_senders for this campaign')
+          senderData = campaignSender
+        }
+      }
+
+      // Try 2: Get sender from campaign_senders for any campaign
+      if (!senderData) {
+        console.log('🔍 Trying to find sender in any campaign...')
+        const { data: anySender, error: anyError } = await supabaseServer
+          .from('campaign_senders')
+          .select(`id, email, name, access_token, refresh_token, app_password, auth_type, daily_limit, updated_at`)
+          .eq('email', senderEmail)
+          .eq('is_active', true)
+          .limit(1)
+          .single()
+
+        if (!anyError && anySender) {
+          console.log('✅ Found sender in campaign_senders for any campaign')
+          senderData = anySender
+        }
+      }
+
+      // Try 3: Get sender from sender_accounts table (fallback)
+      if (!senderData) {
+        console.log('🔍 Trying to find sender in sender_accounts...')
+        const { data: senderAccount, error: senderAccountError } = await supabaseServer
+          .from('sender_accounts')
+          .select(`id, email, display_name as name, daily_limit`)
+          .eq('email', senderEmail)
+          .limit(1)
+          .single()
+
+        if (!senderAccountError && senderAccount) {
+          console.log('✅ Found sender in sender_accounts')
+          senderData = {
+            ...senderAccount,
+            auth_type: 'sendgrid', // Default for test emails
+            access_token: null,
+            refresh_token: null,
+            app_password: null,
+            updated_at: new Date().toISOString()
+          }
+        }
+      }
+
+      // Try 4: Create a temporary sender object if we still don't have one
+      if (!senderData) {
+        console.log('⚠️ Creating temporary sender object for test email')
+        senderData = {
+          id: `temp-${Date.now()}`,
+          email: senderEmail,
+          name: senderEmail.split('@')[0], // Use email prefix as name
+          auth_type: 'sendgrid',
+          daily_limit: 50,
+          access_token: null,
+          refresh_token: null,
+          app_password: null,
+          updated_at: new Date().toISOString()
+        }
+      }
+
+    } catch (senderError) {
+      console.error('❌ Error finding sender:', senderError)
+      return NextResponse.json({ 
+        success: false, 
+        error: `Error searching for sender: ${senderError instanceof Error ? senderError.message : 'Unknown error'}` 
+      }, { status: 500 })
+    }
+
+    console.log(`✅ Using sender: ${senderData.email} (${senderData.name || 'No name'})`)
+
+    const timestamp = new Date().toLocaleTimeString()
+    const subject = `Test Email from ${senderData.name || senderEmail} - ${timestamp}`
+    
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>🧪 Test Email from LeadsUp Campaign</h2>
+        <p>Hi there,</p>
+        <p>This is a test email from your LeadsUp campaign system to verify the email integration is working correctly.</p>
+        
+        <div style="background: #f0f8ff; padding: 15px; border-left: 4px solid #2196F3; margin: 20px 0;">
+          <h3 style="color: #1976d2; margin-top: 0;">📧 Test Details:</h3>
+          <p><strong>Sent from:</strong> ${senderEmail}</p>
+          <p><strong>Sender name:</strong> ${senderData.name || 'N/A'}</p>
+          <p><strong>Time:</strong> ${timestamp}</p>
+          <p><strong>Campaign ID:</strong> ${campaignId || 'N/A'}</p>
+        </div>
+        
+        <p><strong>Please reply to this email to test the reply capture functionality!</strong></p>
+        <p>When you reply, your message should appear in both the "Sent" and "Inbox" folders of your LeadsUp dashboard.</p>
+        
+        <hr style="margin: 20px 0;">
+        <p>Best regards,<br>${senderData.name || senderEmail}</p>
+        <p style="font-size: 12px; color: #666;">This is an automated test email from LeadsUp Campaign System</p>
+      </div>
+    `
+
+    try {
+      // Send email via SendGrid
+      const result = await sendEmailWithSendGrid({
+        to: testEmail,
+        from: senderEmail,
+        fromName: senderData.name || senderEmail,
+        subject: subject,
+        html: htmlContent,
+        text: htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+        replyTo: 'test@reply.leadsup.io' // Use working reply address for webhook capture
+      })
+
+      console.log(`✅ Test email sent - Message ID: ${result.messageId}`)
+
+      // Log to inbox system for tracking
+      try {
+        // Generate conversation ID for threading - use replyTo address for consistency
+        const generateConversationId = (contactEmail: string, replyToEmail: string) => {
+          const participants = [contactEmail, replyToEmail].sort().join('|')
+          const base = participants + '|test'
+          return Buffer.from(base).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 32)
+        }
+
+        // Use test@reply.leadsup.io for conversation ID since that's where replies go
+        const conversationId = generateConversationId(testEmail, 'test@reply.leadsup.io')
+
+        const inboxMessageData = {
+          user_id: userId, // Use current session user_id
+          message_id: result.messageId,
+          conversation_id: conversationId,
+          campaign_id: campaignId || null,
+          contact_email: testEmail,
+          contact_name: 'Test Contact',
+          sender_email: senderEmail,
+          subject: subject,
+          body_text: htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+          body_html: htmlContent,
+          direction: 'outbound',
+          channel: 'email',
+          message_type: 'email',
+          status: 'read', // Outbound emails are 'read' by definition
+          folder: 'sent',
+          provider: 'smtp', // Use 'smtp' as per schema constraints
+          provider_data: {
+            method: 'sendgrid_api',
+            sender_type: 'sendgrid',
+            test_email: true,
+            provider: 'sendgrid'
+          },
+          sent_at: new Date().toISOString()
+        }
+        
+        // Create inbox thread first
+        const { error: threadError } = await supabaseServer
+          .from('inbox_threads')
+          .upsert({
+            user_id: userId,
+            conversation_id: conversationId,
+            campaign_id: campaignId || null,
+            contact_email: testEmail,
+            contact_name: 'Test Contact',
+            subject: subject,
+            last_message_at: new Date().toISOString(),
+            last_message_preview: htmlContent.replace(/<[^>]*>/g, '').substring(0, 150),
+            status: 'active'
+          }, {
+            onConflict: 'conversation_id,user_id'
+          })
+
+        if (threadError) {
+          console.error('❌ Error creating inbox thread:', threadError)
+        }
+        
+        // Create inbox message
+        const { error: insertError } = await supabaseServer
+          .from('inbox_messages')
+          .insert(inboxMessageData)
+
+        if (insertError) {
+          console.error('❌ Error logging test email to inbox:', insertError)
+        } else {
+          console.log('✅ Test email logged to inbox system')
+        }
+      } catch (inboxError) {
+        console.error('❌ Failed to log test email to inbox system:', inboxError)
+        // Don't fail the API call if inbox logging fails
+      }
+
+      return NextResponse.json({
+        success: true,
+        messageId: result.messageId,
+        message: `Test email sent successfully from ${senderEmail} to ${testEmail}`,
+        details: {
+          from: senderEmail,
+          to: testEmail,
+          subject: subject,
+          timestamp: timestamp
+        }
+      })
+
+    } catch (sendError) {
+      console.error('❌ Error sending test email:', sendError)
+      return NextResponse.json({ 
+        success: false, 
+        error: `Failed to send test email: ${sendError instanceof Error ? sendError.message : 'Unknown error'}` 
+      }, { status: 500 })
+    }
+
+  } catch (error) {
+    console.error("❌ Error in test email API:", error)
+    return NextResponse.json({ 
+      success: false, 
+      error: "Internal server error" 
+    }, { status: 500 })
+  }
+}

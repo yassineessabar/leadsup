@@ -398,21 +398,54 @@ export async function POST(request: NextRequest) {
     console.log(`📧 Processing email from ${fromEmail} to ${toEmail}`)
     console.log(`   Subject: "${emailData.subject}"`)
     
-    // Find which campaign sender this email is responding to
-    console.log(`🔍 Looking for campaign_sender with email: "${toEmail}"`)
-    let { data: campaignSenders, error: senderError } = await supabaseServer
-      .from('campaign_senders')
-      .select('id, user_id, campaign_id')
-      .eq('email', toEmail)
+    // FIRST: Always try to find the original message to get the correct user
+    console.log(`🔍 Step 1: Looking for original outbound message to find the correct user...`)
+    let campaignSenders = null
     
-    console.log('🔍 Campaign sender query result:', { campaignSenders, senderError })
-    
-    // If no direct match found, check if this is a reply address (reply@leadsup.io)
-    if (senderError || !campaignSenders || campaignSenders.length === 0) {
-      if (toEmail === 'reply@leadsup.io' || toEmail === 'test@reply.leadsup.io' || toEmail.includes('@reply.leadsup.io')) {
-        console.log(`🔄 Email to ${toEmail} is a reply address, looking for any active campaign`)
+    if (emailData.subject && emailData.subject.startsWith('Re: ')) {
+      const originalSubject = emailData.subject.replace(/^Re:\s*/, '')
+      console.log(`🔍 Looking for original message with subject: "${originalSubject}"`)
+      
+      const { data: originalMessage, error: originalError } = await supabaseServer
+        .from('inbox_messages')
+        .select('user_id, campaign_id')
+        .eq('direction', 'outbound')
+        .ilike('subject', `%${originalSubject}%`)
+        .order('sent_at', { ascending: false })
+        .limit(1)
+        .single()
         
-        // Get any active campaign sender to associate this reply
+      if (!originalError && originalMessage) {
+        console.log(`✅ Found original message from user: ${originalMessage.user_id}`)
+        campaignSenders = [{
+          id: null,
+          user_id: originalMessage.user_id,
+          campaign_id: originalMessage.campaign_id
+        }]
+      }
+    }
+    
+    // SECOND: If no original message found, try to find campaign sender
+    if (!campaignSenders) {
+      console.log(`🔍 Step 2: Looking for campaign_sender with email: "${toEmail}"`)
+      let { data: directSenders, error: senderError } = await supabaseServer
+        .from('campaign_senders')
+        .select('id, user_id, campaign_id')
+        .eq('email', toEmail)
+      
+      console.log('🔍 Campaign sender query result:', { directSenders, senderError })
+      
+      if (!senderError && directSenders && directSenders.length > 0) {
+        campaignSenders = directSenders
+      }
+    }
+    
+    // THIRD: If still no match, check if this is a reply address
+    if (!campaignSenders) {
+      if (toEmail === 'reply@leadsup.io' || toEmail === 'test@reply.leadsup.io' || toEmail.includes('@reply.leadsup.io')) {
+        console.log(`🔄 Email to ${toEmail} is a reply address, using fallback logic`)
+        
+        // Use fallback: any active campaign sender
         const { data: anyCampaignSender, error: anyError } = await supabaseServer
           .from('campaign_senders')
           .select('id, user_id, campaign_id')
@@ -421,15 +454,15 @@ export async function POST(request: NextRequest) {
         
         if (anyCampaignSender && anyCampaignSender.length > 0) {
           campaignSenders = anyCampaignSender
-          console.log(`✅ Using active campaign ${anyCampaignSender[0].campaign_id} for reply processing`)
+          console.log(`✅ Using fallback active campaign ${anyCampaignSender[0].campaign_id} for reply processing`)
         } else {
           console.log(`⚠️ No active campaigns found, creating generic reply entry`)
-          // Create a generic entry for replies when no campaign is found
           campaignSenders = [{
-            id: null,
-            user_id: null, // Will need to be handled
-            campaign_id: null
-          }]
+              id: null,
+              user_id: null, // Will need to be handled
+              campaign_id: null
+            }]
+          }
         }
       } else {
         console.log(`⏭️ Email to ${toEmail} is not for a campaign sender or reply address, ignoring`)

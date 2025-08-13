@@ -300,7 +300,7 @@ async function getThreadedMessages(userId: string, filters: any) {
         // Get the latest message for this conversation
         let messageQuery = supabaseServer
           .from('inbox_messages')
-          .select('id, subject, body_text, direction, status, sent_at, received_at, sender_id, sender_email, contact_name, contact_email, has_attachments, folder')
+          .select('id, subject, body_text, body_html, direction, status, sent_at, received_at, sender_id, sender_email, contact_name, contact_email, has_attachments, folder')
           .eq('user_id', userId)
           .eq('conversation_id', thread.conversation_id)
           

@@ -53,6 +53,12 @@ export default function CampaignSenderSelection({
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Test email modal state
+  const [showTestModal, setShowTestModal] = useState(false)
+  const [testModalEmail, setTestModalEmail] = useState('')
+  const [testModalSender, setTestModalSender] = useState<Sender | null>(null)
+  const [testModalLoading, setTestModalLoading] = useState(false)
 
   // Load domains and their sender accounts
   useEffect(() => {
@@ -387,6 +393,54 @@ export default function CampaignSenderSelection({
     return 'text-red-600'
   }
 
+  // Handle test email button click
+  const handleTestClick = (sender: Sender) => {
+    setTestModalSender(sender)
+    setTestModalEmail('ecomm2405@gmail.com') // Pre-fill with test email
+    setShowTestModal(true)
+  }
+
+  // Send test email
+  const sendTestEmail = async () => {
+    if (!testModalEmail.trim()) {
+      toast.error("Please enter an email address to send the test to.")
+      return
+    }
+
+    if (!testModalSender) {
+      toast.error("No sender selected for test email.")
+      return
+    }
+
+    setTestModalLoading(true)
+    try {
+      const response = await fetch('/api/campaigns/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          senderEmail: testModalSender.email,
+          testEmail: testModalEmail,
+          campaignId: campaignId
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        toast.success(`Test email sent from ${testModalSender.email} to ${testModalEmail}. Reply to test the complete flow!`)
+        setShowTestModal(false)
+        setTestModalEmail('')
+      } else {
+        throw new Error(data.error || 'Failed to send test email')
+      }
+    } catch (error) {
+      console.error('Test email error:', error)
+      toast.error(error instanceof Error ? error.message : "Failed to send test email. Please try again.")
+    } finally {
+      setTestModalLoading(false)
+    }
+  }
+
   const getTotalStats = () => {
     const totalAccounts = domainsWithSenders.reduce((sum, domain) => sum + domain.senders.length, 0)
     const selectedCount = selectedSenders.size
@@ -671,6 +725,19 @@ export default function CampaignSenderSelection({
                                       {sender.health_score || 0}%
                                     </div>
                                   </div>
+                                  <div className="text-center">
+                                    <Button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleTestClick(sender)
+                                      }}
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-[rgb(87,140,255)] border-[rgb(87,140,255)] hover:bg-[rgb(87,140,255)] hover:text-white"
+                                    >
+                                      Test Email
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -701,6 +768,76 @@ export default function CampaignSenderSelection({
               <div className="flex items-center gap-2">
                 <Zap className="h-5 w-5 text-green-600" />
                 <span className="text-sm font-medium text-green-700">Auto-tracking Enabled</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Test Email Modal */}
+        {showTestModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Send Test Email
+                </h3>
+                <button
+                  onClick={() => setShowTestModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              {testModalSender && (
+                <div className="bg-[rgba(87,140,255,0.05)] border border-[rgba(87,140,255,0.2)] rounded-lg p-4 mb-6">
+                  <div className="text-sm text-gray-900 mb-1">
+                    <strong>From:</strong> {testModalSender.email}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {testModalSender.display_name || 'Sender Account'}
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Send test email to:
+                </label>
+                <input
+                  type="email"
+                  value={testModalEmail}
+                  onChange={(e) => setTestModalEmail(e.target.value)}
+                  placeholder="Enter email address"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)] outline-none"
+                />
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
+                <div className="text-sm text-yellow-800 font-medium mb-1">
+                  💡 Test Instructions:
+                </div>
+                <div className="text-xs text-yellow-700">
+                  1. Click "Send Test Email" below<br/>
+                  2. Check your email and reply to the test message<br/>
+                  3. Your reply should appear in both "Sent" and "Inbox" folders in LeadsUp
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <Button
+                  onClick={() => setShowTestModal(false)}
+                  variant="outline"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={sendTestEmail}
+                  disabled={testModalLoading}
+                  className="bg-[rgb(87,140,255)] hover:bg-[rgb(67,120,235)] text-white"
+                >
+                  {testModalLoading ? 'Sending...' : 'Send Test Email'}
+                </Button>
               </div>
             </div>
           </div>
