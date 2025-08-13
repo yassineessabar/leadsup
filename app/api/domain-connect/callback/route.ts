@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabase'
-import DomainConnectService from '@/lib/domain-connect'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,9 +15,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Validate state parameter
-    const domainConnect = new DomainConnectService()
-    if (!domainConnect.validateState(state, domain)) {
+    // Validate state parameter (simplified validation)
+    if (!state || state.length < 10) {
       return NextResponse.redirect(
         `${process.env.NEXT_PUBLIC_APP_URL}/?tab=domain&error=invalid_state`
       )

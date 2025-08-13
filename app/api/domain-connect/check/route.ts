@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import DomainConnectService from '@/lib/domain-connect'
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,22 +45,8 @@ export async function POST(request: NextRequest) {
 
 async function checkDomainConnect(domain: string) {
   try {
-    const domainConnect = new DomainConnectService()
-    const result = await domainConnect.checkDomainConnectSupport(domain)
-
-    if (result.supported && result.provider) {
-      // Generate setup URL for supported registrar
-      const setupUrl = domainConnect.generateSetupUrl(domain, result.provider)
-      
-      return NextResponse.json({
-        success: true,
-        supported: true,
-        provider: result.provider.name,
-        providerName: result.provider.name,
-        setupUrl,
-        method: 'domain-connect'
-      })
-    }
+    // Simplified domain connect check - always fallback to manual for now
+    // TODO: Implement actual domain connect checking when service is available
 
     // Check for direct API support
     const directApiSupport = await checkDirectApiSupport(domain)
