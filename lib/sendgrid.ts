@@ -340,13 +340,33 @@ export async function createSenderIdentity(settings: SenderIdentitySettings) {
   try {
     console.log(`🆔 Creating SendGrid sender identity for ${settings.from.email}`)
     
+    const payload = {
+      nickname: settings.nickname,
+      from: {
+        email: settings.from.email,
+        name: settings.from.name || settings.from.email.split('@')[0]
+      },
+      reply_to: {
+        email: settings.reply_to?.email || settings.from.email,
+        name: settings.reply_to?.name || settings.from.name || settings.from.email.split('@')[0]
+      },
+      address: settings.address,
+      address_2: settings.address_2 || "",
+      city: settings.city,
+      state: settings.state || "",
+      zip: settings.zip || "",
+      country: settings.country
+    }
+    
+    console.log('📧 SendGrid payload:', JSON.stringify(payload, null, 2))
+    
     const response = await fetch('https://api.sendgrid.com/v3/verified_senders', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${SENDGRID_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(settings)
+      body: JSON.stringify(payload)
     })
 
     if (!response.ok) {

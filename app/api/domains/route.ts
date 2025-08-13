@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from "next/headers"
 import { createClient } from "@supabase/supabase-js"
+import { configureInboundParse, deleteInboundParse, createDomainAuthentication, getDomainAuthentication, validateDomainAuthentication } from "@/lib/sendgrid"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Helper function to get default DNS records for a domain
-function getDefaultDnsRecords(domain: string) {
+function getDefaultDnsRecords(domain: string, replySubdomain: string = 'reply') {
   // For leadsup.io, use SendGrid verified records only
   if (domain === 'leadsup.io' || domain.includes('leadsup.io')) {
     return [
@@ -121,10 +122,10 @@ function getDefaultDnsRecords(domain: string) {
       },
       {
         type: 'MX',
-        host: 'reply',
+        host: replySubdomain,
         value: 'mx.sendgrid.net',
-        priority: 10,
-        purpose: 'Route replies back to LeadsUp'
+        priority: '10',
+        purpose: `Route replies from ${replySubdomain}.${domain} back to LeadsUp`
       }
     ]
   }
@@ -166,10 +167,10 @@ function getDefaultDnsRecords(domain: string) {
     },
     {
       type: 'MX',
-      host: 'reply',
+      host: replySubdomain,
       value: 'mx.sendgrid.net',
-      priority: 10,
-      purpose: 'Route replies back to LeadsUp'
+      priority: '10',
+      purpose: `Route replies from ${replySubdomain}.${domain} back to LeadsUp`
     }
   ]
 }
@@ -185,11 +186,20 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { domain, verificationType = 'manual' } = body
+    const { domain, verificationType = 'manual', replySubdomain = 'reply' } = body
 
     if (!domain) {
       return NextResponse.json(
         { success: false, error: "Domain is required" },
+        { status: 400 }
+      )
+    }
+
+    // Validate reply subdomain format
+    const subdomainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*$/
+    if (!subdomainRegex.test(replySubdomain)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid reply subdomain format" },
         { status: 400 }
       )
     }
@@ -220,7 +230,10 @@ export async function POST(request: NextRequest) {
 
     // Generate verification token and DNS records
     const verificationToken = `leadsup-verify-${Math.random().toString(36).substring(2, 15)}`
-    const dnsRecords = getDefaultDnsRecords(domain)
+    const dnsRecords = getDefaultDnsRecords(domain, replySubdomain)
+    
+    // Construct the full reply hostname for inbound parse
+    const replyHostname = `${replySubdomain}.${domain}`
     
     // Update verification record with actual token
     dnsRecords.forEach(record => {
@@ -232,14 +245,14 @@ export async function POST(request: NextRequest) {
     // Determine if it's a test domain
     const isTestDomain = domain.includes('mlsender.net') || domain.includes('test-')
 
-    // Insert domain into database
+    // Insert domain into database (without new columns for now)
     const { data: newDomain, error } = await supabase
       .from('domains')
       .insert({
         user_id: userId,
         domain,
         status: 'pending',
-        description: 'Domain pending verification',
+        description: `Domain pending verification (Reply: ${replyHostname})`,
         verification_type: verificationType,
         verification_token: verificationToken,
         verification_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
@@ -255,6 +268,77 @@ export async function POST(request: NextRequest) {
         { success: false, error: "Failed to create domain" },
         { status: 500 }
       )
+    }
+
+    // Auto-configure SendGrid domain authentication and inbound parse
+    let domainAuthResult = null
+    let inboundParseResult = null
+    
+    try {
+      console.log(`🔐 Setting up SendGrid domain authentication and inbound parse for ${domain}`)
+      
+      // Step 1: Check if domain authentication already exists
+      console.log(`🔍 Checking existing domain authentication for ${domain}`)
+      const existingAuth = await getDomainAuthentication(domain)
+      
+      if (existingAuth.domain) {
+        console.log(`✅ Domain authentication already exists for ${domain}`)
+        domainAuthResult = existingAuth.domain
+      } else {
+        // Step 2: Create domain authentication if it doesn't exist
+        console.log(`🔐 Creating domain authentication for ${domain}`)
+        domainAuthResult = await createDomainAuthentication({
+          domain: domain,
+          default: false,
+          custom_spf: false
+        })
+        console.log(`✅ Domain authentication created for ${domain}`)
+      }
+      
+      // Step 3: Validate domain authentication before creating inbound parse
+      if (domainAuthResult?.id) {
+        console.log(`✅ Validating SendGrid domain authentication for ${domain}`)
+        try {
+          await validateDomainAuthentication(domainAuthResult.id.toString())
+          console.log(`✅ Domain authentication validated for ${domain}`)
+        } catch (validationError) {
+          console.log(`⚠️ Domain authentication validation failed, but continuing: ${validationError}`)
+          // Continue anyway as the domain may already be validated
+        }
+      }
+      
+      // Step 4: Configure inbound parse (now that domain auth exists and is validated)
+      console.log(`🔧 Configuring SendGrid inbound parse for ${replyHostname}`)
+      const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://leadsup.com'}/api/webhooks/sendgrid`
+      
+      inboundParseResult = await configureInboundParse({
+        hostname: replyHostname,
+        url: webhookUrl,
+        spam_check: true,
+        send_raw: false
+      })
+
+      console.log(`✅ SendGrid inbound parse configured successfully for ${replyHostname}`)
+      
+      // Store success in description
+      await supabase
+        .from('domains')
+        .update({
+          description: `Domain pending verification (Reply: ${replyHostname} - Auth & Inbound configured)`
+        })
+        .eq('id', newDomain.id)
+
+    } catch (setupError) {
+      console.error(`⚠️ Failed to configure SendGrid for ${domain}:`, setupError)
+      
+      // Store the error but don't fail domain creation
+      const errorMsg = setupError instanceof Error ? setupError.message : 'Unknown error'
+      await supabase
+        .from('domains')
+        .update({
+          description: `Domain pending verification (Reply: ${replyHostname} - Setup failed: ${errorMsg.substring(0, 100)})`
+        })
+        .eq('id', newDomain.id)
     }
 
     // Transform domain to match frontend interface
@@ -277,7 +361,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       domain: transformedDomain,
-      dnsRecords
+      dnsRecords,
+      sendGridSetup: {
+        domainAuth: {
+          configured: domainAuthResult ? true : false,
+          id: domainAuthResult?.id || null
+        },
+        inboundParse: {
+          hostname: replyHostname,
+          configured: inboundParseResult?.success || false,
+          webhookId: inboundParseResult?.webhook_id || null
+        }
+      }
     })
   } catch (error) {
     console.error("Error in POST /api/domains:", error)
@@ -311,7 +406,7 @@ export async function DELETE(request: NextRequest) {
     // First verify the domain belongs to the user
     const { data: existingDomain, error: checkError } = await supabase
       .from('domains')
-      .select('id, domain')
+      .select('id, domain, description')
       .eq('id', domainId)
       .eq('user_id', userId)
       .single()
@@ -321,6 +416,23 @@ export async function DELETE(request: NextRequest) {
         { success: false, error: "Domain not found or unauthorized" },
         { status: 404 }
       )
+    }
+
+    // Try to clean up SendGrid inbound parse if it was configured
+    // We'll extract the reply hostname from the description for now
+    if (existingDomain.description && existingDomain.description.includes('Reply:')) {
+      try {
+        const replyMatch = existingDomain.description.match(/Reply:\s*([^\s)]+)/);
+        if (replyMatch && replyMatch[1]) {
+          const replyHostname = replyMatch[1];
+          console.log(`🗑️ Cleaning up SendGrid inbound parse for ${replyHostname}`)
+          await deleteInboundParse(replyHostname)
+          console.log(`✅ SendGrid inbound parse cleaned up successfully`)
+        }
+      } catch (cleanupError) {
+        console.error(`⚠️ Failed to cleanup inbound parse:`, cleanupError)
+        // Don't fail the deletion if cleanup fails
+      }
     }
 
     // Delete the domain (verification history will be cascade deleted)

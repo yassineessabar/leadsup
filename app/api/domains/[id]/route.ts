@@ -38,7 +38,7 @@ async function getUserIdFromSession(): Promise<string | null> {
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession()
@@ -49,7 +49,7 @@ export async function DELETE(
       )
     }
 
-    const domainId = params.id
+    const { id: domainId } = await params
 
     // First check if the domain belongs to the user
     const { data: domain, error: fetchError } = await supabase
@@ -104,7 +104,7 @@ export async function DELETE(
 // GET endpoint to fetch a single domain
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession()
@@ -115,7 +115,7 @@ export async function GET(
       )
     }
 
-    const domainId = params.id
+    const { id: domainId } = await params
 
     const { data: domain, error } = await supabase
       .from('domains')

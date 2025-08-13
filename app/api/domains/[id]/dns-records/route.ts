@@ -108,15 +108,13 @@ async function getSendGridDNSRecords(domain: string, replySubdomain: string = 'r
       // Extract DNS records from the SendGrid domain configuration
       const dnsRecords = []
 
-      // Add SPF record
-      if (domainConfig.dns?.mail_server) {
-        dnsRecords.push({
-          type: 'TXT',
-          host: '@',
-          value: 'v=spf1 include:sendgrid.net ~all',
-          purpose: 'SPF - Authorizes SendGrid to send emails on your behalf'
-        })
-      }
+      // Add SPF record (always include for authenticated domains)
+      dnsRecords.push({
+        type: 'TXT',
+        host: '@',
+        value: 'v=spf1 include:sendgrid.net ~all',
+        purpose: 'SPF - Authorizes SendGrid to send emails on your behalf'
+      })
 
       // Add DKIM records
       if (domainConfig.dns?.dkim1) {
