@@ -409,7 +409,7 @@ export async function POST(request: NextRequest) {
     
     // If no direct match found, check if this is a reply address (reply@leadsup.io)
     if (senderError || !campaignSenders || campaignSenders.length === 0) {
-      if (toEmail === 'reply@leadsup.io' || toEmail.includes('@reply.leadsup.io')) {
+      if (toEmail === 'reply@leadsup.io' || toEmail === 'test@reply.leadsup.io' || toEmail.includes('@reply.leadsup.io')) {
         console.log(`🔄 Email to ${toEmail} is a reply address, looking for any active campaign`)
         
         // Get any active campaign sender to associate this reply
