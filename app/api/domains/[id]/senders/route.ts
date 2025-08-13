@@ -260,6 +260,10 @@ export async function POST(
       if (senderIdentityResult.success === false && senderIdentityResult.error === 'permission_denied') {
         console.log(`⚠️ SendGrid API key lacks permissions - sender identity creation skipped for ${email}`)
         sendgridStatus = 'permission_denied'
+      } else if (senderIdentityResult.message === 'Sender identity already exists') {
+        // Handle already exists case
+        sendgridStatus = senderIdentityResult.verification_status || 'verified'
+        console.log(`✅ SendGrid sender identity already exists and is ${sendgridStatus}`)
       } else {
         sendgridSenderId = senderIdentityResult.sender_id
         sendgridStatus = senderIdentityResult.verification_status || 'pending'

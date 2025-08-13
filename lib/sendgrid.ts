@@ -403,6 +403,18 @@ export async function createSenderIdentity(settings: SenderIdentitySettings) {
         }
       }
       
+      // Handle "already exists" as success
+      if (response.status === 400 && errorData.errors?.[0]?.message?.includes('already exists')) {
+        console.log(`✅ Sender identity already exists for ${settings.from.email}`)
+        return {
+          success: true,
+          error: null,
+          message: 'Sender identity already exists',
+          sender_id: null, // We don't have the ID but it exists
+          verification_status: 'verified' // Assume verified since domain is authenticated
+        }
+      }
+      
       throw new Error(`SendGrid API error: ${response.status} - ${JSON.stringify(errorData)}`)
     }
 
