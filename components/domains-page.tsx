@@ -237,25 +237,24 @@ export default function DomainsPage() {
       const data = await response.json()
       
       if (response.ok) {
-        // Store the verification results
-        setVerificationResults(data)
-        setShowVerificationResults(true)
-        
         // Check if verification was successful based on domainReady flag
         // Only consider it successful if explicitly true (not undefined or null)
         if (data.domainReady === true) {
-          toast.success('Domain connected successfully! All required DNS records verified.')
+          toast.success('Domain connected successfully! Redirecting to Email Senders...')
           // Update domain status in the list
           setDomains(prevDomains => 
             prevDomains.map(d => 
               d.id === domainId ? { ...d, status: 'verified' } : d
             )
           )
-          // Optionally redirect to senders after successful verification
-          setTimeout(() => {
-            setCurrentView("senders")
-          }, 2000)
+          // Immediately redirect to senders view without showing verification results
+          setCurrentView("senders")
+          return // Exit early to prevent showing verification results
         } else {
+          // Store the verification results only for failed verifications
+          setVerificationResults(data)
+          setShowVerificationResults(true)
+          
           // Show detailed error information
           const failedRecords = data.failedRecords || []
           const failedCount = failedRecords.length || data.report?.summary?.failedRecords || 0
@@ -781,61 +780,96 @@ export default function DomainsPage() {
             </div>
           )}
 
-          {/* Verification Actions */}
-          <div className="bg-gray-50 rounded-xl p-6 mb-8">
-            <div className="space-y-6">
-              <div className="flex items-start gap-3">
-                <Checkbox 
-                  id="dns-added" 
-                  checked={dnsRecordsAdded} 
-                  onCheckedChange={(checked) => setDnsRecordsAdded(checked as boolean)}
-                  className="mt-1"
-                />
-                <label htmlFor="dns-added" className="text-gray-700 font-medium leading-relaxed">
-                  I've added all the settings above to my domain provider
-                </label>
-              </div>
+          {/* Verification Actions - Only show for unverified domains */}
+          {(() => {
+            const currentDomain = domains.find(d => d.domain === selectedDomain)
+            const isAlreadyVerified = currentDomain?.status === 'verified'
+            
+            if (isAlreadyVerified) {
+              return (
+                <div className="bg-green-50 rounded-xl p-6 mb-8">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle className="h-8 w-8 text-green-600" />
+                    </div>
+                    <h3 className="text-xl font-medium text-gray-900 mb-2">Domain Already Connected!</h3>
+                    <p className="text-gray-600 mb-6">
+                      This domain is already verified and ready to send emails.
+                    </p>
+                    <Button 
+                      onClick={() => setCurrentView("senders")}
+                      className="text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                      style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                      }}
+                    >
+                      Manage Email Senders
+                    </Button>
+                  </div>
+                </div>
+              )
+            }
 
-              <div className="text-center">
-                <Button 
-                  className="text-white px-8 py-3 rounded-lg font-medium transition-colors text-base disabled:opacity-50 disabled:bg-gray-300"
-                  style={{ backgroundColor: !dnsRecordsAdded || verifying !== null ? undefined : 'rgb(87, 140, 255)' }}
-                  onMouseEnter={(e) => {
-                    if (!(!dnsRecordsAdded || verifying !== null)) {
-                      e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!(!dnsRecordsAdded || verifying !== null)) {
-                      e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
-                    }
-                  }}
-                  disabled={!dnsRecordsAdded || verifying !== null}
-                  onClick={() => {
-                    const currentDomain = domains.find(d => d.domain === selectedDomain)
-                    if (currentDomain) {
-                      handleVerifyDomain(currentDomain.id)
-                    }
-                  }}
-                >
-                  {verifying ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Checking connection...
-                    </>
-                  ) : (
-                    'Check My Domain'
-                  )}
-                </Button>
+            return (
+              <div className="bg-gray-50 rounded-xl p-6 mb-8">
+                <div className="space-y-6">
+                  <div className="flex items-start gap-3">
+                    <Checkbox 
+                      id="dns-added" 
+                      checked={dnsRecordsAdded} 
+                      onCheckedChange={(checked) => setDnsRecordsAdded(checked as boolean)}
+                      className="mt-1"
+                    />
+                    <label htmlFor="dns-added" className="text-gray-700 font-medium leading-relaxed">
+                      I've added all the settings above to my domain provider
+                    </label>
+                  </div>
+
+                  <div className="text-center">
+                    <Button 
+                      className="text-white px-8 py-3 rounded-lg font-medium transition-colors text-base disabled:opacity-50 disabled:bg-gray-300"
+                      style={{ backgroundColor: !dnsRecordsAdded || verifying !== null ? undefined : 'rgb(87, 140, 255)' }}
+                      onMouseEnter={(e) => {
+                        if (!(!dnsRecordsAdded || verifying !== null)) {
+                          e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!(!dnsRecordsAdded || verifying !== null)) {
+                          e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                        }
+                      }}
+                      disabled={!dnsRecordsAdded || verifying !== null}
+                      onClick={() => {
+                        if (currentDomain) {
+                          handleVerifyDomain(currentDomain.id)
+                        }
+                      }}
+                    >
+                      {verifying ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Checking connection...
+                        </>
+                      ) : (
+                        'Check My Domain'
+                      )}
+                    </Button>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-sm text-gray-500">
+                      Changes can take up to 24 hours to take effect
+                    </p>
+                  </div>
+                </div>
               </div>
-              
-              <div className="text-center">
-                <p className="text-sm text-gray-500">
-                  Changes can take up to 24 hours to take effect
-                </p>
-              </div>
-            </div>
-          </div>
+            )
+          })()}
 
           {/* Verification Results */}
           {showVerificationResults && verificationResults && (
