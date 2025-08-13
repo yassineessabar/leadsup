@@ -398,10 +398,20 @@ export async function createSenderIdentity(settings: SenderIdentitySettings) {
     const result = await response.json()
     console.log(`✅ Sender identity created successfully for ${settings.from.email}`)
     
+    // Check if domain is authenticated - if so, sender is auto-verified
+    const isAutoVerified = result.verified === true
+    
+    if (isAutoVerified) {
+      console.log(`✅ Sender auto-verified (domain is authenticated)`)
+    } else {
+      console.log(`⚠️ Sender needs email verification (domain not authenticated)`)
+      console.log(`💡 To skip verification: authenticate the domain with DNS records`)
+    }
+    
     return {
       success: true,
       sender_id: result.id,
-      verification_status: result.verified_status,
+      verification_status: isAutoVerified ? 'verified' : 'pending',
       result
     }
     
