@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Zap, CheckCircle, Globe, BarChart3 } from "lucide-react"
+import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -448,21 +448,6 @@ export default function CampaignSenderSelection({
     window.open(`/domains?domain=${encodeURIComponent(domain.domain)}`, '_blank')
   }
 
-  const getTotalStats = () => {
-    const totalAccounts = domainsWithSenders.reduce((sum, domain) => sum + domain.senders.length, 0)
-    const selectedCount = selectedSenders.size
-    const allSenders = domainsWithSenders.flatMap(domain => domain.senders)
-    const avgHealthScore = allSenders.length > 0 
-      ? Math.round(allSenders.reduce((sum, sender) => sum + (sender.health_score || 0), 0) / allSenders.length)
-      : 0
-
-    console.log('📊 getTotalStats called:')
-    console.log('  - selectedSenders.size:', selectedCount)
-    console.log('  - selectedSenders contents:', Array.from(selectedSenders))
-    console.log('  - totalAccounts:', totalAccounts)
-
-    return { totalAccounts, selectedCount, avgHealthScore }
-  }
 
   if (loading) {
     return (
@@ -529,8 +514,6 @@ export default function CampaignSenderSelection({
     )
   }
 
-  const stats = getTotalStats()
-
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto px-6 py-8">
@@ -540,39 +523,6 @@ export default function CampaignSenderSelection({
           <p className="text-gray-500 text-lg mb-6">
             Select which sender accounts will be used for this campaign
           </p>
-
-          {/* Statistics */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-white border rounded-lg p-4">
-              <div className="text-2xl font-light text-gray-900">{stats.totalAccounts}</div>
-              <div className="text-sm text-gray-500">Available Accounts</div>
-            </div>
-            <div className="bg-white border rounded-lg p-4">
-              <div className="text-2xl font-light" style={{ color: 'rgb(87, 140, 255)' }}>{stats.selectedCount}</div>
-              <div className="text-sm text-gray-500">Selected for Campaign</div>
-            </div>
-            <div className="bg-white border rounded-lg p-4">
-              <div className={`text-2xl font-light ${getHealthScoreColor(stats.avgHealthScore)}`}>{stats.avgHealthScore}%</div>
-              <div className="text-sm text-gray-500">Avg. Health Score</div>
-            </div>
-          </div>
-
-          {/* Inbound Tracking Info */}
-          {selectedSenders.size > 0 && (
-            <div className="bg-blue-50 rounded-lg p-4 mb-6">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-blue-800 font-medium">
-                    Inbound Tracking Enabled
-                  </p>
-                  <p className="text-sm text-blue-700">
-                    All selected accounts will automatically track replies via SendGrid Inbound Parse
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Domain Groups */}
@@ -755,25 +705,6 @@ export default function CampaignSenderSelection({
           })}
         </div>
 
-        {/* Selection Summary */}
-        {selectedSenders.size > 0 && (
-          <div className="mt-8 p-6 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900">
-                  {selectedSenders.size} Sender{selectedSenders.size !== 1 ? 's' : ''} Selected
-                </h3>
-                <p className="text-gray-600">
-                  These accounts will send emails for this campaign with automatic reply tracking
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-green-600" />
-                <span className="text-sm font-medium text-green-700">Auto-tracking Enabled</span>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Test Email Modal */}
         {showTestModal && (
