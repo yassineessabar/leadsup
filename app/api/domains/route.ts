@@ -228,35 +228,118 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate verification token and DNS records
-    const verificationToken = `leadsup-verify-${Math.random().toString(36).substring(2, 15)}`
-    const dnsRecords = getDefaultDnsRecords(domain, replySubdomain)
-    
     // Construct the full reply hostname for inbound parse
     const replyHostname = `${replySubdomain}.${domain}`
     
-    // Update verification record with actual token
-    dnsRecords.forEach(record => {
-      if (record.name === '_leadsup-verify') {
-        record.value = verificationToken
-      }
-    })
-
     // Determine if it's a test domain
     const isTestDomain = domain.includes('mlsender.net') || domain.includes('test-')
 
-    // Insert domain into database (without new columns for now)
+    // Step 1: Create SendGrid domain authentication FIRST to get real DNS records
+    let domainAuthResult = null
+    let realDnsRecords = []
+    
+    try {
+      console.log(`🔐 Creating SendGrid domain authentication for ${domain}`)
+      
+      // Check if domain authentication already exists
+      const existingAuth = await getDomainAuthentication(domain)
+      
+      if (existingAuth.domain) {
+        console.log(`✅ Domain authentication already exists for ${domain}`)
+        domainAuthResult = existingAuth.domain
+      } else {
+        // Create new domain authentication
+        domainAuthResult = await createDomainAuthentication({
+          domain: domain,
+          default: false,
+          custom_spf: false
+        })
+        console.log(`✅ Domain authentication created for ${domain}`)
+      }
+      
+      // Extract REAL DNS records from SendGrid response
+      if (domainAuthResult?.dns_records || domainAuthResult?.dns) {
+        const dns = domainAuthResult.dns_records || domainAuthResult.dns
+        
+        // Add DKIM records
+        if (dns.dkim1) {
+          realDnsRecords.push({
+            type: dns.dkim1.type || 'CNAME',
+            host: dns.dkim1.host?.replace(`.${domain}`, '') || `s1._domainkey`,
+            value: dns.dkim1.data,
+            purpose: 'DKIM authentication (key 1) - Cryptographic email signing'
+          })
+        }
+        
+        if (dns.dkim2) {
+          realDnsRecords.push({
+            type: dns.dkim2.type || 'CNAME',
+            host: dns.dkim2.host?.replace(`.${domain}`, '') || `s2._domainkey`,
+            value: dns.dkim2.data,
+            purpose: 'DKIM authentication (key 2) - Cryptographic email signing'
+          })
+        }
+        
+        // Add mail CNAME record
+        if (dns.mail_cname) {
+          realDnsRecords.push({
+            type: dns.mail_cname.type || 'CNAME',
+            host: dns.mail_cname.host?.replace(`.${domain}`, '') || `mail`,
+            value: dns.mail_cname.data,
+            purpose: 'Link tracking and email branding'
+          })
+        }
+        
+        // Add SPF record
+        realDnsRecords.push({
+          type: 'TXT',
+          host: '@',
+          value: 'v=spf1 include:sendgrid.net ~all',
+          purpose: 'SPF - Authorizes SendGrid to send emails on your behalf'
+        })
+        
+        // Add DMARC record
+        realDnsRecords.push({
+          type: 'TXT',
+          host: '_dmarc',
+          value: 'v=DMARC1; p=none; rua=mailto:dmarc@leadsup.io; ruf=mailto:dmarc@leadsup.io; pct=100; sp=none;',
+          purpose: 'DMARC policy - Email authentication and reporting'
+        })
+        
+        // Add MX record for reply routing
+        realDnsRecords.push({
+          type: 'MX',
+          host: replySubdomain,
+          value: 'mx.sendgrid.net',
+          priority: 10,
+          purpose: `Route replies from ${replySubdomain}.${domain} back to LeadsUp for processing`
+        })
+        
+        console.log(`✅ Generated ${realDnsRecords.length} real DNS records from SendGrid`)
+      }
+      
+    } catch (sendgridError) {
+      console.error(`⚠️ SendGrid setup failed, using default records:`, sendgridError)
+      // Fallback to default records if SendGrid fails
+      realDnsRecords = getDefaultDnsRecords(domain, replySubdomain)
+    }
+    
+    // If no real records were generated, use defaults as fallback
+    if (realDnsRecords.length === 0) {
+      console.log(`⚠️ No real DNS records generated, using defaults`)
+      realDnsRecords = getDefaultDnsRecords(domain, replySubdomain)
+    }
+
+    // Insert domain into database with REAL DNS records
     const { data: newDomain, error } = await supabase
       .from('domains')
       .insert({
         user_id: userId,
         domain,
         status: 'pending',
-        description: `Domain pending verification (Reply: ${replyHostname})`,
+        description: `Domain pending verification (Reply: ${replyHostname}) - Real SendGrid DNS`,
         verification_type: verificationType,
-        verification_token: verificationToken,
-        verification_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-        dns_records: dnsRecords,
+        dns_records: realDnsRecords,
         is_test_domain: isTestDomain
       })
       .select()
@@ -270,33 +353,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Auto-configure SendGrid domain authentication and inbound parse
-    let domainAuthResult = null
+    // Step 2: Configure inbound parse (domain auth already created above)
     let inboundParseResult = null
     
-    try {
-      console.log(`🔐 Setting up SendGrid domain authentication and inbound parse for ${domain}`)
-      
-      // Step 1: Check if domain authentication already exists
-      console.log(`🔍 Checking existing domain authentication for ${domain}`)
-      const existingAuth = await getDomainAuthentication(domain)
-      
-      if (existingAuth.domain) {
-        console.log(`✅ Domain authentication already exists for ${domain}`)
-        domainAuthResult = existingAuth.domain
-      } else {
-        // Step 2: Create domain authentication if it doesn't exist
-        console.log(`🔐 Creating domain authentication for ${domain}`)
-        domainAuthResult = await createDomainAuthentication({
-          domain: domain,
-          default: false,
-          custom_spf: false
-        })
-        console.log(`✅ Domain authentication created for ${domain}`)
-      }
-      
-      // Step 3: Validate domain authentication before creating inbound parse
-      if (domainAuthResult?.id) {
+    if (domainAuthResult?.id) {
+      try {
         console.log(`✅ Validating SendGrid domain authentication for ${domain}`)
         try {
           await validateDomainAuthentication(domainAuthResult.id.toString())
@@ -305,40 +366,41 @@ export async function POST(request: NextRequest) {
           console.log(`⚠️ Domain authentication validation failed, but continuing: ${validationError}`)
           // Continue anyway as the domain may already be validated
         }
+        
+        // Configure inbound parse (now that domain auth exists and is validated)
+        console.log(`🔧 Configuring SendGrid inbound parse for ${replyHostname}`)
+        const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://leadsup.com'}/api/webhooks/sendgrid`
+        
+        inboundParseResult = await configureInboundParse({
+          hostname: replyHostname,
+          url: webhookUrl,
+          spam_check: true,
+          send_raw: false
+        })
+
+        console.log(`✅ SendGrid inbound parse configured successfully for ${replyHostname}`)
+        
+        // Store success in description
+        await supabase
+          .from('domains')
+          .update({
+            description: `Domain pending verification (Reply: ${replyHostname}) - Real SendGrid DNS with Inbound Parse`
+          })
+          .eq('id', newDomain.id)
+          
+      } catch (inboundError) {
+        console.error(`⚠️ Failed to configure inbound parse for ${domain}:`, inboundError)
+        // Store the error but don't fail domain creation
+        const errorMsg = inboundError instanceof Error ? inboundError.message : 'Unknown error'
+        await supabase
+          .from('domains')
+          .update({
+            description: `Domain pending verification (Reply: ${replyHostname}) - Real SendGrid DNS (Inbound Parse failed: ${errorMsg.substring(0, 50)})`
+          })
+          .eq('id', newDomain.id)
       }
-      
-      // Step 4: Configure inbound parse (now that domain auth exists and is validated)
-      console.log(`🔧 Configuring SendGrid inbound parse for ${replyHostname}`)
-      const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://leadsup.com'}/api/webhooks/sendgrid`
-      
-      inboundParseResult = await configureInboundParse({
-        hostname: replyHostname,
-        url: webhookUrl,
-        spam_check: true,
-        send_raw: false
-      })
-
-      console.log(`✅ SendGrid inbound parse configured successfully for ${replyHostname}`)
-      
-      // Store success in description
-      await supabase
-        .from('domains')
-        .update({
-          description: `Domain pending verification (Reply: ${replyHostname} - Auth & Inbound configured)`
-        })
-        .eq('id', newDomain.id)
-
-    } catch (setupError) {
-      console.error(`⚠️ Failed to configure SendGrid for ${domain}:`, setupError)
-      
-      // Store the error but don't fail domain creation
-      const errorMsg = setupError instanceof Error ? setupError.message : 'Unknown error'
-      await supabase
-        .from('domains')
-        .update({
-          description: `Domain pending verification (Reply: ${replyHostname} - Setup failed: ${errorMsg.substring(0, 100)})`
-        })
-        .eq('id', newDomain.id)
+    } else {
+      console.log(`⚠️ No domain authentication result, skipping inbound parse setup`)
     }
 
     // Transform domain to match frontend interface
@@ -361,7 +423,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       domain: transformedDomain,
-      dnsRecords,
+      dnsRecords: realDnsRecords,
       sendGridSetup: {
         domainAuth: {
           configured: domainAuthResult ? true : false,
