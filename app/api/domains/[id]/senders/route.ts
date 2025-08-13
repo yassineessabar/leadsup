@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from "next/headers"
 import { createClient } from "@supabase/supabase-js"
+import { createSenderIdentity } from "@/lib/sendgrid"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -232,10 +233,68 @@ export async function POST(
       }
     }
 
+    // Create SendGrid Sender Identity
+    let sendgridStatus = 'pending'
+    let sendgridSenderId = null
+    
+    try {
+      console.log(`🆔 Creating SendGrid sender identity for ${email}`)
+      
+      const senderIdentityResult = await createSenderIdentity({
+        nickname: `${display_name || email.split('@')[0]} - ${domain.domain}`,
+        from: {
+          email: email,
+          name: display_name || email.split('@')[0]
+        },
+        reply_to: {
+          email: email,
+          name: display_name || email.split('@')[0]
+        },
+        address: '123 Main Street', // Default address - could be made configurable
+        city: 'New York',
+        state: 'NY',
+        zip: '10001',
+        country: 'United States'
+      })
+      
+      sendgridSenderId = senderIdentityResult.sender_id
+      sendgridStatus = senderIdentityResult.verification_status || 'pending'
+      
+      console.log(`✅ SendGrid sender identity created: ${sendgridSenderId}`)
+      
+    } catch (sendgridError) {
+      console.error(`⚠️ Failed to create SendGrid sender identity for ${email}:`, sendgridError)
+      sendgridStatus = 'failed'
+      // Don't fail the sender creation, just log the error
+    }
+    
+    // Update the sender with SendGrid information
+    const { error: updateError } = await supabase
+      .from('sender_accounts')
+      .update({
+        sendgrid_sender_id: sendgridSenderId,
+        sendgrid_status: sendgridStatus,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', newSender.id)
+    
+    if (updateError) {
+      console.error('Error updating sender with SendGrid info:', updateError)
+    }
+
+    // Return updated sender data
+    const updatedSender = {
+      ...newSender,
+      sendgrid_sender_id: sendgridSenderId,
+      sendgrid_status: sendgridStatus
+    }
+
     return NextResponse.json({
       success: true,
-      sender: newSender,
-      message: 'Sender account created successfully'
+      sender: updatedSender,
+      message: sendgridStatus === 'failed' 
+        ? 'Sender account created, but SendGrid verification failed. You can retry verification later.'
+        : 'Sender account created successfully. Check your email to verify with SendGrid.'
     })
 
   } catch (error) {
