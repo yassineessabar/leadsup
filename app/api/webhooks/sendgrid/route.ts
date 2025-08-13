@@ -400,20 +400,45 @@ export async function POST(request: NextRequest) {
     
     // Find which campaign sender this email is responding to
     console.log(`🔍 Looking for campaign_sender with email: "${toEmail}"`)
-    const { data: campaignSenders, error: senderError } = await supabaseServer
+    let { data: campaignSenders, error: senderError } = await supabaseServer
       .from('campaign_senders')
       .select('id, user_id, campaign_id')
       .eq('email', toEmail)
     
     console.log('🔍 Campaign sender query result:', { campaignSenders, senderError })
     
+    // If no direct match found, check if this is a reply address (reply@leadsup.io)
     if (senderError || !campaignSenders || campaignSenders.length === 0) {
-      console.log(`⏭️ Email to ${toEmail} is not for a campaign sender, ignoring`)
-      // Return success to SendGrid so it doesn't retry
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Not a campaign email, ignored' 
-      })
+      if (toEmail === 'reply@leadsup.io' || toEmail.includes('@reply.leadsup.io')) {
+        console.log(`🔄 Email to ${toEmail} is a reply address, looking for any active campaign`)
+        
+        // Get any active campaign sender to associate this reply
+        const { data: anyCampaignSender, error: anyError } = await supabaseServer
+          .from('campaign_senders')
+          .select('id, user_id, campaign_id')
+          .eq('is_active', true)
+          .limit(1)
+        
+        if (anyCampaignSender && anyCampaignSender.length > 0) {
+          campaignSenders = anyCampaignSender
+          console.log(`✅ Using active campaign ${anyCampaignSender[0].campaign_id} for reply processing`)
+        } else {
+          console.log(`⚠️ No active campaigns found, creating generic reply entry`)
+          // Create a generic entry for replies when no campaign is found
+          campaignSenders = [{
+            id: null,
+            user_id: null, // Will need to be handled
+            campaign_id: null
+          }]
+        }
+      } else {
+        console.log(`⏭️ Email to ${toEmail} is not for a campaign sender or reply address, ignoring`)
+        // Return success to SendGrid so it doesn't retry
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Not a campaign email, ignored' 
+        })
+      }
     }
     
     // Use the first campaign sender if multiple exist
