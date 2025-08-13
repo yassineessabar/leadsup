@@ -37,7 +37,7 @@ async function sendEmail(senderData: any, mailOptions: any) {
       subject: mailOptions.subject,
       html: mailOptions.html,
       text: mailOptions.html?.replace(/<[^>]*>/g, ''), // Strip HTML for text version
-      replyTo: 'test@reply.leadsup.io' // All replies go to webhook for capture
+      replyTo: 'reply@leadsup.io' // Use configured reply address for webhook capture
     })
 
     return {
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
             to: contact.email,
             subject: subject,
             html: htmlContent,
-            replyTo: 'test@reply.leadsup.io' // All replies go to webhook for capture
+            replyTo: 'reply@leadsup.io' // Use configured reply address for webhook capture
           }
 
           const emailResult = await sendEmail(senderData, mailOptions)

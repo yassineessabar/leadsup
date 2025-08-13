@@ -27,22 +27,26 @@ export interface SendGridEmailOptions {
 
 export async function sendEmailWithSendGrid(options: SendGridEmailOptions) {
   try {
-    console.log(`📧 Sending email via SendGrid to ${options.to}`)
+    console.log(`📧 Sending email via SendGrid from ${options.from} to ${options.to}`)
     
-    // Use a default verified sender if from email is not verified
-    // In production, you'd want to verify your sender domains
-    const verifiedFrom = options.from || 'noreply@leadsup.io' // Use your verified domain
+    // Use the actual sender email from the campaign sender
+    // This should be one of the verified emails like contact@leadsup.io, hello@leadsup.io, etc.
+    const senderEmail = options.from
+    
+    if (!senderEmail) {
+      throw new Error('Sender email is required')
+    }
     
     const msg = {
       to: options.to,
       from: {
-        email: verifiedFrom,
-        name: options.fromName || verifiedFrom
+        email: senderEmail,
+        name: options.fromName || senderEmail
       },
       subject: options.subject,
       text: options.text || '',
       html: options.html || options.text || '',
-      replyTo: options.replyTo || verifiedFrom,
+      replyTo: options.replyTo || senderEmail,
       attachments: options.attachments || []
     }
 
