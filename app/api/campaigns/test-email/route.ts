@@ -181,26 +181,53 @@ export async function POST(request: NextRequest) {
         firstName: 'John',
         lastName: 'Doe', 
         company: 'Acme Corp',
+        companyName: 'Acme Corp',
         title: 'Marketing Manager',
         senderName: senderData.name || senderEmail.split('@')[0]
       }
       
       // Apply variable replacements
+      console.log(`🔍 Original sequence content before replacement:`, sequenceContent)
       Object.entries(testVariables).forEach(([key, value]) => {
         const regex = new RegExp(`{{${key}}}`, 'g')
         subject = subject.replace(regex, value)
         htmlContent = htmlContent.replace(regex, value)
       })
       
+      // Convert plain text line breaks to HTML breaks - handle multiple line break formats
+      console.log(`🔍 Content has <br> tags:`, htmlContent.includes('<br>'))
+      console.log(`🔍 Content has <br/> tags:`, htmlContent.includes('<br/>'))  
+      console.log(`🔍 Content has <p> tags:`, htmlContent.includes('<p>'))
+      console.log(`🔍 Content includes \\n characters:`, htmlContent.includes('\n'))
+      console.log(`🔍 Content raw representation:`, JSON.stringify(htmlContent))
+      
+      // Always convert line breaks for email compatibility - be more aggressive
+      // Handle double line breaks (paragraphs) and single line breaks
+      htmlContent = htmlContent
+        .replace(/\r\n/g, '\n')  // Convert Windows line breaks
+        .replace(/\r/g, '\n')    // Convert Mac line breaks
+        .replace(/\n\n+/g, '<br/><br/>')  // Convert paragraph breaks (double+ newlines)
+        .replace(/\n/g, '<br/>')  // Convert remaining single newlines
+        
+      console.log(`🔄 After line break conversion:`, JSON.stringify(htmlContent))
+      
+      console.log(`🔍 Final HTML content after replacement:`, htmlContent)
+      
       // Add test indicator to subject
       subject = `[TEST] ${subject} - ${timestamp}`
       
-      // Add test notice to content
+      // Add test notice to content and ensure proper HTML structure
       htmlContent = `
-        <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
-          <strong>🧪 TEST EMAIL:</strong> This is a test of your campaign sequence sent at ${timestamp}. Reply to test the capture functionality!
-        </div>
-        ${htmlContent}
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+            <strong>🧪 TEST EMAIL:</strong> This is a test of your campaign sequence sent at ${timestamp}. Reply to test the capture functionality!
+          </div>
+          <div style="margin: 20px 0;">
+            ${htmlContent}
+          </div>
+        </body>
+        </html>
       `
       
     } else {

@@ -290,6 +290,7 @@ export async function POST(request: NextRequest) {
             .replace(/{{firstName}}/g, contact.firstName)
             .replace(/{{lastName}}/g, contact.lastName)
             .replace(/{{company}}/g, contact.company)
+            .replace(/{{companyName}}/g, contact.company)
             .replace(/{{title}}/g, contact.title)
             .replace(/{{senderName}}/g, senderData.name)
 
@@ -297,9 +298,18 @@ export async function POST(request: NextRequest) {
             .replace(/{{firstName}}/g, contact.firstName)
             .replace(/{{lastName}}/g, contact.lastName)
             .replace(/{{company}}/g, contact.company)
+            .replace(/{{companyName}}/g, contact.company)
             .replace(/{{title}}/g, contact.title)
             .replace(/{{senderName}}/g, senderData.name)
-            .replace(/\n/g, '<br>')
+
+          // Convert plain text line breaks to HTML breaks - handle all line break formats
+          htmlContent = htmlContent
+            .replace(/\r\n/g, '\n')  // Convert Windows line breaks
+            .replace(/\r/g, '\n')    // Convert Mac line breaks
+            .replace(/\n\n+/g, '<br/><br/>')  // Convert paragraph breaks (double+ newlines)
+            .replace(/\n/g, '<br/>')  // Convert remaining single newlines
+          
+          console.log(`🔄 Converted line breaks to HTML for ${contact.email}`)
 
           // Send email
           const mailOptions = {

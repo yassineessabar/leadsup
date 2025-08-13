@@ -258,6 +258,7 @@ export async function POST(request: NextRequest) {
             .replace(/{{firstName}}/g, contact.firstName)
             .replace(/{{lastName}}/g, contact.lastName)
             .replace(/{{company}}/g, contact.company)
+            .replace(/{{companyName}}/g, contact.company)
             .replace(/{{title}}/g, contact.title)
             .replace(/{{senderName}}/g, senderData.name)
 
@@ -265,16 +266,34 @@ export async function POST(request: NextRequest) {
             .replace(/{{firstName}}/g, contact.firstName)
             .replace(/{{lastName}}/g, contact.lastName)
             .replace(/{{company}}/g, contact.company)
+            .replace(/{{companyName}}/g, contact.company)
             .replace(/{{title}}/g, contact.title)
             .replace(/{{senderName}}/g, senderData.name)
-            .replace(/\n/g, '<br>')
+
+          // Convert plain text line breaks to HTML breaks - handle all line break formats
+          htmlContent = htmlContent
+            .replace(/\r\n/g, '\n')  // Convert Windows line breaks
+            .replace(/\r/g, '\n')    // Convert Mac line breaks  
+            .replace(/\n\n+/g, '<br/><br/>')  // Convert paragraph breaks (double+ newlines)
+            .replace(/\n/g, '<br/>')  // Convert remaining single newlines
+          
+          console.log(`🔄 Converted line breaks to HTML for ${contact.email}`)
+
+          // Ensure proper HTML structure for better email client compatibility
+          const formattedHtmlContent = htmlContent.includes('<html>') ? htmlContent : `
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              ${htmlContent}
+            </body>
+            </html>
+          `
 
           // Send email
           const mailOptions = {
             from: `${senderData.name} <${senderData.email}>`,
             to: contact.email,
             subject: subject,
-            html: htmlContent,
+            html: formattedHtmlContent,
             replyTo: 'test@reply.leadsup.io' // Use working reply address for webhook capture
           }
 
@@ -336,8 +355,8 @@ export async function POST(request: NextRequest) {
                 contact_name: `${contact.firstName} ${contact.lastName}`.trim(),
                 sender_email: senderData.email,
                 subject: subject,
-                body_text: htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
-                body_html: htmlContent,
+                body_text: formattedHtmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+                body_html: formattedHtmlContent,
                 direction: 'outbound',
                 channel: 'email',
                 message_type: 'email',
@@ -368,7 +387,7 @@ export async function POST(request: NextRequest) {
                   contact_name: `${contact.firstName} ${contact.lastName}`.trim(),
                   subject: subject,
                   last_message_at: new Date().toISOString(),
-                  last_message_preview: htmlContent.replace(/<[^>]*>/g, '').substring(0, 150),
+                  last_message_preview: formattedHtmlContent.replace(/<[^>]*>/g, '').substring(0, 150),
                   status: 'active'
                 }, {
                   onConflict: 'conversation_id,user_id'
