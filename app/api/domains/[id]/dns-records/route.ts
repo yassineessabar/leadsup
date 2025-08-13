@@ -297,16 +297,20 @@ export async function GET(
 
     // Await params before accessing its properties
     const { id } = await params
-    // The 'id' param here is actually the domain name
-    const domain = id
-
+    // The 'id' param can be either domain name OR domain UUID
+    
+    // Check if id is a UUID (contains hyphens) or domain name
+    const isUUID = id.includes('-') && id.length > 20
+    
     // Verify user owns this domain
     const { data: domainRecord, error } = await supabase
       .from('domains')
       .select('*')
       .eq('user_id', userId)
-      .eq('domain', domain)
+      .eq(isUUID ? 'id' : 'domain', id)
       .single()
+    
+    const domain = domainRecord?.domain || id
 
     if (error || !domainRecord) {
       return NextResponse.json(
