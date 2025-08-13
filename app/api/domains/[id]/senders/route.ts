@@ -252,15 +252,19 @@ export async function POST(
         },
         address: '123 Main Street', // Default address - could be made configurable
         city: 'New York',
-        state: 'NY',
-        zip: '10001',
+        zip: '10001', 
         country: 'United States'
+        // Note: state field removed as it causes SendGrid "bad json payload" error
       })
       
-      sendgridSenderId = senderIdentityResult.sender_id
-      sendgridStatus = senderIdentityResult.verification_status || 'pending'
-      
-      console.log(`✅ SendGrid sender identity created: ${sendgridSenderId}`)
+      if (senderIdentityResult.success === false && senderIdentityResult.error === 'permission_denied') {
+        console.log(`⚠️ SendGrid API key lacks permissions - sender identity creation skipped for ${email}`)
+        sendgridStatus = 'permission_denied'
+      } else {
+        sendgridSenderId = senderIdentityResult.sender_id
+        sendgridStatus = senderIdentityResult.verification_status || 'pending'
+        console.log(`✅ SendGrid sender identity created: ${sendgridSenderId}`)
+      }
       
     } catch (sendgridError) {
       console.error(`⚠️ Failed to create SendGrid sender identity for ${email}:`, sendgridError)

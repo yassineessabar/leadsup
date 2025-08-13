@@ -351,12 +351,16 @@ export async function createSenderIdentity(settings: SenderIdentitySettings) {
         name: settings.reply_to?.name || settings.from.name || settings.from.email.split('@')[0]
       },
       address: settings.address,
-      address_2: settings.address_2 || "",
       city: settings.city,
-      state: settings.state || "",
-      zip: settings.zip || "",
+      zip: settings.zip || "10001",
       country: settings.country
     }
+    
+    // Only add optional fields if they have values
+    if (settings.address_2) {
+      payload.address_2 = settings.address_2
+    }
+    // Note: state field causes SendGrid "bad json payload" error, so it's excluded
     
     console.log('📧 SendGrid payload:', JSON.stringify(payload, null, 2))
     
@@ -371,6 +375,22 @@ export async function createSenderIdentity(settings: SenderIdentitySettings) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
+      
+      // Handle specific error cases
+      if (response.status === 403) {
+        console.log(`⚠️  SendGrid API key lacks permission to create sender identities for ${settings.from.email}`)
+        console.log(`💡 You can manually create sender identity in SendGrid dashboard: https://app.sendgrid.com/settings/sender_auth`)
+        
+        // Return a "success" for permission errors so the sender account is still created
+        return {
+          success: false,
+          error: 'permission_denied',
+          message: 'SendGrid API key lacks sender identity permissions. Create manually in SendGrid dashboard.',
+          sender_id: null,
+          verification_status: 'pending'
+        }
+      }
+      
       throw new Error(`SendGrid API error: ${response.status} - ${JSON.stringify(errorData)}`)
     }
 
