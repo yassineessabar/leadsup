@@ -467,13 +467,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                         <p className="text-gray-600 mb-3 truncate">{sender.email}</p>
                         
                         {/* Sender details in grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <div className="text-gray-500 mb-1">Setup Status</div>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(sender.setup_status || 'pending')}`}>
-                              {getStatusText(sender.setup_status || 'pending')}
-                            </span>
-                          </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
                             <div className="text-gray-500 mb-1">Daily Limit</div>
                             <div className="font-medium text-gray-900">{sender.daily_limit || 50}/day</div>

@@ -718,12 +718,6 @@ export default function CampaignSenderSelection({
 
                                 <div className="flex items-center gap-6 text-sm">
                                   <div className="text-center">
-                                    <div className="text-gray-500">Status</div>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(sender.setup_status || 'pending')}`}>
-                                      {getStatusText(sender.setup_status || 'pending')}
-                                    </span>
-                                  </div>
-                                  <div className="text-center">
                                     <div className="text-gray-500">Daily Limit</div>
                                     <div className="font-medium text-gray-900">{sender.daily_limit || 50}/day</div>
                                   </div>

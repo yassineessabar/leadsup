@@ -798,7 +798,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     console.log('🔍 Fetching campaign data for Contact Scrapping fields...')
     
     try {
-      const response = await fetch(`/api/campaigns/${campaign.id}/save`)
+      const url = `/api/campaigns/${campaign.id}/save`
+      console.log('🔍 Fetching from URL:', url)
+      
+      const response = await fetch(url)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`)
+      }
+      
       const result = await response.json()
       
       console.log('📨 API Response for campaign data:', {
@@ -837,6 +845,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } catch (error) {
       console.error('❌ Error fetching campaign data for scrapping fields:', error)
+      console.error('❌ Error details:', {
+        message: error.message,
+        type: error.constructor.name,
+        campaignId: campaign?.id
+      })
+      
+      // Don't let this error break the UI - just log it
+      if (error.message?.includes('Failed to fetch')) {
+        console.log('💡 This might be a network issue or the server might be down')
+      }
     }
   }
 
@@ -4071,11 +4089,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                 onClick={() => {
                                   // Insert the signature at the end of the current content
                                   const currentContent = activeStep?.content || ''
-                                  const signatureWithVariables = emailSignature.replace(
-                                    /<strong>.*?<\/strong>/,
-                                    '<strong>{{senderName}}</strong>'
-                                  )
-                                  const newContent = currentContent + signatureWithVariables
+                                  const newContent = currentContent + emailSignature
                                   updateStepContent(newContent)
                                   if (editorRef.current) {
                                     editorRef.current.innerHTML = newContent
