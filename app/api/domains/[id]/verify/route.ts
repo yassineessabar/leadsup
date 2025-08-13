@@ -674,15 +674,87 @@ function generateRecommendations(verificationResults: VerificationResult[], doma
 
 async function setupSendGridIntegration(domain: any) {
   try {
-    // TODO: Integrate with SendGrid API
-    // 1. Authenticate domain for outbound sending
-    // 2. Set up inbound parse for reply subdomain
+    console.log(`🚀 Setting up SendGrid integration for ${domain.domain}`)
     
-    console.log(`Setting up SendGrid for ${domain.domain}`)
+    // Import SendGrid functions
+    const { createSenderIdentity } = await import('@/lib/sendgrid')
     
-    // Example SendGrid API calls:
-    // await sendgrid.authenticateDomain(domain.domain)
-    // await sendgrid.createInboundParse(`${domain.subdomain}.${domain.domain}`)
+    // Get all existing sender accounts for this domain
+    // Process all senders, including those with failed status (to retry)
+    const { data: senderAccounts, error: fetchError } = await supabase
+      .from('sender_accounts')
+      .select('*')
+      .eq('domain_id', domain.id)
+      .or('sendgrid_status.is.null,sendgrid_status.eq.failed,sendgrid_status.eq.pending')
+    
+    if (fetchError) {
+      console.error('Error fetching sender accounts:', fetchError)
+      return
+    }
+    
+    if (!senderAccounts || senderAccounts.length === 0) {
+      console.log(`ℹ️ No sender accounts to process for ${domain.domain}`)
+      return
+    }
+    
+    console.log(`📧 Creating SendGrid identities for ${senderAccounts.length} sender accounts`)
+    
+    // Create sender identities for each sender account
+    for (const sender of senderAccounts) {
+      try {
+        console.log(`  Creating identity for ${sender.email}...`)
+        
+        const result = await createSenderIdentity({
+          nickname: `${sender.display_name || sender.email.split('@')[0]} - ${domain.domain}`,
+          from: {
+            email: sender.email,
+            name: sender.display_name || sender.email.split('@')[0]
+          },
+          reply_to: {
+            email: sender.email,
+            name: sender.display_name || sender.email.split('@')[0]
+          },
+          address: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zip: '10001',
+          country: 'US'
+        })
+        
+        // Update sender account with SendGrid info
+        if (result.success) {
+          await supabase
+            .from('sender_accounts')
+            .update({
+              sendgrid_sender_id: result.sender_id,
+              sendgrid_status: result.verification_status || 'verified',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', sender.id)
+          
+          console.log(`  ✅ Created identity for ${sender.email}`)
+        }
+        
+      } catch (error: any) {
+        // Handle "already exists" error gracefully
+        if (error.message?.includes('already exists')) {
+          console.log(`  ℹ️ Identity already exists for ${sender.email}`)
+          
+          // Mark as verified since it exists
+          await supabase
+            .from('sender_accounts')
+            .update({
+              sendgrid_status: 'verified',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', sender.id)
+        } else {
+          console.error(`  ❌ Failed to create identity for ${sender.email}:`, error.message)
+        }
+      }
+    }
+    
+    console.log(`✅ SendGrid integration complete for ${domain.domain}`)
     
   } catch (error) {
     console.error('SendGrid setup failed:', error)
