@@ -252,9 +252,9 @@ export async function POST(
         },
         address: '123 Main Street', // Default address - could be made configurable
         city: 'New York',
+        state: 'NY',
         zip: '10001', 
-        country: 'United States'
-        // Note: state field removed as it causes SendGrid "bad json payload" error
+        country: 'US' // Use country code instead of full name
       })
       
       if (senderIdentityResult.success === false && senderIdentityResult.error === 'permission_denied') {

@@ -340,19 +340,15 @@ export async function createSenderIdentity(settings: SenderIdentitySettings) {
   try {
     console.log(`🆔 Creating SendGrid sender identity for ${settings.from.email}`)
     
-    const payload = {
+    // SendGrid expects flat structure with from_email, not nested from.email
+    const payload: any = {
       nickname: settings.nickname,
-      from: {
-        email: settings.from.email,
-        name: settings.from.name || settings.from.email.split('@')[0]
-      },
-      reply_to: {
-        email: settings.reply_to?.email || settings.from.email,
-        name: settings.reply_to?.name || settings.from.name || settings.from.email.split('@')[0]
-      },
+      from_email: settings.from.email,
+      from_name: settings.from.name || settings.from.email.split('@')[0],
+      reply_to: settings.reply_to?.email || settings.from.email,
+      reply_to_name: settings.reply_to?.name || settings.from.name || settings.from.email.split('@')[0],
       address: settings.address,
       city: settings.city,
-      zip: settings.zip || "10001",
       country: settings.country
     }
     
@@ -360,7 +356,12 @@ export async function createSenderIdentity(settings: SenderIdentitySettings) {
     if (settings.address_2) {
       payload.address_2 = settings.address_2
     }
-    // Note: state field causes SendGrid "bad json payload" error, so it's excluded
+    if (settings.state) {
+      payload.state = settings.state
+    }
+    if (settings.zip) {
+      payload.zip = settings.zip
+    }
     
     console.log('📧 SendGrid payload:', JSON.stringify(payload, null, 2))
     
