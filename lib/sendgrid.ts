@@ -104,6 +104,17 @@ export async function configureInboundParse(settings: InboundParseSettings) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
+      
+      // Handle duplicate entry as success
+      if (response.status === 400 && errorData.errors?.[0]?.message?.includes('duplicate entry')) {
+        console.log(`✅ Inbound parse already configured for ${settings.hostname}`)
+        return {
+          success: true,
+          hostname: settings.hostname,
+          message: 'Inbound parse already configured'
+        }
+      }
+      
       throw new Error(`SendGrid API error: ${response.status} - ${JSON.stringify(errorData)}`)
     }
 

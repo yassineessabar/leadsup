@@ -402,9 +402,12 @@ export async function POST(request: NextRequest) {
           .eq('id', newDomain.id)
           
       } catch (inboundError) {
-        console.error(`⚠️ Failed to configure inbound parse for ${domain}:`, inboundError)
-        // Store the error but don't fail domain creation
+        // Don't show error for duplicate entries (already configured)
         const errorMsg = inboundError instanceof Error ? inboundError.message : 'Unknown error'
+        if (!errorMsg.includes('duplicate entry')) {
+          console.error(`⚠️ Failed to configure inbound parse for ${domain}:`, inboundError)
+        }
+        // Store the error but don't fail domain creation
         await supabase
           .from('domains')
           .update({
