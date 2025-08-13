@@ -78,7 +78,44 @@ export default function DomainsPage() {
 
   useEffect(() => {
     fetchDomains()
-  }, [])
+    
+    // Listen for domain verification redirect events from the modal
+    const handleDomainVerificationRedirect = (event: CustomEvent) => {
+      const { domain } = event.detail
+      
+      // Find the domain in our list
+      const domainData = domains.find(d => d.domain === domain)
+      if (domainData) {
+        // Set the selected domain and switch to verification view
+        setSelectedDomain(domain)
+        setSelectedDomainId(domainData.id)
+        setCurrentView("verification")
+        // Fetch DNS records for the domain
+        fetchDnsRecords(domainData.id)
+      } else {
+        // If domain not found, refresh domains first then navigate
+        fetchDomains().then(() => {
+          setTimeout(() => {
+            const updatedDomain = domains.find(d => d.domain === domain)
+            if (updatedDomain) {
+              setSelectedDomain(domain)
+              setSelectedDomainId(updatedDomain.id)
+              setCurrentView("verification")
+              fetchDnsRecords(updatedDomain.id)
+            }
+          }, 100)
+        })
+      }
+    }
+    
+    // Add event listener
+    window.addEventListener('domain-verification-redirect', handleDomainVerificationRedirect as EventListener)
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('domain-verification-redirect', handleDomainVerificationRedirect as EventListener)
+    }
+  }, [domains])
 
   const fetchDomains = async () => {
     try {
@@ -734,76 +771,166 @@ export default function DomainsPage() {
               </div>
             </div>
           ) : dnsRecords.length > 0 ? (
-            <div className="bg-white rounded-xl border overflow-hidden mb-8">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Type</th>
-                    <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Host</th>
-                    <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Value</th>
-                    <th className="text-center px-6 py-4 text-sm font-medium text-gray-700">Copy</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {dnsRecords.map((record, index) => (
-                    <tr key={index} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          {record.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <code className="text-sm font-mono text-gray-700">
-                          {record.host}
-                        </code>
-                      </td>
-                      <td className="px-6 py-4 max-w-md">
-                        <code className="text-sm font-mono text-gray-700 break-all">
-                          {record.type === 'MX' && record.priority 
-                            ? `${record.priority} ${record.value}`
-                            : record.value}
-                        </code>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(record.host, `host-${index}`)}
-                            className="text-gray-500 hover:text-gray-700 p-2"
-                            title="Copy Host"
-                          >
-                            {copiedStates[`host-${index}`] ? (
-                              <Check className="w-4 h-4" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(
-                              record.type === 'MX' && record.priority 
-                                ? `${record.priority} ${record.value}`
-                                : record.value, 
-                              `value-${index}`
-                            )}
-                            className="text-gray-500 hover:text-gray-700 p-2"
-                            title="Copy Value"
-                          >
-                            {copiedStates[`value-${index}`] ? (
-                              <Check className="w-4 h-4" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              {/* Regular DNS Records (non-MX) */}
+              {dnsRecords.filter(r => r.type !== 'MX').length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">DNS Records</h3>
+                  <div className="bg-white rounded-xl border overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Type</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Host</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Value</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {dnsRecords.filter(r => r.type !== 'MX').map((record, index) => (
+                          <tr key={`regular-${index}`} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                {record.type}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <code className="text-sm font-mono text-gray-700">
+                                  {record.host}
+                                </code>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(record.host, `host-regular-${index}`)}
+                                  className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6"
+                                  title="Copy Host"
+                                >
+                                  {copiedStates[`host-regular-${index}`] ? (
+                                    <Check className="w-3 h-3" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 max-w-md">
+                              <div className="flex items-center gap-2">
+                                <code className="text-sm font-mono text-gray-700 break-all">
+                                  {record.value}
+                                </code>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(record.value, `value-regular-${index}`)}
+                                  className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6 flex-shrink-0"
+                                  title="Copy Value"
+                                >
+                                  {copiedStates[`value-regular-${index}`] ? (
+                                    <Check className="w-3 h-3" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* MX Records with Priority */}
+              {dnsRecords.filter(r => r.type === 'MX').length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">MX Records (Mail Exchange)</h3>
+                  <div className="bg-white rounded-xl border overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Type</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Host</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Priority</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Value</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {dnsRecords.filter(r => r.type === 'MX').map((record, index) => (
+                          <tr key={`mx-${index}`} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                {record.type}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <code className="text-sm font-mono text-gray-700">
+                                  {record.host}
+                                </code>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(record.host, `host-mx-${index}`)}
+                                  className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6"
+                                  title="Copy Host"
+                                >
+                                  {copiedStates[`host-mx-${index}`] ? (
+                                    <Check className="w-3 h-3" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                                  {record.priority || '10'}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(String(record.priority || '10'), `priority-mx-${index}`)}
+                                  className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6"
+                                  title="Copy Priority"
+                                >
+                                  {copiedStates[`priority-mx-${index}`] ? (
+                                    <Check className="w-3 h-3" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 max-w-md">
+                              <div className="flex items-center gap-2">
+                                <code className="text-sm font-mono text-gray-700 break-all">
+                                  {record.value}
+                                </code>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(record.value, `value-mx-${index}`)}
+                                  className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6 flex-shrink-0"
+                                  title="Copy Value"
+                                >
+                                  {copiedStates[`value-mx-${index}`] ? (
+                                    <Check className="w-3 h-3" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="bg-white rounded-xl border p-8 text-center mb-8">
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

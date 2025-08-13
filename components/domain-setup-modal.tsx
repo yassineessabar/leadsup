@@ -360,10 +360,26 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
 
                       if (response.ok) {
                         onDomainAdded(data.domain);
-                        handleClose();
                         
-                        // Force reload the page to refresh domains list and navigate to verification
-                        window.location.reload();
+                        // Redirect to domain verification view for the specific domain
+                        if (typeof window !== 'undefined') {
+                          const url = new URL(window.location.href)
+                          url.searchParams.set("tab", "domain")
+                          url.searchParams.set("view", "verification")
+                          url.searchParams.set("selectedDomain", domain)
+                          window.history.pushState({}, "", url.toString())
+                          
+                          // Dispatch custom event with domain verification details
+                          window.dispatchEvent(new CustomEvent('domain-verification-redirect', { 
+                            detail: { 
+                              tab: 'domain',
+                              view: 'verification',
+                              domain: domain
+                            } 
+                          }))
+                        }
+                        
+                        handleClose();
                         
                       } else {
                         console.error('Failed to add domain:', data.error);
