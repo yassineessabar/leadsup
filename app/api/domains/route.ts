@@ -258,11 +258,8 @@ export async function POST(request: NextRequest) {
       }
       
       // Extract REAL DNS records from SendGrid response
-      console.log(`🔍 Debug: domainAuthResult structure:`, JSON.stringify(domainAuthResult, null, 2))
-      
       if (domainAuthResult?.dns_records || domainAuthResult?.dns) {
         const dns = domainAuthResult.dns_records || domainAuthResult.dns
-        console.log(`🔍 Debug: DNS structure:`, JSON.stringify(dns, null, 2))
         
         // Add DKIM records
         if (dns.dkim1) {
@@ -336,8 +333,7 @@ export async function POST(request: NextRequest) {
       realDnsRecords = getDefaultDnsRecords(domain, replySubdomain)
     }
     
-    console.log(`🔍 Final DNS records count: ${realDnsRecords.length}`)
-    console.log(`🔍 Final DNS records:`, JSON.stringify(realDnsRecords, null, 2))
+    console.log(`✅ Generated ${realDnsRecords.length} DNS records for ${domain}`)
 
     // Insert domain into database with REAL DNS records
     const { data: newDomain, error } = await supabase
@@ -368,26 +364,34 @@ export async function POST(request: NextRequest) {
     if (domainAuthResult?.id) {
       try {
         console.log(`✅ Validating SendGrid domain authentication for ${domain}`)
+        let isValidated = false
+        
         try {
-          await validateDomainAuthentication(domainAuthResult.id.toString())
-          console.log(`✅ Domain authentication validated for ${domain}`)
+          const validationResult = await validateDomainAuthentication(domainAuthResult.id.toString())
+          isValidated = validationResult.valid === true
+          console.log(`✅ Domain authentication validation result: ${isValidated ? 'VALID' : 'INVALID'}`)
         } catch (validationError) {
-          console.log(`⚠️ Domain authentication validation failed, but continuing: ${validationError}`)
-          // Continue anyway as the domain may already be validated
+          console.log(`⚠️ Domain authentication validation failed: ${validationError}`)
+          isValidated = false
         }
         
-        // Configure inbound parse (now that domain auth exists and is validated)
-        console.log(`🔧 Configuring SendGrid inbound parse for ${replyHostname}`)
-        const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://leadsup.com'}/api/webhooks/sendgrid`
-        
-        inboundParseResult = await configureInboundParse({
-          hostname: replyHostname,
-          url: webhookUrl,
-          spam_check: true,
-          send_raw: false
-        })
+        // Only configure inbound parse if domain is actually validated
+        if (isValidated) {
+          console.log(`🔧 Configuring SendGrid inbound parse for ${replyHostname}`)
+          const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://leadsup.com'}/api/webhooks/sendgrid`
+          
+          inboundParseResult = await configureInboundParse({
+            hostname: replyHostname,
+            url: webhookUrl,
+            spam_check: true,
+            send_raw: false
+          })
 
-        console.log(`✅ SendGrid inbound parse configured successfully for ${replyHostname}`)
+          console.log(`✅ SendGrid inbound parse configured successfully for ${replyHostname}`)
+        } else {
+          console.log(`⚠️ Skipping inbound parse configuration - domain not validated yet`)
+          console.log(`📋 User needs to add DNS records to domain provider first`)
+        }
         
         // Store success in description
         await supabase
