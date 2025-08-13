@@ -285,317 +285,299 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-white rounded-3xl border-0 shadow-lg p-0">
+      <DialogContent className="sm:max-w-lg bg-white rounded-xl border border-gray-200 shadow-xl p-0">
         <DialogTitle className="sr-only">
           {showLogin ? `Login to ${detectedProvider}` : 
            showManualSetup ? 'Manual Setup Required' :
            isAnalyzing ? 'Analyzing Domain' : 
            'Add Domain'}
         </DialogTitle>
-        <div className="relative p-8">
+        <div className="relative p-6">
           {/* Close button */}
           <button
             onClick={handleClose}
-            className="absolute top-6 right-6 p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors"
+            className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
           >
-            <X className="w-5 h-5 text-gray-600" />
+            <X className="w-5 h-5" />
           </button>
 
           {/* Content */}
           {showManualSetup ? (
             <div className="space-y-6">
-              {/* Progress dots */}
-              <div className="flex justify-center space-x-2 pt-4">
-                <div className="w-2 h-2 rounded-full bg-gray-900"></div>
-                <div className="w-6 h-2 rounded-full bg-gray-900"></div>
-                <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-                <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+              {/* Header */}
+              <div className="text-center space-y-3">
+                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto">
+                  <span className="text-xl">⚙️</span>
+                </div>
+                <h2 className="text-2xl font-light text-gray-900">Manual Setup</h2>
+                <p className="text-gray-500">
+                  We'll guide you through setting up your domain manually
+                </p>
               </div>
 
-              {/* Manual setup content */}
-              <div className="text-center space-y-6">
-                <div className="flex justify-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                    <span className="text-2xl">⚙️</span>
-                  </div>
-                </div>
+              {/* Steps */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-medium text-gray-900 mb-3">What happens next:</h3>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                    We'll create your domain configuration
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                    You'll get step-by-step DNS setup instructions
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                    Copy the DNS records to your domain provider
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                    Verify your domain when ready
+                  </li>
+                </ul>
+              </div>
 
-                <div className="px-4">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-3">Manual Setup Required</h2>
-                  <p className="text-lg text-gray-700">
-                    We couldn't detect your DNS provider automatically. Don't worry - you can still set up your domain manually.
-                  </p>
-                </div>
+              {/* Actions */}
+              <div className="space-y-3">
+                <Button 
+                  onClick={async () => {
+                    // Create domain and redirect to verification view
+                    try {
+                      const response = await fetch('/api/domains', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                          domain,
+                          verificationType: 'manual'
+                        })
+                      });
 
-                <div className="space-y-4 text-sm text-gray-600">
-                  <div className="bg-blue-50 p-4 rounded-lg text-left">
-                    <h3 className="font-semibold text-gray-900 mb-2">What happens next?</h3>
-                    <ul className="space-y-1 text-sm">
-                      <li>• We'll create your domain configuration</li>
-                      <li>• You'll get step-by-step DNS setup instructions</li>
-                      <li>• Copy the DNS records to your domain provider</li>
-                      <li>• Verify your domain when ready</li>
-                    </ul>
-                  </div>
+                      const data = await response.json();
 
-                  <Button 
-                    onClick={async () => {
-                      // Create domain and redirect to verification view
-                      try {
-                        const response = await fetch('/api/domains', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ 
-                            domain,
-                            verificationType: 'manual'
-                          })
-                        });
-
-                        const data = await response.json();
-
-                        if (response.ok) {
-                          onDomainAdded(data.domain);
-                          
-                          // Close modal first
-                          handleClose();
-                          
-                          // Then dispatch custom event to navigate to verification
-                          setTimeout(() => {
-                            window.dispatchEvent(new CustomEvent('domain-verification-redirect', { 
-                              detail: { 
-                                view: 'verification',
-                                domain: domain
-                              } 
-                            }));
-                          }, 100);
-                          
-                        } else {
-                          console.error('Failed to add domain:', data.error);
-                        }
-                      } catch (error) {
-                        console.error('Error creating domain:', error);
+                      if (response.ok) {
+                        onDomainAdded(data.domain);
+                        handleClose();
+                        
+                        // Force reload the page to refresh domains list and navigate to verification
+                        window.location.reload();
+                        
+                      } else {
+                        console.error('Failed to add domain:', data.error);
                       }
-                    }}
-                    className="w-full h-12 text-lg font-medium bg-blue-600 text-white border-0 rounded-xl hover:bg-blue-700 mt-6"
-                  >
-                    Continue with Manual Setup
-                  </Button>
-                </div>
+                    } catch (error) {
+                      console.error('Error creating domain:', error);
+                    }
+                  }}
+                  className="w-full text-white py-2.5 rounded-lg font-medium transition-colors"
+                  style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                  }}
+                >
+                  Continue with Manual Setup
+                </Button>
 
-                <div className="text-center">
-                  <button 
-                    onClick={() => {
-                      setShowManualSetup(false);
-                      setIsAnalyzing(false);
-                      setIsChecking(false);
-                      // Reset to domain input screen
-                    }}
-                    className="text-blue-600 underline hover:text-blue-700 text-sm"
-                  >
-                    ← Go back and try again
-                  </button>
-                </div>
+                <button 
+                  onClick={() => {
+                    setShowManualSetup(false);
+                    setIsAnalyzing(false);
+                    setIsChecking(false);
+                    // Reset to domain input screen
+                  }}
+                  className="w-full text-gray-500 hover:text-gray-700 text-sm py-2 transition-colors"
+                >
+                  ← Go back and try again
+                </button>
               </div>
             </div>
           ) : showLogin ? (
             <div className="space-y-6">
-              {/* Header with back arrow and progress */}
-              <div className="flex items-center justify-between">
+              {/* Header with back arrow */}
+              <div className="flex items-center gap-4">
                 <button
                   onClick={handleBack}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>
-                
-                {/* Progress dots */}
-                <div className="flex space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-gray-900"></div>
-                  <div className="w-6 h-2 rounded-full bg-gray-900"></div>
-                  <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-                  <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-                </div>
-                
-                <div className="w-9"></div> {/* Spacer for centering */}
+                <h2 className="text-2xl font-light text-gray-900">Connect with {detectedProvider}</h2>
               </div>
 
-              {/* Provider logo and content */}
-              <div className="text-center space-y-6">
-                <div className="flex justify-center">
-                  {getProviderLogo(detectedProvider)}
-                </div>
+              {/* Provider description */}
+              <div className="text-center">
+                <p className="text-gray-500">
+                  Login to automatically configure your domain
+                </p>
+              </div>
 
-                <div className="px-4">
-                  <p className="text-lg text-gray-700">
-                    By logging in with your {detectedProvider} details, you give us <span className="font-semibold">one-time</span> permission to connect your domain.
-                  </p>
-                </div>
-
-                {/* Login form */}
-                <div className="space-y-4">
+              {/* Login form */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
                   <div className="relative">
-                    <User className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <Input
                       value={username}
                       onChange={(e) => {
                         setUsername(e.target.value);
-                        setAuthError(""); // Clear error when user types
+                        setAuthError(""); 
                       }}
-                      placeholder="Username"
-                      className="h-14 text-lg border-gray-300 rounded-xl bg-gray-50 pl-12 pr-4 focus:bg-white focus:border-gray-400"
+                      placeholder="Enter username"
+                      className="h-12 border-gray-300 rounded-lg pl-10 focus:ring-2 focus:ring-black focus:border-black transition-colors"
                     />
                   </div>
+                </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <Input
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => {
                         setPassword(e.target.value);
-                        setAuthError(""); // Clear error when user types
+                        setAuthError("");
                       }}
-                      placeholder="Password"
-                      className="h-14 text-lg border-gray-300 rounded-xl bg-gray-50 pl-12 pr-12 focus:bg-white focus:border-gray-400"
+                      placeholder="Enter password"
+                      className="h-12 border-gray-300 rounded-lg pl-10 pr-10 focus:ring-2 focus:ring-black focus:border-black transition-colors"
                       onKeyPress={(e) => e.key === 'Enter' && !authenticating && username.trim() && password.trim() && handleLogin()}
                     />
                     <button
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      <Eye className="w-5 h-5 text-gray-600" />
+                      <Eye className="w-5 h-5" />
                     </button>
                   </div>
-
-
-                  {authError && (
-                    <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                      {authError}
-                    </div>
-                  )}
-
-                  <Button 
-                    onClick={handleLogin}
-                    disabled={authenticating || !username.trim() || !password.trim()}
-                    className="w-full h-12 text-lg font-medium bg-blue-600 text-white border-0 rounded-xl hover:bg-blue-700 mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {authenticating ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                        Authenticating...
-                      </>
-                    ) : (
-                      'Continue'
-                    )}
-                  </Button>
                 </div>
 
-                {/* Additional options */}
-                <div className="space-y-4 text-sm text-gray-600">
-                  <p>
-                    If you can't log in or you signed up with a social account, you'll need to{" "}
+                {authError && (
+                  <div className="text-red-600 text-sm bg-red-50 border border-red-200 p-3 rounded-lg">
+                    {authError}
+                  </div>
+                )}
+
+                <Button 
+                  onClick={handleLogin}
+                  disabled={authenticating || !username.trim() || !password.trim()}
+                  className="w-full text-white py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300"
+                  style={{ backgroundColor: authenticating || !username.trim() || !password.trim() ? undefined : 'rgb(87, 140, 255)' }}
+                  onMouseEnter={(e) => {
+                    if (!(authenticating || !username.trim() || !password.trim())) {
+                      e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!(authenticating || !username.trim() || !password.trim())) {
+                      e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                    }
+                  }}
+                >
+                  {authenticating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Authenticating...
+                    </>
+                  ) : (
+                    'Connect Domain'
+                  )}
+                </Button>
+
+                {/* Manual setup option */}
+                <div className="text-center pt-4">
+                  <p className="text-sm text-gray-600">
+                    Can't login?{" "}
                     <button 
                       onClick={async () => {
                         await createDomainManually();
                       }}
-                      className="text-blue-600 underline hover:text-blue-700"
+                      className="text-gray-900 hover:text-black font-medium"
                     >
-                      go to our manual setup
-                    </button>.
+                      Use manual setup instead
+                    </button>
                   </p>
-
                 </div>
               </div>
             </div>
           ) : isAnalyzing ? (
-            <div className="space-y-8">
-              {/* Progress dots */}
-              <div className="flex justify-center space-x-2 pt-4">
-                <div className="w-2 h-2 rounded-full bg-gray-900"></div>
-                <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-                <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-                <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-                <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-              </div>
-
-              {/* Browser illustration */}
-              <div className="flex justify-center">
-                <div className="relative bg-gray-100 rounded-lg p-4 w-48 h-32">
-                  <div className="flex space-x-1 mb-3">
-                    <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                    <div className="w-2 h-2 rounded-full bg-yellow-400"></div>
-                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="bg-blue-200 h-8 w-20 rounded"></div>
-                    <div className="space-y-1">
-                      <div className="bg-gray-300 h-2 w-full rounded"></div>
-                      <div className="bg-gray-300 h-2 w-3/4 rounded"></div>
-                      <div className="bg-gray-300 h-2 w-1/2 rounded"></div>
-                    </div>
-                  </div>
-                  {/* Spinning C icon */}
-                  <div className="absolute -top-2 -right-2 bg-blue-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center">
-                    <div className="text-xl font-bold animate-spin">C</div>
-                  </div>
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="text-center space-y-3">
+                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto">
+                  <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                 </div>
-              </div>
-
-              {/* Title */}
-              <div className="text-center">
-                <h2 className="text-3xl font-bold text-gray-900">Analyzing your domain</h2>
+                <h2 className="text-2xl font-light text-gray-900">Analyzing Domain</h2>
+                <p className="text-gray-500">
+                  Checking your domain configuration
+                </p>
               </div>
 
               {/* Progress steps */}
               <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-                    <Check className="w-4 h-4 text-white" />
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 text-white" />
                   </div>
-                  <span className="text-lg text-gray-900">Analyzed {domain}</span>
+                  <span className="text-gray-900">Analyzed {domain}</span>
                 </div>
                 
-                <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center animate-pulse">
-                    <div className="w-3 h-3 rounded-full bg-white animate-ping"></div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-gray-400 flex items-center justify-center animate-pulse flex-shrink-0">
+                    <div className="w-2 h-2 rounded-full bg-white animate-ping"></div>
                   </div>
-                  <span className="text-lg text-gray-900">
-                    Checking Domain Connect support: <span className="underline decoration-2">Analyzing...</span>
+                  <span className="text-gray-900">
+                    Checking automated setup support...
                   </span>
                 </div>
                 
-                <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center">
-                    <Check className="w-4 h-4 text-gray-500" />
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
+                    <div className="w-2 h-2 rounded-full bg-gray-500"></div>
                   </div>
-                  <span className="text-lg text-gray-500">Getting your setup ready</span>
+                  <span className="text-gray-500">Preparing your setup</span>
                 </div>
               </div>
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold text-gray-900">Add a domain</h2>
-                {!isChecking && <p className="text-lg text-gray-700">Enter your domain name</p>}
+              {/* Header */}
+              <div className="text-center space-y-3">
+                <h2 className="text-2xl font-light text-gray-900">Add New Domain</h2>
+                {!isChecking && (
+                  <p className="text-gray-500">
+                    Enter your domain to start sending emails
+                  </p>
+                )}
               </div>
 
               {/* Checking banner */}
               {isChecking && (
-                <div className="bg-blue-50 text-blue-800 p-4 rounded-xl">
-                  <p className="text-base">
-                    We are checking if the domain provided is available and valid.
-                  </p>
+                <div className="bg-gray-50 border rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-gray-700">
+                      Checking domain configuration...
+                    </p>
+                  </div>
                 </div>
               )}
 
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Domain Name
+                  </label>
                   <Input
                     value={domain}
                     onChange={(e) => handleDomainChange(e.target.value)}
-                    placeholder="E.g. my-website.com"
-                    className={`h-14 text-lg border-gray-300 rounded-xl bg-gray-50 px-4 focus:bg-white focus:border-gray-400 ${
-                      validationError ? 'border-red-500 focus:border-red-500' : ''
+                    placeholder="example.com"
+                    className={`h-12 border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-colors ${
+                      validationError ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : ''
                     }`}
                     onKeyPress={(e) => e.key === 'Enter' && handleAddDomain()}
                   />
@@ -604,20 +586,31 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                   )}
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-3 pt-2">
                   <Button
                     variant="outline"
                     onClick={handleCancel}
-                    className="flex-1 h-12 text-lg font-medium bg-gray-100 text-gray-700 border-0 rounded-xl hover:bg-gray-200"
+                    className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 py-2.5 rounded-lg font-medium transition-colors"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleAddDomain}
                     disabled={!domain.trim() || validationError || isChecking}
-                    className="flex-1 h-12 text-lg font-medium bg-blue-600 text-white border-0 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:bg-gray-300"
+                    className="flex-1 text-white py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:bg-gray-300"
+                    style={{ backgroundColor: !domain.trim() || validationError || isChecking ? undefined : 'rgb(87, 140, 255)' }}
+                    onMouseEnter={(e) => {
+                      if (!(!domain.trim() || validationError || isChecking)) {
+                        e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!(!domain.trim() || validationError || isChecking)) {
+                        e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                      }
+                    }}
                   >
-                    {isChecking ? 'Checking...' : 'Add domain'}
+                    {isChecking ? 'Checking...' : 'Add Domain'}
                   </Button>
                 </div>
               </div>

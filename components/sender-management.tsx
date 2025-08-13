@@ -268,7 +268,14 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
 
             <Button 
               onClick={() => setShowAddSender(true)} 
-              className="bg-black hover:bg-gray-800 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+              className="text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+              style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+              }}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Sender
@@ -289,7 +296,14 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
               </p>
               <Button 
                 onClick={() => setShowAddSender(true)} 
-                className="bg-black hover:bg-gray-800 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+                className="text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+                style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                }}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Your First Sender
@@ -426,7 +440,18 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                 <Button 
                   type="submit" 
                   disabled={submitting}
-                  className="bg-black hover:bg-gray-800 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                  className="text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:bg-gray-300"
+                  style={{ backgroundColor: submitting ? undefined : 'rgb(87, 140, 255)' }}
+                  onMouseEnter={(e) => {
+                    if (!submitting) {
+                      e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!submitting) {
+                      e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                    }
+                  }}
                 >
                   {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Add Sender

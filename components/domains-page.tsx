@@ -445,7 +445,14 @@ export default function DomainsPage() {
 
             <Button 
               onClick={() => setShowAddDomain(true)} 
-              className="bg-black hover:bg-gray-800 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+              className="text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+              style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+              }}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Domain
@@ -494,7 +501,14 @@ export default function DomainsPage() {
               </p>
               <Button 
                 onClick={() => setShowAddDomain(true)} 
-                className="bg-black hover:bg-gray-800 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+                className="text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+                style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                }}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Your First Domain
@@ -547,7 +561,14 @@ export default function DomainsPage() {
                       <div className="flex items-center gap-3">
                         <Button
                           onClick={() => handleManageDomain(domain)}
-                          className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                          className="text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                          style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                          }}
                         >
                           {domain.status === 'verified' ? 'Manage' : 'Setup'}
                         </Button>
@@ -757,7 +778,18 @@ export default function DomainsPage() {
 
               <div className="text-center">
                 <Button 
-                  className="bg-black hover:bg-gray-800 text-white px-8 py-3 rounded-lg font-medium transition-colors text-base"
+                  className="text-white px-8 py-3 rounded-lg font-medium transition-colors text-base disabled:opacity-50 disabled:bg-gray-300"
+                  style={{ backgroundColor: !dnsRecordsAdded || verifying !== null ? undefined : 'rgb(87, 140, 255)' }}
+                  onMouseEnter={(e) => {
+                    if (!(!dnsRecordsAdded || verifying !== null)) {
+                      e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!(!dnsRecordsAdded || verifying !== null)) {
+                      e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                    }
+                  }}
                   disabled={!dnsRecordsAdded || verifying !== null}
                   onClick={() => {
                     const currentDomain = domains.find(d => d.domain === selectedDomain)
@@ -813,7 +845,14 @@ export default function DomainsPage() {
                     <div className="space-x-4">
                       <Button 
                         onClick={() => setCurrentView("senders")}
-                        className="bg-black hover:bg-gray-800 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                        className="text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                        style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                        }}
                       >
                         Manage Senders
                       </Button>
@@ -875,7 +914,14 @@ export default function DomainsPage() {
                             setShowVerificationResults(false)
                             setDnsRecordsAdded(false)
                           }}
-                          className="bg-black hover:bg-gray-800 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                          className="text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                          style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                          }}
                         >
                           Check Again
                         </Button>
