@@ -441,6 +441,13 @@ export default function CampaignSenderSelection({
     }
   }
 
+  // Handle domain configuration redirect
+  const handleDomainConfig = (domain: Domain) => {
+    // Redirect to domain verification/configuration page
+    // Opens in new tab to preserve campaign workflow
+    window.open(`/domains?domain=${encodeURIComponent(domain.domain)}`, '_blank')
+  }
+
   const getTotalStats = () => {
     const totalAccounts = domainsWithSenders.reduce((sum, domain) => sum + domain.senders.length, 0)
     const selectedCount = selectedSenders.size
@@ -614,6 +621,7 @@ export default function CampaignSenderSelection({
                       <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                         Verified
                       </Badge>
+                      
                       
                       {domain.senders.length > 0 && (
                         <div className="flex items-center">

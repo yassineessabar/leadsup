@@ -19,6 +19,7 @@ import {
   AlertCircle,
   X,
   RefreshCw,
+  Settings,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -559,6 +560,25 @@ export default function DomainsPage() {
                       </div>
 
                       <div className="flex items-center gap-3">
+                        {domain.status === 'verified' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              // Navigate to the domain setup/verification page in same tab
+                              setSelectedDomain(domain.domain)
+                              setSelectedDomainId(domain.id)
+                              setCurrentView("verification")
+                              fetchDnsRecords(domain.id)
+                            }}
+                            className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                            title="Configure domain settings"
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
                         <Button
                           onClick={() => handleManageDomain(domain)}
                           className="text-white px-4 py-2 rounded-lg font-medium transition-colors"

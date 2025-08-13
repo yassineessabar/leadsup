@@ -12,6 +12,7 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
+  Edit3,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -52,9 +53,15 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
   const [loading, setLoading] = useState(true)
   const [showAddSender, setShowAddSender] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState<string | null>(null)
   const [addSenderForm, setAddSenderForm] = useState({
     localPart: '', // Just the part before @
     display_name: '',
+    is_default: false
+  })
+  const [editSenderForm, setEditSenderForm] = useState({
+    display_name: '',
+    daily_limit: 50,
     is_default: false
   })
   const [submitting, setSubmitting] = useState(false)
@@ -238,6 +245,41 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
     } catch (error) {
       console.error('Error updating default sender:', error)
       toast.error('Failed to update default sender')
+    }
+  }
+
+  const handleEditSender = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!showEditDialog) return
+
+    setSubmitting(true)
+    try {
+      const response = await fetch(`/api/domains/${domainId}/senders/${showEditDialog}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          display_name: editSenderForm.display_name,
+          daily_limit: editSenderForm.daily_limit,
+          is_default: editSenderForm.is_default
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success('Sender account updated successfully')
+        setShowEditDialog(null)
+        setEditSenderForm({ display_name: '', daily_limit: 50, is_default: false })
+        fetchSenders()
+      } else {
+        toast.error(data.error || 'Failed to update sender account')
+      }
+    } catch (error) {
+      console.error('Error updating sender:', error)
+      toast.error('Failed to update sender account')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -457,6 +499,21 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => {
+                          setEditSenderForm({
+                            display_name: sender.display_name,
+                            daily_limit: sender.daily_limit || 50,
+                            is_default: sender.is_default
+                          })
+                          setShowEditDialog(sender.id)
+                        }}
+                        className="text-gray-600 hover:text-gray-700 hover:bg-gray-50 border-gray-200 px-3 py-2 rounded-lg font-medium transition-colors"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setShowDeleteDialog(sender.id)}
                         className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 px-3 py-2 rounded-lg font-medium transition-colors"
                       >
@@ -559,6 +616,98 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                 >
                   {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Add Sender
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Sender Dialog */}
+        <Dialog open={!!showEditDialog} onOpenChange={() => setShowEditDialog(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader className="text-center pb-4">
+              <DialogTitle className="text-xl font-medium text-gray-900">Edit Sender</DialogTitle>
+              <DialogDescription className="text-gray-500">
+                Update the details for this email sender
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleEditSender} className="space-y-6">
+              <div>
+                <Label htmlFor="edit_display_name" className="text-sm font-medium text-gray-700 mb-2 block">
+                  Display Name
+                </Label>
+                <Input
+                  id="edit_display_name"
+                  value={editSenderForm.display_name}
+                  onChange={(e) => setEditSenderForm(prev => ({ ...prev, display_name: e.target.value }))}
+                  placeholder="Support Team"
+                  className="border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-colors"
+                />
+                <p className="text-sm text-gray-500 mt-2">
+                  How this sender will appear in recipient emails
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="edit_daily_limit" className="text-sm font-medium text-gray-700 mb-2 block">
+                  Daily Email Limit
+                </Label>
+                <Input
+                  id="edit_daily_limit"
+                  type="number"
+                  value={editSenderForm.daily_limit}
+                  onChange={(e) => setEditSenderForm(prev => ({ ...prev, daily_limit: parseInt(e.target.value) || 50 }))}
+                  min="1"
+                  max="500"
+                  className="border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-colors"
+                />
+                <p className="text-sm text-gray-500 mt-2">
+                  Maximum number of emails this sender can send per day
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="edit_is_default"
+                  checked={editSenderForm.is_default}
+                  onChange={(e) => setEditSenderForm(prev => ({ ...prev, is_default: e.target.checked }))}
+                  className="rounded border-gray-300 text-black focus:ring-black"
+                />
+                <Label htmlFor="edit_is_default" className="text-sm text-gray-700">
+                  Make this the primary sender
+                </Label>
+              </div>
+
+              <DialogFooter className="gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowEditDialog(null)}
+                  disabled={submitting}
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={submitting}
+                  className="text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:bg-gray-300"
+                  style={{ backgroundColor: submitting ? undefined : 'rgb(87, 140, 255)' }}
+                  onMouseEnter={(e) => {
+                    if (!submitting) {
+                      e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!submitting) {
+                      e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                    }
+                  }}
+                >
+                  {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Update Sender
                 </Button>
               </DialogFooter>
             </form>
