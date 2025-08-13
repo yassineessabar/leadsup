@@ -451,10 +451,9 @@ export default function CampaignSenderSelection({
             </p>
             <Button 
               onClick={() => {
-                // Navigate to domains tab
-                console.log('🔄 Navigating to domain tab...')
-                const event = new CustomEvent('tab-switched', { detail: 'domain' })
-                window.dispatchEvent(event)
+                // Navigate to root page with domain tab selected
+                console.log('🔄 Navigating to /?tab=domain...')
+                window.location.href = '/?tab=domain'
               }}
               style={{ backgroundColor: 'rgb(87, 140, 255)' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
@@ -599,10 +598,9 @@ export default function CampaignSenderSelection({
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              // Navigate to domain senders management
-                              console.log('🔄 Navigating to domain tab to add senders...')
-                              const event = new CustomEvent('tab-switched', { detail: 'domain' })
-                              window.dispatchEvent(event)
+                              // Navigate to root page with domain tab to add senders
+                              console.log('🔄 Navigating to /?tab=domain to add senders...')
+                              window.location.href = '/?tab=domain'
                             }}
                             className="text-blue-600 border-blue-200 hover:bg-blue-50"
                           >
