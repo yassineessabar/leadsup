@@ -142,31 +142,93 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Using sender: ${senderData.email} (${senderData.name || 'No name'})`)
 
-    const timestamp = new Date().toLocaleTimeString()
-    const subject = `Test Email from ${senderData.name || senderEmail} - ${timestamp}`
+    // Get the first sequence from this campaign to use as test content
+    console.log(`🔍 Looking for campaign sequences for campaign: ${campaignId}`)
     
-    const htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>🧪 Test Email from LeadsUp Campaign</h2>
-        <p>Hi there,</p>
-        <p>This is a test email from your LeadsUp campaign system to verify the email integration is working correctly.</p>
+    let sequenceContent = null
+    let sequenceSubject = null
+    
+    if (campaignId) {
+      const { data: sequences, error: seqError } = await supabaseServer
+        .from('campaign_sequences')
+        .select('subject, content')
+        .eq('campaign_id', campaignId)
+        .order('step_number', { ascending: true })
+        .limit(1)
+        .single()
         
-        <div style="background: #f0f8ff; padding: 15px; border-left: 4px solid #2196F3; margin: 20px 0;">
-          <h3 style="color: #1976d2; margin-top: 0;">📧 Test Details:</h3>
-          <p><strong>Sent from:</strong> ${senderEmail}</p>
-          <p><strong>Sender name:</strong> ${senderData.name || 'N/A'}</p>
-          <p><strong>Time:</strong> ${timestamp}</p>
-          <p><strong>Campaign ID:</strong> ${campaignId || 'N/A'}</p>
+      if (!seqError && sequences) {
+        sequenceContent = sequences.content
+        sequenceSubject = sequences.subject
+        console.log(`✅ Found sequence: ${sequenceSubject}`)
+      } else {
+        console.log(`⚠️ No sequences found for campaign, using generic content`)
+      }
+    }
+    
+    const timestamp = new Date().toLocaleTimeString()
+    
+    // Use sequence content if available, otherwise fallback to generic
+    let subject, htmlContent
+    
+    if (sequenceContent && sequenceSubject) {
+      // Use actual sequence content
+      subject = sequenceSubject
+      htmlContent = sequenceContent
+      
+      // Replace common variables with test values
+      const testVariables = {
+        firstName: 'John',
+        lastName: 'Doe', 
+        company: 'Acme Corp',
+        title: 'Marketing Manager',
+        senderName: senderData.name || senderEmail.split('@')[0]
+      }
+      
+      // Apply variable replacements
+      Object.entries(testVariables).forEach(([key, value]) => {
+        const regex = new RegExp(`{{${key}}}`, 'g')
+        subject = subject.replace(regex, value)
+        htmlContent = htmlContent.replace(regex, value)
+      })
+      
+      // Add test indicator to subject
+      subject = `[TEST] ${subject} - ${timestamp}`
+      
+      // Add test notice to content
+      htmlContent = `
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
+          <strong>🧪 TEST EMAIL:</strong> This is a test of your campaign sequence sent at ${timestamp}. Reply to test the capture functionality!
         </div>
-        
-        <p><strong>Please reply to this email to test the reply capture functionality!</strong></p>
-        <p>When you reply, your message should appear in both the "Sent" and "Inbox" folders of your LeadsUp dashboard.</p>
-        
-        <hr style="margin: 20px 0;">
-        <p>Best regards,<br>${senderData.name || senderEmail}</p>
-        <p style="font-size: 12px; color: #666;">This is an automated test email from LeadsUp Campaign System</p>
-      </div>
-    `
+        ${htmlContent}
+      `
+      
+    } else {
+      // Fallback to generic test content
+      subject = `Test Email from ${senderData.name || senderEmail} - ${timestamp}`
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>🧪 Test Email from LeadsUp Campaign</h2>
+          <p>Hi there,</p>
+          <p>This is a test email from your LeadsUp campaign system to verify the email integration is working correctly.</p>
+          
+          <div style="background: #f0f8ff; padding: 15px; border-left: 4px solid #2196F3; margin: 20px 0;">
+            <h3 style="color: #1976d2; margin-top: 0;">📧 Test Details:</h3>
+            <p><strong>Sent from:</strong> ${senderEmail}</p>
+            <p><strong>Sender name:</strong> ${senderData.name || 'N/A'}</p>
+            <p><strong>Time:</strong> ${timestamp}</p>
+            <p><strong>Campaign ID:</strong> ${campaignId || 'N/A'}</p>
+          </div>
+          
+          <p><strong>Please reply to this email to test the reply capture functionality!</strong></p>
+          <p>When you reply, your message should appear in both the "Sent" and "Inbox" folders of your LeadsUp dashboard.</p>
+          
+          <hr style="margin: 20px 0;">
+          <p>Best regards,<br>${senderData.name || senderEmail}</p>
+          <p style="font-size: 12px; color: #666;">This is an automated test email from LeadsUp Campaign System</p>
+        </div>
+      `
+    }
 
     try {
       // Send email via SendGrid

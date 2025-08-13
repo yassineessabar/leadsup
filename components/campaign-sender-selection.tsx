@@ -813,11 +813,18 @@ export default function CampaignSenderSelection({
                 />
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
-                <div className="text-sm text-yellow-800 font-medium mb-1">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+                <div className="text-sm text-blue-800 font-medium mb-1">
+                  📧 What will be sent:
+                </div>
+                <div className="text-xs text-blue-700 mb-2">
+                  This will send your <strong>actual campaign sequence</strong> (first email) with test variables:
+                  <br/>• firstName: John • lastName: Doe • company: Acme Corp
+                </div>
+                <div className="text-sm text-blue-800 font-medium mb-1">
                   💡 Test Instructions:
                 </div>
-                <div className="text-xs text-yellow-700">
+                <div className="text-xs text-blue-700">
                   1. Click "Send Test Email" below<br/>
                   2. Check your email and reply to the test message<br/>
                   3. Your reply should appear in both "Sent" and "Inbox" folders in LeadsUp
