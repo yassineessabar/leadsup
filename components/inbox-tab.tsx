@@ -198,11 +198,20 @@ export default function InboxPage() {
       const response = await fetch(`/api/inbox?${params.toString()}`)
       const data = await response.json()
       
-      console.log('📧 API response:', { success: data.success, emailCount: data.emails?.length, folder: selectedFolder })
+      // Handle both data.emails and data.data formats
+      const emailsArray = data.emails || data.data || []
+      console.log('📧 API response:', { 
+        success: data.success, 
+        emailCount: emailsArray.length, 
+        folder: selectedFolder,
+        hasEmails: !!data.emails,
+        hasData: !!data.data,
+        rawResponse: data
+      })
       
-      if (data.success && data.emails) {
+      if (data.success && emailsArray.length >= 0) {  // Accept empty arrays too
         // Normalize the email data to handle both old and new property names
-        const normalizedEmails = data.emails.map((email: any) => ({
+        const normalizedEmails = emailsArray.map((email: any) => ({
           ...email,
           isRead: email.isRead ?? email.is_read ?? false,
           hasAttachment: email.hasAttachment ?? email.has_attachment ?? false,
@@ -1072,8 +1081,10 @@ export default function InboxPage() {
               {/* More messages indicator */}
               {!composeMode && selectedEmail && (() => {
                 // Use thread messages count if available, otherwise fall back to selectedEmail.message_count
-                const threadMessagesForEmail = threadMessages[selectedEmail.conversation_id] || []
-                const totalMessages = threadMessagesForEmail.length > 0 ? threadMessagesForEmail.length : selectedEmail.message_count
+                const threadMessagesForEmail = threadMessages[selectedEmail.conversation_id]
+                const totalMessages = threadMessagesForEmail && Array.isArray(threadMessagesForEmail) 
+                  ? threadMessagesForEmail.length 
+                  : selectedEmail.message_count
                 return totalMessages && totalMessages > 1
               })() && (
                 <div className="text-center py-4 border-t border-gray-200">
@@ -1083,8 +1094,13 @@ export default function InboxPage() {
                   >
                     <span>
                       {(() => {
-                        const threadMessagesForEmail = threadMessages[selectedEmail.conversation_id] || []
-                        const totalMessages = threadMessagesForEmail.length > 0 ? threadMessagesForEmail.length : selectedEmail.message_count
+                        const threadMessagesForEmail = threadMessages[selectedEmail.conversation_id]
+                        const hasThreadMessages = threadMessagesForEmail && Array.isArray(threadMessagesForEmail) && threadMessagesForEmail.length > 0
+                        
+                        // Use actual thread messages count if available, otherwise fall back to selectedEmail.message_count
+                        const totalMessages = hasThreadMessages 
+                          ? threadMessagesForEmail.length 
+                          : selectedEmail.message_count
                         const moreCount = totalMessages - 1
                         
                         return expandedThreads.has(selectedEmail.conversation_id) 
