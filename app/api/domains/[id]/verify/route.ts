@@ -738,9 +738,9 @@ async function setupSendGridIntegration(domain: any) {
       } catch (error: any) {
         // Handle "already exists" error gracefully
         if (error.message?.includes('already exists')) {
-          console.log(`  ℹ️ Identity already exists for ${sender.email}`)
+          console.log(`  ✅ Identity already exists for ${sender.email} - marking as verified`)
           
-          // Mark as verified since it exists
+          // Mark as verified since it exists and domain is authenticated
           await supabase
             .from('sender_accounts')
             .update({

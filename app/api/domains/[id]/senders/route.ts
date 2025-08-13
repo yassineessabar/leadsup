@@ -266,9 +266,16 @@ export async function POST(
         console.log(`✅ SendGrid sender identity created: ${sendgridSenderId}`)
       }
       
-    } catch (sendgridError) {
-      console.error(`⚠️ Failed to create SendGrid sender identity for ${email}:`, sendgridError)
-      sendgridStatus = 'failed'
+    } catch (sendgridError: any) {
+      // Handle "already exists" as success
+      if (sendgridError.message?.includes('already exists')) {
+        console.log(`✅ SendGrid sender identity already exists for ${email}`)
+        sendgridStatus = 'verified' // Mark as verified since it exists
+        // Don't fail - this is actually success
+      } else {
+        console.error(`⚠️ Failed to create SendGrid sender identity for ${email}:`, sendgridError)
+        sendgridStatus = 'failed'
+      }
       // Don't fail the sender creation, just log the error
     }
     
