@@ -30,6 +30,9 @@ interface Sender {
   is_active: boolean
   emails_sent: number
   created_at: string
+  setup_status: 'completed' | 'warming_up' | 'needs_attention' | 'pending'
+  daily_limit: number
+  health_score: number
 }
 
 interface Domain {
@@ -57,15 +60,62 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
   const [submitting, setSubmitting] = useState(false)
   const [creatingPresets, setCreatingPresets] = useState(false)
 
+  // Calculate statistics
+  const getStats = () => {
+    const totalAccounts = senders.length
+    const activeWarmup = senders.filter(s => s.setup_status === 'warming_up').length
+    const needAttention = senders.filter(s => s.setup_status === 'needs_attention').length
+    const avgScore = senders.length > 0 ? 
+      Math.round(senders.reduce((sum, s) => sum + (s.health_score || 0), 0) / senders.length) : 0
+    
+    return { totalAccounts, activeWarmup, needAttention, avgScore }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-700'
+      case 'warming_up':
+        return 'bg-blue-100 text-blue-700'
+      case 'needs_attention':
+        return 'bg-red-100 text-red-700'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-700'
+      default:
+        return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Active'
+      case 'warming_up':
+        return 'Warming Up'
+      case 'needs_attention':
+        return 'Needs Attention'
+      case 'pending':
+        return 'Pending'
+      default:
+        return 'Unknown'
+    }
+  }
+
+  const getHealthScoreColor = (score: number) => {
+    if (score >= 80) return 'text-green-600'
+    if (score >= 60) return 'text-yellow-600'
+    return 'text-red-600'
+  }
+
   useEffect(() => {
     fetchSenders()
   }, [domainId])
 
   const createPresetSenders = async (domainName: string) => {
     const presetAccounts = [
-      { localPart: 'contact', displayName: 'Contact' },
-      { localPart: 'hello', displayName: 'Hello' },
-      { localPart: 'info', displayName: 'Info' }
+      { localPart: 'contact', displayName: 'Contact', healthScore: 85 },
+      { localPart: 'hello', displayName: 'Hello', healthScore: 78 },
+      { localPart: 'info', displayName: 'Info', healthScore: 92 }
     ]
 
     try {
@@ -283,6 +333,37 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
           </div>
         </div>
 
+        {/* Statistics */}
+        {senders.length > 0 && (
+          <div className="mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {(() => {
+                const stats = getStats()
+                return (
+                  <>
+                    <div className="bg-white border rounded-lg p-4">
+                      <div className="text-2xl font-light text-gray-900">{stats.totalAccounts}</div>
+                      <div className="text-sm text-gray-500">Total Accounts</div>
+                    </div>
+                    <div className="bg-white border rounded-lg p-4">
+                      <div className="text-2xl font-light text-blue-600">{stats.activeWarmup}</div>
+                      <div className="text-sm text-gray-500">Active Warmup</div>
+                    </div>
+                    <div className="bg-white border rounded-lg p-4">
+                      <div className="text-2xl font-light text-red-600">{stats.needAttention}</div>
+                      <div className="text-sm text-gray-500">Need Attention</div>
+                    </div>
+                    <div className="bg-white border rounded-lg p-4">
+                      <div className={`text-2xl font-light ${getHealthScoreColor(stats.avgScore)}`}>{stats.avgScore}%</div>
+                      <div className="text-sm text-gray-500">Avg. Score</div>
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+        )}
+
         {/* Senders */}
         <div>
           {senders.length === 0 ? (
@@ -328,28 +409,51 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
               
               {senders.map((sender) => (
                 <div key={sender.id} className={`bg-white border rounded-xl p-6 hover:shadow-md transition-shadow ${sender.is_default ? 'ring-2 ring-gray-200' : ''}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4 flex-1">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                         <User className="h-6 w-6 text-gray-600" />
                       </div>
                       
-                      <div>
-                        <div className="flex items-center gap-3 mb-1">
-                          <h3 className="text-lg font-medium text-gray-900">{sender.display_name || sender.email.split('@')[0]}</h3>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-medium text-gray-900 truncate">{sender.display_name || sender.email.split('@')[0]}</h3>
                           {sender.is_default && (
-                            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full">Primary</span>
+                            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full flex-shrink-0">Primary</span>
                           )}
                         </div>
-                        <p className="text-gray-600 mb-1">{sender.email}</p>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span>{sender.emails_sent || 0} emails sent</span>
-                          <span>Added {new Date(sender.created_at).toLocaleDateString()}</span>
+                        <p className="text-gray-600 mb-3 truncate">{sender.email}</p>
+                        
+                        {/* Sender details in grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <div className="text-gray-500 mb-1">Setup Status</div>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(sender.setup_status || 'pending')}`}>
+                              {getStatusText(sender.setup_status || 'pending')}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="text-gray-500 mb-1">Daily Limit</div>
+                            <div className="font-medium text-gray-900">{sender.daily_limit || 50}/day</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-500 mb-1">Health Score</div>
+                            <div className={`font-medium ${getHealthScoreColor(sender.health_score || 0)}`}>
+                              {sender.health_score || 0}%
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span>{sender.emails_sent || 0} emails sent</span>
+                            <span>Added {new Date(sender.created_at).toLocaleDateString()}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-start gap-3 flex-shrink-0 ml-4">
                       <Button
                         variant="outline"
                         size="sm"
