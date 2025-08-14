@@ -62,9 +62,15 @@ export default function CampaignSenderSelection({
 
   // Load domains and their sender accounts
   useEffect(() => {
-    fetchDomainsAndSenders()
-    loadExistingSenderAssignments()
+    loadData()
   }, [])
+
+  const loadData = async () => {
+    // First load existing assignments to know if we should auto-select all
+    await loadExistingSenderAssignments()
+    // Then fetch domains and senders (which will auto-select if no existing assignments)
+    await fetchDomainsAndSenders()
+  }
 
   // Auto-expand domains that have selected senders
   useEffect(() => {
@@ -122,6 +128,25 @@ export default function CampaignSenderSelection({
 
       const domainsWithSendersResults = await Promise.all(domainsWithSendersPromises)
       setDomainsWithSenders(domainsWithSendersResults)
+
+      // Auto-select all available senders if no existing selections
+      if (selectedSenders.size === 0) {
+        const allSenderIds = domainsWithSendersResults
+          .flatMap(domain => domain.senders)
+          .map(sender => sender.id)
+        
+        if (allSenderIds.length > 0) {
+          console.log('🎯 Auto-selecting all available senders:', allSenderIds)
+          const allSelectedSet = new Set(allSenderIds)
+          setSelectedSenders(allSelectedSet)
+          onSelectionChange(allSenderIds)
+          
+          // Auto-save the selection
+          saveSenderSelection(allSenderIds).catch(error => {
+            console.error('Failed to auto-save initial selection:', error)
+          })
+        }
+      }
 
     } catch (error) {
       console.error('Error fetching domains and senders:', error)
