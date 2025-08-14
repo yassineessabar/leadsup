@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   Search,
   ArrowUpDown,
@@ -78,14 +78,20 @@ export default function DomainsPage() {
 
   useEffect(() => {
     fetchDomains()
-    
+  }, []) // Remove domains dependency to prevent infinite loop
+
+  useEffect(() => {
     // Listen for domain verification redirect events from the modal
     const handleDomainVerificationRedirect = (event: CustomEvent) => {
+      console.log('📡 Received domain-verification-redirect event:', event.detail);
       const { domain } = event.detail
+      
+      console.log(`🔍 Looking for domain '${domain}' in domains list (${domains.length} total)`);
       
       // Find the domain in our list
       const domainData = domains.find(d => d.domain === domain)
       if (domainData) {
+        console.log('✅ Found domain in list, switching to verification view:', domainData);
         // Set the selected domain and switch to verification view
         setSelectedDomain(domain)
         setSelectedDomainId(domainData.id)
@@ -93,17 +99,28 @@ export default function DomainsPage() {
         // Fetch DNS records for the domain
         fetchDnsRecords(domainData.id)
       } else {
+        console.log('⚠️ Domain not found in current list, refreshing domains first');
         // If domain not found, refresh domains first then navigate
-        fetchDomains().then(() => {
-          setTimeout(() => {
-            const updatedDomain = domains.find(d => d.domain === domain)
+        fetchDomains().then(async () => {
+          setTimeout(async () => {
+            // Re-fetch the latest domains state after refresh
+            const { data: latestDomains } = await supabase
+              .from('domains')
+              .select('*')
+              .order('created_at', { ascending: false });
+              
+            const updatedDomain = latestDomains?.find(d => d.domain === domain);
             if (updatedDomain) {
+              console.log('✅ Found domain after refresh, switching to verification view:', updatedDomain);
               setSelectedDomain(domain)
               setSelectedDomainId(updatedDomain.id)
               setCurrentView("verification")
               fetchDnsRecords(updatedDomain.id)
+            } else {
+              console.log('❌ Domain still not found after refresh');
+              console.log('Available domains:', latestDomains?.map(d => d.domain));
             }
-          }, 100)
+          }, 200)
         })
       }
     }
@@ -115,18 +132,34 @@ export default function DomainsPage() {
     return () => {
       window.removeEventListener('domain-verification-redirect', handleDomainVerificationRedirect as EventListener)
     }
-  }, [domains])
+  }, [domains]) // Keep domains dependency only for the event listener
 
-  const fetchDomains = async () => {
+  const fetchDomains = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/domains')
+      console.log('Fetching domains from /api/domains...')
+      const response = await fetch('/api/domains', {
+        credentials: 'include', // Ensure cookies are sent
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
       const data = await response.json()
       
+      console.log('Domains API response:', { status: response.status, data })
+      
       if (response.ok) {
-        setDomains(data.domains || [])
+        const domainsData = data.domains || []
+        console.log('Setting domains data:', domainsData)
+        setDomains(domainsData)
+        console.log(`Successfully loaded ${domainsData.length} domains`)
       } else {
-        toast.error(data.error || 'Failed to load domains')
+        console.error('Domains API error:', data)
+        if (response.status === 401) {
+          toast.error('Authentication required. Please sign in again.')
+        } else {
+          toast.error(data.error || 'Failed to load domains')
+        }
       }
     } catch (error) {
       console.error('Error fetching domains:', error)
@@ -134,7 +167,7 @@ export default function DomainsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const handleManageDomain = (domain: Domain) => {
     setSelectedDomain(domain.domain)
