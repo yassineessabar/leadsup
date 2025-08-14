@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
-import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart, ExternalLink, Inbox, Archive, Reply, Forward, Rocket } from "lucide-react"
+import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart, ExternalLink, Inbox, Archive, Reply, Forward, Rocket, Square } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -1858,7 +1858,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   // Scrapping functions
-  const handleStartScrapping = async (mode: 'full' | 'profiles-only' = 'full') => {
+  const handleStartScrapping = async (mode: 'full' | 'profiles-only' | 'combined' = 'full') => {
     // Validate all fields are filled
     if (!scrappingIndustry || !scrappingKeyword || !scrappingLocation) {
       toast({
@@ -1887,7 +1887,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ mode })
+        body: JSON.stringify({ 
+          mode,
+          keyword: scrappingKeyword,
+          location: scrappingLocation, 
+          industry: scrappingIndustry,
+          dailyLimit: scrappingDailyLimit
+        })
       })
 
       const result = await response.json()
@@ -1895,10 +1901,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       if (response.ok) {
         const description = mode === 'profiles-only' 
           ? `Profile finding is now in progress. We'll search LinkedIn for matching profiles.`
+          : mode === 'combined'
+          ? `Combined scraping started. We'll first find LinkedIn profiles, then enrich each one with email data individually.`
           : `Email enrichment is now in progress. We'll find emails for existing profiles.`
         
         toast({
-          title: mode === 'profiles-only' ? "Profile Finding Started" : "Email Enrichment Started",
+          title: mode === 'profiles-only' 
+            ? "Profile Finding Started" 
+            : mode === 'combined'
+            ? "Combined Scraping Started"
+            : "Email Enrichment Started",
           description
         })
         
@@ -1967,6 +1979,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     }
   }, [scrapingStatus, scrapingProgress])
+
+  // Refresh contacts when scraping progress changes (new contacts are being added)
+  useEffect(() => {
+    if (activeTab === 'contacts' && scrapingStatus === 'running' && scrapingProgress.totalContacts > 0) {
+      // Refresh contacts when new contacts are being added during scraping
+      fetchContacts()
+    }
+  }, [scrapingProgress.totalContacts, activeTab])
 
   // Load connected email accounts
   const loadConnectedAccounts = async () => {
@@ -3038,37 +3058,43 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
                 <div className="flex items-center space-x-3">
                   {!isScrappingActive ? (
-                    <>
-                      <Button
-                        onClick={() => handleStartScrapping('profiles-only')}
-                        disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
-                        variant="outline"
-                        className="border-blue-500 text-blue-600 hover:bg-blue-50"
-                      >
-                        <Search className="w-4 h-4 mr-2" />
-                        Find Profiles Only
-                      </Button>
-                      <Button
-                        onClick={() => handleStartScrapping('full')}
-                        disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
-                        style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-                        className="text-white"
-                      >
-                        <Play className="w-4 h-4 mr-2" />
-                        Start Full Scrapping
-                      </Button>
-                    </>
+                    <Button
+                      onClick={() => handleStartScrapping('combined')}
+                      disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
+                      style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                      className="text-white"
+                    >
+                      <Search className="w-4 h-4 mr-2" />
+                      Start Profile Scraping & Email Enrichment
+                    </Button>
+                  ) : scrapingStatus === 'completed' ? (
+                    <Button
+                      onClick={() => handleStartScrapping('combined')}
+                      disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
+                      style={{ backgroundColor: 'rgb(34, 197, 94)' }}
+                      className="text-white"
+                    >
+                      <Search className="w-4 h-4 mr-2" />
+                      ✅ Scraping Complete - Run Again
+                    </Button>
                   ) : (
                     <Button
                       onClick={handleStopScrapping}
                       variant="destructive"
                     >
-                      <Square className="w-4 h-4 mr-2" />
+                      <X className="w-4 h-4 mr-2" />
                       Stop Scrapping
                     </Button>
                   )}
                   <div className="text-xs text-gray-500">
-                    Fill in all fields to start scrapping LinkedIn profiles for contacts
+                    {isScrappingActive 
+                      ? scrapingProgress.totalProfiles > 0 && scrapingProgress.totalContacts === 0
+                        ? `Finding profiles... Found ${scrapingProgress.totalProfiles} profiles so far`
+                        : scrapingProgress.totalContacts > 0
+                        ? `Enriching contacts... ${scrapingProgress.totalContacts} contacts enriched from ${scrapingProgress.totalProfiles} profiles`
+                        : "Starting scraping process..."
+                      : "Fill in all fields to start scrapping LinkedIn profiles and enriching them with emails"
+                    }
                   </div>
                 </div>
               </div>

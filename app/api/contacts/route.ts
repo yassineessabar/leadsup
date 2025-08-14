@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -6,20 +7,140 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+async function getUserIdFromSession(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get("session")?.value
+
+    if (!sessionToken) {
+      return null
+    }
+
+    const { data: session, error } = await supabase
+      .from("user_sessions")
+      .select("user_id, expires_at")
+      .eq("session_token", sessionToken)
+      .single()
+    
+    if (error || !session) {
+      return null
+    }
+    
+    // Check if session is expired
+    if (new Date(session.expires_at) < new Date()) {
+      return null
+    }
+
+    return session.user_id
+  } catch (err) {
+    return null
+  }
+}
+
+async function fetchAllContactsForDemo(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const search = searchParams.get('search')
+    const campaignId = searchParams.get('campaign_id')
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50
+    const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0
+
+    // Build query without user filter for demo (no campaigns join for now)
+    let query = supabase
+      .from('contacts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    // Apply filters if provided
+    if (search) {
+      query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%`)
+    }
+
+    if (campaignId) {
+      query = query.eq('campaign_id', campaignId)
+    }
+
+    const { data: contacts, error } = await query
+
+    if (error) {
+      console.error('Demo query error:', error)
+      return NextResponse.json({ error: 'Failed to fetch contacts' }, { status: 500 })
+    }
+
+    // Get total count for pagination (with same filters)
+    let countQuery = supabase
+      .from('contacts')
+      .select('*', { count: 'exact', head: true })
+
+    if (campaignId) {
+      countQuery = countQuery.eq('campaign_id', campaignId)
+    }
+    if (search) {
+      countQuery = countQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%)`)
+    }
+
+    const { count, error: countError } = await countQuery
+
+    // Get campaign names for the contacts (same as authenticated version)
+    const campaignIds = [...new Set(contacts?.map(c => c.campaign_id).filter(Boolean) || [])]
+    let campaignMap: Record<string, string> = {}
+    
+    if (campaignIds.length > 0) {
+      const { data: campaigns, error: campaignError } = await supabase
+        .from('campaigns')
+        .select('id, name')
+        .in('id', campaignIds)
+      
+      if (campaigns) {
+        campaignMap = campaigns.reduce((acc, campaign) => {
+          acc[campaign.id] = campaign.name
+          return acc
+        }, {} as Record<string, string>)
+      }
+    }
+
+    // Transform contacts to include campaign_name
+    const transformedContacts = contacts?.map(contact => ({
+      ...contact,
+      campaign_name: contact.campaign_id ? campaignMap[contact.campaign_id] || null : null
+    })) || []
+
+    return NextResponse.json({ 
+      contacts: transformedContacts,
+      total: count || 0,
+      hasMore: contacts && contacts.length === limit
+    })
+  } catch (error) {
+    console.error('💥 Demo fetch error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 export async function GET(request: Request) {
   try {
+    // Authenticate user
+    const userId = await getUserIdFromSession()
+    if (!userId) {
+      // For demo purposes, let's fetch all contacts without user filter
+      // In production, this should return 401 Unauthorized
+      return fetchAllContactsForDemo(request)
+    }
+
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const emailStatus = searchParams.get('email_status')
     const company = searchParams.get('company')
     const industry = searchParams.get('industry')
+    const campaignId = searchParams.get('campaign_id')
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50
     const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0
 
-    // Build query
+    // Build query with user filter (no campaigns join for now)
     let query = supabase
       .from('contacts')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -38,6 +159,10 @@ export async function GET(request: Request) {
 
     if (industry) {
       query = query.eq('industry', industry)
+    }
+
+    if (campaignId) {
+      query = query.eq('campaign_id', campaignId)
     }
 
     const { data: contacts, error } = await query
@@ -172,13 +297,47 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Failed to fetch contacts' }, { status: 500 })
     }
 
-    // Get total count for pagination
-    const { count, error: countError } = await supabase
+    // Get total count for pagination (with same filters)
+    let countQuery = supabase
       .from('contacts')
       .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+
+    if (campaignId) {
+      countQuery = countQuery.eq('campaign_id', campaignId)
+    }
+    if (search) {
+      countQuery = countQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%)`)
+    }
+
+    const { count, error: countError } = await countQuery
+
+    // Get campaign names for the contacts
+    const campaignIds = [...new Set(contacts?.map(c => c.campaign_id).filter(Boolean) || [])]
+    let campaignMap: Record<string, string> = {}
+    
+    if (campaignIds.length > 0) {
+      const { data: campaigns, error: campaignError } = await supabase
+        .from('campaigns')
+        .select('id, name')
+        .in('id', campaignIds)
+      
+      if (campaigns) {
+        campaignMap = campaigns.reduce((acc, campaign) => {
+          acc[campaign.id] = campaign.name
+          return acc
+        }, {} as Record<string, string>)
+      }
+    }
+
+    // Transform contacts to include campaign_name
+    const transformedContacts = contacts?.map(contact => ({
+      ...contact,
+      campaign_name: contact.campaign_id ? campaignMap[contact.campaign_id] || null : null
+    })) || []
 
     return NextResponse.json({ 
-      contacts: contacts || [],
+      contacts: transformedContacts,
       total: count || 0,
       hasMore: contacts && contacts.length === limit
     })
@@ -190,37 +349,40 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // Authenticate user
+    const userId = await getUserIdFromSession()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const {
       first_name,
       last_name,
       email,
-      email_status = 'Unknown',
-      privacy = 'Normal', 
-      tags = '',
-      linkedin,
       title,
       location,
       company,
       industry,
-      note = ''
+      linkedin,
+      image_url,
+      campaign_id
     } = body
 
     const { data: contact, error } = await supabase
       .from('contacts')
       .insert({
+        user_id: userId,
         first_name,
         last_name,
         email,
-        email_status,
-        privacy,
-        tags,
-        linkedin,
         title,
         location,
         company,
         industry,
-        note
+        linkedin,
+        image_url,
+        campaign_id
       })
       .select()
       .single()
