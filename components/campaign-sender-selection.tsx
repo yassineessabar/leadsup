@@ -66,9 +66,7 @@ export default function CampaignSenderSelection({
   }, [])
 
   const loadData = async () => {
-    // First load existing assignments to know if we should auto-select all
-    await loadExistingSenderAssignments()
-    // Then fetch domains and senders (which will auto-select if no existing assignments)
+    // Load domains and senders (will auto-select all senders)
     await fetchDomainsAndSenders()
   }
 
@@ -125,23 +123,21 @@ export default function CampaignSenderSelection({
       setExpandedDomains(new Set(allDomainIds))
       console.log('🎯 Auto-expanding all domains:', allDomainIds)
 
-      // Auto-select all available senders if no existing selections
-      if (selectedSenders.size === 0) {
-        const allSenderIds = domainsWithSendersResults
-          .flatMap(domain => domain.senders)
-          .map(sender => sender.id)
+      // Auto-select all available senders by default
+      const allSenderIds = domainsWithSendersResults
+        .flatMap(domain => domain.senders)
+        .map(sender => sender.id)
+      
+      if (allSenderIds.length > 0) {
+        console.log('🎯 Auto-selecting all available senders:', allSenderIds)
+        const allSelectedSet = new Set(allSenderIds)
+        setSelectedSenders(allSelectedSet)
+        onSelectionChange(allSenderIds)
         
-        if (allSenderIds.length > 0) {
-          console.log('🎯 Auto-selecting all available senders:', allSenderIds)
-          const allSelectedSet = new Set(allSenderIds)
-          setSelectedSenders(allSelectedSet)
-          onSelectionChange(allSenderIds)
-          
-          // Auto-save the selection
-          saveSenderSelection(allSenderIds).catch(error => {
-            console.error('Failed to auto-save initial selection:', error)
-          })
-        }
+        // Auto-save the selection
+        saveSenderSelection(allSenderIds).catch(error => {
+          console.error('Failed to auto-save initial selection:', error)
+        })
       }
 
     } catch (error) {
