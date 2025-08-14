@@ -2173,19 +2173,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       if (keywordFilter.trim()) params.append('keyword', keywordFilter.trim())
       if (industryFilter.trim()) params.append('industry', industryFilter.trim())
 
-      console.log(`🔍 Fetching contacts for campaign ${campaign?.id} (${campaign?.name})`)
-      console.log(`📋 Query params:`, params.toString())
-      
       const response = await fetch(`/api/contacts?${params.toString()}`, {
         credentials: 'include'
       })
       const data = await response.json()
-      
-      console.log(`📊 API Response:`, {
-        contacts_count: data.contacts?.length || 0,
-        total: data.total,
-        hasMore: data.hasMore
-      })
       
       if (data.contacts) {
         // Map contacts to the expected format for the UI
@@ -2205,13 +2196,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           status: 'Valid' // Default status since contacts from scraping are valid
         }))
         
-        console.log(`📝 Contacts for campaign:`, mappedContacts)
-        
         setContacts(mappedContacts)
         setTotalContacts(data.total || 0)
         setHasMore(data.hasMore || false)
       } else {
-        console.log('❌ No contacts property in response:', data)
         setContacts([])
         setTotalContacts(0)
         setHasMore(false)

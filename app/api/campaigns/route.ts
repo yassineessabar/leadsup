@@ -28,7 +28,6 @@ async function getUserIdFromSession(): Promise<string | null> {
 
     return session.user_id
   } catch (err) {
-    console.error("Error in getUserIdFromSession:", err)
     return null
   }
 }
@@ -42,15 +41,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
     }
 
-    // Fetch campaigns without related data for better performance
+    // Fetch campaigns with only essential fields for better performance
     const { data: campaigns, error: campaignError } = await supabaseServer
       .from("campaigns")
-      .select("*")
+      .select("id, name, status, created_at, updated_at, scraping_status")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
+      .limit(50)
 
     if (campaignError) {
-      console.error("❌ Error fetching campaigns:", campaignError)
       return NextResponse.json({ success: false, error: campaignError.message }, { status: 500 })
     }
 

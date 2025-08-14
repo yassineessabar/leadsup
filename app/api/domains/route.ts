@@ -26,13 +26,11 @@ async function getUserIdFromSession(): Promise<string | null> {
       .single()
 
     if (error || !data) {
-      console.error("Error fetching user from session:", error)
       return null
     }
 
     return data.user_id
   } catch (error) {
-    console.error("Error in getUserIdFromSession:", error)
     return null
   }
 }

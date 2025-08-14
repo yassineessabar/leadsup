@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { supabaseServer } from "@/lib/supabase"
 import OpenAI from 'openai'
+import { scrapingService } from '@/lib/scraping-service'
 
 // Initialize OpenAI client with error handling
 // Check for both OPENAI_API_KEY and OPENAI environment variables
@@ -229,6 +230,26 @@ export async function POST(request: NextRequest) {
     
     // Save AI-generated email sequences to campaign_sequences table
     await saveAISequencesToCampaignSequences(campaign.id, aiAssets.email_sequences || [])
+
+    // Auto-trigger scraping if campaign has required fields
+    if (!isUpdating && campaign.id && formData.keywords?.length > 0 && formData.location && formData.industry) {
+      console.log(`🚀 Auto-triggering scraping for new campaign ${campaign.id}`)
+      
+      // Get first keyword for scraping
+      const primaryKeyword = formData.keywords[0];
+      
+      // Start profile finding in the background (don't await)
+      scrapingService.findProfiles({
+        campaignId: campaign.id,
+        userId: userId,
+        keyword: primaryKeyword,
+        location: formData.location,
+        industry: formData.industry,
+        maxPages: 5
+      }).catch(error => {
+        console.error(`Background profile finding error for campaign ${campaign.id}:`, error);
+      });
+    }
 
     return NextResponse.json({ 
       success: true, 

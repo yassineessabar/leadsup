@@ -1,10 +1,41 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+async function getUserIdFromSession(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get("session")?.value
+
+    if (!sessionToken) {
+      return null
+    }
+
+    const { data: session, error } = await supabase
+      .from("user_sessions")
+      .select("user_id, expires_at")
+      .eq("session_token", sessionToken)
+      .single()
+    
+    if (error || !session) {
+      return null
+    }
+    
+    // Check if session is expired
+    if (new Date(session.expires_at) < new Date()) {
+      return null
+    }
+
+    return session.user_id
+  } catch (err) {
+    return null
+  }
+}
 
 export async function GET(
   request: Request,
@@ -37,6 +68,12 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Authenticate user
+    const userId = await getUserIdFromSession()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const params = await context.params
     const contactId = params.id
     const body = await request.json()
@@ -47,15 +84,13 @@ export async function PATCH(
     if (body.first_name !== undefined) updateData.first_name = body.first_name
     if (body.last_name !== undefined) updateData.last_name = body.last_name
     if (body.email !== undefined) updateData.email = body.email
-    if (body.email_status !== undefined) updateData.email_status = body.email_status
-    if (body.privacy !== undefined) updateData.privacy = body.privacy
-    if (body.tags !== undefined) updateData.tags = body.tags
-    if (body.linkedin !== undefined) updateData.linkedin = body.linkedin
     if (body.title !== undefined) updateData.title = body.title
     if (body.location !== undefined) updateData.location = body.location
     if (body.company !== undefined) updateData.company = body.company
     if (body.industry !== undefined) updateData.industry = body.industry
-    if (body.note !== undefined) updateData.note = body.note
+    if (body.linkedin !== undefined) updateData.linkedin = body.linkedin
+    if (body.image_url !== undefined) updateData.image_url = body.image_url
+    if (body.campaign_id !== undefined) updateData.campaign_id = body.campaign_id
 
     updateData.updated_at = new Date().toISOString()
 
@@ -63,6 +98,7 @@ export async function PATCH(
       .from('contacts')
       .update(updateData)
       .eq('id', contactId)
+      .eq('user_id', userId) // Ensure user can only update their own contacts
       .select()
       .single()
 
@@ -90,6 +126,12 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Authenticate user
+    const userId = await getUserIdFromSession()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const params = await context.params
     const contactId = params.id
 
@@ -97,6 +139,7 @@ export async function DELETE(
       .from('contacts')
       .delete()
       .eq('id', contactId)
+      .eq('user_id', userId) // Ensure user can only delete their own contacts
 
     if (error) {
       console.error('Error deleting contact:', error)
