@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -17,6 +17,7 @@ import AddCampaignPopup from "./add-campaign-popup"
 import { format } from "date-fns"
 import AutomationSettings from "@/components/automation-settings"
 import CampaignSenderSelection from "./campaign-sender-selection"
+import { useScrapingUpdates } from "@/hooks/use-scraping-updates"
 
 interface CampaignDashboardProps {
   campaign?: {
@@ -56,6 +57,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [scrappingIndustry, setScrappingIndustry] = useState("")
   const [scrappingKeyword, setScrappingKeyword] = useState("")
   const [scrappingLocation, setScrappingLocation] = useState("")
+  
+  // Use real-time scraping updates hook
+  const { 
+    scrapingStatus, 
+    scrapingProgress, 
+    refetch: refetchScrapingStatus 
+  } = useScrapingUpdates(campaign?.id)
   
   // Delete confirmation state
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -1850,37 +1858,115 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   // Scrapping functions
-  const handleStartScrapping = () => {
-    // Validate at least one field is filled
-    if (!scrappingIndustry && !scrappingKeyword && !scrappingLocation) {
+  const handleStartScrapping = async (mode: 'full' | 'profiles-only' = 'full') => {
+    // Validate all fields are filled
+    if (!scrappingIndustry || !scrappingKeyword || !scrappingLocation) {
       toast({
         title: "Missing Information",
-        description: "Please fill in at least one field (Industry, Keyword, or Location) to start scrapping.",
+        description: "Please fill in all fields (Industry, Keyword, and Location) to start scrapping.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!campaign?.id) {
+      toast({
+        title: "Error",
+        description: "Campaign ID not found",
         variant: "destructive"
       })
       return
     }
 
     setIsScrappingActive(true)
-    const criteria = [
-      scrappingIndustry && `Industry: ${scrappingIndustry}`,
-      scrappingKeyword && `Keyword: ${scrappingKeyword}`,
-      scrappingLocation && `Location: ${scrappingLocation}`
-    ].filter(Boolean).join(', ')
     
-    toast({
-      title: "Scrapping Started",
-      description: `Contact scrapping is now active with ${criteria}. Daily limit: ${scrappingDailyLimit} contacts.`
-    })
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/scraping`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ mode })
+      })
+
+      const result = await response.json()
+      
+      if (response.ok) {
+        const description = mode === 'profiles-only' 
+          ? `Profile finding is now in progress. We'll search LinkedIn for matching profiles.`
+          : `Email enrichment is now in progress. We'll find emails for existing profiles.`
+        
+        toast({
+          title: mode === 'profiles-only' ? "Profile Finding Started" : "Email Enrichment Started",
+          description
+        })
+        
+        // Refetch scraping status to get updates
+        setTimeout(() => refetchScrapingStatus(), 1000)
+      } else {
+        throw new Error(result.error || 'Failed to start scraping')
+      }
+    } catch (error) {
+      console.error('Error starting scraping:', error)
+      setIsScrappingActive(false)
+      toast({
+        title: mode === 'profiles-only' ? "Profile Finding Failed" : "Scraping Failed",
+        description: error.message || "Failed to start the process",
+        variant: "destructive"
+      })
+    }
   }
 
-  const handleStopScrapping = () => {
-    setIsScrappingActive(false)
-    toast({
-      title: "Scrapping Stopped",
-      description: "Contact scrapping has been stopped."
-    })
+  const handleStopScrapping = async () => {
+    if (!campaign?.id) return
+
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/scraping`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        setIsScrappingActive(false)
+        toast({
+          title: "Scraping Stopped",
+          description: "Contact scraping has been stopped."
+        })
+        setTimeout(() => refetchScrapingStatus(), 1000)
+      }
+    } catch (error) {
+      console.error('Error stopping scraping:', error)
+      toast({
+        title: "Error",
+        description: "Failed to stop scraping",
+        variant: "destructive"
+      })
+    }
   }
+
+  // Monitor scraping status changes
+  useEffect(() => {
+    if (scrapingStatus === 'running') {
+      setIsScrappingActive(true)
+    } else {
+      setIsScrappingActive(false)
+      
+      if (scrapingStatus === 'completed') {
+        toast({
+          title: "Scraping Complete",
+          description: `Successfully found ${scrapingProgress.totalContacts} contacts with emails from ${scrapingProgress.totalProfiles} profiles.`
+        })
+        fetchContacts() // Refresh contacts list
+      } else if (scrapingStatus === 'failed') {
+        toast({
+          title: "Scraping Failed",
+          description: "The scraping process encountered an error and was stopped.",
+          variant: "destructive"
+        })
+      }
+    }
+  }, [scrapingStatus, scrapingProgress])
 
   // Load connected email accounts
   const loadConnectedAccounts = async () => {
@@ -2052,7 +2138,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }
 
-  // Contact table functions (modified to fetch prospects for the campaign)
+  // Contact table functions (fetch contacts for the campaign)
   const fetchContacts = async () => {
     setLoading(true)
     try {
@@ -2067,49 +2153,51 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       if (keywordFilter.trim()) params.append('keyword', keywordFilter.trim())
       if (industryFilter.trim()) params.append('industry', industryFilter.trim())
 
-      console.log(`🔍 Fetching prospects for campaign ${campaign?.id} (${campaign?.name}) - ID type: ${typeof campaign?.id}`)
+      console.log(`🔍 Fetching contacts for campaign ${campaign?.id} (${campaign?.name})`)
       console.log(`📋 Query params:`, params.toString())
-      console.log(`📋 Campaign object:`, campaign)
       
-      const response = await fetch(`/api/prospects?${params.toString()}`)
+      const response = await fetch(`/api/contacts?${params.toString()}`, {
+        credentials: 'include'
+      })
       const data = await response.json()
       
       console.log(`📊 API Response:`, {
-        prospects_count: data.prospects?.length || 0,
+        contacts_count: data.contacts?.length || 0,
         total: data.total,
-        hasMore: data.hasMore,
-        prospects: data.prospects
+        hasMore: data.hasMore
       })
       
-      if (data.prospects) {
-        // Map prospects to contacts format for consistency with existing UI
-        const mappedContacts = data.prospects.map(prospect => ({
-          id: prospect.id,
-          name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() || 'Unknown',
-          email: prospect.email_address,
-          phone: prospect.phone,
-          company: prospect.company_name,
-          status: prospect.email_status || 'new',
-          lastContact: prospect.last_contacted,
-          tags: prospect.tags,
-          title: prospect.job_title,
-          location: prospect.location,
-          linkedin: prospect.linkedin_url,
-          industry: prospect.industry,
-          notes: prospect.notes,
-          opted_out: prospect.opted_out
+      if (data.contacts) {
+        // Map contacts to the expected format for the UI
+        const mappedContacts = data.contacts.map(contact => ({
+          id: contact.id,
+          first_name: contact.first_name,
+          last_name: contact.last_name,
+          name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown',
+          email: contact.email,
+          company: contact.company,
+          title: contact.title,
+          location: contact.location,
+          linkedin: contact.linkedin,
+          industry: contact.industry,
+          image_url: contact.image_url,
+          campaign_name: contact.campaign_name,
+          status: 'Valid' // Default status since contacts from scraping are valid
         }))
         
-        console.log(`📝 Mapped contacts:`, mappedContacts)
+        console.log(`📝 Contacts for campaign:`, mappedContacts)
         
         setContacts(mappedContacts)
-        setTotalContacts(data.total)
-        setHasMore(data.hasMore)
+        setTotalContacts(data.total || 0)
+        setHasMore(data.hasMore || false)
       } else {
-        console.log('❌ No prospects property in response:', data)
+        console.log('❌ No contacts property in response:', data)
+        setContacts([])
+        setTotalContacts(0)
+        setHasMore(false)
       }
     } catch (error) {
-      console.error('Error fetching campaign prospects:', error)
+      console.error('Error fetching campaign contacts:', error)
       toast({
         title: "Error",
         description: "Failed to fetch campaign prospects",
@@ -2880,8 +2968,109 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Campaign Prospects</h2>
-                <p className="text-gray-600">Prospects assigned to "{campaign?.name}" campaign</p>
+                <h2 className="text-xl font-semibold text-gray-900">Campaign Contacts</h2>
+                <p className="text-gray-600">Contacts assigned to "{campaign?.name}" campaign</p>
+              </div>
+            </div>
+
+            {/* Contact Scrapping Configuration */}
+            <div className="bg-white rounded-lg border border-gray-200 mb-6">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">LinkedIn Contact Scrapping</h3>
+                    <p className="text-gray-600">Find and scrape LinkedIn profiles with email enrichment</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {scrapingStatus && scrapingStatus !== 'idle' && (
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                        <span>Status: {scrapingStatus}</span>
+                        {scrapingProgress.totalProfiles > 0 && (
+                          <span>({scrapingProgress.totalProfiles} profiles found, {scrapingProgress.totalContacts} with emails)</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                    <Input
+                      placeholder="e.g., Technology, Marketing"
+                      value={scrappingIndustry}
+                      onChange={(e) => setScrappingIndustry(e.target.value)}
+                      disabled={isScrappingActive}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Keywords</label>
+                    <Input
+                      placeholder="e.g., CEO, Founder, Manager"
+                      value={scrappingKeyword}
+                      onChange={(e) => setScrappingKeyword(e.target.value)}
+                      disabled={isScrappingActive}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    <Input
+                      placeholder="e.g., San Francisco, CA"
+                      value={scrappingLocation}
+                      onChange={(e) => setScrappingLocation(e.target.value)}
+                      disabled={isScrappingActive}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Daily Limit</label>
+                    <Input
+                      type="number"
+                      placeholder="100"
+                      value={scrappingDailyLimit}
+                      onChange={(e) => setScrappingDailyLimit(parseInt(e.target.value) || 100)}
+                      disabled={isScrappingActive}
+                      min="1"
+                      max="500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  {!isScrappingActive ? (
+                    <>
+                      <Button
+                        onClick={() => handleStartScrapping('profiles-only')}
+                        disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
+                        variant="outline"
+                        className="border-blue-500 text-blue-600 hover:bg-blue-50"
+                      >
+                        <Search className="w-4 h-4 mr-2" />
+                        Find Profiles Only
+                      </Button>
+                      <Button
+                        onClick={() => handleStartScrapping('full')}
+                        disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
+                        style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                        className="text-white"
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        Start Full Scrapping
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      onClick={handleStopScrapping}
+                      variant="destructive"
+                    >
+                      <Square className="w-4 h-4 mr-2" />
+                      Stop Scrapping
+                    </Button>
+                  )}
+                  <div className="text-xs text-gray-500">
+                    Fill in all fields to start scrapping LinkedIn profiles for contacts
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -2892,7 +3081,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
-                      placeholder="Search campaign prospects..."
+                      placeholder="Search campaign contacts..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10"
@@ -3004,16 +3193,31 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         />
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Prospect
+                        Avatar
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Company & Title
+                        First Name
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email Status
+                        Last Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Title
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Location
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Industry
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        LinkedIn
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Campaign
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -3023,14 +3227,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <tbody className="bg-white divide-y divide-gray-200">
                     {loading ? (
                       <tr>
-                        <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                        <td colSpan="11" className="px-4 py-8 text-center text-gray-500">
                           Loading contacts...
                         </td>
                       </tr>
                     ) : contacts.length === 0 ? (
                       <tr>
-                        <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
-                          No prospects assigned to this campaign yet. Import prospects or assign them from the prospects list.
+                        <td colSpan="11" className="px-4 py-8 text-center text-gray-500">
+                          No contacts assigned to this campaign yet. Use the scraping tools below to find contacts.
                         </td>
                       </tr>
                     ) : (
@@ -3049,51 +3253,61 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             />
                           </td>
                           <td className="px-4 py-4">
-                            <div className="flex items-center">
-                              <Avatar className="h-8 w-8 mr-3">
-                                <AvatarFallback style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>
-                                  {contact.name?.charAt(0)?.toUpperCase() || 'U'}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">
-                                  {contact.name || 'Unknown'}
-                                </div>
-                                <div className="text-sm text-gray-500">{contact.email}</div>
-                                {contact.phone && (
-                                  <div className="text-xs text-gray-400">{contact.phone}</div>
-                                )}
+                            <Avatar className="w-8 h-8">
+                              {contact.image_url && (
+                                <AvatarImage src={contact.image_url} alt={`${contact.first_name} ${contact.last_name}`} />
+                              )}
+                              <AvatarFallback className="bg-gray-100 text-gray-600 text-xs">
+                                {contact.first_name?.charAt(0)?.toUpperCase() || contact.last_name?.charAt(0)?.toUpperCase() || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                          </td>
+                          <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                            {contact.first_name || '-'}
+                          </td>
+                          <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                            {contact.last_name || '-'}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-600">
+                            {contact.title || '-'}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-blue-600">
+                            {contact.email ? (
+                              <a href={`mailto:${contact.email}`} className="hover:underline">
+                                {contact.email}
+                              </a>
+                            ) : '-'}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-600">
+                            {contact.location ? (
+                              <div className="flex items-center space-x-1">
+                                <MapPin className="w-3 h-3 text-gray-400" />
+                                <span>{contact.location}</span>
                               </div>
-                            </div>
+                            ) : '-'}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-600">
+                            {contact.industry || '-'}
                           </td>
                           <td className="px-4 py-4">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{contact.company || '-'}</div>
-                              {contact.title && (
-                                <div className="text-xs text-gray-500">{contact.title}</div>
-                              )}
-                              {contact.location && (
-                                <div className="text-xs text-gray-400">{contact.location}</div>
-                              )}
-                            </div>
+                            {contact.linkedin ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-blue-200 text-blue-600 hover:bg-blue-50 text-xs h-7"
+                                onClick={() => window.open(contact.linkedin, '_blank')}
+                              >
+                                <Linkedin className="w-3 h-3 mr-1" />
+                                LinkedIn
+                              </Button>
+                            ) : '-'}
                           </td>
                           <td className="px-4 py-4">
-                            <Badge 
-                              variant={contact.status === 'Valid' ? 'default' : contact.status === 'Invalid' ? 'destructive' : 'secondary'}
-                              className={
-                                contact.status === 'Valid' ? 'bg-green-100 text-green-800' : 
-                                contact.status === 'Invalid' ? 'bg-red-100 text-red-800' :
-                                contact.status === 'Unknown' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-gray-100 text-gray-800'
-                              }
-                            >
-                              {contact.status || 'Unknown'}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-4">
-                            <div className="text-sm text-gray-500">
-                              {contact.industry || '-'}
-                            </div>
+                            {contact.campaign_name ? (
+                              <Badge className="bg-blue-100 text-blue-800 text-xs">
+                                {contact.campaign_name}
+                              </Badge>
+                            ) : '-'}
                           </td>
                           <td className="px-4 py-4">
                             <DropdownMenu>
@@ -3131,7 +3345,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               {totalContacts > 0 && (
                 <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
                   <div className="text-sm text-gray-500">
-                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalContacts)} of {totalContacts} prospects
+                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalContacts)} of {totalContacts} contacts
                   </div>
                   <div className="flex items-center space-x-2">
                     <Button
@@ -3158,68 +3372,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               )}
             </div>
 
-            {/* Scrapping Configuration */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Contact Scrapping</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
-                  <Input
-                    placeholder="e.g., Technology, Healthcare"
-                    value={scrappingIndustry}
-                    onChange={(e) => setScrappingIndustry(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Keyword</label>
-                  <Input
-                    placeholder="e.g., CEO, Marketing Manager"
-                    value={scrappingKeyword}
-                    onChange={(e) => setScrappingKeyword(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                  <Input
-                    placeholder="e.g., New York, California"
-                    value={scrappingLocation}
-                    onChange={(e) => setScrappingLocation(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Daily Limit</label>
-                  <Input
-                    type="number"
-                    value={scrappingDailyLimit}
-                    onChange={(e) => setScrappingDailyLimit(parseInt(e.target.value) || 100)}
-                    min="1"
-                    max="1000"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-center">
-                {isScrappingActive ? (
-                  <Button 
-                    onClick={handleStopScrapping} 
-                    variant="outline"
-                    className="text-red-600 hover:text-red-700 border-red-300"
-                    size="lg"
-                  >
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-red-600 border-t-transparent mr-2"></div>
-                    Stop Scrapping
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={handleStartScrapping} 
-                    className="bg-green-600 hover:bg-green-700"
-                    size="lg"
-                  >
-                    <Target className="w-5 h-5 mr-2" />
-                    Start Scrapping
-                  </Button>
-                )}
-              </div>
-            </div>
 
             {/* Import Modal */}
             <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
