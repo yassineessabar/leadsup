@@ -26,6 +26,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
   const [validationError, setValidationError] = useState("");
   const [authError, setAuthError] = useState("");
   const [authenticating, setAuthenticating] = useState(false);
+  const [domainError, setDomainError] = useState("");
 
   const validateDomain = (domain: string): boolean => {
     // More lenient domain validation regex
@@ -117,6 +118,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
     try {
       const response = await fetch('/api/domains', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           domain,
@@ -128,32 +130,38 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
       const data = await response.json();
 
       if (response.ok) {
+        console.log('✅ Domain created successfully (createDomainManually):', data.domain);
         onDomainAdded(data.domain);
         
         // Redirect to domain verification view for the specific domain
         if (typeof window !== 'undefined') {
-          const url = new URL(window.location.href)
-          url.searchParams.set("tab", "domain")
-          url.searchParams.set("view", "verification")
-          url.searchParams.set("selectedDomain", domain)
-          window.history.pushState({}, "", url.toString())
+          console.log('🔄 Redirecting to verification page (createDomainManually) for domain:', domain);
           
-          // Dispatch custom event with domain verification details
-          window.dispatchEvent(new CustomEvent('domain-verification-redirect', { 
-            detail: { 
-              tab: 'domain',
-              view: 'verification',
-              domain: domain
-            } 
-          }))
+          // Give a small delay to ensure domain is in the list
+          setTimeout(() => {
+            console.log('🔄 Dispatching domain-verification-redirect event (createDomainManually) for:', domain);
+            
+            // Dispatch custom event with domain verification details
+            window.dispatchEvent(new CustomEvent('domain-verification-redirect', { 
+              detail: { 
+                tab: 'domain',
+                view: 'verification',
+                domain: domain
+              } 
+            }));
+          }, 100);
         }
         
         handleClose();
       } else {
-        console.error('Failed to add domain:', data.error);
+        console.error('Failed to add domain (createDomainManually) - API response not OK:', {
+          status: response.status,
+          statusText: response.statusText,
+          data
+        });
       }
     } catch (error) {
-      console.error('Error creating domain:', error);
+      console.error('Error creating domain (createDomainManually) - Exception thrown:', error);
     }
   };
 
@@ -172,6 +180,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
     setDetectedProvider("");
     setValidationError("");
     setAuthError("");
+    setDomainError("");
     setAuthenticating(false);
     setShowPassword(false);
     onClose();
@@ -340,14 +349,25 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                 </ul>
               </div>
 
+              {/* Error display */}
+              {domainError && (
+                <div className="text-red-600 text-sm bg-red-50 border border-red-200 p-3 rounded-lg">
+                  {domainError}
+                </div>
+              )}
+
               {/* Actions */}
               <div className="space-y-3">
                 <Button 
                   onClick={async () => {
+                    // Clear any previous errors
+                    setDomainError("");
+                    
                     // Create domain and redirect to verification view
                     try {
                       const response = await fetch('/api/domains', {
                         method: 'POST',
+                        credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                           domain,
@@ -359,33 +379,41 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                       const data = await response.json();
 
                       if (response.ok) {
+                        console.log('✅ Domain created successfully:', data.domain);
                         onDomainAdded(data.domain);
                         
                         // Redirect to domain verification view for the specific domain
                         if (typeof window !== 'undefined') {
-                          const url = new URL(window.location.href)
-                          url.searchParams.set("tab", "domain")
-                          url.searchParams.set("view", "verification")
-                          url.searchParams.set("selectedDomain", domain)
-                          window.history.pushState({}, "", url.toString())
+                          console.log('🔄 Redirecting to verification page for domain:', domain);
                           
-                          // Dispatch custom event with domain verification details
-                          window.dispatchEvent(new CustomEvent('domain-verification-redirect', { 
-                            detail: { 
-                              tab: 'domain',
-                              view: 'verification',
-                              domain: domain
-                            } 
-                          }))
+                          // Give a small delay to ensure domain is in the list
+                          setTimeout(() => {
+                            console.log('🔄 Dispatching domain-verification-redirect event for:', domain);
+                            
+                            // Dispatch custom event with domain verification details
+                            window.dispatchEvent(new CustomEvent('domain-verification-redirect', { 
+                              detail: { 
+                                tab: 'domain',
+                                view: 'verification',
+                                domain: domain
+                              } 
+                            }));
+                          }, 100);
                         }
                         
                         handleClose();
                         
                       } else {
-                        console.error('Failed to add domain:', data.error);
+                        console.error('Failed to add domain - API response not OK:', {
+                          status: response.status,
+                          statusText: response.statusText,
+                          data
+                        });
+                        setDomainError(data.error || `Server error: ${response.status} ${response.statusText}`);
                       }
                     } catch (error) {
-                      console.error('Error creating domain:', error);
+                      console.error('Error creating domain - Exception thrown:', error);
+                      setDomainError(`Network error: ${error.message}`);
                     }
                   }}
                   className="w-full text-white py-2.5 rounded-lg font-medium transition-colors"
