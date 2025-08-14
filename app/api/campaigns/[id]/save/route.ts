@@ -55,40 +55,27 @@ export async function GET(
       .single()
 
     if (campaignError || !campaign) {
-      console.error('❌ Campaign fetch error:', campaignError)
-      return NextResponse.json({ success: false, error: "Campaign not found" }, { status: 404 })
+        return NextResponse.json({ success: false, error: "Campaign not found" }, { status: 404 })
     }
-    
-    // Debug: Log what campaign data is being fetched
-    console.log('📋 Campaign data fetched:', {
-      id: campaign.id,
-      name: campaign.name,
-      keywords: campaign.keywords,
-      location: campaign.location,
-      industry: campaign.industry,
-      hasKeywords: !!campaign.keywords,
-      hasLocation: !!campaign.location,
-      hasIndustry: !!campaign.industry
-    })
 
-    // Fetch all campaign-related data
+    // Only fetch essential data initially - lazy load the rest when needed
     const [
-      sequences,
       settings,
       senders,
-      scrapingSettings,
-      gmailAccounts,
-      microsoft365Accounts,
-      smtpAccounts
+      scrapingSettings
     ] = await Promise.all([
-      fetchSequences(campaignId),
       fetchSettings(campaignId),
       fetchSenders(campaignId),
-      fetchScrapingSettings(campaignId),
-      fetchGmailAccounts(userId, campaignId), // Pass campaign ID to get campaign-specific accounts
-      fetchMicrosoft365Accounts(userId),
-      fetchSmtpAccounts(userId)
+      fetchScrapingSettings(campaignId)
     ])
+
+    // Fetch sequences and accounts only if needed (when tab is accessed)
+    const sequences = []
+    const connectedAccounts = {
+      gmail: [],
+      microsoft365: [],
+      smtp: []
+    }
 
     const campaignData = {
       campaign,
@@ -96,17 +83,12 @@ export async function GET(
       settings,
       senders,
       scrapingSettings,
-      connectedAccounts: {
-        gmail: gmailAccounts,
-        microsoft365: microsoft365Accounts,
-        smtp: smtpAccounts
-      }
+      connectedAccounts
     }
 
     return NextResponse.json({ success: true, data: campaignData })
 
   } catch (error) {
-    console.error("❌ Error fetching campaign data:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
@@ -166,7 +148,6 @@ export async function POST(
     return NextResponse.json({ success: true, message: "Campaign data saved successfully" })
 
   } catch (error) {
-    console.error("❌ Error saving campaign data:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

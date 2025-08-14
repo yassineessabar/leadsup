@@ -1,6 +1,13 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
+
+// Extend window object for polling interval
+declare global {
+  interface Window {
+    scrapingPollInterval?: NodeJS.Timeout | null
+  }
+}
 import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart, ExternalLink, Inbox, Archive, Reply, Forward, Rocket, Square } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,7 +19,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Card } from "@/components/ui/card"
-import { toast } from "@/hooks/use-toast"
 import AddCampaignPopup from "./add-campaign-popup"
 import { format } from "date-fns"
 import AutomationSettings from "@/components/automation-settings"
@@ -64,6 +70,34 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     scrapingProgress, 
     refetch: refetchScrapingStatus 
   } = useScrapingUpdates(campaign?.id)
+  
+  // Initialize scrapping active state based on current status
+  useEffect(() => {
+    // Check status immediately when campaign ID is available
+    if (campaign?.id) {
+      console.log('Checking initial scraping status for campaign:', campaign.id)
+      refetchScrapingStatus()
+      
+      // Also check directly via API for immediate status
+      fetch(`/api/campaigns/${campaign.id}/scraping`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('Direct API scraping status check:', data)
+          if (data.status === 'running') {
+            console.log('Scraping is already running, setting active state to true')
+            setIsScrappingActive(true)
+            // Start polling
+            if (!window.scrapingPollInterval) {
+              const pollInterval = setInterval(() => {
+                refetchScrapingStatus()
+              }, 2000)
+              window.scrapingPollInterval = pollInterval
+            }
+          }
+        })
+        .catch(err => console.error('Error checking scraping status:', err))
+    }
+  }, [campaign?.id]) // Only depend on campaign ID, not status
   
   // Delete confirmation state
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -666,24 +700,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             dataType === 'settings' ? 'Settings' :
                             dataType === 'senders' ? 'Sender Selection' : 'Data'
                             
-        toast({
-          title: `${saveTypeText} Saved`,
-          description: `${saveTypeText} have been saved successfully`,
-        })
       } else {
-        toast({
-          title: "Save Failed",
-          description: result.error || "Failed to save campaign data",
-          variant: "destructive"
-        })
       }
     } catch (error) {
       console.error("Error saving campaign:", error)
-      toast({
-        title: "Error",
-        description: "Failed to save campaign data",
-        variant: "destructive"
-      })
     }
   }
 
@@ -693,7 +713,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const saveAll = () => saveCampaignData('all')
   const saveSenders = () => saveCampaignData('senders')
 
-  // Load campaign data on component mount
+  // Load essential campaign data on component mount (fast loading)
   const loadCampaignData = async () => {
     if (!campaign?.id) return
     
@@ -704,12 +724,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       
       if (result.success && result.data) {
         const data = result.data
-        
-        // Load sequences
-        if (data.sequences && data.sequences.length > 0) {
-          setSteps(data.sequences)
-          setActiveStepId(data.sequences[0]?.id || 1)
-        }
         
         // Load settings
         if (data.settings) {
@@ -727,7 +741,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             setCompanyWebsite(data.settings.signature.companyWebsite || 'https://www.leadsup.com')
             const signatureHtml = data.settings.signature.emailSignature || `<br/><br/>Best regards,<br/><strong>${data.settings.signature.firstName || 'Loop'} ${data.settings.signature.lastName || 'Review'}</strong><br/>${data.settings.signature.companyName || 'LeadsUp'}<br/><a href="${data.settings.signature.companyWebsite || 'https://www.leadsup.com'}" target="_blank">${data.settings.signature.companyWebsite || 'https://www.leadsup.com'}</a>`
             setEmailSignature(signatureHtml)
-            // Update the signature editor content if it exists
             if (signatureEditorRef.current) {
               signatureEditorRef.current.innerHTML = signatureHtml
             }
@@ -747,33 +760,69 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           setScrappingKeyword(data.scrapingSettings.keyword || '')
           setScrappingLocation(data.scrapingSettings.location || '')
         } else if (data.campaign) {
-          // Pre-populate with campaign data if no scraping settings exist
           setScrappingIndustry(data.campaign.industry || '')
           setScrappingLocation(data.campaign.location || '')
           const keywords = data.campaign.keywords || []
           setScrappingKeyword(Array.isArray(keywords) ? keywords.join(', ') : keywords.toString())
-          setScrappingDailyLimit(100) // Default daily limit
-          setIsScrappingActive(false) // Default to inactive
-        }
-        
-        // Load connected accounts
-        if (data.connectedAccounts) {
-          setConnectedGmailAccounts(data.connectedAccounts.gmail || [])
-          setConnectedMicrosoft365Accounts(data.connectedAccounts.microsoft365 || [])
-          setConnectedSmtpAccounts(data.connectedAccounts.smtp || [])
+          setScrappingDailyLimit(100)
+          setIsScrappingActive(false)
         }
         
         setCampaignDataLoaded(true)
       }
     } catch (error) {
       console.error('Error loading campaign data:', error)
-      toast({
-        title: "Error Loading Data",
-        description: "Failed to load campaign data. Please refresh the page.",
-        variant: "destructive"
-      })
     } finally {
       setIsLoadingCampaignData(false)
+    }
+  }
+
+  // Lazy load sequences when needed
+  const loadSequences = async () => {
+    if (!campaign?.id || steps.length > 0) return
+    
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/sequences`)
+      const result = await response.json()
+      
+      if (result.success && result.data && result.data.length > 0) {
+        setSteps(result.data)
+        setActiveStepId(result.data[0]?.id || 1)
+      }
+    } catch (error) {
+      console.error('Error loading sequences:', error)
+    }
+  }
+
+  // Lazy load connected accounts when needed
+  const loadConnectedAccounts = async () => {
+    if (!campaign?.id) return
+    
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/accounts`)
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        setConnectedGmailAccounts(result.data.gmail || [])
+        setConnectedMicrosoft365Accounts(result.data.microsoft365 || [])
+        setConnectedSmtpAccounts(result.data.smtp || [])
+      }
+    } catch (error) {
+      console.error('Error loading connected accounts:', error)
+    }
+  }
+
+  // Handle tab changes with lazy loading
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId)
+    
+    // Lazy load data when specific tabs are accessed
+    if (tabId === 'sequence' || tabId === 'automation') {
+      loadSequences()
+    }
+    
+    if (tabId === 'sender') {
+      loadConnectedAccounts()
     }
   }
   
@@ -956,25 +1005,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         setAllLeads(availableLeads)
         
         if (availableLeads.length === 0 && mappedLeads.length > 0) {
-          toast({
-            title: "No Available Prospects",
-            description: `All prospects are already assigned to "${campaign?.name}" campaign.`,
-          })
         }
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to load prospects",
-          variant: "destructive"
-        })
       }
     } catch (error) {
       console.error("Error loading leads:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load prospects data",
-        variant: "destructive"
-      })
     } finally {
       setLeadsLoading(false)
     }
@@ -1029,10 +1064,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const result = await response.json()
 
       if (result.success) {
-        toast({
-          title: "Bulk Import Successful",
-          description: `${prospectsToImport.length} contacts imported successfully`
-        })
         setShowImportModal(false)
         setSelectedLeads([])
         fetchContacts() // Refresh the contacts list
@@ -1041,11 +1072,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } catch (error) {
       console.error('❌ Error importing all contacts:', error)
-      toast({
-        title: "Import Failed",
-        variant: "destructive",
-        description: error.message || "Failed to import all contacts",
-      })
     } finally {
       setImportLoading(false)
     }
@@ -1140,17 +1166,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         const updatedCount = result.updated || 0
         
         if (importedCount > 0 || updatedCount > 0) {
-          toast({
-            title: "Prospects Imported",
-            description: importedCount > 0 
-              ? `Successfully imported ${importedCount} new prospects to "${campaign.name}" campaign`
-              : `Successfully assigned ${updatedCount} existing prospects to "${campaign.name}" campaign`,
-          })
         } else {
-          toast({
-            title: "Import Completed",
-            description: result.message || "Prospects have been processed successfully",
-          })
         }
         
         setShowImportModal(false)
@@ -1162,19 +1178,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         fetchContacts()
         
       } else {
-        toast({
-          title: "Import Failed",
-          description: result.error || "Failed to import prospects",
-          variant: "destructive"
-        })
       }
     } catch (error) {
       console.error("Error importing prospects:", error)
-      toast({
-        title: "Error",
-        description: "Failed to import prospects",
-        variant: "destructive"
-      })
     } finally {
       setImportLoading(false)
     }
@@ -1186,11 +1192,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     if (file && file.type === 'text/csv') {
       setCsvFile(file)
     } else {
-      toast({
-        title: "Invalid File",
-        description: "Please select a valid CSV file",
-        variant: "destructive"
-      })
     }
   }
 
@@ -1286,32 +1287,17 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             }, 1000)
           }, 500)
           
-          toast({
-            title: "Success",
-            description: "Gmail account connected successfully!",
-            variant: "default"
-          })
         } else if (event.data.type === 'GMAIL_AUTH_ERROR') {
           popup.close()
           clearInterval(checkClosed)
           setGmailAuthLoading(false)
           
-          toast({
-            title: "Connection Failed",
-            description: event.data.error || "Failed to connect Gmail account",
-            variant: "destructive"
-          })
         }
       })
       
     } catch (error) {
       console.error('Gmail OAuth error:', error)
       setGmailAuthLoading(false)
-      toast({
-        title: "Connection Error",
-        description: "Failed to initiate Gmail connection",
-        variant: "destructive"
-      })
     }
   }
 
@@ -1353,32 +1339,17 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           setMicrosoft365AuthLoading(false)
           loadConnectedMicrosoft365Accounts()
           
-          toast({
-            title: "Success",
-            description: "Microsoft 365 account connected successfully!",
-            variant: "default"
-          })
         } else if (event.data.type === 'MICROSOFT365_AUTH_ERROR') {
           popup.close()
           clearInterval(checkClosed)
           setMicrosoft365AuthLoading(false)
           
-          toast({
-            title: "Connection Failed",
-            description: event.data.error || "Failed to connect Microsoft 365 account",
-            variant: "destructive"
-          })
         }
       })
       
     } catch (error) {
       console.error('Microsoft 365 OAuth error:', error)
       setMicrosoft365AuthLoading(false)
-      toast({
-        title: "Connection Error",
-        description: "Failed to initiate Microsoft 365 connection",
-        variant: "destructive"
-      })
     }
   }
 
@@ -1447,24 +1418,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const data = await response.json()
 
       if (data.success) {
-        toast({
-          title: "Connection Successful",
-          description: "SMTP connection validated successfully!",
-          variant: "default"
-        })
       } else {
-        toast({
-          title: "Connection Failed", 
-          description: data.error || "Failed to validate SMTP connection",
-          variant: "destructive"
-        })
       }
     } catch (error) {
-      toast({
-        title: "Validation Error",
-        description: "Failed to validate SMTP connection",
-        variant: "destructive"
-      })
     } finally {
       setSmtpLoading(false)
     }
@@ -1474,11 +1430,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     if (!smtpFormData.name.trim() || !smtpFormData.email.trim() || 
         !smtpFormData.smtpHost.trim() || !smtpFormData.smtpUser.trim() || 
         !smtpFormData.smtpPassword.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      })
       return
     }
 
@@ -1493,11 +1444,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const data = await response.json()
 
       if (data.success) {
-        toast({
-          title: "Account Connected",
-          description: "SMTP account connected successfully!",
-          variant: "default"
-        })
         setShowSmtpModal(false)
         setSmtpFormData({
           name: '',
@@ -1514,19 +1460,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         if (data.error && data.error.includes('Gmail App Password Required')) {
           setShowGmailAppPasswordModal(true)
         } else {
-          toast({
-            title: "Connection Failed",
-            description: data.error || "Failed to connect SMTP account",
-            variant: "destructive"
-          })
         }
       }
     } catch (error) {
-      toast({
-        title: "Connection Error",
-        description: "Failed to connect SMTP account",
-        variant: "destructive"
-      })
     } finally {
       setSmtpLoading(false)
     }
@@ -1541,11 +1477,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   const sendTestSmtpEmail = async () => {
     if (!testModalEmail.trim()) {
-      toast({
-        title: "Email Required",
-        description: "Please enter an email address to send the test to.",
-        variant: "destructive"
-      })
       return
     }
 
@@ -1565,11 +1496,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const data = await response.json()
       
       if (response.ok) {
-        toast({
-          title: "Test Successful",
-          description: `Test email sent successfully to ${testModalEmail}!`,
-          variant: "default"
-        })
         setTestEmail(testModalEmail)
         setShowTestModal(false)
         setTestModalEmail("")
@@ -1579,11 +1505,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } catch (error) {
       console.error('Test email error:', error)
-      toast({
-        title: "Test Failed",
-        description: error.message || "Failed to send test email. Please try again.",
-        variant: "destructive"
-      })
     } finally {
       setTestModalLoading(false)
     }
@@ -1606,29 +1527,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const result = await response.json()
 
       if (result.success) {
-        toast({
-          title: "Campaign Deleted",
-          description: result.message || `Campaign "${campaign.name}" has been deleted successfully`,
-        })
         
         // Call onDelete to update parent state and navigate back
         if (onDelete) {
           onDelete(campaign.id)
         }
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to delete campaign",
-          variant: "destructive"
-        })
       }
     } catch (error) {
       console.error("Error deleting campaign:", error)
-      toast({
-        title: "Error",
-        description: "Failed to delete campaign",
-        variant: "destructive"
-      })
     } finally {
       setShowDeleteDialog(false)
     }
@@ -1700,10 +1607,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           setSteps(newSteps)
         }
         
-        toast({
-          title: "Campaign Created",
-          description: `Campaign "${campaignData.formData.campaignName}" has been created successfully`,
-        })
         
         // Refresh the parent campaigns list
         window.dispatchEvent(new CustomEvent('campaigns-changed'))
@@ -1713,19 +1616,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           onBack()
         }
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to create campaign",
-          variant: "destructive"
-        })
       }
     } catch (error) {
       console.error("Error creating campaign:", error)
-      toast({
-        title: "Error", 
-        description: "Failed to create campaign",
-        variant: "destructive"
-      })
     }
   }
 
@@ -1750,7 +1643,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           description: "Select at least one sender account from your verified domains to send campaigns.",
           action: () => {
             setShowLaunchValidationModal(false)
-            setActiveTab('sender')
+            handleTabChange('sender')
           },
           buttonText: "Select Sender Accounts"
         })
@@ -1762,7 +1655,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           description: "Add at least one contact to your campaign.",
           action: () => {
             setShowLaunchValidationModal(false)
-            setActiveTab('contacts')
+            handleTabChange('contacts')
           },
           buttonText: "Add Contacts"
         })
@@ -1774,7 +1667,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           description: "Save your campaign settings before launching.",
           action: () => {
             setShowLaunchValidationModal(false)
-            setActiveTab('settings')
+            handleTabChange('settings')
           },
           buttonText: "Go to Settings"
         })
@@ -1786,7 +1679,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           description: "Save your email sequence before launching.",
           action: () => {
             setShowLaunchValidationModal(false)
-            setActiveTab('sequence')
+            handleTabChange('sequence')
           },
           buttonText: "Go to Sequence"
         })
@@ -1802,31 +1695,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       // Launch the campaign
       if (onStatusUpdate) {
         onStatusUpdate(campaign.id, 'Active')
-        toast({
-          title: "Campaign Launched",
-          description: `Campaign "${campaign.name}" is now active.`,
-          variant: "default"
-        })
       }
     } else if (campaign.status === 'Active') {
       // Pause the campaign
       if (onStatusUpdate) {
         onStatusUpdate(campaign.id, 'Paused')
-        toast({
-          title: "Campaign Paused",
-          description: `Campaign "${campaign.name}" has been paused.`,
-          variant: "default"
-        })
       }
     } else if (campaign.status === 'Paused') {
       // Resume the campaign
       if (onStatusUpdate) {
         onStatusUpdate(campaign.id, 'Active')
-        toast({
-          title: "Campaign Resumed",
-          description: `Campaign "${campaign.name}" is now active again.`,
-          variant: "default"
-        })
       }
     }
   }
@@ -1861,23 +1739,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const handleStartScrapping = async (mode: 'full' | 'profiles-only' | 'combined' = 'full') => {
     // Validate all fields are filled
     if (!scrappingIndustry || !scrappingKeyword || !scrappingLocation) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all fields (Industry, Keyword, and Location) to start scrapping.",
-        variant: "destructive"
-      })
       return
     }
 
     if (!campaign?.id) {
-      toast({
-        title: "Error",
-        description: "Campaign ID not found",
-        variant: "destructive"
-      })
       return
     }
 
+    // Set loading state immediately and keep it until backend confirms completion
+    console.log('Starting scraping, setting active state to true')
     setIsScrappingActive(true)
     
     try {
@@ -1899,22 +1769,24 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const result = await response.json()
       
       if (response.ok) {
-        const description = mode === 'profiles-only' 
-          ? `Profile finding is now in progress. We'll search LinkedIn for matching profiles.`
-          : mode === 'combined'
-          ? `Combined scraping started. We'll first find LinkedIn profiles, then enrich each one with email data individually.`
-          : `Email enrichment is now in progress. We'll find emails for existing profiles.`
+        console.log('Scraping started successfully, keeping loading state active')
+        // Ensure loading state stays active
+        setIsScrappingActive(true)
         
-        toast({
-          title: mode === 'profiles-only' 
-            ? "Profile Finding Started" 
-            : mode === 'combined'
-            ? "Combined Scraping Started"
-            : "Email Enrichment Started",
-          description
-        })
+        // Clear any existing interval
+        if (window.scrapingPollInterval) {
+          clearInterval(window.scrapingPollInterval)
+        }
         
-        // Refetch scraping status to get updates
+        // Start polling for status updates more frequently during active scraping
+        const pollInterval = setInterval(() => {
+          console.log('Polling for scraping status...')
+          refetchScrapingStatus()
+        }, 2000) // Poll every 2 seconds
+        
+        window.scrapingPollInterval = pollInterval
+        
+        // Initial status check after 1 second
         setTimeout(() => refetchScrapingStatus(), 1000)
       } else {
         throw new Error(result.error || 'Failed to start scraping')
@@ -1922,11 +1794,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     } catch (error) {
       console.error('Error starting scraping:', error)
       setIsScrappingActive(false)
-      toast({
-        title: mode === 'profiles-only' ? "Profile Finding Failed" : "Scraping Failed",
-        description: error.message || "Failed to start the process",
-        variant: "destructive"
-      })
     }
   }
 
@@ -1941,44 +1808,48 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       if (response.ok) {
         setIsScrappingActive(false)
-        toast({
-          title: "Scraping Stopped",
-          description: "Contact scraping has been stopped."
-        })
         setTimeout(() => refetchScrapingStatus(), 1000)
       }
     } catch (error) {
       console.error('Error stopping scraping:', error)
-      toast({
-        title: "Error",
-        description: "Failed to stop scraping",
-        variant: "destructive"
-      })
     }
   }
 
   // Monitor scraping status changes
   useEffect(() => {
+    console.log('Scraping status changed to:', scrapingStatus)
+    
     if (scrapingStatus === 'running') {
+      console.log('Setting scrapping active to true')
       setIsScrappingActive(true)
-    } else {
-      setIsScrappingActive(false)
       
-      if (scrapingStatus === 'completed') {
-        toast({
-          title: "Scraping Complete",
-          description: `Successfully found ${scrapingProgress.totalContacts} contacts with emails from ${scrapingProgress.totalProfiles} profiles.`
-        })
-        fetchContacts() // Refresh contacts list
-      } else if (scrapingStatus === 'failed') {
-        toast({
-          title: "Scraping Failed",
-          description: "The scraping process encountered an error and was stopped.",
-          variant: "destructive"
-        })
+      // Ensure polling is active during running state
+      if (!window.scrapingPollInterval) {
+        const pollInterval = setInterval(() => {
+          refetchScrapingStatus()
+        }, 2000)
+        window.scrapingPollInterval = pollInterval
+      }
+    } else if (scrapingStatus === 'completed') {
+      console.log('Scraping completed, setting active to false')
+      setIsScrappingActive(false)
+      fetchContacts() // Refresh contacts list
+      // Clear polling interval when scraping is completed
+      if (window.scrapingPollInterval) {
+        clearInterval(window.scrapingPollInterval)
+        window.scrapingPollInterval = null
+      }
+    } else if (scrapingStatus === 'failed' || scrapingStatus === 'idle') {
+      console.log('Scraping failed or idle, setting active to false')
+      setIsScrappingActive(false)
+      // Clear polling interval when scraping fails or is idle
+      if (window.scrapingPollInterval) {
+        clearInterval(window.scrapingPollInterval)
+        window.scrapingPollInterval = null
       }
     }
-  }, [scrapingStatus, scrapingProgress])
+    // Keep loading state active for any other status (don't set to false prematurely)
+  }, [scrapingStatus])
 
   // Refresh contacts when scraping progress changes (new contacts are being added)
   useEffect(() => {
@@ -1988,31 +1859,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }, [scrapingProgress.totalContacts, activeTab])
 
-  // Load connected email accounts
-  const loadConnectedAccounts = async () => {
-    if (!campaign?.id) {
-      console.log('⚠️ No campaign ID available, skipping account load')
-      return
-    }
-    
-    try {
-      // Add cache-busting parameter and campaign ID to prevent stale data and get campaign-specific accounts
-      const response = await fetch(`/api/gmail/accounts?campaign_id=${campaign.id}&t=${Date.now()}`)
-      if (response.ok) {
-        const text = await response.text()
-        try {
-          const accounts = JSON.parse(text)
-          console.log(`📧 Loaded Gmail accounts for campaign ${campaign.id}:`, accounts.length)
-          setConnectedEmailAccounts(accounts)
-          setConnectedGmailAccounts(accounts) // Also set Gmail accounts for sender tab
-        } catch (jsonError) {
-          console.error('Failed to parse Gmail accounts response as JSON:', text.substring(0, 200))
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load connected accounts:', error)
-    }
-  }
 
   // Open test modal
   const testGmailConnection = (accountId) => {
@@ -2025,11 +1871,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   // Send test email
   const sendTestEmail = async () => {
     if (!testModalEmail.trim()) {
-      toast({
-        title: "Email Required",
-        description: "Please enter an email address to send the test to.",
-        variant: "destructive"
-      })
       return
     }
 
@@ -2049,11 +1890,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const data = await response.json()
       
       if (response.ok) {
-        toast({
-          title: "Test Successful",
-          description: `Test email sent successfully to ${testModalEmail}!`,
-          variant: "default"
-        })
         setTestEmail(testModalEmail) // Save for next time
         setShowTestModal(false)
         setTestModalEmail("")
@@ -2063,11 +1899,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } catch (error) {
       console.error('Test email error:', error)
-      toast({
-        title: "Test Failed",
-        description: error.message || "Failed to send test email. Please try again.",
-        variant: "destructive"
-      })
     } finally {
       setTestModalLoading(false)
     }
@@ -2110,11 +1941,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   // Send test email via Microsoft 365
   const sendTestMicrosoft365Email = async () => {
     if (!testModalEmail.trim()) {
-      toast({
-        title: "Email Required",
-        description: "Please enter an email address to send the test to.",
-        variant: "destructive"
-      })
       return
     }
 
@@ -2134,11 +1960,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const data = await response.json()
       
       if (response.ok) {
-        toast({
-          title: "Test Successful",
-          description: `Test email sent successfully to ${testModalEmail}!`,
-          variant: "default"
-        })
         setTestEmail(testModalEmail) // Save for next time
         setShowTestModal(false)
         setTestModalEmail("")
@@ -2148,11 +1969,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } catch (error) {
       console.error('Test email error:', error)
-      toast({
-        title: "Test Failed",
-        description: error.message || "Failed to send test email. Please try again.",
-        variant: "destructive"
-      })
     } finally {
       setTestModalLoading(false)
     }
@@ -2206,11 +2022,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } catch (error) {
       console.error('Error fetching campaign contacts:', error)
-      toast({
-        title: "Error",
-        description: "Failed to fetch campaign prospects",
-        variant: "destructive"
-      })
     } finally {
       setLoading(false)
     }
@@ -2258,20 +2069,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       await Promise.all(updatePromises)
 
-      toast({
-        title: "Campaign Assignment",
-        description: `${selectedContacts.length} contacts assigned to campaign "${selectedCampaign.name}"`
-      })
 
       setSelectedContacts([])
       fetchContacts()
     } catch (error) {
       console.error('Error assigning contacts to campaign:', error)
-      toast({
-        title: "Error",
-        description: "Failed to assign contacts to campaign",
-        variant: "destructive"
-      })
     }
   }
 
@@ -2301,20 +2103,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       await Promise.all(deletePromises)
 
-      toast({
-        title: "Contacts deleted",
-        description: `${selectedContacts.length} contacts have been deleted successfully`
-      })
 
       setSelectedContacts([])
       fetchContacts()
     } catch (error) {
       console.error('Error deleting contacts:', error)
-      toast({
-        title: "Error",
-        description: "Failed to delete contacts",
-        variant: "destructive"
-      })
     }
   }
 
@@ -2323,11 +2116,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     const idsToDelete = contactIds || selectedContacts
     
     if (!idsToDelete || idsToDelete.length === 0) {
-      toast({
-        title: "No contacts selected",
-        description: "Please select contacts to delete",
-        variant: "destructive"
-      })
       return
     }
 
@@ -2340,10 +2128,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       await Promise.all(deletePromises)
 
-      toast({
-        title: "Contacts deleted",
-        description: `${idsToDelete.length} contact(s) have been deleted successfully`
-      })
 
       // Clear selection if we were deleting selected contacts
       if (!contactIds) {
@@ -2352,11 +2136,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       fetchContacts()
     } catch (error) {
       console.error('Error deleting contacts:', error)
-      toast({
-        title: "Error",
-        description: "Failed to delete contacts",
-        variant: "destructive"
-      })
     }
   }
 
@@ -2394,10 +2173,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     link.click()
     document.body.removeChild(link)
 
-    toast({
-      title: "Export completed",
-      description: `${contactsToExport.length} contacts exported successfully`
-    })
   }
 
   const handleCsvImport = async () => {
@@ -2416,10 +2191,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const result = await response.json()
 
       if (response.ok) {
-        toast({
-          title: "Import successful",
-          description: `${result.imported} contacts imported successfully${result.errors ? ` (${result.total - result.imported} failed)` : ''}`
-        })
         
         // Close modal and refresh contacts
         setShowContactImportModal(false)
@@ -2430,11 +2201,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } catch (error) {
       console.error('CSV import error:', error)
-      toast({
-        title: "Import failed",
-        description: error.message || "Failed to import contacts from CSV",
-        variant: "destructive"
-      })
     } finally {
       setCsvImportLoading(false)
     }
@@ -2460,10 +2226,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const data = await response.json()
 
       if (response.ok) {
-        toast({
-          title: isEditing ? "Contact updated" : "Contact added",
-          description: `Contact has been ${isEditing ? 'updated' : 'added'} successfully`
-        })
         
         setShowEditModal(false)
         setEditingContact({})
@@ -2473,11 +2235,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } catch (error) {
       console.error('Error saving contact:', error)
-      toast({
-        title: "Error",
-        description: "Failed to save contact",
-        variant: "destructive"
-      })
     }
   }
 
@@ -2533,11 +2290,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     
     window.open(gmailApiUrl, '_blank')
     
-    toast({
-      title: "Enable Gmail API",
-      description: "Please enable the Gmail API in the opened tab, then click 'Refresh Status' to check again.",
-      variant: "default"
-    })
   }
 
 
@@ -2614,19 +2366,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         setConnectedGmailAccounts(prev => prev.filter(acc => acc.id !== accountId))
         setSelectedSenderAccounts(prev => prev.filter(id => id !== accountId))
         
-        toast({
-          title: "Account Disconnected",
-          description: "Gmail account has been removed from this campaign",
-        })
       } else {
         throw new Error('Failed to disconnect account')
       }
     } catch (error) {
-      toast({
-        title: "Disconnect Failed",
-        description: "Failed to disconnect Gmail account",
-        variant: "destructive"
-      })
     }
   }
 
@@ -2639,26 +2382,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       if (response.ok) {
         // Remove from UI state
         setConnectedMicrosoft365Accounts(prev => prev.filter(acc => acc.id !== accountId))
-        toast({
-          title: "Account Disconnected",
-          description: "Microsoft 365 account has been removed successfully",
-          variant: "default"
-        })
       } else {
         const error = await response.json()
-        toast({
-          title: "Failed to Disconnect",
-          description: error.error || "Failed to remove Microsoft 365 account",
-          variant: "destructive"
-        })
       }
     } catch (error) {
       console.error('Error disconnecting Microsoft 365 account:', error)
-      toast({
-        title: "Connection Error",
-        description: "Failed to remove Microsoft 365 account",
-        variant: "destructive"
-      })
     }
   }
 
@@ -2671,26 +2399,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       if (response.ok) {
         // Remove from UI state
         setConnectedSmtpAccounts(prev => prev.filter(acc => acc.id !== accountId))
-        toast({
-          title: "Account Disconnected",
-          description: "SMTP account has been removed successfully",
-          variant: "default"
-        })
       } else {
         const error = await response.json()
-        toast({
-          title: "Failed to Disconnect",
-          description: error.error || "Failed to remove SMTP account",
-          variant: "destructive"
-        })
       }
     } catch (error) {
       console.error('Error disconnecting SMTP account:', error)
-      toast({
-        title: "Connection Error",
-        description: "Failed to remove SMTP account",
-        variant: "destructive"
-      })
     }
   }
 
@@ -3069,9 +2782,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     <Button
                       onClick={handleStopScrapping}
                       variant="destructive"
+                      disabled={false}
                     >
-                      <X className="w-4 h-4 mr-2" />
-                      Stop Scrapping
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        {scrapingProgress.totalProfiles > 0 && scrapingProgress.totalContacts === 0
+                          ? `Finding profiles... (${scrapingProgress.totalProfiles} found)`
+                          : scrapingProgress.totalContacts > 0
+                          ? `Enriching emails... (${scrapingProgress.totalContacts}/${scrapingProgress.totalProfiles})`
+                          : "Starting scraping..."}
+                      </div>
                     </Button>
                   )}
                   <div className="text-xs text-gray-500">
@@ -4591,7 +4311,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
                   isActive
                     ? 'border-[rgb(87,140,255)]'
@@ -4857,11 +4577,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <Button
                 onClick={async () => {
                   if (!bulkEmailCsvFile) {
-                    toast({
-                      title: "No file selected",
-                      description: "Please select a CSV file to import",
-                      variant: "destructive"
-                    })
                     return
                   }
 
@@ -4919,21 +4634,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       }
                     }
 
-                    toast({
-                      title: "Import Successful",
-                      description: `Successfully imported ${successCount} email accounts`,
-                    })
 
                     setShowBulkImportModal(false)
                     setBulkEmailCsvFile(null)
                     setBulkImportPreview([])
                   } catch (error) {
                     console.error('Error importing accounts:', error)
-                    toast({
-                      title: "Import Failed",
-                      description: "Failed to import email accounts. Please check your CSV format.",
-                      variant: "destructive"
-                    })
                   } finally {
                     setBulkImportLoading(false)
                   }
