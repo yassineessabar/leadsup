@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe } from "lucide-react"
+import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -465,6 +465,62 @@ export default function CampaignSenderSelection({
     window.open(`/domains?domain=${encodeURIComponent(domain.domain)}`, '_blank')
   }
 
+  // Handle domain deletion
+  const handleDeleteDomain = async (domain: DomainWithSenders) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the domain "${domain.domain}"?\n\n` +
+      `This will permanently remove:\n` +
+      `• The domain and all its DNS settings\n` +
+      `• ${domain.senders.length} sender account(s)\n` +
+      `• All email history for this domain\n\n` +
+      `This action cannot be undone.`
+    )
+
+    if (!confirmDelete) {
+      return
+    }
+
+    try {
+      console.log(`🗑️ Deleting domain: ${domain.domain}`)
+      
+      const response = await fetch(`/api/domains?id=${domain.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        console.log(`✅ Domain ${domain.domain} deleted successfully`)
+        toast.success(`Domain ${domain.domain} deleted successfully`)
+        
+        // Remove the domain from local state
+        setDomainsWithSenders(prev => prev.filter(d => d.id !== domain.id))
+        
+        // Remove any selected senders from this domain
+        const domainSenderIds = domain.senders.map(sender => sender.id)
+        const newSelectedSenders = new Set(selectedSenders)
+        domainSenderIds.forEach(id => newSelectedSenders.delete(id))
+        setSelectedSenders(newSelectedSenders)
+        onSelectionChange(Array.from(newSelectedSenders))
+        
+        // Update campaign sender assignments
+        saveSenderSelection(Array.from(newSelectedSenders)).catch(error => {
+          console.error('Failed to update sender selection after domain deletion:', error)
+        })
+        
+      } else {
+        throw new Error(data.error || 'Failed to delete domain')
+      }
+    } catch (error) {
+      console.error('Error deleting domain:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`Failed to delete domain: ${errorMessage}`)
+    }
+  }
+
 
   if (loading) {
     return (
@@ -536,7 +592,22 @@ export default function CampaignSenderSelection({
       <div className="max-w-4xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-light text-gray-900 mb-2">Campaign Senders</h1>
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-3xl font-light text-gray-900">Campaign Senders</h1>
+            <Button
+              onClick={() => {
+                // Navigate to root page with domain tab selected
+                console.log('🔄 Navigating to /?tab=domain to add new domain...')
+                window.location.href = '/?tab=domain'
+              }}
+              style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Domain
+            </Button>
+          </div>
           <p className="text-gray-500 text-lg mb-6">
             Select which sender accounts will be used for this campaign
           </p>
@@ -607,6 +678,20 @@ export default function CampaignSenderSelection({
                           </label>
                         </div>
                       )}
+                      
+                      {/* Delete Domain Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteDomain(domain)
+                        }}
+                        className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
