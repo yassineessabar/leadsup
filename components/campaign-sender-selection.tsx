@@ -72,16 +72,7 @@ export default function CampaignSenderSelection({
     await fetchDomainsAndSenders()
   }
 
-  // Auto-expand domains that have selected senders
-  useEffect(() => {
-    const domainsToExpand = new Set<string>()
-    domainsWithSenders.forEach(domain => {
-      if (domain.senders.some(sender => selectedSenders.has(sender.id))) {
-        domainsToExpand.add(domain.id)
-      }
-    })
-    setExpandedDomains(domainsToExpand)
-  }, [domainsWithSenders, selectedSenders])
+  // Note: All domains are auto-expanded by default in fetchDomainsAndSenders()
 
   const fetchDomainsAndSenders = async () => {
     try {
@@ -128,6 +119,11 @@ export default function CampaignSenderSelection({
 
       const domainsWithSendersResults = await Promise.all(domainsWithSendersPromises)
       setDomainsWithSenders(domainsWithSendersResults)
+
+      // Auto-expand all domains by default to show sender accounts
+      const allDomainIds = domainsWithSendersResults.map(domain => domain.id)
+      setExpandedDomains(new Set(allDomainIds))
+      console.log('🎯 Auto-expanding all domains:', allDomainIds)
 
       // Auto-select all available senders if no existing selections
       if (selectedSenders.size === 0) {
