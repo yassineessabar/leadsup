@@ -10,7 +10,7 @@ declare global {
     scrapingPollInterval?: NodeJS.Timeout | null
   }
 }
-import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, ExternalLink, Inbox, Archive, Reply, Forward, Rocket, Square, TrendingUp, Shield, ArrowUp, Brain, ShieldCheck, CheckCircle2 } from "lucide-react"
+import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, ExternalLink, Archive, Reply, Forward, Rocket, Square, TrendingUp, Shield, ArrowUp, Brain, ShieldCheck, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -4479,61 +4479,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           </div>
         );
 
-      case 'inbox':
-        return (
-          <div className="w-full animate-in fade-in duration-500">
-            {/* Clean Header */}
-            <div className="flex justify-between items-start mb-8">
-              <div>
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight">Inbox</h1>
-                <p className="text-gray-500 mt-2 font-light">Manage campaign responses and conversations</p>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-light text-gray-900">0</div>
-                <div className="text-xs text-gray-400 uppercase tracking-wide">Conversations</div>
-              </div>
-            </div>
-
-            {/* Inbox Content */}
-            <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
-              <div className="p-8">
-                <div className="flex items-center space-x-4 mb-8">
-                  <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center">
-                    <Inbox className="w-6 h-6 text-gray-400" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-medium text-gray-900">Campaign Responses</h2>
-                    <p className="text-gray-500 text-sm mt-1">Track and manage prospect replies</p>
-                  </div>
-                </div>
-
-                {/* Empty State */}
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-                    <Reply className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">No responses yet</h3>
-                  <p className="text-gray-500 mb-8 font-light">Prospect replies will appear here once your campaign is active</p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-md mx-auto">
-                    <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                      <p className="text-2xl font-light text-gray-900">0</p>
-                      <p className="text-sm text-gray-500 mt-1">Replies</p>
-                    </div>
-                    <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                      <p className="text-2xl font-light text-gray-900">0</p>
-                      <p className="text-sm text-gray-500 mt-1">Interested</p>
-                    </div>
-                    <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                      <p className="text-2xl font-light text-gray-900">0</p>
-                      <p className="text-sm text-gray-500 mt-1">Unsubscribed</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
 
       default:
         return null;
@@ -4678,18 +4623,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             >
               <Send className="w-4 h-4 mr-2" />
               Sender
-            </Button>
-            <Button 
-              variant={activeTab === 'inbox' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('inbox')}
-              className={`${
-                activeTab === 'inbox' 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
-                  : 'border-gray-300 hover:bg-gray-50 text-gray-700'
-              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap`}
-            >
-              <Inbox className="w-4 h-4 mr-2" />
-              Inbox
             </Button>
             <Button 
               variant={activeTab === 'settings' ? 'default' : 'outline'}
