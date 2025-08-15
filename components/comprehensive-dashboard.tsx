@@ -151,10 +151,10 @@ export function ComprehensiveDashboard() {
 
   // Pie chart data for lead sources
   const leadSourceData = [
-    { name: 'LinkedIn', value: 45, color: '#0077B5' },
-    { name: 'Email', value: 30, color: '#34D399' },
-    { name: 'Website', value: 15, color: '#F59E0B' },
-    { name: 'Referrals', value: 10, color: '#8B5CF6' }
+    { name: 'LinkedIn', value: 45, color: '#6b7280' },
+    { name: 'Email', value: 30, color: '#9ca3af' },
+    { name: 'Website', value: 15, color: '#d1d5db' },
+    { name: 'Referrals', value: 10, color: '#e5e7eb' }
   ]
 
   // Performance metrics
@@ -165,7 +165,9 @@ export function ComprehensiveDashboard() {
       change: '+3.2%', 
       trend: 'up',
       icon: Eye,
-      color: 'emerald'
+      color: 'blue',
+      bgColor: 'bg-blue-50',
+      iconColor: 'text-blue-600'
     },
     { 
       title: 'Click Rate', 
@@ -173,7 +175,9 @@ export function ComprehensiveDashboard() {
       change: '+1.1%', 
       trend: 'up',
       icon: MousePointer,
-      color: 'blue'
+      color: 'emerald',
+      bgColor: 'bg-emerald-50',
+      iconColor: 'text-emerald-600'
     },
     { 
       title: 'Response Rate', 
@@ -181,7 +185,9 @@ export function ComprehensiveDashboard() {
       change: '-0.5%', 
       trend: 'down',
       icon: Activity,
-      color: 'orange'
+      color: 'orange',
+      bgColor: 'bg-orange-50',
+      iconColor: 'text-orange-600'
     },
     { 
       title: 'Conversion Rate', 
@@ -189,31 +195,28 @@ export function ComprehensiveDashboard() {
       change: '+0.8%', 
       trend: 'up',
       icon: Target,
-      color: 'purple'
+      color: 'violet',
+      bgColor: 'bg-violet-50',
+      iconColor: 'text-violet-600'
     }
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 md:p-8">
-      <div className="relative space-y-6">
+    <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+      <div className="relative space-y-8">
         <div className="max-w-7xl mx-auto">
           
-          {/* Clean Header */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
+          {/* Minimal Header */}
+          <div className="mb-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-blue-500 rounded-lg">
-                    <BarChart3 className="w-5 h-5 text-white" />
-                  </div>
-                  <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-                </div>
-                <p className="text-gray-600">Your prospecting overview</p>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Dashboard</h1>
+                <p className="text-gray-500 font-light">Your campaign overview and performance metrics</p>
               </div>
               
               <div className="flex gap-3">
                 <Button 
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300"
                   onClick={() => {
                     const event = new CustomEvent('tab-switched', { detail: 'leads' })
                     window.dispatchEvent(event)
@@ -224,7 +227,7 @@ export function ComprehensiveDashboard() {
                 </Button>
                 <Button 
                   variant="outline" 
-                  className="border-gray-300 hover:bg-gray-50"
+                  className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300"
                   onClick={() => {
                     const event = new CustomEvent('tab-switched', { detail: 'campaigns-email' })
                     window.dispatchEvent(event)
@@ -237,146 +240,113 @@ export function ComprehensiveDashboard() {
             </div>
           </div>
 
-          {/* Clean Metric Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+          {/* Metric Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {/* Total Leads Card */}
-            <Card className="bg-white border border-gray-200 hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Users className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <CardDescription className="text-sm font-medium text-gray-600">
-                      Total Leads
-                    </CardDescription>
+            <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4 mb-6">
+                  <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                    <Users className="w-6 h-6 text-blue-600" />
                   </div>
-                  <TrendingUp className="w-4 h-4 text-green-500" />
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">Total Leads</h3>
+                    <p className="text-gray-500 text-sm">Last 30 days</p>
+                  </div>
                 </div>
-              </CardHeader>
-              
-              <CardContent className="pt-0">
-                <div className="space-y-3">
-                  <div className="flex items-end gap-3">
-                    <p className="text-3xl font-bold text-gray-900">
-                      {isLoading ? (
-                        <span className="text-gray-400">...</span>
-                      ) : (
-                        animatedStats.totalLeads.toLocaleString()
-                      )}
-                    </p>
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
-                      <ArrowUp className="w-3 h-3 mr-1" />
-                      +12.5%
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-500">Last 30 days</p>
+                <div className="flex items-end justify-between">
+                  <p className="text-3xl font-light text-gray-900">
+                    {isLoading ? (
+                      <span className="text-gray-400">...</span>
+                    ) : (
+                      animatedStats.totalLeads.toLocaleString()
+                    )}
+                  </p>
+                  <span className="text-sm text-gray-400 font-medium">
+                    +12.5%
+                  </span>
                 </div>
               </CardContent>
             </Card>
 
             {/* Valid Leads Card */}
-            <Card className="bg-white border border-gray-200 hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-100 rounded-lg">
-                      <Shield className="w-5 h-5 text-emerald-600" />
-                    </div>
-                    <CardDescription className="text-sm font-medium text-gray-600">
-                      Valid Leads
-                    </CardDescription>
+            <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4 mb-6">
+                  <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
+                    <Shield className="w-6 h-6 text-emerald-600" />
                   </div>
-                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">Valid Leads</h3>
+                    <p className="text-gray-500 text-sm">Verification rate</p>
+                  </div>
                 </div>
-              </CardHeader>
-              
-              <CardContent className="pt-0">
-                <div className="space-y-3">
-                  <div className="flex items-end gap-3">
-                    <p className="text-3xl font-bold text-gray-900">
-                      {isLoading ? (
-                        <span className="text-gray-400">...</span>
-                      ) : (
-                        stats.totalLeads > 0 ? `${((animatedStats.validLeads / stats.totalLeads) * 100).toFixed(1)}%` : '0%'
-                      )}
-                    </p>
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
-                      <ArrowUp className="w-3 h-3 mr-1" />
-                      +2.1%
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-500">Verification rate</p>
+                <div className="flex items-end justify-between">
+                  <p className="text-3xl font-light text-gray-900">
+                    {isLoading ? (
+                      <span className="text-gray-400">...</span>
+                    ) : (
+                      stats.totalLeads > 0 ? `${((animatedStats.validLeads / stats.totalLeads) * 100).toFixed(1)}%` : '0%'
+                    )}
+                  </p>
+                  <span className="text-sm text-gray-400 font-medium">
+                    +2.1%
+                  </span>
                 </div>
               </CardContent>
             </Card>
 
             {/* Active Campaigns Card */}
-            <Card className="bg-white border border-gray-200 hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <Target className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <CardDescription className="text-sm font-medium text-gray-600">
-                      Active Campaigns
-                    </CardDescription>
+            <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4 mb-6">
+                  <div className="w-12 h-12 bg-violet-50 rounded-2xl flex items-center justify-center">
+                    <Target className="w-6 h-6 text-violet-600" />
                   </div>
-                  <Activity className="w-4 h-4 text-blue-500" />
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">Active Campaigns</h3>
+                    <p className="text-gray-500 text-sm">Running smoothly</p>
+                  </div>
                 </div>
-              </CardHeader>
-              
-              <CardContent className="pt-0">
-                <div className="space-y-3">
-                  <div className="flex items-end gap-3">
-                    <p className="text-3xl font-bold text-gray-900">
-                      {isLoading ? (
-                        <span className="text-gray-400">...</span>
-                      ) : (
-                        animatedStats.activeCampaigns
-                      )}
-                    </p>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
-                      <ArrowUp className="w-3 h-3 mr-1" />
-                      +2
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-500">Running smoothly</p>
+                <div className="flex items-end justify-between">
+                  <p className="text-3xl font-light text-gray-900">
+                    {isLoading ? (
+                      <span className="text-gray-400">...</span>
+                    ) : (
+                      animatedStats.activeCampaigns
+                    )}
+                  </p>
+                  <span className="text-sm text-gray-400 font-medium">
+                    +2
+                  </span>
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Performance Metrics Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {performanceMetrics.map((metric, index) => {
               const Icon = metric.icon
               return (
                 <Card 
                   key={metric.title}
-                  className="bg-white border border-gray-200 hover:shadow-md transition-shadow duration-200"
+                  className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden"
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="p-2 rounded-lg bg-gray-100">
-                        <Icon className="w-4 h-4 text-gray-600" />
+                  <CardContent className="p-5">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className={`w-10 h-10 ${metric.bgColor} rounded-2xl flex items-center justify-center`}>
+                        <Icon className={`w-5 h-5 ${metric.iconColor}`} />
                       </div>
-                      <Badge 
-                        variant="secondary"
-                        className={`text-xs ${
-                          metric.trend === 'up' 
-                            ? 'bg-green-100 text-green-700 border-green-200' 
-                            : 'bg-red-100 text-red-700 border-red-200'
-                        }`}
-                      >
-                        {metric.trend === 'up' ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
-                        {metric.change}
-                      </Badge>
+                      <div>
+                        <p className="text-sm text-gray-500">{metric.title}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xl font-bold text-gray-900 mb-1">{metric.value}</p>
-                      <p className="text-sm text-gray-600">{metric.title}</p>
+                    <div className="flex items-end justify-between">
+                      <p className="text-xl font-light text-gray-900">{metric.value}</p>
+                      <span className="text-xs text-gray-400 font-medium">
+                        {metric.change}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -388,29 +358,19 @@ export function ComprehensiveDashboard() {
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               
-              {/* Clean Area Chart */}
-              <Card className="bg-white border border-gray-200">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <Activity className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-xl font-bold text-gray-900">
-                          Lead Processing Analytics
-                        </CardTitle>
-                        <p className="text-gray-600 text-sm">Performance over the last 30 days</p>
-                      </div>
+              {/* Analytics Chart */}
+              <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
+                <CardContent className="p-8">
+                  <div className="flex items-center space-x-4 mb-8">
+                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center">
+                      <Activity className="w-6 h-6 text-indigo-600" />
                     </div>
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
-                      <TrendingUp className="w-3 h-3 mr-1" />
-                      +24.3%
-                    </Badge>
+                    <div>
+                      <h2 className="text-xl font-medium text-gray-900">Lead Processing Analytics</h2>
+                      <p className="text-gray-500 text-sm mt-1">Performance over the last 30 days</p>
+                    </div>
                   </div>
-                </CardHeader>
                 
-                <CardContent>
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -452,9 +412,9 @@ export function ComprehensiveDashboard() {
                         <Line
                           type="monotone"
                           dataKey="enriched"
-                          stroke="#f59e0b"
+                          stroke="#8b5cf6"
                           strokeWidth={2}
-                          dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
+                          dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
                           name="Enriched Leads"
                         />
                       </LineChart>
@@ -469,17 +429,17 @@ export function ComprehensiveDashboard() {
             <div className="space-y-6">
               
               {/* Deliverability Score */}
-              <Card className="bg-white border border-gray-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-3 text-lg font-bold text-gray-900">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <ShieldCheck className="w-5 h-5 text-green-600" />
+              <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 mb-6">
+                    <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center">
+                      <ShieldCheck className="w-6 h-6 text-green-600" />
                     </div>
-                    Deliverability Health
-                  </CardTitle>
-                </CardHeader>
-                
-                <CardContent className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">Deliverability Health</h3>
+                      <p className="text-gray-500 text-sm mt-1">Email reputation score</p>
+                    </div>
+                  </div>
                   <div className="flex items-center justify-center">
                     <div className="relative w-24 h-24">
                       <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">

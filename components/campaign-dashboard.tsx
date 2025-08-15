@@ -2461,38 +2461,42 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     switch (activeTab) {
       case 'settings':
         return (
-          <div className="w-full">
-            {/* Header with Save Button */}
-            <div className="flex justify-between items-center mb-6">
+          <div className="w-full animate-in fade-in duration-500">
+            {/* Clean Header */}
+            <div className="flex justify-between items-start mb-8">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Campaign Settings</h2>
-                <p className="text-gray-600">Configure your campaign limits, timing, and signature</p>
+                <h1 className="text-3xl font-light text-gray-900 tracking-tight">Settings</h1>
+                <p className="text-gray-400 mt-2 font-light">Configure timing, schedule and sender information</p>
               </div>
               <div className="flex items-center">
                 <Button 
                   onClick={saveSettings} 
-                  className="text-white shadow-sm hover:shadow-md transition-all duration-200"
-                  style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+                  className="bg-gray-900 hover:bg-gray-800 text-white border-0 shadow-sm hover:shadow-md transition-all duration-300 px-6 py-2.5 font-medium"
                 >
                   <Check className="w-4 h-4 mr-2" />
-                  Save Campaign Settings
+                  Save Settings
                 </Button>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-              <div className="space-y-6">
-
-                {/* Sending Schedule */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Sending Schedule</h3>
+            <div className="space-y-8">
+              {/* Sending Schedule Section */}
+              <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
+                <div className="p-8">
+                  <div className="flex items-center space-x-4 mb-8">
+                    <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center">
+                      <Clock className="w-6 h-6 text-gray-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-medium text-gray-900">Sending Schedule</h2>
+                      <p className="text-gray-500 text-sm mt-1">When and how often to send emails</p>
+                    </div>
+                  </div>
                   
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Sending Days */}
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Active Days</h4>
+                      <h4 className="text-sm font-medium text-gray-800 mb-4">Active Days</h4>
                       <div className="flex flex-wrap gap-2">
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
                           const isActive = activeDays.includes(day)
@@ -2500,12 +2504,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             <button
                               key={day}
                               type="button"
-                              className={`px-3 py-2 text-sm font-semibold rounded-lg transition-all ${
+                              className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 ${
                                 isActive 
-                                  ? 'text-white shadow-md' 
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  ? 'bg-gray-900 text-white shadow-sm hover:bg-gray-800' 
+                                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
                               }`}
-                              style={isActive ? { backgroundColor: 'rgb(87, 140, 255)' } : {}}
                               onClick={() => {
                                 if (isActive) {
                                   setActiveDays(prev => prev.filter(d => d !== day))
@@ -2523,12 +2526,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
                     {/* Time Range */}
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Sending Hours</h4>
-                      <div className="flex items-center gap-3">
+                      <h4 className="text-sm font-medium text-gray-800 mb-4">Sending Hours</h4>
+                      <div className="flex items-center gap-4">
                         <select 
                           value={sendingStartTime}
                           onChange={(e) => setSendingStartTime(e.target.value)}
-                          className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none"
+                          className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
                         >
                           {Array.from({ length: 24 }, (_, i) => {
                             const hour = i.toString().padStart(2, '0')
@@ -2541,12 +2544,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           })}
                         </select>
                         
-                        <span className="text-gray-500 font-medium">to</span>
+                        <span className="text-gray-400 font-medium text-sm">to</span>
                         
                         <select 
                           value={sendingEndTime}
                           onChange={(e) => setSendingEndTime(e.target.value)}
-                          className="px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none"
+                          className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
                         >
                           {Array.from({ length: 24 }, (_, i) => {
                             const hour = i.toString().padStart(2, '0')
@@ -2563,64 +2566,74 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   </div>
                 </div>
 
-                {/* Email Signature Section */}
-                <div className="rounded-2xl p-6 border" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', borderColor: 'rgba(87, 140, 255, 0.2)' }}>
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center">
-                      <User className="w-5 h-5 text-white" />
+              </div>
+
+              {/* Sender Information Section */}
+              <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
+                <div className="p-8">
+                  <div className="flex items-center space-x-4 mb-8">
+                    <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center">
+                      <User className="w-6 h-6 text-gray-400" />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900">Sender Information</h3>
+                    <div>
+                      <h2 className="text-xl font-medium text-gray-900">Sender Information</h2>
+                      <p className="text-gray-500 text-sm mt-1">Your details and email signature</p>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                      <label className="block text-sm font-medium text-gray-800 mb-3">First Name</label>
                       <input
                         type="text"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none transition-colors"
+                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
+                        placeholder="John"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                      <label className="block text-sm font-medium text-gray-800 mb-3">Last Name</label>
                       <input
                         type="text"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none transition-colors"
+                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
+                        placeholder="Doe"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Company</label>
+                      <label className="block text-sm font-medium text-gray-800 mb-3">Company</label>
                       <input
                         type="text"
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none transition-colors"
+                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
+                        placeholder="Company Inc."
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
+                      <label className="block text-sm font-medium text-gray-800 mb-3">Website</label>
                       <input
                         type="text"
                         value={companyWebsite}
                         onChange={(e) => setCompanyWebsite(e.target.value)}
-                        className="w-full h-12 px-4 bg-white border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none transition-colors"
+                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
+                        placeholder="https://company.com"
                       />
                     </div>
                   </div>
 
                   {/* Signature Section */}
                   <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Email Signature</h4>
+                    <h4 className="text-lg font-medium text-gray-900 mb-6">Email Signature</h4>
                     
-                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden">
                       <div 
                         ref={signatureEditorRef}
                         contentEditable
                         suppressContentEditableWarning
-                        className="p-8 min-h-[200px] outline-none"
+                        className="p-6 min-h-[180px] outline-none bg-white m-1 rounded-xl"
                         dangerouslySetInnerHTML={{ __html: emailSignature }}
                         onInput={(e) => {
                           const target = e.currentTarget
@@ -2629,7 +2642,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       />
                       
                       {/* Formatting Toolbar */}
-                      <div className="border-t border-gray-200 bg-gray-50 p-4 flex items-center gap-2">
+                      <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => {
@@ -2638,7 +2651,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               setEmailSignature(signatureEditorRef.current.innerHTML)
                             }
                           }}
-                          className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-200 transition-colors"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 transition-colors duration-200"
                         >
                           <Bold className="w-4 h-4" />
                         </button>
@@ -2650,7 +2663,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               setEmailSignature(signatureEditorRef.current.innerHTML)
                             }
                           }}
-                          className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-200 transition-colors"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 transition-colors duration-200"
                         >
                           <Italic className="w-4 h-4" />
                         </button>
@@ -2662,7 +2675,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               setEmailSignature(signatureEditorRef.current.innerHTML)
                             }
                           }}
-                          className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-200 transition-colors"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 transition-colors duration-200"
                         >
                           <Underline className="w-4 h-4" />
                         </button>
@@ -2677,7 +2690,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               }
                             }
                           }}
-                          className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-200 transition-colors"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 transition-colors duration-200"
                         >
                           <Link className="w-4 h-4" />
                         </button>
@@ -2708,8 +2721,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       case 'contacts':
         return (
           <div className="w-full animate-in fade-in duration-500">
-            {/* Clean Header with staggered animation */}
-            <div className="flex justify-between items-start mb-8 animate-in slide-in-from-top duration-700 fade-in">
+            {/* Clean Header */}
+            <div className="flex justify-between items-start mb-8">
               <div>
                 <h1 className="text-3xl font-light text-gray-900 tracking-tight">Contacts</h1>
                 <p className="text-gray-400 mt-2 font-light">Manage your campaign audience</p>
@@ -2720,139 +2733,146 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </div>
             </div>
 
-            {/* Clean LinkedIn Finder with delayed animation */}
-            <div className="bg-white rounded-3xl border border-gray-100/50 mb-8 group hover:border-gray-200/80 transition-all duration-500 animate-in slide-in-from-left duration-700 fade-in" style={{animationDelay: '200ms'}}>
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center space-x-5">
-                    <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:bg-blue-50 transition-colors duration-300">
-                      <Linkedin className="w-7 h-7 text-gray-400 group-hover:text-blue-500 transition-colors duration-300" />
+            {/* Two Panel Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left Panel - Profile Discovery */}
+              <div className="lg:col-span-1 space-y-6">
+                {/* Profile Discovery */}
+                <div className="bg-white rounded-3xl border border-gray-100/50 group hover:border-gray-200/80 transition-all duration-500">
+                  <div className="p-6">
+                    <div className="flex items-center space-x-4 mb-6">
+                      <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:bg-blue-50 transition-colors duration-300">
+                        <Linkedin className="w-6 h-6 text-gray-400 group-hover:text-blue-500 transition-colors duration-300" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-medium text-gray-900">Profile Discovery</h2>
+                        <p className="text-gray-500 text-sm">Find and enrich professional contacts</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-xl font-light text-gray-900">Profile Discovery</h2>
-                      <p className="text-gray-400 mt-1 font-light">Find and enrich professional contacts</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
+
                     {scrapingStatus && scrapingStatus !== 'idle' && (
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                        <span>Status: {scrapingStatus}</span>
+                      <div className="mb-4 p-3 bg-blue-50 rounded-xl">
+                        <div className="flex items-center space-x-2 text-sm text-blue-700">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                          <span>Status: {scrapingStatus}</span>
+                        </div>
                         {scrapingProgress.totalProfiles > 0 && (
-                          <span>({scrapingProgress.totalProfiles} profiles found, {scrapingProgress.totalContacts} with emails)</span>
+                          <div className="text-xs text-blue-600 mt-1">
+                            {scrapingProgress.totalProfiles} profiles found, {scrapingProgress.totalContacts} with emails
+                          </div>
                         )}
                       </div>
                     )}
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-                    <Input
-                      placeholder="e.g., Technology, Marketing"
-                      value={scrappingIndustry}
-                      onChange={(e) => setScrappingIndustry(e.target.value)}
-                      disabled={isScrappingActive}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Keywords</label>
-                    <Input
-                      placeholder="e.g., CEO, Founder, Manager"
-                      value={scrappingKeyword}
-                      onChange={(e) => setScrappingKeyword(e.target.value)}
-                      disabled={isScrappingActive}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <Input
-                      placeholder="e.g., San Francisco, CA"
-                      value={scrappingLocation}
-                      onChange={(e) => setScrappingLocation(e.target.value)}
-                      disabled={isScrappingActive}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Daily Limit</label>
-                    <Input
-                      type="number"
-                      placeholder="100"
-                      value={scrappingDailyLimit}
-                      onChange={(e) => setScrappingDailyLimit(parseInt(e.target.value) || 100)}
-                      disabled={isScrappingActive}
-                      min="1"
-                      max="500"
-                    />
-                  </div>
-                </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
+                        <Input
+                          placeholder="e.g., Technology, Marketing"
+                          value={scrappingIndustry}
+                          onChange={(e) => setScrappingIndustry(e.target.value)}
+                          disabled={isScrappingActive}
+                          className="h-10"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Keywords</label>
+                        <Input
+                          placeholder="e.g., CEO, Founder, Manager"
+                          value={scrappingKeyword}
+                          onChange={(e) => setScrappingKeyword(e.target.value)}
+                          disabled={isScrappingActive}
+                          className="h-10"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                        <Input
+                          placeholder="e.g., San Francisco, CA"
+                          value={scrappingLocation}
+                          onChange={(e) => setScrappingLocation(e.target.value)}
+                          disabled={isScrappingActive}
+                          className="h-10"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Daily Limit</label>
+                        <Input
+                          type="number"
+                          placeholder="100"
+                          value={scrappingDailyLimit}
+                          onChange={(e) => setScrappingDailyLimit(parseInt(e.target.value) || 100)}
+                          disabled={isScrappingActive}
+                          min="1"
+                          max="500"
+                          className="h-10"
+                        />
+                      </div>
+                    </div>
 
-                <div className="flex items-center space-x-3">
-                  {isScrappingActive ? (
-                    <>
-                      <Button
-                        className="bg-blue-500 text-white relative overflow-hidden"
-                        disabled={true}
-                      >
-                        <div className="flex items-center">
-                          {/* Modern loading spinner */}
-                          <div className="relative mr-3">
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                          </div>
-                          <span className="relative z-10">
-                            {isStartingScrapingLocal 
-                              ? "Initializing..." 
-                              : "Processing..."}
-                          </span>
-                        </div>
-                        {/* Background pulse effect */}
-                        <div className="absolute inset-0 bg-white/10 animate-pulse"></div>
-                      </Button>
-                      <Button
-                        onClick={handleStopScrapping}
-                        size="sm"
-                        variant="destructive"
-                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-xs"
-                      >
-                        <X className="w-3 h-3 mr-1" />
-                        Stop
-                      </Button>
-                    </>
-                  ) : scrapingStatus === 'completed' ? (
-                    <Button
-                      onClick={() => handleStartScrapping('combined')}
-                      disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
-                      style={{ backgroundColor: 'rgb(34, 197, 94)' }}
-                      className="text-white"
-                    >
-                      <Search className="w-4 h-4 mr-2" />
-                      ✅ Scraping Complete - Run Again
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => handleStartScrapping('combined')}
-                      disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
-                      style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-                      className="text-white"
-                    >
-                      <Search className="w-4 h-4 mr-2" />
-                      Start Profile Scraping & Email Enrichment
-                    </Button>
-                  )}
-                  <div className="text-xs text-gray-500">
-                    {isScrappingActive 
-                      ? "Scraping process is running in the background..."
-                      : "Fill in all fields to start scrapping LinkedIn profiles and enriching them with emails"
-                    }
+                    <div className="mt-6 space-y-3">
+                      {isScrappingActive ? (
+                        <>
+                          <Button
+                            className="w-full bg-blue-500 text-white relative overflow-hidden"
+                            disabled={true}
+                          >
+                            <div className="flex items-center justify-center">
+                              <div className="relative mr-3">
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              </div>
+                              <span>
+                                {isStartingScrapingLocal ? "Initializing..." : "Processing..."}
+                              </span>
+                            </div>
+                            <div className="absolute inset-0 bg-white/10 animate-pulse"></div>
+                          </Button>
+                          <Button
+                            onClick={handleStopScrapping}
+                            size="sm"
+                            variant="destructive"
+                            className="w-full bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Stop Scraping
+                          </Button>
+                        </>
+                      ) : scrapingStatus === 'completed' ? (
+                        <Button
+                          onClick={() => handleStartScrapping('combined')}
+                          disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <Search className="w-4 h-4 mr-2" />
+                          ✅ Run Again
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handleStartScrapping('combined')}
+                          disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          <Search className="w-4 h-4 mr-2" />
+                          Start Discovery
+                        </Button>
+                      )}
+                      
+                      <div className="text-xs text-gray-500 text-center">
+                        {isScrappingActive 
+                          ? "Process running in background..."
+                          : "Fill in all fields to start discovery"
+                        }
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Clean Search Interface with delayed animation */}
-            <div className="bg-white rounded-3xl border border-gray-100/50 mb-8 animate-in slide-in-from-right duration-700 fade-in" style={{animationDelay: '400ms'}}>
-              <div className="p-8">
+              {/* Right Panel - Contacts Table */}
+              <div className="lg:col-span-2">
+                {/* Search Interface */}
+                <div className="bg-white rounded-3xl border border-gray-100/50 mb-6">
+                  <div className="p-6">
                 <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                   <div className="relative flex-1 w-full lg:max-w-lg">
                     <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-300 w-5 h-5" />
@@ -2957,9 +2977,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   )}
                 </div>
               )}
+                </div>
 
-              {/* Contact Table with animation */}
-              <div className="overflow-x-auto animate-in slide-in-from-bottom duration-700 fade-in" style={{animationDelay: '600ms'}}>
+                {/* Contact Table with animation */}
+                <div className="bg-white rounded-3xl border border-gray-100/50">
+                  <div className="overflow-x-auto animate-in slide-in-from-bottom duration-700 fade-in" style={{animationDelay: '600ms'}}>
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
@@ -3501,6 +3523,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 </div>
               </DialogContent>
             </Dialog>
+              </div>
+            </div>
           </div>
         );
 
@@ -3611,10 +3635,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                     </Button>
                                   )}
                                 </div>
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 ${
                                   activeStepId === step.id
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-gray-300 text-gray-600'
+                                    ? 'bg-white border-2 border-blue-500 text-blue-700 shadow-sm'
+                                    : 'bg-gray-50 border border-gray-300 text-gray-600 hover:bg-white hover:border-gray-400'
                                 }`}>
                                   {step.sequenceStep}
                                 </div>
@@ -3760,10 +3784,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                       </Button>
                                     )}
                                   </div>
-                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 ${
                                     activeStepId === step.id
-                                      ? 'bg-green-500 text-white'
-                                      : 'bg-gray-300 text-gray-600'
+                                      ? 'bg-white border-2 border-emerald-500 text-emerald-700 shadow-sm'
+                                      : 'bg-gray-50 border border-gray-300 text-gray-600 hover:bg-white hover:border-gray-400'
                                   }`}>
                                     {step.sequenceStep}
                                   </div>
@@ -3803,8 +3827,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         {/* Step Header */}
                         <div className="border-b border-gray-100 p-6">
                           <div className="flex items-center space-x-3 mb-6">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${
-                              activeStep.sequence === 1 ? 'bg-blue-600' : 'bg-green-600'
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shadow-sm transition-all duration-300 ${
+                              activeStep.sequence === 1 
+                                ? 'bg-white border-2 border-blue-500 text-blue-700' 
+                                : 'bg-white border-2 border-emerald-500 text-emerald-700'
                             }`}>
                               {activeStep.sequenceStep}
                             </div>
@@ -4333,26 +4359,31 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             </span>
             {campaign.status !== 'Completed' && (
               <Button
-                variant={campaign.status === 'Draft' ? 'default' : 'outline'}
                 size="sm"
                 onClick={handleLaunchPauseCampaign}
-                className={campaign.status === 'Draft' 
-                  ? 'animate-pulse bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg transform hover:scale-105 transition-all duration-200' 
-                  : campaign.status === 'Active' 
-                    ? 'text-yellow-600 hover:text-yellow-700' 
-                    : 'text-green-600 hover:text-green-700'
+                className={
+                  campaign.status === 'Draft' 
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 animate-pulse'
+                    : campaign.status === 'Active' 
+                      ? 'bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white border-0 shadow-sm hover:shadow-md transform hover:scale-[1.02] transition-all duration-200 backdrop-blur-sm'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white border-0 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-300'
                 }
-                style={campaign.status === 'Draft' ? {
-                  background: 'linear-gradient(135deg, rgb(87, 140, 255) 0%, rgb(67, 120, 235) 100%)',
-                  animation: 'vibrate 0.5s ease-in-out infinite alternate'
-                } : undefined}
               >
                 {campaign.status === 'Draft' ? (
-                  <><Rocket className="w-4 h-4 mr-1" /> Launch</>
+                  <div className="flex items-center">
+                    <Rocket className="w-4 h-4 mr-2" />
+                    <span className="font-medium">Launch</span>
+                  </div>
                 ) : campaign.status === 'Active' ? (
-                  <><Pause className="w-4 h-4 mr-1" /> Pause</>
+                  <div className="flex items-center">
+                    <Pause className="w-4 h-4 mr-2" />
+                    <span className="font-medium">Pause</span>
+                  </div>
                 ) : (
-                  <><Play className="w-4 h-4 mr-1" /> Resume</>
+                  <div className="flex items-center">
+                    <Play className="w-4 h-4 mr-2" />
+                    <span className="font-medium">Resume</span>
+                  </div>
                 )}
               </Button>
             )}

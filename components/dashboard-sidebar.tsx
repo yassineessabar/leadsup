@@ -220,7 +220,7 @@ export function DashboardSidebar({
                       "w-full rounded-lg h-10 text-base relative transition-all duration-300",
                       isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-2.5 py-1.5",
                       (isActive || isParentActive)
-                        ? "bg-violet-50 text-violet-600 hover:bg-violet-100 dark:bg-violet-900 dark:text-violet-400 dark:hover:bg-violet-800"
+                        ? "bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800"
                         : "text-black hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                     )}
                     onClick={() => {
@@ -287,7 +287,7 @@ export function DashboardSidebar({
                       "w-full rounded-lg h-10 text-base transition-all duration-300",
                       isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-2.5 py-1.5",
                       (isActive || isParentActive)
-                        ? "bg-violet-50 text-violet-600 hover:bg-violet-100 dark:bg-violet-900 dark:text-violet-400 dark:hover:bg-violet-800"
+                        ? "bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800"
                         : "text-black hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                     )}
                     onClick={() => onTabChange(hasSubItems ? item.subItems[0].id : item.id)}
@@ -311,7 +311,7 @@ export function DashboardSidebar({
                             className={cn(
                               "w-full justify-start gap-3 rounded-lg px-2.5 py-1 h-8 text-sm",
                               isSubActive
-                                ? "bg-violet-50 text-violet-600 hover:bg-violet-100 dark:bg-violet-900 dark:text-violet-400 dark:hover:bg-violet-800"
+                                ? "bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800"
                                 : "text-black hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
                             )}
                             onClick={() => onTabChange(subItem.id)}
@@ -336,7 +336,7 @@ export function DashboardSidebar({
             <Button
               variant="outline"
               className={cn(
-                "w-full rounded-full border-violet-300 bg-violet-50 h-12 text-base text-violet-600 hover:bg-violet-100 dark:border-violet-700 dark:bg-violet-900 dark:text-violet-400 dark:hover:bg-violet-800 transition-all duration-300",
+                "w-full rounded-full border-blue-300 bg-blue-50 h-12 text-base text-blue-600 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800 transition-all duration-300",
                 isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-4 py-3"
               )}
               onClick={handleUpgrade}

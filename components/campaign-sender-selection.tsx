@@ -78,7 +78,10 @@ export default function CampaignSenderSelection({
       setError(null)
 
       // Fetch all verified domains
-      const domainsResponse = await fetch('/api/domains')
+      const domainsResponse = await fetch('/api/domains').catch(error => {
+        console.error('🚨 Network error fetching domains:', error)
+        throw new Error(`Failed to connect to server: ${error.message}`)
+      })
       const domainsData = await domainsResponse.json()
 
       if (!domainsResponse.ok || !domainsData.success) {
@@ -91,7 +94,10 @@ export default function CampaignSenderSelection({
       // Fetch senders for each verified domain
       const domainsWithSendersPromises = verifiedDomains.map(async (domain: Domain) => {
         try {
-          const sendersResponse = await fetch(`/api/domains/${domain.id}/senders`)
+          const sendersResponse = await fetch(`/api/domains/${domain.id}/senders`).catch(error => {
+            console.error(`🚨 Network error fetching senders for domain ${domain.id}:`, error)
+            throw new Error(`Failed to fetch senders for ${domain.domain}: ${error.message}`)
+          })
           const sendersData = await sendersResponse.json()
 
           if (sendersResponse.ok && sendersData.success) {
@@ -202,6 +208,9 @@ export default function CampaignSenderSelection({
         body: JSON.stringify({
           selectedSenderIds
         }),
+      }).catch(error => {
+        console.error('🚨 Network error during fetch:', error)
+        throw new Error(`Network error: ${error.message}`)
       })
 
       console.log('📡 Response status:', response.status, response.statusText)
