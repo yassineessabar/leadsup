@@ -127,7 +127,6 @@ export function DashboardSidebar({
   ]
 
   const toolsMenuItems = [
-    { id: "integrations", label: "Integrations", icon: Plug },
     { id: "domain", label: "Domain", icon: Globe }
   ]
 

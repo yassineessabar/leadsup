@@ -8,7 +8,7 @@ declare global {
     scrapingPollInterval?: NodeJS.Timeout | null
   }
 }
-import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, BarChart, ExternalLink, Inbox, Archive, Reply, Forward, Rocket, Square } from "lucide-react"
+import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, ExternalLink, Inbox, Archive, Reply, Forward, Rocket, Square, TrendingUp, Shield, ArrowUp, Brain, ShieldCheck, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -18,7 +18,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import AddCampaignPopup from "./add-campaign-popup"
 import { format } from "date-fns"
 import AutomationSettings from "@/components/automation-settings"
@@ -72,17 +74,64 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     refetch: refetchScrapingStatus 
   } = useScrapingUpdates(campaign?.id)
   
-  // Derived state from database status or local loading state, but not if stopped locally
-  const isScrappingActive = (scrapingStatus === 'running' || isStartingScrapingLocal) && !isStoppedLocally
+  // Derived state from database status - trust the database state primarily
+  // Only consider local states for immediate UI feedback during transitions
+  const isScrappingActive = scrapingStatus === 'running' || (isStartingScrapingLocal && !isStoppedLocally)
   
   // Initialize scrapping status checking and polling
   useEffect(() => {
     // Check status immediately when campaign ID is available
     if (campaign?.id) {
       console.log('Checking initial scraping status for campaign:', campaign.id)
+      console.log('Current scrapingStatus from hook:', scrapingStatus)
+      
+      // Reset local stopped state when component mounts to trust database state
+      setIsStoppedLocally(false)
+      
+      // Force refetch the status
       refetchScrapingStatus()
+      
+      // Also do a direct API check as backup to verify database status
+      const checkStatusDirectly = async () => {
+        try {
+          const response = await fetch(`/api/campaigns/${campaign.id}/scraping`)
+          const data = await response.json()
+          console.log('📊 Direct API status check result:', data)
+          
+          // If the API shows different status than hook, force update
+          if (data.success && data.scrapingStatus !== scrapingStatus) {
+            console.log(`🔄 Status mismatch detected. Hook: ${scrapingStatus}, API: ${data.scrapingStatus}`)
+            // Force a refetch to sync up
+            setTimeout(() => refetchScrapingStatus(), 100)
+          }
+        } catch (error) {
+          console.error('Error checking status directly:', error)
+        }
+      }
+      checkStatusDirectly()
+      
+      // Set up polling to check status every 10 seconds as backup
+      const pollInterval = setInterval(() => {
+        console.log('🔄 Polling scraping status...')
+        refetchScrapingStatus()
+      }, 10000)
+      
+      // Cleanup on unmount
+      return () => {
+        clearInterval(pollInterval)
+      }
     }
-  }, [campaign?.id])
+  }, [campaign?.id, refetchScrapingStatus])
+  
+  // Reset local state when database status changes to running
+  useEffect(() => {
+    if (scrapingStatus === 'running') {
+      setIsStoppedLocally(false)
+      setIsStartingScrapingLocal(false)
+    } else if (scrapingStatus === 'completed' || scrapingStatus === 'failed') {
+      setIsStartingScrapingLocal(false)
+    }
+  }, [scrapingStatus])
   
   // Delete confirmation state
   const [deleteConfirm, setDeleteConfirm] = useState<{

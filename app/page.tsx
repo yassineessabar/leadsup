@@ -7,6 +7,7 @@ import { useSubscription } from "@/hooks/use-subscription"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { LeadsDashboard } from "@/components/leads-dashboard"
+import { ComprehensiveDashboard } from "@/components/comprehensive-dashboard"
 import { LeadsTab } from "@/components/leads-tab"
 import { AccountTab } from "@/components/account-tab"
 import { UpgradePage } from "@/components/upgrade-page"
@@ -74,7 +75,7 @@ export default function Home() {
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <LeadsDashboard />
+        return <ComprehensiveDashboard />
       case "leads":
         return <LeadsTab />
       case "campaigns-email":

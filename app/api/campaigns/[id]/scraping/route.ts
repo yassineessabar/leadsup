@@ -34,6 +34,62 @@ async function getUserIdFromSession(): Promise<string | null> {
   }
 }
 
+// GET - Check current scraping status
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: campaignId } = await params;
+    
+    const userId = await getUserIdFromSession();
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    // Get campaign and its scraping status from database
+    const { data: campaign, error } = await supabaseServer
+      .from('campaigns')
+      .select('id, scraping_status, scraping_updated_at')
+      .eq('id', campaignId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !campaign) {
+      return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+    }
+
+    // Also check if scraping is actually running in the service
+    const isServiceRunning = scrapingService.isScrapingRunning(campaignId);
+
+    // Get progress metrics
+    const progress = await scrapingService.getScrapingProgress(campaignId);
+
+    console.log(`📊 Scraping status check for campaign ${campaignId}:`, {
+      databaseStatus: campaign.scraping_status,
+      serviceRunning: isServiceRunning,
+      lastUpdated: campaign.scraping_updated_at,
+      progress
+    });
+
+    return NextResponse.json({
+      success: true,
+      scrapingStatus: campaign.scraping_status || 'idle',
+      status: campaign.scraping_status || 'idle',
+      isServiceRunning,
+      isRunning: isServiceRunning,
+      lastUpdated: campaign.scraping_updated_at,
+      updatedAt: campaign.scraping_updated_at,
+      progress
+    });
+
+  } catch (error) {
+    console.error('Error checking scraping status:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -131,49 +187,7 @@ export async function POST(
   }
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id: campaignId } = await params;
-    
-    const userId = await getUserIdFromSession();
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-
-    // Get campaign scraping status
-    const { data: campaign, error: campaignError } = await supabaseServer
-      .from('campaigns')
-      .select('scraping_status, scraping_updated_at')
-      .eq('id', campaignId)
-      .eq('user_id', userId)
-      .single();
-
-    if (campaignError || !campaign) {
-      return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
-    }
-
-    // Get progress metrics
-    const progress = await scrapingService.getScrapingProgress(campaignId);
-
-    return NextResponse.json({
-      status: campaign.scraping_status || 'idle',
-      updatedAt: campaign.scraping_updated_at,
-      progress,
-      isRunning: scrapingService.isScrapingRunning(campaignId)
-    });
-
-  } catch (error) {
-    console.error('Error getting scraping status:', error);
-    return NextResponse.json(
-      { error: 'Failed to get scraping status' },
-      { status: 500 }
-    );
-  }
-}
+// Removed duplicate GET function - functionality merged into the first GET function above
 
 export async function DELETE(
   request: NextRequest,
