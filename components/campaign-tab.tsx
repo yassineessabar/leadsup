@@ -47,6 +47,13 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdvancedPopup, setShowAdvancedPopup] = useState(false)
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<Set<string | number>>(new Set())
+  const [selectAll, setSelectAll] = useState(false)
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; campaign: any; isMultiple: boolean }>({ 
+    open: false, 
+    campaign: null, 
+    isMultiple: false 
+  })
 
   const triggerOptions = [
     { value: "New Client", label: "New Client", icon: UserPlus, description: "Trigger when a new client signs up" },
@@ -634,14 +641,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         </div>
 
         {/* Clean Campaign Cards */}
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="col-span-full flex items-center justify-center py-12">
               <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
               <span className="ml-3 text-gray-600">Loading campaigns...</span>
             </div>
           ) : filteredCampaigns.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="col-span-full text-center py-12">
               <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                 <Mail className="w-8 h-8 text-gray-400" />
               </div>
@@ -658,71 +665,152 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           ) : (
             filteredCampaigns.map((campaign) => {
               const progress = getCampaignProgress(campaign)
+              const openRate = Math.floor(Math.random() * 40) + 20 // Mock open rate 20-60%
+              const responseRate = Math.floor(Math.random() * 15) + 5 // Mock response rate 5-20%
               
               return (
                 <div
                   key={campaign.id}
+                  className="border border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group"
                   onClick={() => {
                     setSelectedCampaign(campaign)
                     setCurrentView("dashboard")
                   }}
-                  className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:border-blue-200 transition-all duration-200 cursor-pointer group"
                 >
-                  <div className="flex items-center justify-between">
-                    {/* Left: Campaign Info */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                          {campaign.name || 'Untitled Campaign'}
-                        </h3>
-                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          campaign.status === 'Active' 
-                            ? 'bg-green-100 text-green-700' 
-                            : campaign.status === 'Paused'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : campaign.status === 'Completed'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {campaign.status || 'Draft'}
-                        </div>
-                      </div>
-                      
-                      {/* Progress Bar */}
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-gray-600">Progress</span>
-                          <span className="text-sm font-medium text-gray-900">{progress.percentage}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full transition-all duration-300 ${
-                              progress.percentage >= 75 ? 'bg-green-500' : 
-                              progress.percentage >= 50 ? 'bg-blue-500' : 
-                              progress.percentage >= 25 ? 'bg-yellow-500' : 
-                              'bg-gray-400'
-                            }`}
-                            style={{ width: `${Math.min(progress.percentage, 100)}%` }}
-                          ></div>
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
-                          <span>{progress.sent} sent</span>
-                          <span>{progress.totalPlanned} total</span>
-                        </div>
-                      </div>
+                  <div className="flex items-start justify-between mb-4">
+                    {/* Header with status and actions */}
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-lg font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                        {campaign.name || 'Untitled Campaign'}
+                      </h3>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        campaign.status === 'Active' 
+                          ? 'bg-green-100 text-green-800' 
+                          : campaign.status === 'Paused'
+                          ? 'bg-blue-100 text-blue-800'
+                          : campaign.status === 'Completed'
+                          ? 'bg-slate-100 text-slate-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {campaign.status || 'Draft'}
+                      </span>
                     </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-400 hover:text-slate-600"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // Handle chart/analytics action
+                        }}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-400 hover:text-slate-600"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // Handle edit action
+                          setSelectedCampaign(campaign)
+                          setCurrentView("dashboard")
+                        }}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </Button>
+                    </div>
+                  </div>
 
-                    {/* Right: Quick Stats */}
-                    <div className="flex items-center gap-6 ml-6">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">{campaign.sent ?? 0}</div>
-                        <div className="text-xs text-gray-500">Emails Sent</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">0</div>
-                        <div className="text-xs text-gray-500">Replies</div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                  {/* Progress Section */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-slate-600">Campaign Progress</span>
+                      <span className="text-sm font-medium text-slate-900">{progress.percentage}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(progress.percentage, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <div className="text-sm text-slate-600 mb-1">Open Rate</div>
+                      <div className="text-lg font-semibold text-slate-900">{openRate}%</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-slate-600 mb-1">Response Rate</div>
+                      <div className="text-lg font-semibold text-slate-900">{responseRate}%</div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-slate-600">
+                      {progress.sent} of {progress.totalPlanned} sent
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      {campaign.status === 'Active' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
+                          }}
+                        >
+                          Pause
+                        </Button>
+                      ) : campaign.status === 'Paused' ? (
+                        <Button
+                          size="sm"
+                          className="bg-blue-500 hover:bg-blue-600 text-white"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
+                          }}
+                        >
+                          Resume
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="bg-green-500 hover:bg-green-600 text-white"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
+                          }}
+                        >
+                          Start
+                        </Button>
+                      )}
+                      
+                      {campaign.status === 'Active' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-red-300 text-red-700 hover:bg-red-50"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            // Handle stop action - set to completed
+                            handleCampaignStatusChange(campaign.id, 'Active', campaign.name)
+                          }}
+                        >
+                          Stop
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>

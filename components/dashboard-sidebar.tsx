@@ -162,15 +162,20 @@ export function DashboardSidebar({
         "flex flex-col rounded-2xl bg-gray-50 p-4 dark:bg-gray-900 h-full my-8 ml-4 transition-all duration-300",
         isCollapsed ? "max-w-[80px]" : "max-w-[250px]"
       )}>
-        <div className="flex items-center gap-2 px-2 py-3 mb-4 relative">
-          <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
+        <div className="flex items-center px-2 py-3 mb-4 relative">
+          <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <span className="text-white font-bold text-lg">L</span>
           </div>
-          {!isCollapsed && <span className="font-semibold text-lg">LeadsUp</span>}
+          {!isCollapsed && (
+            <span className="font-semibold text-lg ml-2 truncate">LeadsUp</span>
+          )}
           <Button
             variant="ghost"
             size="sm"
-            className="ml-auto p-1 h-6 w-6"
+            className={cn(
+              "p-1 h-6 w-6 flex-shrink-0",
+              isCollapsed ? "ml-2" : "ml-auto"
+            )}
             onClick={onToggleCollapsed}
           >
             {isCollapsed ? (
