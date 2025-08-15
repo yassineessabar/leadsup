@@ -535,49 +535,44 @@ export default function DomainsPage() {
   // Domains list view
   if (currentView === "domains") {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="min-h-screen bg-[rgb(243,243,241)]">
+        <div className="max-w-7xl mx-auto p-6 md:p-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-light text-gray-900 mb-2">Your Domains</h1>
-              <p className="text-gray-500 text-lg">
-                Manage your email domains and sender accounts
-              </p>
-            </div>
+          <div className="mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Domains</h1>
+                <p className="text-gray-500 font-light">
+                  Manage your email domains and sender accounts
+                </p>
+              </div>
 
-            <Button 
-              onClick={() => setShowAddDomain(true)} 
-              className="text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
-              style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
-              }}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Domain
-            </Button>
+              <Button 
+                onClick={() => setShowAddDomain(true)} 
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Domain
+              </Button>
+            </div>
           </div>
 
           {/* Search and filters */}
           <div className="flex gap-4 mb-8">
-            <div className="relative flex-1">
+            <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search domains..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black"
+                className="pl-10 h-10 bg-white border-gray-200 rounded-2xl"
               />
             </div>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-48 border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black">
+              <SelectTrigger className="w-48 h-10 bg-white border-gray-200 rounded-2xl">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-2xl border-gray-200">
                 <SelectItem value="date-created">Date Created</SelectItem>
                 <SelectItem value="name">Name</SelectItem>
                 <SelectItem value="status">Status</SelectItem>
@@ -595,41 +590,35 @@ export default function DomainsPage() {
             </div>
           ) : domains.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Globe className="h-8 w-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No domains yet</h3>
-              <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              <h3 className="text-xl font-medium text-gray-900 mb-2">No domains yet</h3>
+              <p className="text-gray-500 mb-8 font-light max-w-md mx-auto">
                 Add your first domain to start sending emails. We'll help you set it up step by step.
               </p>
               <Button 
                 onClick={() => setShowAddDomain(true)} 
-                className="text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
-                style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
-                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-6 py-3 font-medium transition-all duration-300 rounded-2xl"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Your First Domain
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {domains
                 .filter(domain => 
                   domain.domain.toLowerCase().includes(searchQuery.toLowerCase())
                 )
                 .map((domain) => (
-                  <div key={domain.id} className="bg-white border rounded-xl p-6 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                          <Globe className="h-6 w-6 text-gray-600" />
-                        </div>
+                  <div key={domain.id} className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+                    <div className="p-8">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                            <Globe className="h-6 w-6 text-blue-600" />
+                          </div>
                         
                         <div>
                           <div className="flex items-center gap-3 mb-1">
@@ -683,14 +672,7 @@ export default function DomainsPage() {
                         
                         <Button
                           onClick={() => handleManageDomain(domain)}
-                          className="text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                          style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
-                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                         >
                           {domain.status === 'verified' ? 'Manage' : 'Setup'}
                         </Button>
@@ -698,10 +680,11 @@ export default function DomainsPage() {
                         <Button
                           variant="outline"
                           onClick={() => handleDeleteDomain(domain)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 px-3 py-2 rounded-lg font-medium transition-colors"
+                          className="border-red-300 hover:bg-red-50 text-red-600 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                         >
                           Delete
                         </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -759,8 +742,8 @@ export default function DomainsPage() {
   // Verification view
   if (currentView === "verification") {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="min-h-screen bg-[rgb(243,243,241)]">
+        <div className="max-w-4xl mx-auto p-6 md:p-8">
           <Button 
             variant="ghost" 
             onClick={handleBackToDomains} 
@@ -771,8 +754,8 @@ export default function DomainsPage() {
           </Button>
           
           <div className="mb-8">
-            <h1 className="text-3xl font-light text-gray-900 mb-2">Setup {selectedDomain}</h1>
-            <p className="text-gray-500 text-lg">
+            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Setup {selectedDomain}</h1>
+            <p className="text-gray-500 font-light">
               Follow these steps to connect your domain
             </p>
           </div>

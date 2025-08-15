@@ -330,8 +330,8 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-[rgb(243,243,241)]">
+      <div className="max-w-7xl mx-auto p-6 md:p-8">
         {/* Header */}
         <div className="mb-8">
           <Button 
@@ -343,61 +343,64 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
             Back to Domains
           </Button>
           
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-light text-gray-900 mb-2">Email Senders</h1>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-700 font-medium">{domain?.domain}</span>
-                  <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Connected</span>
+          <div className="mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Email Senders</h1>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-gray-700 font-medium">{domain?.domain}</span>
+                    <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Connected</span>
+                  </div>
                 </div>
+                <p className="text-gray-500 font-light">
+                  Manage who can send emails from this domain
+                </p>
               </div>
-              <p className="text-gray-500 text-lg">
-                Manage who can send emails from this domain
-              </p>
-            </div>
 
-            <Button 
-              onClick={() => setShowAddSender(true)} 
-              className="text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
-              style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
-              }}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Sender
-            </Button>
+              <Button 
+                onClick={() => setShowAddSender(true)} 
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Sender
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Statistics */}
         {senders.length > 0 && (
           <div className="mb-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {(() => {
                 const stats = getStats()
                 return (
                   <>
-                    <div className="bg-white border rounded-lg p-4">
-                      <div className="text-2xl font-light text-gray-900">{stats.totalAccounts}</div>
-                      <div className="text-sm text-gray-500">Total Accounts</div>
+                    <div className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+                      <div className="p-6">
+                        <div className="text-3xl font-light text-gray-900">{stats.totalAccounts}</div>
+                        <div className="text-sm text-gray-500 mt-1">Total Accounts</div>
+                      </div>
                     </div>
-                    <div className="bg-white border rounded-lg p-4">
-                      <div className="text-2xl font-light text-blue-600">{stats.activeWarmup}</div>
-                      <div className="text-sm text-gray-500">Active Warmup</div>
+                    <div className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+                      <div className="p-6">
+                        <div className="text-3xl font-light text-blue-600">{stats.activeWarmup}</div>
+                        <div className="text-sm text-gray-500 mt-1">Active Warmup</div>
+                      </div>
                     </div>
-                    <div className="bg-white border rounded-lg p-4">
-                      <div className="text-2xl font-light text-red-600">{stats.needAttention}</div>
-                      <div className="text-sm text-gray-500">Need Attention</div>
+                    <div className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+                      <div className="p-6">
+                        <div className="text-3xl font-light text-red-600">{stats.needAttention}</div>
+                        <div className="text-sm text-gray-500 mt-1">Need Attention</div>
+                      </div>
                     </div>
-                    <div className="bg-white border rounded-lg p-4">
-                      <div className={`text-2xl font-light ${getHealthScoreColor(stats.avgScore)}`}>{stats.avgScore}%</div>
-                      <div className="text-sm text-gray-500">Avg. Score</div>
+                    <div className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+                      <div className="p-6">
+                        <div className={`text-3xl font-light ${getHealthScoreColor(stats.avgScore)}`}>{stats.avgScore}%</div>
+                        <div className="text-sm text-gray-500 mt-1">Avg. Score</div>
+                      </div>
                     </div>
                   </>
                 )
@@ -433,13 +436,13 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Show info about preset accounts if they were just created */}
               {senders.length === 3 && 
                senders.some(s => s.email.startsWith('contact@')) && 
                senders.some(s => s.email.startsWith('hello@')) && 
                senders.some(s => s.email.startsWith('info@')) && (
-                <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                <div className="bg-blue-50 rounded-2xl p-6 mb-8">
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
                     <p className="text-sm text-blue-800">
@@ -450,12 +453,13 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
               )}
               
               {senders.map((sender) => (
-                <div key={sender.id} className={`bg-white border rounded-xl p-6 hover:shadow-md transition-shadow ${sender.is_default ? 'ring-2 ring-gray-200' : ''}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <User className="h-6 w-6 text-gray-600" />
-                      </div>
+                <div key={sender.id} className={`bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden ${sender.is_default ? 'ring-2 ring-blue-200' : ''}`}>
+                  <div className="p-8">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center flex-shrink-0">
+                          <User className="h-6 w-6 text-blue-600" />
+                        </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
@@ -501,7 +505,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                           })
                           setShowEditDialog(sender.id)
                         }}
-                        className="text-gray-600 hover:text-gray-700 hover:bg-gray-50 border-gray-200 px-3 py-2 rounded-lg font-medium transition-colors"
+                        className="border-gray-300 hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-2xl font-medium transition-all duration-300"
                       >
                         <Edit3 className="h-4 w-4" />
                       </Button>
@@ -509,10 +513,11 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowDeleteDialog(sender.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 px-3 py-2 rounded-lg font-medium transition-colors"
+                        className="border-red-300 hover:bg-red-50 text-red-600 px-3 py-2 rounded-2xl font-medium transition-all duration-300"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
