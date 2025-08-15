@@ -1,5 +1,5 @@
 "use client"
-import { BarChart3, MessageSquare, User, Plug, Mail, Link, LogOut, Send, Crown, Sparkles, Settings, Users, Menu, Palette, BarChart2, Lock, Zap, Inbox, UserCheck, Plus, ChevronRight, ChevronDown, SidebarOpen, SidebarClose, Globe } from "lucide-react"
+import { BarChart3, MessageSquare, User, Plug, Mail, Link, LogOut, Send, Crown, Sparkles, Settings, Users, Menu, Palette, BarChart2, Lock, Zap, Inbox, UserCheck, Plus, ChevronRight, ChevronDown, SidebarOpen, SidebarClose, Globe, FileText } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -123,6 +123,7 @@ export function DashboardSidebar({
         // Hidden: LinkedIn and Multi-Channel
       ]
     },
+    { id: "templates", label: "Templates", icon: FileText },
     { id: "inbox", label: "Inbox", icon: Inbox },
   ]
 

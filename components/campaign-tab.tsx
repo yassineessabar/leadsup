@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast"
 import CampaignDashboard from "./campaign-dashboard"
 import AddCampaignPopup from "./add-campaign-popup"
 import { DomainSetupButton } from "./domain-setup-button"
+import { CampaignAnalytics } from "./campaign-analytics"
 
 interface Campaign {
   id: string | number
@@ -41,8 +42,9 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
   const [sortBy, setSortBy] = useState("newest")
-  const [currentView, setCurrentView] = useState<"list" | "dashboard">("list")
+  const [currentView, setCurrentView] = useState<"list" | "dashboard" | "analytics">("list")
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
+  const [dashboardInitialTab, setDashboardInitialTab] = useState<string>("contacts")
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
@@ -478,12 +480,68 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     return matchesSearch && matchesStatus && matchesType && matchesSubTab
   })
 
+  if (currentView === "analytics" && selectedCampaign) {
+    return (
+      <CampaignAnalytics
+        campaign={selectedCampaign}
+        onBack={() => {
+          setCurrentView("list")
+          setDashboardInitialTab("contacts") // Reset to default
+        }}
+        onStatusUpdate={async (campaignId, newStatus) => {
+          try {
+            // Make API call to update status in database
+            const response = await fetch(`/api/campaigns/${campaignId}/status`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ status: newStatus })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+              // Update the campaign status in local state only after successful API call
+              setCampaigns(campaigns.map(campaign => 
+                campaign.id === campaignId 
+                  ? { ...campaign, status: newStatus }
+                  : campaign
+              ))
+              // Also update the selected campaign
+              setSelectedCampaign(prev => prev ? { ...prev, status: newStatus } : prev)
+              
+              toast({
+                title: "Campaign Updated",
+                description: `Campaign status changed to ${newStatus}`,
+                variant: "default"
+              })
+            } else {
+              toast({
+                title: "Update Failed",
+                description: result.error || "Failed to update campaign status",
+                variant: "destructive"
+              })
+            }
+          } catch (error) {
+            console.error('Error updating campaign status:', error);
+            toast({
+              title: "Update Failed",
+              description: "Network error occurred while updating campaign",
+              variant: "destructive"
+            })
+          }
+        }}
+      />
+    )
+  }
+
   if (currentView === "dashboard" && selectedCampaign) {
-    // Check URL params for specific tab, otherwise default to contacts
+    // Check URL params for specific tab, otherwise use dashboardInitialTab state
     const subtab = searchParams.get('subtab')
     const initialTab = subtab && ['contacts', 'sequence', 'sender', 'inbox', 'settings'].includes(subtab) 
       ? subtab 
-      : "contacts"
+      : dashboardInitialTab
     
     return (
       <CampaignDashboard 
@@ -491,7 +549,10 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           ...selectedCampaign,
           type: selectedCampaign.type
         }} 
-        onBack={() => setCurrentView("list")}
+        onBack={() => {
+          setCurrentView("list")
+          setDashboardInitialTab("contacts") // Reset to default
+        }}
         onDelete={(campaignId) => {
           // Remove from local state and go back to list view
           setCampaigns(campaigns.filter(campaign => campaign.id !== campaignId))
@@ -596,67 +657,70 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      <div className="max-w-6xl mx-auto p-6">
-        {/* Simplified Header */}
+    <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Campaigns</h1>
-              <p className="text-gray-600">Manage your email campaigns</p>
+              <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Campaigns</h1>
+              <p className="text-gray-500 font-light">Manage and monitor your outreach campaigns</p>
             </div>
-            <Button 
-              onClick={() => setShowAdvancedPopup(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Campaign
-            </Button>
-          </div>
-
-          {/* Simplified Controls */}
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search campaigns..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-white border-gray-200 rounded-xl"
-              />
+            
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => setShowAdvancedPopup(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Campaign
+              </Button>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-36 bg-white border-gray-200 rounded-xl">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="paused">Paused</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
-        {/* Clean Campaign Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Controls */}
+        <div className="flex gap-4 mb-6">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search campaigns..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 bg-white border-gray-200 rounded-2xl"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40 h-10 bg-white border-gray-200 rounded-2xl">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl border-gray-200">
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="paused">Paused</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Campaign Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading ? (
-            <div className="col-span-full flex items-center justify-center py-12">
-              <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-              <span className="ml-3 text-gray-600">Loading campaigns...</span>
+            <div className="col-span-full flex items-center justify-center py-16">
+              <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+              <span className="ml-3 text-gray-600 font-medium">Loading campaigns...</span>
             </div>
           ) : filteredCampaigns.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+            <div className="col-span-full text-center py-16">
+              <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
                 <Mail className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No campaigns yet</h3>
-              <p className="text-gray-600 mb-6">Create your first campaign to get started</p>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">No campaigns found</h3>
+              <p className="text-gray-500 mb-8 font-light">Create your first campaign to start reaching out to prospects</p>
               <Button 
                 onClick={() => setShowAdvancedPopup(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl"
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-6 py-3 font-medium transition-all duration-300 rounded-2xl"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Campaign
@@ -671,101 +735,109 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               return (
                 <div
                   key={campaign.id}
-                  className="border border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group"
+                  className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden cursor-pointer group"
                   onClick={() => {
                     setSelectedCampaign(campaign)
-                    setCurrentView("dashboard")
+                    setCurrentView("analytics")
                   }}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    {/* Header with status and actions */}
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
-                        {campaign.name || 'Untitled Campaign'}
-                      </h3>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  <div className="p-8">
+                    {/* Header */}
+                    <div className="flex items-start justify-between mb-6">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                          <Mail className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {campaign.name || 'Untitled Campaign'}
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1">{campaign.type} Campaign</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm" 
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all duration-200"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedCampaign(campaign)
+                            setCurrentView("analytics")
+                          }}
+                        >
+                          <TrendingUp className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all duration-200"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedCampaign(campaign)
+                            setDashboardInitialTab("settings")
+                            setCurrentView("dashboard")
+                          }}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Status Badge */}
+                    <div className="mb-6">
+                      <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${
                         campaign.status === 'Active' 
-                          ? 'bg-green-100 text-green-800' 
+                          ? 'bg-green-50 text-green-700 border border-green-200' 
                           : campaign.status === 'Paused'
-                          ? 'bg-blue-100 text-blue-800'
+                          ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
                           : campaign.status === 'Completed'
-                          ? 'bg-slate-100 text-slate-800'
-                          : 'bg-gray-100 text-gray-800'
+                          ? 'bg-gray-50 text-gray-700 border border-gray-200'
+                          : 'bg-gray-50 text-gray-700 border border-gray-200'
                       }`}>
                         {campaign.status || 'Draft'}
                       </span>
                     </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-slate-400 hover:text-slate-600"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          // Handle chart/analytics action
-                        }}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-slate-400 hover:text-slate-600"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          // Handle edit action
-                          setSelectedCampaign(campaign)
-                          setCurrentView("dashboard")
-                        }}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </Button>
-                    </div>
-                  </div>
 
-                  {/* Progress Section */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-600">Campaign Progress</span>
-                      <span className="text-sm font-medium text-slate-900">{progress.percentage}%</span>
+                    {/* Metrics */}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div className="text-center p-4 bg-gray-50 rounded-2xl">
+                        <p className="text-2xl font-light text-gray-900">{openRate}%</p>
+                        <p className="text-sm text-gray-500 mt-1">Open Rate</p>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 rounded-2xl">
+                        <p className="text-2xl font-light text-gray-900">{responseRate}%</p>
+                        <p className="text-sm text-gray-500 mt-1">Response</p>
+                      </div>
                     </div>
-                    <div className="w-full bg-slate-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(progress.percentage, 100)}%` }}
-                      ></div>
-                    </div>
-                  </div>
 
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <div className="text-sm text-slate-600 mb-1">Open Rate</div>
-                      <div className="text-lg font-semibold text-slate-900">{openRate}%</div>
+                    {/* Progress */}
+                    <div className="mb-6">
+                      <div className="flex justify-between text-sm mb-3">
+                        <span className="text-gray-600 font-medium">Progress</span>
+                        <span className="font-semibold text-gray-900">{progress.percentage}%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-3">
+                        <div 
+                          className="bg-blue-600 h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(progress.percentage, 100)}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-500 mt-2">
+                        <span>{progress.sent} sent</span>
+                        <span>{progress.totalPlanned} total</span>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-sm text-slate-600 mb-1">Response Rate</div>
-                      <div className="text-lg font-semibold text-slate-900">{responseRate}%</div>
-                    </div>
-                  </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-slate-600">
-                      {progress.sent} of {progress.totalPlanned} sent
-                    </div>
-                    
+                    {/* Action Buttons */}
                     <div className="flex gap-2">
                       {campaign.status === 'Active' ? (
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                          className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
@@ -775,8 +847,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         </Button>
                       ) : campaign.status === 'Paused' ? (
                         <Button
-                          size="sm"
-                          className="bg-blue-500 hover:bg-blue-600 text-white"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-0 font-medium transition-all duration-300 rounded-2xl"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
@@ -786,8 +857,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         </Button>
                       ) : (
                         <Button
-                          size="sm"
-                          className="bg-green-500 hover:bg-green-600 text-white"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-0 font-medium transition-all duration-300 rounded-2xl"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
@@ -800,11 +870,9 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                       {campaign.status === 'Active' && (
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="border-red-300 text-red-700 hover:bg-red-50"
+                          className="border-red-300 hover:bg-red-50 text-red-600 font-medium transition-all duration-300 rounded-2xl px-4"
                           onClick={(e) => {
                             e.stopPropagation()
-                            // Handle stop action - set to completed
                             handleCampaignStatusChange(campaign.id, 'Active', campaign.name)
                           }}
                         >

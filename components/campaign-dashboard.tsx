@@ -94,7 +94,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       // Also do a direct API check as backup to verify database status
       const checkStatusDirectly = async () => {
         try {
-          const response = await fetch(`/api/campaigns/${campaign.id}/scraping`)
+          const response = await fetch(`/api/campaigns/${campaign.id}/scraping`, {
+            credentials: "include"
+          })
           const data = await response.json()
           console.log('📊 Direct API status check result:', data)
           
@@ -712,6 +714,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           campaignData,
           saveType: dataType
@@ -753,7 +756,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     
     setIsLoadingCampaignData(true)
     try {
-      const response = await fetch(`/api/campaigns/${campaign.id}/save`)
+      const response = await fetch(`/api/campaigns/${campaign.id}/save`, {
+        credentials: "include"
+      })
       const result = await response.json()
       
       if (result.success && result.data) {
@@ -814,7 +819,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     if (!campaign?.id || steps.length > 0) return
     
     try {
-      const response = await fetch(`/api/campaigns/${campaign.id}/sequences`)
+      const response = await fetch(`/api/campaigns/${campaign.id}/sequences`, {
+        credentials: "include"
+      })
       const result = await response.json()
       
       if (result.success && result.data && result.data.length > 0) {
@@ -831,7 +838,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     if (!campaign?.id) return
     
     try {
-      const response = await fetch(`/api/campaigns/${campaign.id}/accounts`)
+      const response = await fetch(`/api/campaigns/${campaign.id}/accounts`, {
+        credentials: "include"
+      })
       const result = await response.json()
       
       if (result.success && result.data) {
@@ -890,7 +899,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const url = `/api/campaigns/${campaign.id}/save`
       console.log('🔍 Fetching from URL:', url)
       
-      const response = await fetch(url)
+      const response = await fetch(url, {
+        credentials: "include"
+      })
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`)
@@ -997,7 +1008,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const loadLeadsData = async () => {
     setLeadsLoading(true)
     try {
-      const response = await fetch('/api/prospects')
+      const response = await fetch('/api/prospects', {
+        credentials: "include"
+      })
       const result = await response.json()
       
       if (response.ok && result.prospects) {
@@ -1088,6 +1101,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: "include",
         body: JSON.stringify({
           contacts: prospectsToImport
         })
@@ -1186,6 +1200,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           prospects: prospectsToImport
         }),
@@ -1275,6 +1290,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const response = await fetch('/api/gmail/oauth-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
         body: JSON.stringify({ campaignId: campaign.id })
       })
       
@@ -1341,7 +1357,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       // Step 1: Get OAuth URL from backend
       const response = await fetch('/api/microsoft365/oauth-url', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: "include"
       })
       
       if (!response.ok) throw new Error('Failed to get OAuth URL')
@@ -1388,7 +1405,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   // Load connected Microsoft 365 accounts
   const loadConnectedMicrosoft365Accounts = async () => {
     try {
-      const response = await fetch('/api/microsoft365/accounts')
+      const response = await fetch('/api/microsoft365/accounts', {
+        credentials: "include"
+      })
       if (response.ok) {
         const text = await response.text()
         try {
@@ -1410,7 +1429,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   const loadConnectedSmtpAccounts = async () => {
     try {
-      const response = await fetch('/api/smtp/accounts')
+      const response = await fetch('/api/smtp/accounts', {
+        credentials: "include"
+      })
       if (response.ok) {
         const text = await response.text()
         try {
@@ -1438,6 +1459,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const response = await fetch('/api/smtp/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
         body: JSON.stringify({
           smtpHost: smtpFormData.smtpHost,
           smtpPort: smtpFormData.smtpPort,
@@ -1470,6 +1492,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const response = await fetch('/api/smtp/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
         body: JSON.stringify(smtpFormData)
       })
 
@@ -1517,6 +1540,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const response = await fetch('/api/smtp/test-send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
         body: JSON.stringify({ 
           accountId: testModalAccountId,
           to: testModalEmail,
@@ -1583,6 +1607,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(campaignData.formData) // Send the full form data with keywords, location, industry
       })
 
@@ -1929,6 +1954,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const response = await fetch('/api/gmail/test-send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
         body: JSON.stringify({ 
           accountId: testModalAccountId,
           to: testModalEmail,
@@ -1999,6 +2025,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const response = await fetch('/api/microsoft365/test-send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
         body: JSON.stringify({ 
           accountId: testModalAccountId,
           to: testModalEmail,
@@ -2079,7 +2106,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   const fetchCampaigns = async () => {
     try {
-      const response = await fetch('/api/campaigns')
+      const response = await fetch('/api/campaigns', {
+        credentials: "include"
+      })
       const data = await response.json()
       
       if (data.success && data.data) {
@@ -2113,6 +2142,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         return fetch(`/api/contacts/${contactId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
+          credentials: "include",
           body: JSON.stringify({ tags: updatedTags })
         })
       })
@@ -2148,7 +2178,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
     try {
       const deletePromises = selectedContacts.map(contactId =>
-        fetch(`/api/contacts/${contactId}`, { method: 'DELETE' })
+        fetch(`/api/contacts/${contactId}`, { 
+          method: 'DELETE',
+          credentials: "include"
+        })
       )
 
       await Promise.all(deletePromises)
@@ -2173,7 +2206,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
     try {
       const deletePromises = idsToDelete.map(contactId =>
-        fetch(`/api/contacts/${contactId}`, { method: 'DELETE' })
+        fetch(`/api/contacts/${contactId}`, { 
+          method: 'DELETE',
+          credentials: "include"
+        })
       )
 
       await Promise.all(deletePromises)
@@ -2235,6 +2271,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       const response = await fetch('/api/contacts/import', {
         method: 'POST',
+        credentials: "include",
         body: formData
       })
 
@@ -2318,7 +2355,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const checkGmailApiStatus = async () => {
     setCheckingApiStatus(true)
     try {
-      const response = await fetch('/api/gmail/api-status')
+      const response = await fetch('/api/gmail/api-status', {
+        credentials: "include"
+      })
       const data = await response.json()
       
       if (response.ok) {
@@ -2409,6 +2448,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       // Delete from database
       const response = await fetch(`/api/campaigns/${campaign.id}/gmail-accounts?accountId=${accountId}`, {
         method: 'DELETE',
+        credentials: "include"
       })
 
       if (response.ok) {
@@ -2426,7 +2466,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const disconnectMicrosoft365Account = async (accountId) => {
     try {
       const response = await fetch(`/api/microsoft365/accounts?id=${accountId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: "include"
       })
 
       if (response.ok) {
@@ -2443,7 +2484,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const disconnectSmtpAccount = async (accountId) => {
     try {
       const response = await fetch(`/api/smtp/accounts?id=${accountId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: "include"
       })
 
       if (response.ok) {
@@ -2465,13 +2507,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             {/* Clean Header */}
             <div className="flex justify-between items-start mb-8">
               <div>
-                <h1 className="text-3xl font-light text-gray-900 tracking-tight">Settings</h1>
-                <p className="text-gray-400 mt-2 font-light">Configure timing, schedule and sender information</p>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight">Settings</h1>
+                <p className="text-gray-500 mt-2 font-light">Configure timing, schedule and sender information</p>
               </div>
               <div className="flex items-center">
                 <Button 
                   onClick={saveSettings} 
-                  className="bg-gray-900 hover:bg-gray-800 text-white border-0 shadow-sm hover:shadow-md transition-all duration-300 px-6 py-2.5 font-medium"
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                 >
                   <Check className="w-4 h-4 mr-2" />
                   Save Settings
@@ -2724,8 +2766,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             {/* Clean Header */}
             <div className="flex justify-between items-start mb-8">
               <div>
-                <h1 className="text-3xl font-light text-gray-900 tracking-tight">Contacts</h1>
-                <p className="text-gray-400 mt-2 font-light">Manage your campaign audience</p>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight">Contacts</h1>
+                <p className="text-gray-500 mt-2 font-light">Manage your campaign audience</p>
               </div>
               <div className="text-right">
                 <div className="text-2xl font-light text-gray-900">{contacts.length}</div>
@@ -2772,7 +2814,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           value={scrappingIndustry}
                           onChange={(e) => setScrappingIndustry(e.target.value)}
                           disabled={isScrappingActive}
-                          className="h-10"
+                          className="h-10 bg-gray-50 border-gray-200 rounded-2xl"
                         />
                       </div>
                       <div>
@@ -2782,7 +2824,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           value={scrappingKeyword}
                           onChange={(e) => setScrappingKeyword(e.target.value)}
                           disabled={isScrappingActive}
-                          className="h-10"
+                          className="h-10 bg-gray-50 border-gray-200 rounded-2xl"
                         />
                       </div>
                       <div>
@@ -2792,7 +2834,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           value={scrappingLocation}
                           onChange={(e) => setScrappingLocation(e.target.value)}
                           disabled={isScrappingActive}
-                          className="h-10"
+                          className="h-10 bg-gray-50 border-gray-200 rounded-2xl"
                         />
                       </div>
                       <div>
@@ -2805,7 +2847,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           disabled={isScrappingActive}
                           min="1"
                           max="500"
-                          className="h-10"
+                          className="h-10 bg-gray-50 border-gray-200 rounded-2xl"
                         />
                       </div>
                     </div>
@@ -2814,7 +2856,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       {isScrappingActive ? (
                         <>
                           <Button
-                            className="w-full bg-blue-500 text-white relative overflow-hidden"
+                            className="w-full bg-blue-600 text-white relative overflow-hidden rounded-2xl"
                             disabled={true}
                           >
                             <div className="flex items-center justify-center">
@@ -2831,7 +2873,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             onClick={handleStopScrapping}
                             size="sm"
                             variant="destructive"
-                            className="w-full bg-red-600 hover:bg-red-700 text-white"
+                            className="w-full bg-red-600 hover:bg-red-700 text-white rounded-2xl"
                           >
                             <X className="w-4 h-4 mr-2" />
                             Stop Scraping
@@ -2841,7 +2883,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <Button
                           onClick={() => handleStartScrapping('combined')}
                           disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
-                          className="w-full bg-green-600 hover:bg-green-700 text-white"
+                          className="w-full bg-green-600 hover:bg-green-700 text-white rounded-2xl"
                         >
                           <Search className="w-4 h-4 mr-2" />
                           ✅ Run Again
@@ -2850,7 +2892,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <Button
                           onClick={() => handleStartScrapping('combined')}
                           disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl"
                         >
                           <Search className="w-4 h-4 mr-2" />
                           Start Discovery
@@ -3530,20 +3572,17 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       case 'sequence':
         return (
-          <div className="w-full">
-            {/* Header with Save Button */}
-            <div className="flex justify-between items-center mb-6">
+          <div className="w-full animate-in fade-in duration-500">
+            {/* Clean Header */}
+            <div className="flex justify-between items-start mb-8">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Email Sequence</h2>
-                <p className="text-gray-600">Configure your email sequence steps and timing</p>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight">Email Sequence</h1>
+                <p className="text-gray-500 mt-2 font-light">Configure your email sequence steps and timing</p>
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center">
                 <Button 
                   onClick={saveAll} 
-                  className="text-white shadow-sm hover:shadow-md transition-all duration-200"
-                  style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                 >
                   <Send className="w-4 h-4 mr-2" />
                   Save All Campaign Data
@@ -3551,11 +3590,19 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
               {/* Sequence Timeline Sidebar */}
-              <div className="lg:w-2/5">
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm min-w-0">
-                  <h3 className="font-semibold text-gray-900 mb-6 text-lg">Campaign Timeline</h3>
+              <div className="lg:col-span-2">
+                <div className="bg-white rounded-3xl border border-gray-100/50 p-8 min-w-0">
+                  <div className="flex items-center space-x-4 mb-8">
+                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                      <Mail className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-medium text-gray-900">Campaign Timeline</h2>
+                      <p className="text-gray-500 text-sm mt-1">Email sequence overview</p>
+                    </div>
+                  </div>
                   
                   {/* Sequence 1 */}
                   <div className="mb-8">
@@ -3816,16 +3863,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </div>
 
               {/* Step Editor */}
-              <div className="lg:w-3/5">
+              <div className="lg:col-span-3">
                 {steps.length > 0 && activeStepId && (
                   (() => {
                     const activeStep = steps.find(s => s.id === activeStepId)
                     if (!activeStep) return null
                     
                     return (
-                      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                      <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
                         {/* Step Header */}
-                        <div className="border-b border-gray-100 p-6">
+                        <div className="p-8 border-b border-gray-100/60">
                           <div className="flex items-center space-x-3 mb-6">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shadow-sm transition-all duration-300 ${
                               activeStep.sequence === 1 
@@ -4230,6 +4277,61 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           </div>
         );
 
+      case 'inbox':
+        return (
+          <div className="w-full animate-in fade-in duration-500">
+            {/* Clean Header */}
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight">Inbox</h1>
+                <p className="text-gray-500 mt-2 font-light">Manage campaign responses and conversations</p>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-light text-gray-900">0</div>
+                <div className="text-xs text-gray-400 uppercase tracking-wide">Conversations</div>
+              </div>
+            </div>
+
+            {/* Inbox Content */}
+            <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
+              <div className="p-8">
+                <div className="flex items-center space-x-4 mb-8">
+                  <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center">
+                    <Inbox className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-medium text-gray-900">Campaign Responses</h2>
+                    <p className="text-gray-500 text-sm mt-1">Track and manage prospect replies</p>
+                  </div>
+                </div>
+
+                {/* Empty State */}
+                <div className="text-center py-16">
+                  <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                    <Reply className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">No responses yet</h3>
+                  <p className="text-gray-500 mb-8 font-light">Prospect replies will appear here once your campaign is active</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-md mx-auto">
+                    <div className="text-center p-4 bg-gray-50 rounded-2xl">
+                      <p className="text-2xl font-light text-gray-900">0</p>
+                      <p className="text-sm text-gray-500 mt-1">Replies</p>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-2xl">
+                      <p className="text-2xl font-light text-gray-900">0</p>
+                      <p className="text-sm text-gray-500 mt-1">Interested</p>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-2xl">
+                      <p className="text-2xl font-light text-gray-900">0</p>
+                      <p className="text-sm text-gray-500 mt-1">Unsubscribed</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
 
       default:
         return null;
@@ -4264,826 +4366,257 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           100% { transform: translateX(0); }
         }
       `}</style>
-      <main style={{
-        paddingLeft: '64px',
-        paddingRight: '64px',
-        paddingTop: '32px',
-        backgroundColor: '#FAFBFC',
-        fontFamily: 'Jost, sans-serif',
-      minHeight: '100vh'
-    }}>
-      {/* Campaign Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              onClick={onBack}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              ←
-            </Button>
-            <div>
-              <div className="flex items-center space-x-2">
-                {isEditingName ? (
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      value={editedName}
-                      onChange={(e) => setEditedName(e.target.value)}
-                      onKeyDown={handleNameKeyPress}
-                      onBlur={handleSaveName}
-                      className="text-2xl font-bold text-gray-900 border-none p-0 h-auto bg-transparent focus:ring-0"
-                      autoFocus
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleSaveName}
-                      className="text-green-600 hover:text-green-700 p-1"
-                    >
-                      <Check className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCancelEdit}
-                      className="text-gray-400 hover:text-gray-600 p-1"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+      <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Campaign Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onBack}
+                  className="h-10 w-10 hover:bg-white/50 rounded-2xl"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    {isEditingName ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                          onKeyDown={handleNameKeyPress}
+                          onBlur={handleSaveName}
+                          className="text-4xl font-light text-gray-900 tracking-tight border-none p-0 h-auto bg-transparent focus:ring-0 focus:outline-none"
+                          autoFocus
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleSaveName}
+                          className="text-green-600 hover:text-green-700 hover:bg-green-50 rounded-xl p-2"
+                        >
+                          <Check className="w-4 h-4" />
+                        </Button>
+                            <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCancelEdit}
+                          className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl p-2"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 cursor-pointer group" onClick={handleStartEditingName}>
+                        <h1 className="text-4xl font-light text-gray-900 tracking-tight">{campaign.name}</h1>
+                        <Edit2 className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="flex items-center space-x-2 group">
-                    <h1 className="text-2xl font-bold text-gray-900">{campaign.name}</h1>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleStartEditingName}
-                      className="text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                  <div className="flex items-center gap-6 text-sm text-gray-500 font-light">
+                    <span className="flex items-center gap-1.5">
+                      <Mail className="h-4 w-4" />
+                      {campaign?.type} Campaign
+                    </span>
+                    <Badge 
+                      variant="outline"
+                      className={`${
+                        campaign?.status === 'Active' 
+                          ? 'bg-green-50 text-green-700 border-green-200' 
+                          : campaign?.status === 'Paused'
+                          ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                          : 'bg-gray-50 text-gray-700 border-gray-200'
+                      } border rounded-full px-3 py-1`}
                     >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
+                      {campaign?.status}
+                    </Badge>
                   </div>
-                )}
+                </div>
               </div>
-              <p className="text-gray-600">Campaign Management</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setCampaignDataLoaded(false)
-                loadCampaignData()
-              }}
-              className="text-gray-500 hover:text-gray-700"
-              title="Refresh campaign data"
+
+          {/* Navigation Tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            <Button 
+              variant={activeTab === 'contacts' ? 'default' : 'outline'}
+              onClick={() => setActiveTab('contacts')}
+              className={`${
+                activeTab === 'contacts' 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
+                  : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <Users className="w-4 h-4 mr-2" />
+              Contacts ({contacts.length})
             </Button>
-            <span 
-              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-              style={
-                campaign.status === 'Active' 
-                  ? { backgroundColor: '#dcfce7', color: '#166534' }
-                  : campaign.status === 'Draft'
-                  ? { backgroundColor: '#f3f4f6', color: '#374151' }
-                  : campaign.status === 'Paused'
-                  ? { backgroundColor: '#fef3c7', color: '#92400e' }
-                  : { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }
-              }>
-              {campaign.status}
-            </span>
-            {campaign.status !== 'Completed' && (
-              <Button
-                size="sm"
-                onClick={handleLaunchPauseCampaign}
-                className={
-                  campaign.status === 'Draft' 
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 animate-pulse'
-                    : campaign.status === 'Active' 
-                      ? 'bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white border-0 shadow-sm hover:shadow-md transform hover:scale-[1.02] transition-all duration-200 backdrop-blur-sm'
-                      : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white border-0 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-300'
-                }
-              >
-                {campaign.status === 'Draft' ? (
-                  <div className="flex items-center">
-                    <Rocket className="w-4 h-4 mr-2" />
-                    <span className="font-medium">Launch</span>
-                  </div>
-                ) : campaign.status === 'Active' ? (
-                  <div className="flex items-center">
-                    <Pause className="w-4 h-4 mr-2" />
-                    <span className="font-medium">Pause</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <Play className="w-4 h-4 mr-2" />
-                    <span className="font-medium">Resume</span>
-                  </div>
-                )}
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDeleteCampaign}
-              className="text-red-600 hover:text-red-700"
+            <Button 
+              variant={activeTab === 'sequence' ? 'default' : 'outline'}
+              onClick={() => setActiveTab('sequence')}
+              className={`${
+                activeTab === 'sequence' 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
+                  : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap`}
             >
-              <Trash2 className="w-4 h-4" />
+              <Mail className="w-4 h-4 mr-2" />
+              Sequence
             </Button>
+            <Button 
+              variant={activeTab === 'sender' ? 'default' : 'outline'}
+              onClick={() => setActiveTab('sender')}
+              className={`${
+                activeTab === 'sender' 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
+                  : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap`}
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Sender
+            </Button>
+            <Button 
+              variant={activeTab === 'inbox' ? 'default' : 'outline'}
+              onClick={() => setActiveTab('inbox')}
+              className={`${
+                activeTab === 'inbox' 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
+                  : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap`}
+            >
+              <Inbox className="w-4 h-4 mr-2" />
+              Inbox
+            </Button>
+            <Button 
+              variant={activeTab === 'settings' ? 'default' : 'outline'}
+              onClick={() => setActiveTab('settings')}
+              className={`${
+                activeTab === 'settings' 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
+                  : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap`}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
+            </Button>
+          </div>
+
+          {/* Tab Content */}
+          <div className="flex-1">
+            {renderTabContent()}
           </div>
         </div>
-      </div>
 
-      {/* Ultra Clean Tab Navigation */}
-      <div className="mb-8">
-        <nav className="flex bg-gray-50/50 rounded-2xl p-1.5 backdrop-blur-sm">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            const isActive = activeTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-medium text-sm transition-all duration-300 ease-out ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="font-medium">{tab.label}</span>
-              </button>
-            )
-          })}
-        </nav>
-      </div>
-
-      {/* Tab Content with smooth transitions */}
-      <div className="transition-all duration-300 ease-in-out">
-        {renderTabContent()}
-      </div>
-
-      {/* Test Email Modal */}
-      <Dialog open={showTestModal} onOpenChange={setShowTestModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Send Test Email</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Test Email Address
-              </label>
-              <Input
-                type="email"
-                value={testModalEmail}
-                onChange={(e) => setTestModalEmail(e.target.value)}
-                placeholder="test@example.com"
-              />
-            </div>
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-              <Button
-                variant="outline"
-                onClick={() => setShowTestModal(false)}
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => 
+          setDeleteConfirm(prev => ({ ...prev, isOpen: open }))
+        }>
+          <DialogContent className="rounded-3xl">
+            <DialogHeader>
+              <DialogTitle>
+                {deleteConfirm.type === 'sequence' ? 'Delete Sequence' : 'Delete Step'}
+              </DialogTitle>
+              <DialogDescription>
+                {deleteConfirm.type === 'sequence' 
+                  ? `Are you sure you want to delete the sequence "${deleteConfirm.item?.name}"? This action cannot be undone.`
+                  : `Are you sure you want to delete this step? This action cannot be undone.`
+                }
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setDeleteConfirm(prev => ({ ...prev, isOpen: false }))}
+                className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
               >
                 Cancel
               </Button>
-              <Button
-                onClick={sendTestEmailGeneric}
-                disabled={testModalLoading}
-              >
-                {testModalLoading ? 'Sending...' : 'Send Test'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Daily Limit Warning Dialog */}
-      <Dialog open={showDailyLimitWarning} onOpenChange={setShowDailyLimitWarning}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>High Daily Limit Warning</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-              <div className="text-sm text-gray-700">
-                <p className="mb-2">
-                  Setting a daily limit above 50 emails may impact your sender reputation and deliverability.
-                </p>
-                <p className="mb-2">
-                  We recommend staying within 50 emails per day for optimal performance, especially for new accounts.
-                </p>
-                <p className="font-medium">
-                  Are you sure you want to continue?
-                </p>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-              <Button
-                variant="outline"
+              <Button 
+                variant="destructive" 
                 onClick={() => {
-                  setShowDailyLimitWarning(false)
-                  setWarningAccountId(null)
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  handleDailyLimitChange(warningAccountId, pendingDailyLimit)
-                  setShowDailyLimitWarning(false)
-                  setWarningAccountId(null)
-                  setPendingDailyLimit(50)
-                }}
-                className="bg-yellow-600 hover:bg-yellow-700"
-              >
-                Continue Anyway
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Bulk Email Import Modal */}
-      <Dialog open={showBulkImportModal} onOpenChange={setShowBulkImportModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <Upload className="w-5 h-5" style={{ color: 'rgb(87, 140, 255)' }} />
-              <span>Import Bulk Email Accounts</span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {/* CSV Format Guide */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-800 font-medium mb-2">CSV Format Required:</p>
-              <code className="block bg-white p-2 rounded text-xs text-gray-700 font-mono">
-                email,password,smtp_host,smtp_port,imap_host,imap_port,provider_type
-              </code>
-              <p className="text-xs mt-2" style={{ color: 'rgb(87, 140, 255)' }}>
-                📧 <strong>email:</strong> Your email address<br/>
-                🔑 <strong>password:</strong> App password (Gmail/Yahoo) or regular password<br/>
-                🏢 <strong>provider_type:</strong> gmail, outlook, yahoo, or other
-              </p>
-            </div>
-
-            {/* Where to Find Information */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <p className="text-sm text-green-800 font-medium mb-2">Where to Find This Info:</p>
-              <div className="text-xs text-green-700 space-y-2">
-                <div><strong>🔑 App Passwords:</strong><br/>
-                Gmail: Google Account → Security → App passwords<br/>
-                Yahoo: Yahoo Account → Account security → Generate app password</div>
-                <div><strong>📧 SMTP/IMAP Settings:</strong><br/>
-                Gmail: smtp.gmail.com:587, imap.gmail.com:993<br/>
-                Outlook: smtp-mail.outlook.com:587, outlook.office365.com:993<br/>
-                Yahoo: smtp.mail.yahoo.com:587, imap.mail.yahoo.com:993</div>
-              </div>
-            </div>
-
-            {/* Example */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-sm text-yellow-800 font-medium mb-2">Example CSV:</p>
-              <div className="bg-white p-2 rounded border text-xs text-gray-700 font-mono">
-                <div>john@gmail.com,app-password,smtp.gmail.com,587,imap.gmail.com,993,gmail</div>
-              </div>
-              <p className="text-xs text-yellow-700 mt-1">
-                💡 Get Gmail App Passwords: <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'rgb(87, 140, 255)' }}>Google Settings</a>
-              </p>
-            </div>
-
-            {/* File Upload */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select CSV File
-              </label>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
-                <div className="space-y-1 text-center">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                  <div className="flex text-sm text-gray-600">
-                    <label
-                      htmlFor="bulk-email-upload"
-                      className="relative cursor-pointer bg-white rounded-md font-medium focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[rgb(87,140,255)]" style={{ color: 'rgb(87, 140, 255)' }}
-                    >
-                      <span>Upload a file</span>
-                      <input
-                        id="bulk-email-upload"
-                        name="bulk-email-upload"
-                        type="file"
-                        className="sr-only"
-                        accept=".csv"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            setBulkEmailCsvFile(file)
-                            // Parse CSV for preview
-                            const text = await file.text()
-                            const lines = text.split('\n').filter(line => line.trim())
-                            const headers = lines[0].split(',').map(h => h.trim())
-                            const preview = lines.slice(1, 6).map(line => {
-                              const values = line.split(',').map(v => v.trim())
-                              const account = {}
-                              headers.forEach((header, index) => {
-                                account[header] = values[index] || ''
-                              })
-                              return account
-                            })
-                            setBulkImportPreview(preview)
-                          }
-                        }}
-                      />
-                    </label>
-                    <p className="pl-1">or drag and drop</p>
-                  </div>
-                  <p className="text-xs text-gray-500">CSV files up to 10MB</p>
-                </div>
-              </div>
-              {bulkEmailCsvFile && (
-                <div className="mt-2 flex items-center text-sm text-gray-600">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                  {bulkEmailCsvFile.name}
-                </div>
-              )}
-            </div>
-
-            {/* Preview Table */}
-            {bulkImportPreview.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Preview (First 5 accounts)</h4>
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Provider</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">SMTP Host</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {bulkImportPreview.map((account, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-2 text-sm text-gray-900">{account.email}</td>
-                          <td className="px-4 py-2 text-sm text-gray-600">
-                            <span 
-                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                              style={
-                                account.provider_type === 'gmail' ? { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' } :
-                                account.provider_type === 'outlook' ? { backgroundColor: 'rgba(99, 102, 241, 0.1)', color: 'rgb(99, 102, 241)' } :
-                                { backgroundColor: 'rgba(107, 114, 128, 0.1)', color: 'rgb(107, 114, 128)' }
-                              }>
-                              {account.provider_type || 'other'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2 text-sm text-gray-600">{account.smtp_host}</td>
-                          <td className="px-4 py-2 text-sm">
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              Ready to import
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  {bulkImportPreview.length} accounts will be imported
-                </p>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowBulkImportModal(false)
-                  setBulkEmailCsvFile(null)
-                  setBulkImportPreview([])
-                }}
-                disabled={bulkImportLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={async () => {
-                  if (!bulkEmailCsvFile) {
-                    return
+                  if (deleteConfirm.onConfirm) {
+                    deleteConfirm.onConfirm()
                   }
-
-                  setBulkImportLoading(true)
-                  try {
-                    const text = await bulkEmailCsvFile.text()
-                    const lines = text.split('\n').filter(line => line.trim())
-                    const headers = lines[0].split(',').map(h => h.trim())
-                    
-                    const accounts = lines.slice(1).map(line => {
-                      const values = line.split(',').map(v => v.trim())
-                      const account = {}
-                      headers.forEach((header, index) => {
-                        account[header] = values[index] || ''
-                      })
-                      return account
-                    })
-
-                    // Process each account based on provider type
-                    let successCount = 0
-                    for (const account of accounts) {
-                      if (account.provider_type === 'gmail') {
-                        // Add to Gmail accounts
-                        connectedGmailAccounts.push({
-                          id: Date.now() + Math.random(),
-                          email: account.email,
-                          profile_picture: null,
-                          warmup_status: 'inactive',
-                          health_score: 75,
-                          daily_limit: 50
-                        })
-                        successCount++
-                      } else if (account.provider_type === 'outlook') {
-                        // Add to Microsoft 365 accounts
-                        connectedMicrosoft365Accounts.push({
-                          id: Date.now() + Math.random(),
-                          email: account.email,
-                          profile_picture: null,
-                          health_score: 85,
-                          daily_limit: 50
-                        })
-                        successCount++
-                      } else {
-                        // Add to SMTP accounts
-                        connectedSmtpAccounts.push({
-                          id: Date.now() + Math.random(),
-                          email: account.email,
-                          name: account.email.split('@')[0],
-                          smtp_host: account.smtp_host,
-                          smtp_port: account.smtp_port,
-                          health_score: 75,
-                          daily_limit: 50
-                        })
-                        successCount++
-                      }
-                    }
-
-
-                    setShowBulkImportModal(false)
-                    setBulkEmailCsvFile(null)
-                    setBulkImportPreview([])
-                  } catch (error) {
-                    console.error('Error importing accounts:', error)
-                  } finally {
-                    setBulkImportLoading(false)
-                  }
+                  setDeleteConfirm({ isOpen: false, type: 'sequence', item: null, onConfirm: null })
                 }}
-                disabled={!bulkEmailCsvFile || bulkImportLoading}
-                style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+                className="bg-red-600 hover:bg-red-700 rounded-2xl"
               >
-                {bulkImportLoading ? (
-                  <div className="flex items-center">
-                    <div className="relative mr-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    </div>
-                    <span>Processing...</span>
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Campaign Preview Modal */}
+        <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto rounded-3xl">
+            <DialogHeader>
+              <DialogTitle>Sequence Preview</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {steps.map((step, index) => (
+                <div key={step.id} className="border border-gray-200 rounded-2xl p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium">{step.title}</h3>
+                    <span className="text-sm text-gray-500">
+                      {step.timing === 0 ? 'Send immediately' : `Wait ${step.timing} days`}
+                    </span>
                   </div>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Import Accounts
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* SMTP/IMAP Connection Modal */}
-      <Dialog open={showSmtpModal} onOpenChange={setShowSmtpModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <Mail className="w-5 h-5" style={{ color: 'rgb(87, 140, 255)' }} />
-              <span>Connect SMTP/IMAP Account</span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Name</label>
-                <input
-                  type="text"
-                  value={smtpFormData.name}
-                  onChange={(e) => setSmtpFormData({...smtpFormData, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)]"
-                  placeholder="Your Name"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Email</label>
-                <input
-                  type="email"
-                  value={smtpFormData.email}
-                  onChange={(e) => setSmtpFormData({...smtpFormData, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)]"
-                  placeholder="your@email.com"
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">SMTP Host</label>
-                <input
-                  type="text"
-                  value={smtpFormData.smtpHost}
-                  onChange={(e) => setSmtpFormData({...smtpFormData, smtpHost: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)]"
-                  placeholder="smtp.gmail.com"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">SMTP Port</label>
-                <input
-                  type="number"
-                  value={smtpFormData.smtpPort}
-                  onChange={(e) => setSmtpFormData({...smtpFormData, smtpPort: parseInt(e.target.value) || 587})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)]"
-                  placeholder="587"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="smtpSecure"
-                checked={smtpFormData.smtpSecure}
-                onChange={(e) => setSmtpFormData({...smtpFormData, smtpSecure: e.target.checked})}
-                className="h-4 w-4 focus:ring-[rgb(87,140,255)] border-gray-300 rounded" style={{ color: 'rgb(87, 140, 255)' }}
-              />
-              <label htmlFor="smtpSecure" className="text-sm font-medium text-gray-700">
-                Use secure connection (TLS/SSL)
-              </label>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Username</label>
-                <input
-                  type="text"
-                  value={smtpFormData.smtpUser}
-                  onChange={(e) => setSmtpFormData({...smtpFormData, smtpUser: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)]"
-                  placeholder="Username or email"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Password</label>
-                <input
-                  type="password"
-                  value={smtpFormData.smtpPassword}
-                  onChange={(e) => setSmtpFormData({...smtpFormData, smtpPassword: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)]"
-                  placeholder="App password or account password"
-                />
-              </div>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-800">
-                <strong>Common Settings:</strong><br/>
-                • Gmail: smtp.gmail.com, Port 587, TLS enabled<br/>
-                • Outlook: smtp-mail.outlook.com, Port 587, TLS enabled<br/>
-                • For Gmail: Use App Password (not regular password)
-              </p>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowSmtpModal(false)
-                  setSmtpFormData({
-                    name: '',
-                    email: '',
-                    smtpHost: '',
-                    smtpPort: 587,
-                    smtpSecure: true,
-                    smtpUser: '',
-                    smtpPassword: ''
-                  })
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={saveSmtpAccount}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Connect Account
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Gmail App Password Help Modal */}
-      <Dialog open={showGmailAppPasswordModal} onOpenChange={setShowGmailAppPasswordModal}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4 text-red-600" />
-              </div>
-              <span>Gmail App Password Required</span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-sm text-yellow-800 mb-3">
-                Gmail requires an App Password instead of your regular password for SMTP connections.
-              </p>
-            </div>
-            
-            <div className="space-y-3">
-              <h4 className="font-medium text-gray-900">Follow these steps:</h4>
-              <div className="space-y-2 text-sm text-gray-700">
-                <div className="flex items-start space-x-2">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>1</span>
-                  <span>Enable 2-Factor Authentication in your Google Account</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>2</span>
-                  <span>Go to Google Account Settings → Security → App passwords</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>3</span>
-                  <span>Generate an app password for "Mail"</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>4</span>
-                  <span>Use that 16-character password instead of your regular password</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
-              <a
-                href="https://myaccount.google.com/apppasswords"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-[rgb(87,140,255)] focus:ring-offset-2"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Open App Passwords
-              </a>
-              <Button
-                variant="outline"
-                onClick={() => setShowGmailAppPasswordModal(false)}
-                className="flex-1"
-              >
-                Got it, thanks!
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Launch Validation Modal */}
-      <Dialog open={showLaunchValidationModal} onOpenChange={setShowLaunchValidationModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <AlertTriangle className="w-5 h-5 text-yellow-500" />
-              <span>Campaign Not Ready</span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Please complete the following steps before launching your campaign:
-            </p>
-            <div className="space-y-3">
-              {launchValidationErrors.map((error, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <X className="w-3 h-3 text-red-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 text-sm">{error.title}</h4>
-                      <p className="text-xs text-gray-600 mt-1">{error.description}</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 border-gray-200" style={{ color: 'rgb(87, 140, 255)' }}
-                        onClick={error.action}
-                      >
-                        {error.buttonText}
-                      </Button>
-                    </div>
+                  <div className="text-sm text-gray-600 mb-2">
+                    Subject: {step.subject}
                   </div>
+                  <div 
+                    className="prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: step.content }}
+                  />
                 </div>
               ))}
             </div>
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-              <Button
-                variant="outline"
-                onClick={() => setShowLaunchValidationModal(false)}
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Campaign Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent className="rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+                Delete Campaign
+              </DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete the campaign <strong>"{campaign?.name}"</strong>?
+                <br />
+                <span className="text-red-600 font-medium">This action cannot be undone.</span>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDeleteDialog(false)}
+                className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
               >
-                Close
+                Cancel
               </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+              <Button
+                variant="destructive"
+                onClick={confirmDeleteCampaign}
+                className="bg-red-600 hover:bg-red-700 rounded-2xl"
+              >
+                Delete Campaign
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && setDeleteConfirm({ isOpen: false, type: 'sequence', item: null, onConfirm: null })}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="h-5 w-5" />
-              {deleteConfirm.type === 'sequence' ? 'Delete Sequence' : 'Delete Email'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-gray-700 mb-4">
-              Are you sure you want to delete <span className="font-semibold">{deleteConfirm.item?.name}</span>?
-            </p>
-            {deleteConfirm.type === 'sequence' && (
-              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-                This will permanently delete the entire sequence and all its emails. This action cannot be undone.
-              </p>
-            )}
-            {deleteConfirm.type === 'step' && (
-              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-                This will permanently delete this email from the sequence. This action cannot be undone.
-              </p>
-            )}
-          </div>
-          <div className="flex gap-3 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteConfirm({ isOpen: false, type: 'sequence', item: null, onConfirm: null })}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleteConfirm.onConfirm?.()}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete {deleteConfirm.type === 'sequence' ? 'Sequence' : 'Email'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Campaign Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="h-5 w-5" />
-              Delete Campaign
-            </DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete the campaign <strong>"{campaign?.name}"</strong>?
-              <br />
-              <span className="text-red-600 font-medium">This action cannot be undone.</span>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDeleteCampaign}
-            >
-              Delete Campaign
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Advanced Campaign Popup */}
-      <AddCampaignPopup 
-        isOpen={showAdvancedPopup}
-        onClose={() => setShowAdvancedPopup(false)}
-        onComplete={handleAdvancedCampaignComplete}
-      />
-    </main>
+        {/* Advanced Campaign Popup */}
+        <AddCampaignPopup 
+          isOpen={showAdvancedPopup}
+          onClose={() => setShowAdvancedPopup(false)}
+          onComplete={handleAdvancedCampaignComplete}
+        />
+      </div>
     </>
   )
 }

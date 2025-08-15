@@ -18,6 +18,7 @@ import CampaignsList from "@/components/campaign-tab"
 import InboxTab from "@/components/inbox-tab"
 import { IntegrationsTab } from "@/components/integrations-tab"
 import { DomainTab } from "@/components/domain-tab"
+import { TemplatesTab } from "@/components/templates-tab"
 // import { SupportChatbot } from "@/components/support-chatbot"
 
 export default function Home() {
@@ -84,6 +85,8 @@ export default function Home() {
         return <CampaignsList activeSubTab={activeTab} />
       case "inbox":
         return <InboxTab />
+      case "templates":
+        return <TemplatesTab />
       case "integrations":
         return <IntegrationsTab />
       case "domain":
