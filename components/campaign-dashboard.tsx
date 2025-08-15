@@ -3897,7 +3897,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-gray-800 mb-3">
-                                📧 Sequence Subject Line
+                                 Sequence Subject Line
                               </label>
                               <Input
                                 value={activeStep.subject || ''}
@@ -3912,7 +3912,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             </div>
                             <div>
                               <label className="block text-sm font-semibold text-gray-800 mb-3">
-                                ⏰ {activeStep.sequence === 1 ? 'Send Delay' : 'Send Schedule'}
+                                 {activeStep.sequence === 1 ? 'Send Delay' : 'Send Schedule'}
                               </label>
                               {activeStep.sequence === 1 ? (
                                 <Select
