@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     // Fetch campaigns with only essential fields for better performance
     const { data: campaigns, error: campaignError } = await supabaseServer
       .from("campaigns")
-      .select("id, name, status, created_at, updated_at, scraping_status")
+      .select("id, name, type, trigger_type, status, created_at, updated_at, scraping_status")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50)

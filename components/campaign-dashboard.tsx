@@ -2484,34 +2484,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
             <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
               <div className="space-y-6">
-                {/* Daily Limits Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Daily Contacts Limit */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Daily Contacts Limit
-                    </label>
-                    <input 
-                      type="number" 
-                      value={dailyContactsLimit}
-                      onChange={(e) => setDailyContactsLimit(parseInt(e.target.value) || 35)}
-                      className="w-full h-12 px-4 text-center bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none transition-colors"
-                    />
-                  </div>
-
-                  {/* Daily Sequence Limit */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Daily Sequence Limit
-                    </label>
-                    <input 
-                      type="number" 
-                      value={dailySequenceLimit}
-                      onChange={(e) => setDailySequenceLimit(parseInt(e.target.value) || 100)}
-                      className="w-full h-12 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-[rgb(87,140,255)] focus:outline-none transition-colors"
-                    />
-                  </div>
-                </div>
 
                 {/* Sending Schedule */}
                 <div>
@@ -2735,22 +2707,31 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       case 'contacts':
         return (
-          <div className="w-full">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6">
+          <div className="w-full animate-in fade-in duration-500">
+            {/* Clean Header with staggered animation */}
+            <div className="flex justify-between items-start mb-8 animate-in slide-in-from-top duration-700 fade-in">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Campaign Contacts</h2>
-                <p className="text-gray-600">Contacts assigned to "{campaign?.name}" campaign</p>
+                <h1 className="text-3xl font-light text-gray-900 tracking-tight">Contacts</h1>
+                <p className="text-gray-400 mt-2 font-light">Manage your campaign audience</p>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-light text-gray-900">{contacts.length}</div>
+                <div className="text-xs text-gray-400 uppercase tracking-wide">Total</div>
               </div>
             </div>
 
-            {/* Contact Scrapping Configuration */}
-            <div className="bg-white rounded-lg border border-gray-200 mb-6">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">LinkedIn Contact Scrapping</h3>
-                    <p className="text-gray-600">Find and scrape LinkedIn profiles with email enrichment</p>
+            {/* Clean LinkedIn Finder with delayed animation */}
+            <div className="bg-white rounded-3xl border border-gray-100/50 mb-8 group hover:border-gray-200/80 transition-all duration-500 animate-in slide-in-from-left duration-700 fade-in" style={{animationDelay: '200ms'}}>
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center space-x-5">
+                    <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:bg-blue-50 transition-colors duration-300">
+                      <Linkedin className="w-7 h-7 text-gray-400 group-hover:text-blue-500 transition-colors duration-300" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-light text-gray-900">Profile Discovery</h2>
+                      <p className="text-gray-400 mt-1 font-light">Find and enrich professional contacts</p>
+                    </div>
                   </div>
                   <div className="flex items-center space-x-2">
                     {scrapingStatus && scrapingStatus !== 'idle' && (
@@ -2811,16 +2792,22 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   {isScrappingActive ? (
                     <>
                       <Button
-                        style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-                        className="text-white"
+                        className="bg-blue-500 text-white relative overflow-hidden"
                         disabled={true}
                       >
                         <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          {isStartingScrapingLocal 
-                            ? "Starting scraping..." 
-                            : "Scraping is running..."}
+                          {/* Modern loading spinner */}
+                          <div className="relative mr-3">
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          </div>
+                          <span className="relative z-10">
+                            {isStartingScrapingLocal 
+                              ? "Initializing..." 
+                              : "Processing..."}
+                          </span>
                         </div>
+                        {/* Background pulse effect */}
+                        <div className="absolute inset-0 bg-white/10 animate-pulse"></div>
                       </Button>
                       <Button
                         onClick={handleStopScrapping}
@@ -2863,31 +2850,38 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </div>
             </div>
 
-            {/* Search and Filters */}
-            <div className="bg-white rounded-lg border border-gray-200 mb-6">
-              <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            {/* Clean Search Interface with delayed animation */}
+            <div className="bg-white rounded-3xl border border-gray-100/50 mb-8 animate-in slide-in-from-right duration-700 fade-in" style={{animationDelay: '400ms'}}>
+              <div className="p-8">
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                  <div className="relative flex-1 w-full lg:max-w-lg">
+                    <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-300 w-5 h-5" />
                     <Input
-                      placeholder="Search campaign contacts..."
+                      placeholder="Search contacts"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
+                      className="pl-14 h-14 border-0 bg-gray-50/50 rounded-2xl text-gray-900 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 w-full"
                     />
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Button onClick={openImportModal} size="sm" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}>
+                  <div className="flex items-center space-x-3">
+                    <Button 
+                      onClick={openImportModal} 
+                      className="bg-gray-900 hover:bg-gray-800 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-300"
+                    >
                       <Plus className="w-4 h-4 mr-2" />
-                      Import Contacts
+                      Import
                     </Button>
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant="ghost"
                       onClick={() => setShowFilters(!showFilters)}
+                      className={`rounded-2xl px-6 py-3 font-medium transition-all duration-300 ${
+                        showFilters 
+                          ? 'bg-blue-50 text-blue-600' 
+                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                      }`}
                     >
                       <Filter className="w-4 h-4 mr-2" />
-                      Filters
+                      Filter
                     </Button>
                     {selectedContacts.length > 0 && (
                       <Button
@@ -2964,8 +2958,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 </div>
               )}
 
-              {/* Contact Table */}
-              <div className="overflow-x-auto">
+              {/* Contact Table with animation */}
+              <div className="overflow-x-auto animate-in slide-in-from-bottom duration-700 fade-in" style={{animationDelay: '600ms'}}>
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
@@ -3015,11 +3009,46 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {loading ? (
-                      <tr>
-                        <td colSpan="11" className="px-4 py-8 text-center text-gray-500">
-                          Loading contacts...
-                        </td>
-                      </tr>
+                      <>
+                        {/* Skeleton loader rows */}
+                        {[...Array(5)].map((_, index) => (
+                          <tr key={index} className="animate-pulse">
+                            <td className="px-4 py-4">
+                              <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="h-4 bg-gray-200 rounded w-16"></div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="h-4 bg-gray-200 rounded w-20"></div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="h-4 bg-gray-200 rounded w-24"></div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="h-4 bg-gray-200 rounded w-32"></div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="h-4 bg-gray-200 rounded w-20"></div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="h-4 bg-gray-200 rounded w-16"></div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="h-4 bg-gray-200 rounded w-12"></div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="w-6 h-6 bg-gray-200 rounded"></div>
+                            </td>
+                          </tr>
+                        ))}
+                      </>
                     ) : contacts.length === 0 ? (
                       <tr>
                         <td colSpan="11" className="px-4 py-8 text-center text-gray-500">
@@ -3027,8 +3056,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         </td>
                       </tr>
                     ) : (
-                      contacts.map((contact) => (
-                        <tr key={contact.id} className="hover:bg-gray-50">
+                      contacts.map((contact, index) => (
+                        <tr 
+                          key={contact.id} 
+                          className="hover:bg-gray-50/80 transition-all duration-200 ease-in-out animate-in fade-in" 
+                          style={{animationDelay: `${800 + (index * 50)}ms`}}
+                        >
                           <td className="px-4 py-4">
                             <Checkbox
                               checked={selectedContacts.includes(contact.id)}
@@ -3395,7 +3428,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         (importType === 'manual' && (!manualContact.name || !manualContact.email))
                       }
                     >
-                      {importLoading ? 'Importing...' : 'Import Contacts'}
+                      {importLoading ? (
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                          <span>Importing...</span>
+                        </div>
+                      ) : (
+                        'Import Contacts'
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -4173,45 +4213,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   // Show loading spinner while data is being fetched
   if (isLoadingCampaignData) {
     return (
-      <main style={{
-        paddingLeft: '64px',
-        paddingRight: '64px',
-        paddingTop: '32px',
-        backgroundColor: '#FAFBFC',
-        fontFamily: 'Jost, sans-serif',
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '16px'
-        }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid #E5E7EB',
-            borderTop: '4px solid #3B82F6',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-          <p style={{
-            color: '#6B7280',
-            fontSize: '16px',
-            fontWeight: '500'
-          }}>
-            Loading campaign data...
+      <main className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center px-4 py-8">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-lg font-medium text-gray-800 mb-2">
+            Loading Campaign
+          </h2>
+          <p className="text-sm text-gray-600">
+            Setting up your campaign dashboard
           </p>
         </div>
-        <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
       </main>
     )
   }
@@ -4357,9 +4368,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex space-x-8">
+      {/* Ultra Clean Tab Navigation */}
+      <div className="mb-8">
+        <nav className="flex bg-gray-50/50 rounded-2xl p-1.5 backdrop-blur-sm">
           {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -4367,23 +4378,24 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
-                className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-medium text-sm transition-all duration-300 ease-out ${
                   isActive
-                    ? 'border-[rgb(87,140,255)]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
                 }`}
-                style={isActive ? { color: 'rgb(87, 140, 255)' } : {}}
               >
                 <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
+                <span className="font-medium">{tab.label}</span>
               </button>
             )
           })}
         </nav>
       </div>
 
-      {/* Tab Content */}
-      {renderTabContent()}
+      {/* Tab Content with smooth transitions */}
+      <div className="transition-all duration-300 ease-in-out">
+        {renderTabContent()}
+      </div>
 
       {/* Test Email Modal */}
       <Dialog open={showTestModal} onOpenChange={setShowTestModal}>
@@ -4703,10 +4715,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
               >
                 {bulkImportLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Importing...
-                  </>
+                  <div className="flex items-center">
+                    <div className="relative mr-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    </div>
+                    <span>Processing...</span>
+                  </div>
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-2" />

@@ -105,8 +105,8 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="font-medium" style={{ color: 'rgb(87, 140, 255)' }}>Loading LeadsUp...</p>
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-gray-600 font-medium">Loading LeadsUp...</p>
         </div>
       </div>
     )
