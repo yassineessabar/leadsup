@@ -84,23 +84,31 @@ export async function POST(
     // Start scraping in the background based on mode
     if (mode === 'profiles-only') {
       // Run find_profiles.py
-      scrapingService.findProfiles(scrapingJob).catch(error => {
-        console.error(`Background profile finding error for campaign ${campaignId}:`, error);
+      scrapingService.findProfiles(scrapingJob).catch((error: any) => {
+        if (error?.message !== 'Script execution cancelled' && error?.code !== 'ABORT_ERR') {
+          console.error(`Background profile finding error for campaign ${campaignId}:`, error);
+        }
       });
     } else if (mode === 'enrich-emails') {
       // Run get_emails.py
-      scrapingService.enrichEmails(scrapingJob).catch(error => {
-        console.error(`Background email enrichment error for campaign ${campaignId}:`, error);
+      scrapingService.enrichEmails(scrapingJob).catch((error: any) => {
+        if (error?.message !== 'Script execution cancelled' && error?.code !== 'ABORT_ERR') {
+          console.error(`Background email enrichment error for campaign ${campaignId}:`, error);
+        }
       });
     } else if (mode === 'combined') {
-      // Run combined profile scraping + individual email enrichment
-      scrapingService.combinedScrapingAndEnrichment(scrapingJob).catch(error => {
-        console.error(`Background combined scraping error for campaign ${campaignId}:`, error);
+      // Smart scraping: Check if there are unenriched profiles first
+      scrapingService.smartCombinedScraping(scrapingJob).catch((error: any) => {
+        if (error?.message !== 'Script execution cancelled' && error?.code !== 'ABORT_ERR') {
+          console.error(`Background smart scraping error for campaign ${campaignId}:`, error);
+        }
       });
     } else {
       // Default: just run get_emails.py (for "Start Scraping" button)
-      scrapingService.enrichEmails(scrapingJob).catch(error => {
-        console.error(`Background email enrichment error for campaign ${campaignId}:`, error);
+      scrapingService.enrichEmails(scrapingJob).catch((error: any) => {
+        if (error?.message !== 'Script execution cancelled' && error?.code !== 'ABORT_ERR') {
+          console.error(`Background email enrichment error for campaign ${campaignId}:`, error);
+        }
       });
     }
 

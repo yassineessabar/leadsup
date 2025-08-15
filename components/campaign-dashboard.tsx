@@ -62,6 +62,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [scrappingIndustry, setScrappingIndustry] = useState("")
   const [scrappingKeyword, setScrappingKeyword] = useState("")
   const [scrappingLocation, setScrappingLocation] = useState("")
+  const [isStartingScrapingLocal, setIsStartingScrapingLocal] = useState(false)
+  const [isStoppedLocally, setIsStoppedLocally] = useState(false)
   
   // Use real-time scraping updates hook
   const { 
@@ -70,8 +72,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     refetch: refetchScrapingStatus 
   } = useScrapingUpdates(campaign?.id)
   
-  // Derived state from database status
-  const isScrappingActive = scrapingStatus === 'running'
+  // Derived state from database status or local loading state, but not if stopped locally
+  const isScrappingActive = (scrapingStatus === 'running' || isStartingScrapingLocal) && !isStoppedLocally
   
   // Initialize scrapping status checking and polling
   useEffect(() => {
@@ -1729,6 +1731,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
     console.log('Starting scraping...')
     
+    // Set immediate local loading state and clear stopped flag
+    setIsStartingScrapingLocal(true)
+    setIsStoppedLocally(false)
+    
     try {
       const response = await fetch(`/api/campaigns/${campaign.id}/scraping`, {
         method: 'POST',
@@ -1770,11 +1776,23 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } catch (error) {
       console.error('Error starting scraping:', error)
+      // Clear local loading state on error
+      setIsStartingScrapingLocal(false)
     }
   }
 
   const handleStopScrapping = async () => {
     if (!campaign?.id) return
+
+    // Immediately override all active states to show start button
+    setIsStartingScrapingLocal(false)
+    setIsStoppedLocally(true)
+    
+    // Clear polling interval immediately
+    if (window.scrapingPollInterval) {
+      clearInterval(window.scrapingPollInterval)
+      window.scrapingPollInterval = null
+    }
 
     try {
       const response = await fetch(`/api/campaigns/${campaign.id}/scraping`, {
@@ -1783,10 +1801,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       })
 
       if (response.ok) {
-        setTimeout(() => refetchScrapingStatus(), 1000)
+        // Fetch status to confirm it's stopped
+        setTimeout(() => refetchScrapingStatus(), 500)
       }
     } catch (error) {
       console.error('Error stopping scraping:', error)
+      // Even if API call fails, we've cleared the local state
     }
   }
 
@@ -1796,6 +1816,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     
     if (scrapingStatus === 'running') {
       console.log('Scraping is running, starting polling')
+      
+      // Clear local loading state since database status is now running
+      setIsStartingScrapingLocal(false)
       
       // Ensure polling is active during running state
       if (!window.scrapingPollInterval) {
@@ -1807,6 +1830,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } else if (scrapingStatus === 'completed') {
       console.log('Scraping completed')
+      // Clear all local states
+      setIsStartingScrapingLocal(false)
+      setIsStoppedLocally(false)
       fetchContacts() // Refresh contacts list
       // Clear polling interval when scraping is completed
       if (window.scrapingPollInterval) {
@@ -1815,6 +1841,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } else if (scrapingStatus === 'failed' || scrapingStatus === 'idle') {
       console.log('Scraping failed or idle')
+      // Clear all local states
+      setIsStartingScrapingLocal(false)
+      setIsStoppedLocally(false)
       // Clear polling interval when scraping fails or is idle
       if (window.scrapingPollInterval) {
         clearInterval(window.scrapingPollInterval)
@@ -2730,18 +2759,30 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 </div>
 
                 <div className="flex items-center space-x-3">
-                  {scrapingStatus === 'running' ? (
-                    <Button
-                      onClick={handleStopScrapping}
-                      style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-                      className="text-white"
-                      disabled={false}
-                    >
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Scraping is running...
-                      </div>
-                    </Button>
+                  {isScrappingActive ? (
+                    <>
+                      <Button
+                        style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                        className="text-white"
+                        disabled={true}
+                      >
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          {isStartingScrapingLocal 
+                            ? "Starting scraping..." 
+                            : "Scraping is running..."}
+                        </div>
+                      </Button>
+                      <Button
+                        onClick={handleStopScrapping}
+                        size="sm"
+                        variant="destructive"
+                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-xs"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Stop
+                      </Button>
+                    </>
                   ) : scrapingStatus === 'completed' ? (
                     <Button
                       onClick={() => handleStartScrapping('combined')}

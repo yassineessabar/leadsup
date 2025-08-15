@@ -76,6 +76,7 @@ export function useScrapingUpdates(campaignId: string | number | undefined) {
         (payload) => {
           console.log('Campaign update:', payload);
           if (payload.new && 'scraping_status' in payload.new) {
+            console.log('Setting scraping status to:', payload.new.scraping_status);
             setScrapingStatus(payload.new.scraping_status as ScrapingUpdate['status']);
           }
         }
@@ -92,6 +93,7 @@ export function useScrapingUpdates(campaignId: string | number | undefined) {
   const fetchScrapingStatus = async () => {
     if (!campaignId) return;
 
+    console.log('Fetching scraping status for campaign:', campaignId);
     try {
       // Get campaign scraping status
       const { data: campaign } = await supabase
