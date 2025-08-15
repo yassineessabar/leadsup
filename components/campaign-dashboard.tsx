@@ -3704,6 +3704,18 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   </div>
                 </div>
               </div>
+              
+              {/* Right side actions */}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleDeleteCampaign}
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 hover:text-red-700 rounded-2xl px-4 py-2 transition-all duration-200"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Campaign
+                </Button>
+              </div>
             </div>
           </div>
 
