@@ -58,7 +58,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [hasSequenceSaved, setHasSequenceSaved] = useState(false)
   
   // Scrapping functionality state
-  const [isScrappingActive, setIsScrappingActive] = useState(false)
   const [scrappingDailyLimit, setScrappingDailyLimit] = useState(100)
   const [scrappingIndustry, setScrappingIndustry] = useState("")
   const [scrappingKeyword, setScrappingKeyword] = useState("")
@@ -71,33 +70,17 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     refetch: refetchScrapingStatus 
   } = useScrapingUpdates(campaign?.id)
   
-  // Initialize scrapping active state based on current status
+  // Derived state from database status
+  const isScrappingActive = scrapingStatus === 'running'
+  
+  // Initialize scrapping status checking and polling
   useEffect(() => {
     // Check status immediately when campaign ID is available
     if (campaign?.id) {
       console.log('Checking initial scraping status for campaign:', campaign.id)
       refetchScrapingStatus()
-      
-      // Also check directly via API for immediate status
-      fetch(`/api/campaigns/${campaign.id}/scraping`)
-        .then(res => res.json())
-        .then(data => {
-          console.log('Direct API scraping status check:', data)
-          if (data.status === 'running') {
-            console.log('Scraping is already running, setting active state to true')
-            setIsScrappingActive(true)
-            // Start polling
-            if (!window.scrapingPollInterval) {
-              const pollInterval = setInterval(() => {
-                refetchScrapingStatus()
-              }, 2000)
-              window.scrapingPollInterval = pollInterval
-            }
-          }
-        })
-        .catch(err => console.error('Error checking scraping status:', err))
     }
-  }, [campaign?.id]) // Only depend on campaign ID, not status
+  }, [campaign?.id])
   
   // Delete confirmation state
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -754,7 +737,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         
         // Load scraping settings with campaign data fallback
         if (data.scrapingSettings) {
-          setIsScrappingActive(data.scrapingSettings.isActive || false)
           setScrappingDailyLimit(data.scrapingSettings.dailyLimit || 100)
           setScrappingIndustry(data.scrapingSettings.industry || '')
           setScrappingKeyword(data.scrapingSettings.keyword || '')
@@ -765,7 +747,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           const keywords = data.campaign.keywords || []
           setScrappingKeyword(Array.isArray(keywords) ? keywords.join(', ') : keywords.toString())
           setScrappingDailyLimit(100)
-          setIsScrappingActive(false)
         }
         
         setCampaignDataLoaded(true)
@@ -1746,9 +1727,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       return
     }
 
-    // Set loading state immediately and keep it until backend confirms completion
-    console.log('Starting scraping, setting active state to true')
-    setIsScrappingActive(true)
+    console.log('Starting scraping...')
     
     try {
       const response = await fetch(`/api/campaigns/${campaign.id}/scraping`, {
@@ -1769,9 +1748,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const result = await response.json()
       
       if (response.ok) {
-        console.log('Scraping started successfully, keeping loading state active')
-        // Ensure loading state stays active
-        setIsScrappingActive(true)
+        console.log('Scraping started successfully')
         
         // Clear any existing interval
         if (window.scrapingPollInterval) {
@@ -1793,7 +1770,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } catch (error) {
       console.error('Error starting scraping:', error)
-      setIsScrappingActive(false)
     }
   }
 
@@ -1807,7 +1783,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       })
 
       if (response.ok) {
-        setIsScrappingActive(false)
         setTimeout(() => refetchScrapingStatus(), 1000)
       }
     } catch (error) {
@@ -1815,24 +1790,23 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }
 
-  // Monitor scraping status changes
+  // Monitor scraping status changes and manage polling
   useEffect(() => {
     console.log('Scraping status changed to:', scrapingStatus)
     
     if (scrapingStatus === 'running') {
-      console.log('Setting scrapping active to true')
-      setIsScrappingActive(true)
+      console.log('Scraping is running, starting polling')
       
       // Ensure polling is active during running state
       if (!window.scrapingPollInterval) {
         const pollInterval = setInterval(() => {
+          console.log('Polling for scraping status...')
           refetchScrapingStatus()
         }, 2000)
         window.scrapingPollInterval = pollInterval
       }
     } else if (scrapingStatus === 'completed') {
-      console.log('Scraping completed, setting active to false')
-      setIsScrappingActive(false)
+      console.log('Scraping completed')
       fetchContacts() // Refresh contacts list
       // Clear polling interval when scraping is completed
       if (window.scrapingPollInterval) {
@@ -1840,15 +1814,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         window.scrapingPollInterval = null
       }
     } else if (scrapingStatus === 'failed' || scrapingStatus === 'idle') {
-      console.log('Scraping failed or idle, setting active to false')
-      setIsScrappingActive(false)
+      console.log('Scraping failed or idle')
       // Clear polling interval when scraping fails or is idle
       if (window.scrapingPollInterval) {
         clearInterval(window.scrapingPollInterval)
         window.scrapingPollInterval = null
       }
     }
-    // Keep loading state active for any other status (don't set to false prematurely)
   }, [scrapingStatus])
 
   // Refresh contacts when scraping progress changes (new contacts are being added)
@@ -2758,15 +2730,17 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 </div>
 
                 <div className="flex items-center space-x-3">
-                  {!isScrappingActive ? (
+                  {scrapingStatus === 'running' ? (
                     <Button
-                      onClick={() => handleStartScrapping('combined')}
-                      disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
+                      onClick={handleStopScrapping}
                       style={{ backgroundColor: 'rgb(87, 140, 255)' }}
                       className="text-white"
+                      disabled={false}
                     >
-                      <Search className="w-4 h-4 mr-2" />
-                      Start Profile Scraping & Email Enrichment
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Scraping is running...
+                      </div>
                     </Button>
                   ) : scrapingStatus === 'completed' ? (
                     <Button
@@ -2780,27 +2754,18 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     </Button>
                   ) : (
                     <Button
-                      onClick={handleStopScrapping}
-                      variant="destructive"
-                      disabled={false}
+                      onClick={() => handleStartScrapping('combined')}
+                      disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
+                      style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                      className="text-white"
                     >
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        {scrapingProgress.totalProfiles > 0 && scrapingProgress.totalContacts === 0
-                          ? `Finding profiles... (${scrapingProgress.totalProfiles} found)`
-                          : scrapingProgress.totalContacts > 0
-                          ? `Enriching emails... (${scrapingProgress.totalContacts}/${scrapingProgress.totalProfiles})`
-                          : "Starting scraping..."}
-                      </div>
+                      <Search className="w-4 h-4 mr-2" />
+                      Start Profile Scraping & Email Enrichment
                     </Button>
                   )}
                   <div className="text-xs text-gray-500">
                     {isScrappingActive 
-                      ? scrapingProgress.totalProfiles > 0 && scrapingProgress.totalContacts === 0
-                        ? `Finding profiles... Found ${scrapingProgress.totalProfiles} profiles so far`
-                        : scrapingProgress.totalContacts > 0
-                        ? `Enriching contacts... ${scrapingProgress.totalContacts} contacts enriched from ${scrapingProgress.totalProfiles} profiles`
-                        : "Starting scraping process..."
+                      ? "Scraping process is running in the background..."
                       : "Fill in all fields to start scrapping LinkedIn profiles and enriching them with emails"
                     }
                   </div>

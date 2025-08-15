@@ -100,8 +100,12 @@ export function useScrapingUpdates(campaignId: string | number | undefined) {
         .eq('id', campaignId)
         .single();
 
+      console.log('Fetched scraping status:', campaign?.scraping_status)
       if (campaign?.scraping_status) {
         setScrapingStatus(campaign.scraping_status);
+      } else {
+        // Default to idle if no status is set
+        setScrapingStatus('idle');
       }
 
       // Get progress
