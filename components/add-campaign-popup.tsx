@@ -551,11 +551,11 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   const renderProcessingSteps = () => {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-4">
-        <div className="w-12 h-12 border-3 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgb(87, 140, 255)', borderTopColor: 'transparent' }}></div>
-        <span className="text-lg font-medium" style={{ color: 'rgb(87, 140, 255)' }}>
+        <div className="w-12 h-12 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <span className="text-lg font-medium text-blue-600">
           {currentStep === "company" ? "Generating AI campaign assets..." : "Processing..."}
         </span>
-        <p className="text-sm text-gray-500">This may take a few seconds</p>
+        <p className="text-sm text-gray-500 font-light">This may take a few seconds</p>
       </div>
     )
   }
@@ -563,15 +563,15 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   const renderCompanyForm = () => (
     <div className="max-w-2xl mx-auto space-y-8">
       <div className="space-y-3">
-        <h2 className="text-3xl font-bold text-gray-900">
+        <h2 className="text-3xl font-light text-gray-900 tracking-tight">
           Your company name and website
         </h2>
-        <p className="text-gray-600">Let's start by getting to know your business</p>
+        <p className="text-gray-500 font-light">Let's start by getting to know your business</p>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
           <div className="flex items-start space-x-3">
             <div className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5">
               <svg fill="currentColor" viewBox="0 0 20 20">
@@ -602,7 +602,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             id="campaign-name"
             value={formData.campaignName}
             onChange={(e) => setFormData(prev => ({ ...prev, campaignName: e.target.value }))}
-            className="h-12 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] transition-colors"
+            className="h-12 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-2xl"
             placeholder="Enter your campaign name"
           />
         </div>
@@ -613,7 +613,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             id="company"
             value={formData.companyName}
             onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
-            className="h-12 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] transition-colors"
+            className="h-12 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-2xl"
             placeholder="Enter your company name"
           />
         </div>
@@ -624,7 +624,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <Input
               id="website"
-              className="pl-12 h-12 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] transition-colors"
+              className="pl-12 h-12 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-2xl"
               value={formData.website}
               onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
               disabled={formData.noWebsite}
@@ -682,7 +682,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
               id="industry"
               value={formData.industry}
               onChange={(e) => setFormData(prev => ({ ...prev, industry: e.target.value }))}
-              className="h-12 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] transition-colors"
+              className="h-12 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-2xl"
               placeholder="e.g., Technology, Healthcare, Marketing"
             />
           </div>
@@ -767,7 +767,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         {displayICPs.map((icp: any) => (
           <Card 
             key={icp.id} 
-            className="border-2 shadow-md" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
+            className="border-2 shadow-md" style={{ borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
           >
             <CardContent className="p-6">
               <div className="flex-1 space-y-3">
@@ -799,7 +799,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         {displayPersonas.map((persona: any) => (
           <Card 
             key={persona.id} 
-            className="border-2 shadow-md" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
+            className="border-2 shadow-md" style={{ borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
           >
             <CardContent className="p-6">
               <div className="flex-1 space-y-3">
@@ -887,7 +887,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
                 ? 'shadow-md' 
                 : 'border-gray-200 hover:border-gray-300'
             }`}
-            style={selectedICP === icp.id ? { borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' } : {}}
+            style={selectedICP === icp.id ? { borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' } : {}}
             onClick={() => setSelectedICP(icp.id)}
           >
             <CardContent className="p-6">
@@ -933,7 +933,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
           <p className="text-gray-600">Customize your ideal customer profile</p>
         </div>
         
-        <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
+        <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
           <CardContent className="p-8 space-y-6">
             <div className="space-y-4">
               <div className="space-y-3">
@@ -1010,7 +1010,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
               </Button>
               <Button 
                 onClick={() => handleSave('icp')}
-                className="text-white" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+                className="text-white" style={{ backgroundColor: 'rgb(37, 99, 235)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(37, 99, 235)'}
               >
                 <Save className="w-4 h-4 mr-2" />
                 Save Changes
@@ -1040,7 +1040,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
                 ? 'shadow-md' 
                 : 'border-gray-200 hover:border-gray-300'
             }`}
-            style={selectedPersona === persona.id ? { borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' } : {}}
+            style={selectedPersona === persona.id ? { borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' } : {}}
             onClick={() => setSelectedPersona(persona.id)}
           >
             <CardContent className="p-6">
@@ -1088,7 +1088,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
           <p className="text-gray-600">Customize your target persona</p>
         </div>
         
-        <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
+        <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
           <CardContent className="p-8 space-y-6">
             <div className="space-y-4">
               <div className="space-y-3">
@@ -1143,7 +1143,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
               </Button>
               <Button 
                 onClick={() => handleSave('persona')}
-                className="text-white" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+                className="text-white" style={{ backgroundColor: 'rgb(37, 99, 235)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(37, 99, 235)'}
               >
                 <Save className="w-4 h-4 mr-2" />
                 Save Changes
@@ -1165,7 +1165,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
           <p className="text-gray-600">Customize your pain point</p>
         </div>
         
-        <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
+        <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
           <CardContent className="p-8 space-y-6">
             <div className="space-y-4">
               <div className="space-y-3">
@@ -1206,7 +1206,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
               </Button>
               <Button 
                 onClick={() => handleSave('painPoint')}
-                className="text-white" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+                className="text-white" style={{ backgroundColor: 'rgb(37, 99, 235)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(37, 99, 235)'}
               >
                 <Save className="w-4 h-4 mr-2" />
                 Save Changes
@@ -1298,7 +1298,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         {displayPainPoints.map((painPoint: any) => (
           <Card 
             key={painPoint.id} 
-            className="border-2 shadow-md" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
+            className="border-2 shadow-md" style={{ borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
           >
             <CardContent className="p-6">
               <div className="flex-1 space-y-3">
@@ -1328,7 +1328,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       <div className="space-y-4 pt-6 border-t">
         <h3 className="text-xl font-semibold text-gray-800">Your Value Propositions</h3>
         {displayValueProps.map((valueProp: any) => (
-          <Card key={valueProp.id} className="border-2 shadow-lg" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
+          <Card key={valueProp.id} className="border-2 shadow-lg" style={{ borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
             <CardContent className="p-6">
               <div className="flex-1 space-y-3">
                 <div className="flex items-center justify-between">
@@ -1392,7 +1392,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
                 ? 'shadow-md' 
                 : 'border-gray-200 hover:border-gray-300'
             }`}
-            style={selectedPainPoint === painPoint.id ? { borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' } : {}}
+            style={selectedPainPoint === painPoint.id ? { borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' } : {}}
             onClick={() => setSelectedPainPoint(painPoint.id)}
           >
             <CardContent className="p-6">
@@ -1446,7 +1446,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         </div>
       </div>
       
-      <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
+      <Card className="border-2 shadow-lg" style={{ borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
         <CardContent className="p-6">
           <div className="flex items-start space-x-4">
             <RadioGroup value="1">
@@ -1505,7 +1505,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
                 ? 'shadow-md' 
                 : 'border-gray-200 hover:border-gray-300'
             }`}
-            style={selectedOutreachStrategy === strategy.id ? { borderColor: 'rgb(87, 140, 255)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' } : {}}
+            style={selectedOutreachStrategy === strategy.id ? { borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' } : {}}
             onClick={() => setSelectedOutreachStrategy(strategy.id)}
           >
             <CardContent className="p-8">
@@ -1797,7 +1797,7 @@ Best regards,
                                   })
                                   setShowMessageModal(true)
                                 }}
-                                className="text-xs px-3 py-1 h-6 border-gray-200" style={{ color: 'rgb(87, 140, 255)', borderColor: 'rgba(87, 140, 255, 0.2)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(87, 140, 255, 0.05)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                className="text-xs px-3 py-1 h-6 border-gray-200" style={{ color: 'rgb(37, 99, 235)', borderColor: 'rgba(87, 140, 255, 0.2)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(87, 140, 255, 0.05)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               >
                                 <Eye className="w-3 h-3 mr-1" />
                                 View Message
@@ -1829,22 +1829,22 @@ Best regards,
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-7xl h-[90vh] overflow-hidden flex shadow-2xl relative">
+      <div className="bg-white rounded-3xl w-full max-w-7xl h-[90vh] overflow-hidden flex shadow-2xl relative">
         {/* Close button */}
         <button 
           onClick={onClose}
-          className="absolute top-6 right-6 z-10 text-gray-400 hover:text-gray-600 transition-colors bg-white/80 hover:bg-gray-50 rounded-full p-2 shadow-md"
+          className="absolute top-6 right-6 z-10 text-gray-400 hover:text-gray-600 transition-all duration-300 bg-white/80 hover:bg-gray-50 rounded-full p-2 shadow-md"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex w-full">
           {/* Sidebar */}
-          <div className="w-80 bg-gray-50 border-r border-gray-200 h-full">
+          <div className="w-80 bg-[rgb(243,243,241)] border-r border-gray-100/50 h-full">
             <div className="p-6 space-y-8">
               <div className="space-y-2">
-                <p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'rgb(87, 140, 255)' }}>GET STARTED</p>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <p className="text-xs uppercase tracking-wider font-semibold text-blue-600">GET STARTED</p>
+                <h1 className="text-3xl font-light text-gray-900 tracking-tight">
                   Campaign creation
                 </h1>
               </div>
@@ -1858,16 +1858,16 @@ Best regards,
                   return (
                     <div
                       key={step.id}
-                      className={`flex items-center space-x-4 cursor-pointer transition-all duration-200 ${
-                        isClickable ? 'hover:bg-gray-100' : 'cursor-not-allowed'
-                      } p-3 rounded-lg group`}
+                      className={`flex items-center space-x-4 cursor-pointer transition-all duration-300 ${
+                        isClickable ? 'hover:bg-white/50' : 'cursor-not-allowed'
+                      } p-3 rounded-2xl group`}
                       onClick={() => handleStepClick(step.id)}
                     >
-                      <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                      <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
                         isCompleted 
-                          ? 'border-transparent shadow-sm' 
+                          ? 'bg-blue-600 border-blue-600 shadow-sm' 
                           : isCurrent 
-                            ? 'shadow-sm' 
+                            ? 'bg-blue-600 border-blue-600 shadow-sm' 
                             : 'border-gray-300 group-hover:border-gray-400'
                       }`}>
                         {isCompleted ? (
@@ -1893,7 +1893,7 @@ Best regards,
               </div>
               
               {/* Helper text */}
-              <div className="mt-8 p-5 bg-gray-100 rounded-xl border border-gray-200">
+              <div className="mt-8 p-5 bg-white/70 rounded-2xl border border-gray-100/50">
                 <p className="text-sm text-gray-600 leading-relaxed italic">
                   {currentStep === "company" 
                     ? "To create the most relevant campaign, please complete each step and provide as much context as possible to our AI. Your input is crucial for optimal results!"
@@ -1907,11 +1907,11 @@ Best regards,
               </div>
               
               {/* Copilot indicator */}
-              <div className="flex items-center space-x-3 mt-8 p-3 rounded-lg border" style={{ backgroundColor: 'rgba(87, 140, 255, 0.05)', borderColor: 'rgba(87, 140, 255, 0.2)' }}>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm" style={{ backgroundColor: 'rgb(87, 140, 255)' }}>
+              <div className="flex items-center space-x-3 mt-8 p-3 rounded-2xl border bg-blue-50/70 border-blue-200/50">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm bg-blue-600">
                   <Brain className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-sm font-semibold" style={{ color: 'rgb(87, 140, 255)' }}>
+                <span className="text-sm font-semibold text-blue-600">
                   AI Copilot
                 </span>
               </div>
@@ -1941,7 +1941,7 @@ Best regards,
               <Button 
                 variant="outline" 
                 onClick={handleBack}
-                className={`border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors ${
+                className={`border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-300 rounded-2xl px-5 py-2.5 font-medium ${
                   currentStep === "company" && showForm ? "invisible" : ""
                 }`}
               >
@@ -1951,7 +1951,7 @@ Best regards,
               <Button 
                 onClick={handleContinue}
                 disabled={isProcessing || isCreatingCampaign}
-                className="text-white shadow-lg transition-all duration-200 disabled:opacity-50" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl shadow-lg disabled:opacity-50"
               >
                 <span>
                   {isCreatingCampaign && currentStep === "company" && showForm
