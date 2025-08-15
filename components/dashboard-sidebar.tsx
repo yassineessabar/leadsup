@@ -160,15 +160,15 @@ export function DashboardSidebar({
   if (!isMobile) {
     return (
       <aside className={cn(
-        "flex flex-col rounded-2xl bg-gray-50 p-4 dark:bg-gray-900 h-full my-8 ml-4 transition-all duration-300",
-        isCollapsed ? "max-w-[80px]" : "max-w-[250px]"
+        "flex flex-col rounded-3xl bg-white border border-gray-100/50 shadow-sm p-1.5 dark:bg-gray-900 h-full my-8 ml-1 transition-all duration-300",
+        isCollapsed ? "max-w-[35px]" : "max-w-[100px]"
       )}>
-        <div className="flex items-center px-2 py-3 mb-4 relative">
-          <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-lg">L</span>
+        <div className="flex items-center px-2 py-3 mb-6 relative">
+          <div className="h-10 w-10 bg-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm">
+            <span className="text-white font-bold text-xl">L</span>
           </div>
           {!isCollapsed && (
-            <span className="font-semibold text-lg ml-2 truncate">LeadsUp</span>
+            <span className="font-light text-xl ml-3 truncate tracking-tight text-gray-900">LeadsUp</span>
           )}
           <Button
             variant="ghost"
@@ -188,10 +188,10 @@ export function DashboardSidebar({
         </div>
 
         {/* Create Campaign Button */}
-        <div className="px-2 pb-4">
+        <div className="px-2 pb-6">
           <Button
             className={cn(
-              "w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white h-10 font-medium transition-all duration-300",
+              "w-full rounded-2xl bg-blue-600 hover:bg-blue-700 text-white h-11 font-medium transition-all duration-300 shadow-sm",
               isCollapsed ? "justify-center px-2" : "justify-center gap-2"
             )}
             onClick={() => {
@@ -211,7 +211,7 @@ export function DashboardSidebar({
 
         <nav className="flex-1 space-y-4 overflow-y-auto">
           {/* Main Navigation Items */}
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {mainMenuItems.map((item) => {
               const Icon = item.icon
               const isActive = activeTab === item.id || (item.id === 'campaigns' && activeTab === 'campaigns-email')
@@ -223,11 +223,11 @@ export function DashboardSidebar({
                   <Button
                     variant="ghost"
                     className={cn(
-                      "w-full rounded-lg h-10 text-base relative transition-all duration-300",
-                      isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-2.5 py-1.5",
+                      "w-full rounded-2xl h-11 text-base relative transition-all duration-300",
+                      isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-3 py-2",
                       (isActive || isParentActive)
-                        ? "bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800"
-                        : "text-black hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                        ? "bg-blue-50/80 text-blue-600 hover:bg-blue-100/80 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800 font-medium"
+                        : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 font-normal"
                     )}
                     onClick={() => {
                       if (item.id === 'campaigns') {
@@ -249,8 +249,8 @@ export function DashboardSidebar({
           </div>
 
           {/* Tools Section */}
-          <div className="space-y-0.5">
-            {!isCollapsed && <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2.5 py-1">Tools</p>}
+          <div className="space-y-1">
+            {!isCollapsed && <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2 mt-4">Tools</p>}
             {toolsMenuItems.map((item) => {
               const Icon = item.icon
               const isActive = activeTab === item.id
@@ -266,8 +266,8 @@ export function DashboardSidebar({
                       <Button
                         variant="ghost"
                         className={cn(
-                          "w-full rounded-lg h-10 text-base transition-all duration-300",
-                          isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-2.5 py-1.5",
+                          "w-full rounded-2xl h-11 text-base transition-all duration-300",
+                          isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-3 py-2",
                           "text-gray-400 hover:bg-gray-50 dark:text-gray-500 dark:hover:bg-gray-800 cursor-pointer"
                         )}
                         title={isCollapsed ? item.label : undefined}
@@ -290,11 +290,11 @@ export function DashboardSidebar({
                   <Button
                     variant="ghost"
                     className={cn(
-                      "w-full rounded-lg h-10 text-base transition-all duration-300",
-                      isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-2.5 py-1.5",
+                      "w-full rounded-2xl h-11 text-base transition-all duration-300",
+                      isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-3 py-2",
                       (isActive || isParentActive)
-                        ? "bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800"
-                        : "text-black hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                        ? "bg-blue-50/80 text-blue-600 hover:bg-blue-100/80 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800 font-medium"
+                        : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 font-normal"
                     )}
                     onClick={() => onTabChange(hasSubItems ? item.subItems[0].id : item.id)}
                     title={isCollapsed ? item.label : undefined}
@@ -337,12 +337,12 @@ export function DashboardSidebar({
           {/* Settings removed - now accessed via company button */}
         </nav>
 
-        <div className="mt-auto space-y-2 pb-16">
+        <div className="mt-auto space-y-3 pb-6">
           {!isPremium && (
             <Button
               variant="outline"
               className={cn(
-                "w-full rounded-full border-blue-300 bg-blue-50 h-12 text-base text-blue-600 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800 transition-all duration-300",
+                "w-full rounded-2xl border-blue-200/50 bg-blue-50/50 h-12 text-base text-blue-600 hover:bg-blue-100/60 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-800 transition-all duration-300 font-medium",
                 isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-4 py-3"
               )}
               onClick={handleUpgrade}
@@ -356,17 +356,17 @@ export function DashboardSidebar({
           <Button
             variant="outline"
             className={cn(
-              "w-full rounded-full border-gray-300 bg-gray-50 h-12 text-base text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-all duration-300",
+              "w-full rounded-2xl border-gray-200/50 bg-gray-50/50 h-12 text-base text-gray-700 hover:bg-gray-100/60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-all duration-300 font-medium",
               isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-4 py-3"
             )}
             onClick={() => onTabChange("settings")}
             title={isCollapsed ? `@${companyName.toLowerCase().replace(/\s+/g, '')}` : undefined}
           >
-            <Avatar className="h-6 w-6 min-w-[1.5rem]">
+            <Avatar className="h-7 w-7 min-w-[1.75rem]">
               <AvatarImage src={logoUrl || "/placeholder.svg?height=24&width=24"} alt="Company Logo" />
-              <AvatarFallback className="text-xs">{companyName ? companyName[0].toUpperCase() : 'C'}</AvatarFallback>
+              <AvatarFallback className="text-xs font-medium">{companyName ? companyName[0].toUpperCase() : 'C'}</AvatarFallback>
             </Avatar>
-            {!isCollapsed && <span className="text-base truncate">@{companyName.toLowerCase().replace(/\s+/g, '')}</span>}
+            {!isCollapsed && <span className="text-base truncate font-medium">@{companyName.toLowerCase().replace(/\s+/g, '')}</span>}
           </Button>
         </div>
       </aside>
@@ -377,25 +377,26 @@ export function DashboardSidebar({
   return (
     <div
       className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200/60 transform transition-transform duration-300 ease-in-out flex flex-col md:hidden",
+        "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-100/50 shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col md:hidden",
         isOpen ? "translate-x-0" : "-translate-x-full",
       )}
     >
-      <div className="p-4 border-b border-gray-200/60">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center flex-shrink-0">
-            <img src={logoUrl || "/loop-logo.png"} alt="Company Logo" className="w-6 h-6 object-contain" />
+      <div className="p-6 border-b border-gray-100/50">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm">
+            <span className="text-white font-bold text-xl">L</span>
           </div>
           <div className="min-w-0">
-            <p className="text-xs text-gray-500 truncate">Lead Generation</p>
+            <h1 className="font-light text-xl tracking-tight text-gray-900">LeadsUp</h1>
+            <p className="text-xs text-gray-500 font-light">Lead Generation Platform</p>
           </div>
         </div>
       </div>
 
       {/* Create Campaign Button */}
-      <div className="px-4 py-3 border-b border-gray-200/60">
+      <div className="px-6 py-4 border-b border-gray-100/50">
         <Button
-          className="w-full justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white h-10 text-sm font-medium"
+          className="w-full justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white h-11 text-base font-medium shadow-sm transition-all duration-300"
           onClick={() => {
             onTabChange("campaigns-email")
             // Trigger campaign creation after switching to campaigns tab
@@ -410,7 +411,7 @@ export function DashboardSidebar({
         </Button>
       </div>
 
-      <nav className="flex-1 p-4 space-y-4">
+      <nav className="flex-1 p-6 space-y-6">
         {/* Main Navigation Items */}
         <ul className="space-y-2">
           {mainMenuItems.map((item) => {
@@ -424,10 +425,10 @@ export function DashboardSidebar({
                 <Button
                   variant="ghost"
                   className={cn(
-                    "w-full justify-start h-10 px-3 transition-all duration-200 relative",
+                    "w-full justify-start h-11 px-4 transition-all duration-300 relative rounded-2xl",
                     (isActive || isParentActive)
-                      ? "bg-black text-white hover:bg-gray-800"
-                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+                      ? "bg-blue-50/80 text-blue-600 hover:bg-blue-100/80 font-medium"
+                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-normal",
                   )}
                   onClick={() => {
                     if (item.id === 'campaigns') {
@@ -439,7 +440,7 @@ export function DashboardSidebar({
                   }}
                 >
                   <Icon className="w-5 h-5 mr-3" />
-                  <span className="truncate text-sm font-medium">{item.label}</span>
+                  <span className="truncate text-base">{item.label}</span>
                 </Button>
 
               </li>
@@ -449,7 +450,7 @@ export function DashboardSidebar({
 
         {/* Tools Section */}
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">Tools</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-4 py-2">Tools</p>
           <ul className="space-y-2">
             {toolsMenuItems.map((item) => {
               const Icon = item.icon
@@ -466,12 +467,12 @@ export function DashboardSidebar({
                       <Button
                         variant="ghost"
                         className={cn(
-                          "w-full justify-start h-10 px-3 transition-all duration-200",
+                          "w-full justify-start h-11 px-4 transition-all duration-300 rounded-2xl",
                           "text-gray-400 hover:bg-gray-50 cursor-pointer"
                         )}
                       >
                         <Icon className="w-5 h-5 mr-3" />
-                        <span className="truncate text-sm font-medium">{item.label}</span>
+                        <span className="truncate text-base">{item.label}</span>
                         <Lock className="w-4 h-4 ml-auto text-gray-400" />
                       </Button>
                     </UpgradeProDialog>
@@ -484,15 +485,15 @@ export function DashboardSidebar({
                   <Button
                     variant="ghost"
                     className={cn(
-                      "w-full justify-start h-10 px-3 transition-all duration-200",
+                      "w-full justify-start h-11 px-4 transition-all duration-300 rounded-2xl",
                       (isActive || isParentActive)
-                        ? "bg-black text-white hover:bg-gray-800"
-                        : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+                        ? "bg-blue-50/80 text-blue-600 hover:bg-blue-100/80 font-medium"
+                        : "text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-normal",
                     )}
                     onClick={() => onTabChange(hasSubItems ? item.subItems[0].id : item.id)}
                   >
                     <Icon className="w-5 h-5 mr-3" />
-                    <span className="truncate text-sm font-medium">{item.label}</span>
+                    <span className="truncate text-base">{item.label}</span>
                   </Button>
 
                   {hasSubItems && (isParentActive || isActive) && (
@@ -531,14 +532,14 @@ export function DashboardSidebar({
         {/* Settings removed - now accessed via company button */}
       </nav>
 
-      <div className="p-4 border-t border-gray-200/60 space-y-2">
+      <div className="p-6 border-t border-gray-100/50 space-y-3">
         {!isPremium && (
           <Button
-            className="w-full bg-black hover:bg-gray-800 text-white shadow-sm hover:shadow-md transition-all duration-200 rounded-full h-12 px-4 py-3 text-base"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl h-12 px-4 py-3 text-base font-medium"
             onClick={handleUpgrade}
           >
             <Crown className="w-5 h-5 mr-3" />
-            <span className="truncate font-medium">Upgrade to Pro</span>
+            <span className="truncate">Try Pro for free</span>
             <img
               src="https://framerusercontent.com/images/gtnO9xfRQzAPZ18lfRKGZJVoB6U.png"
               alt="Loop Logo"
@@ -548,17 +549,17 @@ export function DashboardSidebar({
         )}
       </div>
 
-      <div className="p-4 border-t border-gray-200/60">
+      <div className="p-6 border-t border-gray-100/50">
         <Button
           variant="outline"
-          className="w-full justify-start gap-3 rounded-full border-gray-300 bg-gray-50 px-4 py-3 h-12 text-base text-gray-700 hover:bg-gray-100 transition-all duration-200"
+          className="w-full justify-start gap-3 rounded-2xl border-gray-200/50 bg-gray-50/50 px-4 py-3 h-12 text-base text-gray-700 hover:bg-gray-100/60 transition-all duration-300 font-medium"
           onClick={() => onTabChange("settings")}
         >
-          <Avatar className="h-6 w-6">
+          <Avatar className="h-7 w-7">
             <AvatarImage src={logoUrl || "/placeholder.svg?height=24&width=24"} alt="Company Logo" />
-            <AvatarFallback className="text-xs">{companyName ? companyName[0].toUpperCase() : 'C'}</AvatarFallback>
+            <AvatarFallback className="text-xs font-medium">{companyName ? companyName[0].toUpperCase() : 'C'}</AvatarFallback>
           </Avatar>
-          <span className="truncate font-medium">@{companyName.toLowerCase().replace(/\s+/g, '')}</span>
+          <span className="truncate">@{companyName.toLowerCase().replace(/\s+/g, '')}</span>
         </Button>
       </div>
     </div>
