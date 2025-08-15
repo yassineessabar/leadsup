@@ -25,6 +25,10 @@ export function TemplatesTab() {
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [isCampaignSelectOpen, setIsCampaignSelectOpen] = useState(false)
+  const [templateToUse, setTemplateToUse] = useState<Template | null>(null)
+  const [campaigns, setCampaigns] = useState<any[]>([])
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false)
 
   const templates: Template[] = [
     {
@@ -158,9 +162,36 @@ Best,
     }
   }
 
-  const handleUseTemplate = (templateId: string) => {
-    console.log("Use template:", templateId)
-    // TODO: Implement template usage (redirect to campaign creation with template)
+  const handleUseTemplate = async (templateId: string) => {
+    const template = templates.find(t => t.id === templateId)
+    if (template) {
+      setTemplateToUse(template)
+      setLoadingCampaigns(true)
+      setIsCampaignSelectOpen(true)
+      
+      // Fetch user's campaigns
+      try {
+        const response = await fetch('/api/campaigns', {
+          credentials: 'include'
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setCampaigns(data.campaigns || [])
+        }
+      } catch (error) {
+        console.error('Error fetching campaigns:', error)
+        setCampaigns([])
+      } finally {
+        setLoadingCampaigns(false)
+      }
+    }
+  }
+
+  const handleAddToCampaign = (campaignId: string) => {
+    console.log('Adding template', templateToUse?.id, 'to campaign', campaignId)
+    // TODO: Implement actual template addition to campaign
+    setIsCampaignSelectOpen(false)
+    setTemplateToUse(null)
   }
 
   return (
@@ -281,7 +312,7 @@ Best,
 
         {/* Template Preview Modal */}
         <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-3xl">
+          <DialogContent className="max-w-4xl max-h-[20vh] overflow-y-auto rounded-3xl">
             <DialogHeader>
               <DialogTitle className="text-2xl font-light text-gray-900 tracking-tight">
                 {selectedTemplate?.title}
@@ -348,6 +379,79 @@ Best,
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Campaign Selection Modal */}
+        <Dialog open={isCampaignSelectOpen} onOpenChange={setIsCampaignSelectOpen}>
+          <DialogContent className="max-w-md max-h-[60vh] overflow-y-auto rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-light text-gray-900 tracking-tight">
+                Add Template to Campaign
+              </DialogTitle>
+              <p className="text-sm text-gray-500 mt-2">
+                Select which campaign to add "{templateToUse?.title}" to
+              </p>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {loadingCampaigns ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="p-4 border border-gray-200 rounded-2xl animate-pulse">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : campaigns.length > 0 ? (
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {campaigns.map((campaign) => (
+                    <div
+                      key={campaign.id}
+                      className="p-4 border border-gray-200 hover:border-blue-300 hover:bg-blue-50 rounded-2xl cursor-pointer transition-all duration-200"
+                      onClick={() => handleAddToCampaign(campaign.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-gray-900">{campaign.name}</h4>
+                          <p className="text-sm text-gray-500">
+                            {campaign.status} • {campaign.type || 'Email Campaign'}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {campaign.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-gray-500 mb-4">No campaigns found</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsCampaignSelectOpen(false)
+                      // TODO: Navigate to create campaign
+                    }}
+                    className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
+                  >
+                    Create New Campaign
+                  </Button>
+                </div>
+              )}
+              
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCampaignSelectOpen(false)}
+                  className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
