@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
+import { useDebouncedAutoSave } from "@/hooks/useDebounce"
+import { useOptimizedPolling } from "@/hooks/useOptimizedPolling"
 
 // Extend window object for polling interval
 declare global {
@@ -752,7 +754,61 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const saveAll = () => saveCampaignData('all')
   const saveSenders = () => saveCampaignData('senders')
 
-  // Load essential campaign data on component mount (fast loading)
+  // Load essential campaign data using quick API for fast loading
+  const loadQuickCampaignData = async () => {
+    if (!campaign?.id) return
+    
+    setIsLoadingCampaignData(true)
+    try {
+      // Use the new quick endpoint with caching
+      const response = await fetch(`/api/campaigns/${campaign.id}/quick`, {
+        credentials: "include"
+      })
+      
+      if (!response.ok) {
+        // Fallback to regular endpoint if quick endpoint fails
+        console.log('Quick API not available, falling back to regular endpoint')
+        await loadCampaignData()
+        return
+      }
+      
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        const data = result.data
+        
+        // Update counts for tabs
+        if (data.counts) {
+          console.log('📊 Campaign counts loaded:', data.counts)
+        }
+        
+        // Load scraping data if available
+        if (data.scrapingData) {
+          setScrappingIndustry(data.scrapingData.industry || '')
+          setScrappingKeywords(data.scrapingData.keywords || [])
+          setScrappingLocations(data.scrapingData.locations || [])
+          setScrappingDailyLimit(data.scrapingData.daily_contacts_limit || 50)
+        }
+        
+        setCampaignDataLoaded(true)
+        
+        // Load full data only for active tab
+        if (activeTab === 'sequences') {
+          loadSequencesData()
+        } else if (activeTab === 'settings') {
+          loadSettingsData()
+        }
+      }
+    } catch (error) {
+      console.error("Error loading quick campaign data:", error)
+      // Fallback to regular loading
+      await loadCampaignData()
+    } finally {
+      setIsLoadingCampaignData(false)
+    }
+  }
+  
+  // Load full campaign data when needed (tab-specific)
   const loadCampaignData = async () => {
     if (!campaign?.id) return
     
@@ -881,12 +937,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }
   
-  // Load data when component mounts or campaign changes
+  // Load data when component mounts or campaign changes - OPTIMIZED
   useEffect(() => {
     if (campaign?.id && !campaignDataLoaded) {
-      loadCampaignData()
-      // Also populate scrapping fields when campaign is first loaded
-      populateScrapingFromCampaignData()
+      // Use the new quick API for fast initial loading
+      loadQuickCampaignData()
     }
   }, [campaign?.id])
 
@@ -907,52 +962,87 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       return
     }
     
+    // Check if data is already loaded from quick API
+    if (scrappingIndustry || scrappingKeywords.length > 0 || scrappingLocations.length > 0) {
+      console.log('✅ Scrapping fields already populated from quick API')
+      return
+    }
+    
     console.log('🔍 Fetching campaign data for Contact Scrapping fields...')
     
     try {
-      const url = `/api/campaigns/${campaign.id}/save`
+      // Try the quick endpoint first for faster loading
+      let url = `/api/campaigns/${campaign.id}/quick`
       console.log('🔍 Fetching from URL:', url)
       
-      const response = await fetch(url, {
+      let response = await fetch(url, {
         credentials: "include"
       })
       
+      // If quick endpoint fails, fallback to regular endpoint
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`)
+        console.log('Quick endpoint not available, trying regular endpoint')
+        url = `/api/campaigns/${campaign.id}/save`
+        response = await fetch(url, {
+          credentials: "include"
+        })
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`)
+        }
       }
       
       const result = await response.json()
       
       console.log('📨 API Response for campaign data:', {
         success: result.success,
+        hasScrapingData: !!result.data?.scrapingData,
         hasCampaignData: !!result.data?.campaign,
-        campaignFields: result.data?.campaign ? {
-          id: result.data.campaign.id,
-          industry: result.data.campaign.industry,
-          location: result.data.campaign.location,
-          keywords: result.data.campaign.keywords
-        } : null
+        cached: result.cached
       })
       
-      if (result.success && result.data && result.data.campaign) {
-        const campaignData = result.data.campaign
-        
-        // Always populate from campaign data (override any existing values)
-        if (campaignData.industry) {
-          setScrappingIndustry(campaignData.industry)
-          console.log('✅ Set scrapping industry:', campaignData.industry)
-        }
-        if (campaignData.location || campaignData.locations) {
-          const locations = campaignData.locations || campaignData.location || []
-          const locationArray = Array.isArray(locations) ? locations : locations.split(',').map((l: string) => l.trim()).filter((l: string) => l)
-          setScrappingLocations(locationArray)
-          console.log('✅ Set scrapping locations:', locationArray)
-        }
-        if (campaignData.keywords) {
-          const keywords = campaignData.keywords || []
-          const keywordArray = Array.isArray(keywords) ? keywords : keywords.split(',').map((k: string) => k.trim()).filter((k: string) => k)
-          setScrappingKeywords(keywordArray)
-          console.log('✅ Set scrapping keywords:', keywordArray)
+      if (result.success && result.data) {
+        // Check if it's from quick API (has scrapingData) or regular API (has campaign)
+        if (result.data.scrapingData) {
+          // Quick API response structure
+          const scrapingData = result.data.scrapingData
+          
+          if (scrapingData.industry) {
+            setScrappingIndustry(scrapingData.industry)
+            console.log('✅ Set scrapping industry:', scrapingData.industry)
+          }
+          if (scrapingData.locations) {
+            setScrappingLocations(scrapingData.locations)
+            console.log('✅ Set scrapping locations:', scrapingData.locations)
+          }
+          if (scrapingData.keywords) {
+            setScrappingKeywords(scrapingData.keywords)
+            console.log('✅ Set scrapping keywords:', scrapingData.keywords)
+          }
+          if (scrapingData.daily_contacts_limit) {
+            setScrappingDailyLimit(scrapingData.daily_contacts_limit)
+            console.log('✅ Set scrapping daily limit:', scrapingData.daily_contacts_limit)
+          }
+        } else if (result.data.campaign) {
+          // Regular API response structure (fallback)
+          const campaignData = result.data.campaign
+          
+          if (campaignData.industry) {
+            setScrappingIndustry(campaignData.industry)
+            console.log('✅ Set scrapping industry:', campaignData.industry)
+          }
+          if (campaignData.location || campaignData.locations) {
+            const locations = campaignData.locations || campaignData.location || []
+            const locationArray = Array.isArray(locations) ? locations : locations.split(',').map((l: string) => l.trim()).filter((l: string) => l)
+            setScrappingLocations(locationArray)
+            console.log('✅ Set scrapping locations:', locationArray)
+          }
+          if (campaignData.keywords) {
+            const keywords = campaignData.keywords || []
+            const keywordArray = Array.isArray(keywords) ? keywords : keywords.split(',').map((k: string) => k.trim()).filter((k: string) => k)
+            setScrappingKeywords(keywordArray)
+            console.log('✅ Set scrapping keywords:', keywordArray)
+          }
         }
         
         console.log('✅ Contact Scrapping fields populated from campaign data')
@@ -974,9 +1064,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }
 
-  // Ensure Contact Scrapping fields are populated when user navigates to contacts tab
+  // Load tab-specific data when tab becomes active - LAZY LOADING
   useEffect(() => {
     if (activeTab === 'contacts' && campaign?.id) {
+      // Load contacts data if not already loaded
       populateScrapingFromCampaignData()
     }
   }, [activeTab, campaign?.id])
@@ -2401,13 +2492,17 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
 
-  // Load connected accounts on mount and check API status
+  // Load connected accounts ONLY when sender tab is active - LAZY LOADING
   useEffect(() => {
-    loadConnectedAccounts()
-    loadConnectedMicrosoft365Accounts()
-    loadConnectedSmtpAccounts()
-    checkGmailApiStatus()
-  }, [])
+    if (activeTab === 'senders') {
+      Promise.all([
+        loadConnectedAccounts(),
+        loadConnectedMicrosoft365Accounts(),
+        loadConnectedSmtpAccounts(),
+        checkGmailApiStatus()
+      ]).catch(console.error)
+    }
+  }, [activeTab])
 
   // Contact table useEffect hooks
   useEffect(() => {

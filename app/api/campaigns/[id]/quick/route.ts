@@ -39,7 +39,7 @@ async function getUserIdFromSession(): Promise<string | null> {
 // GET - Fetch quick campaign overview data with caching
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession()
@@ -48,7 +48,7 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
     }
 
-    const campaignId = (await params).id
+    const { id: campaignId } = await params
     const cacheKey = `${userId}-${campaignId}`
     
     // Check cache first
