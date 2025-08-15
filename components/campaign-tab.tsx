@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { Search, Plus, MoreHorizontal, Play, Mail, MessageSquare, Users, MousePointer, UserPlus, Trash2, Eye, UserCheck, Send, Reply, TrendingUp, TrendingDown, UserX, ChevronDown } from "lucide-react"
+import { Search, Plus, MoreHorizontal, Play, Mail, MessageSquare, Users, MousePointer, UserPlus, Trash2, Eye, UserCheck, Send, Reply, TrendingUp, TrendingDown, UserX, ChevronDown, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -46,14 +46,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedCampaignIds, setSelectedCampaignIds] = useState<Set<string | number>>(new Set())
-  const [selectAll, setSelectAll] = useState(false)
   const [showAdvancedPopup, setShowAdvancedPopup] = useState(false)
-  const [deleteDialog, setDeleteDialog] = useState<{
-    open: boolean
-    campaign: { id: string | number; name: string } | null
-    isMultiple: boolean
-  }>({ open: false, campaign: null, isMultiple: false })
 
   const triggerOptions = [
     { value: "New Client", label: "New Client", icon: UserPlus, description: "Trigger when a new client signs up" },
@@ -193,61 +186,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     }
   }
 
-  const handleDeleteCampaign = (campaignId: string | number, campaignName: string) => {
-    setDeleteDialog({ 
-      open: true, 
-      campaign: { id: campaignId, name: campaignName },
-      isMultiple: false
-    })
-  }
-
-  const confirmDeleteCampaign = async () => {
-    if (!deleteDialog.campaign) return
-
-    try {
-      const response = await fetch(`/api/campaigns?id=${deleteDialog.campaign.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        // Remove the campaign from the local state
-        setCampaigns(campaigns.filter(campaign => campaign.id !== deleteDialog.campaign!.id))
-        
-        // If we're currently viewing this campaign, go back to list view
-        if (currentView === "dashboard" && selectedCampaign?.id === deleteDialog.campaign!.id) {
-          setCurrentView("list")
-          setSelectedCampaign(null)
-        }
-        
-        // Notify sidebar that campaigns have changed
-        const event = new CustomEvent('campaigns-changed')
-        window.dispatchEvent(event)
-        
-        toast({
-          title: "Campaign Deleted",
-          description: result.message || `Campaign "${deleteDialog.campaign.name}" has been deleted successfully`,
-        })
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to delete campaign",
-          variant: "destructive"
-        })
-      }
-    } catch (error) {
-      console.error("Error deleting campaign:", error)
-      toast({
-        title: "Error",
-        description: "Failed to delete campaign",
-        variant: "destructive"
-      })
-    } finally {
-      setDeleteDialog({ open: false, campaign: null, isMultiple: false })
-    }
-  }
+  // Delete functionality removed for simplified UX
 
   const handleSelectCampaign = (campaignId: string | number, checked: boolean) => {
     const newSelected = new Set(selectedCampaignIds)
@@ -650,356 +589,147 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      <div className="max-w-6xl mx-auto p-6">
+        {/* Simplified Header */}
         <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Campaigns</h1>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Campaigns</h1>
+              <p className="text-gray-600">Manage your email campaigns</p>
+            </div>
+            <Button 
+              onClick={() => setShowAdvancedPopup(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Campaign
+            </Button>
           </div>
 
-          {/* Controls */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-64"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13 10V3L4 14h7v7l9-11h-7z"
-                      />
-                    </svg>
-                    <SelectValue placeholder="All statuses" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="paused">Paused</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="All types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
-                  <SelectItem value="email">Email</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest first</SelectItem>
-                  <SelectItem value="oldest">Oldest first</SelectItem>
-                  <SelectItem value="name">Name A-Z</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Simplified Controls */}
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Search campaigns..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-white border-gray-200 rounded-xl"
+              />
             </div>
-            <div className="flex items-center space-x-3">
-              {selectedCampaignIds.size > 0 && (
-                <Button 
-                  variant="destructive"
-                  className="bg-red-600 hover:bg-red-700"
-                  onClick={handleBulkDelete}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete ({selectedCampaignIds.size})
-                </Button>
-              )}
-              <div className="relative">
-                <Button style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'} onClick={() => setShowAdvancedPopup(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add New
-                </Button>
-              </div>
-            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-36 bg-white border-gray-200 rounded-xl">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="paused">Paused</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-lg border">
-          {(!activeSubTab || activeSubTab === "campaigns-email") && (
-            <>
-              <div className="grid gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600" style={{ gridTemplateColumns: '120px 1fr 120px 100px 100px 100px 100px 100px 140px' }}>
-                <div>Status</div>
-                <div>Name</div>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Progress
-                </div>
-                <div className="flex items-center gap-2">
-                  <Send className="h-4 w-4" />
-                  Sent
-                </div>
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Openings
-                </div>
-                <div className="flex items-center gap-2">
-                  <MousePointer className="h-4 w-4" />
-                  Link clicked
-                </div>
-                <div className="flex items-center gap-2">
-                  <Reply className="h-4 w-4" />
-                  Replies
-                </div>
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4" />
-                  Bounced
-                </div>
-                <div>Actions</div>
-              </div>
-            </>
-          )}
-
-          {activeSubTab === "campaigns-linkedin" && (
-            <>
-              <div className="grid grid-cols-8 gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600">
-                <div>Status</div>
-                <div>Name</div>
-                <div className="flex items-center gap-2">
-                  <Eye className="h-4 w-4" />
-                  Visit profile
-                </div>
-                <div className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Invit. sent
-                </div>
-                <div className="flex items-center gap-2">
-                  <UserCheck className="h-4 w-4" />
-                  Accepted
-                </div>
-                <div className="flex items-center gap-2">
-                  <Send className="h-4 w-4" />
-                  Sent
-                </div>
-                <div className="flex items-center gap-2">
-                  <Reply className="h-4 w-4" />
-                  Replies
-                </div>
-                <div>Actions</div>
-              </div>
-            </>
-          )}
-
-          {activeSubTab === "campaigns-multi-channel" && (
-            <>
-              <div className="grid grid-cols-7 gap-4 p-4 border-b bg-gray-50 text-sm font-medium text-gray-600">
-                <div>Status</div>
-                <div>Name</div>
-                <div className="flex items-center gap-2">
-                  <Send className="h-4 w-4" />
-                  Email sent
-                </div>
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email Opened
-                </div>
-                <div className="flex items-center gap-2">
-                  <UserCheck className="h-4 w-4" />
-                  Invitation accepted
-                </div>
-                <div className="flex items-center gap-2">
-                  <Reply className="h-4 w-4" />
-                  Replied
-                </div>
-                <div>Actions</div>
-              </div>
-            </>
-          )}
-
-
+        {/* Clean Campaign Cards */}
+        <div className="space-y-4">
           {loading ? (
-              <div className="p-8 text-center text-gray-500">
-                <div className="flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mr-2" style={{ borderColor: 'rgb(87, 140, 255)', borderTopColor: 'transparent' }}></div>
-                  Loading campaigns...
-                </div>
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <span className="ml-3 text-gray-600">Loading campaigns...</span>
+            </div>
+          ) : filteredCampaigns.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                <Mail className="w-8 h-8 text-gray-400" />
               </div>
-            ) : filteredCampaigns.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                No campaigns found. Create your first campaign to get started.
-              </div>
-            ) : (
-              filteredCampaigns.map((campaign) => (
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No campaigns yet</h3>
+              <p className="text-gray-600 mb-6">Create your first campaign to get started</p>
+              <Button 
+                onClick={() => setShowAdvancedPopup(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Campaign
+              </Button>
+            </div>
+          ) : (
+            filteredCampaigns.map((campaign) => {
+              const progress = getCampaignProgress(campaign)
+              
+              return (
                 <div
                   key={campaign.id}
-                  className="hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
                   onClick={() => {
                     setSelectedCampaign(campaign)
                     setCurrentView("dashboard")
                   }}
+                  className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:border-blue-200 transition-all duration-200 cursor-pointer group"
                 >
-                  {/* Email Campaign Layout */}
-                  {(!activeSubTab || activeSubTab === "campaigns-email") && (
-                    <div className="grid gap-4 p-4" style={{ gridTemplateColumns: '120px 1fr 120px 100px 100px 100px 100px 100px 140px' }}>
-                      <div>
-                        <div className="px-3 py-1 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 border border-gray-300 w-fit">
+                  <div className="flex items-center justify-between">
+                    {/* Left: Campaign Info */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                          {campaign.name || 'Untitled Campaign'}
+                        </h3>
+                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          campaign.status === 'Active' 
+                            ? 'bg-green-100 text-green-700' 
+                            : campaign.status === 'Paused'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : campaign.status === 'Completed'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
                           {campaign.status || 'Draft'}
                         </div>
                       </div>
-                      <div>
-                        <div className="font-medium">{campaign.name || 'Untitled Campaign'}</div>
+                      
+                      {/* Progress Bar */}
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-gray-600">Progress</span>
+                          <span className="text-sm font-medium text-gray-900">{progress.percentage}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full transition-all duration-300 ${
+                              progress.percentage >= 75 ? 'bg-green-500' : 
+                              progress.percentage >= 50 ? 'bg-blue-500' : 
+                              progress.percentage >= 25 ? 'bg-yellow-500' : 
+                              'bg-gray-400'
+                            }`}
+                            style={{ width: `${Math.min(progress.percentage, 100)}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                          <span>{progress.sent} sent</span>
+                          <span>{progress.totalPlanned} total</span>
+                        </div>
                       </div>
-                      <div>
-                        {(() => {
-                          const progress = getCampaignProgress(campaign)
-                          const progressColor = progress.percentage >= 75 ? 'text-green-600' : 
-                                              progress.percentage >= 50 ? 'text-[rgb(87,140,255)]' : 
-                                              progress.percentage >= 25 ? 'text-orange-500' : 
-                                              'text-gray-400'
-                          return (
-                            <div>
-                              <div className={`font-semibold ${progressColor}`}>{progress.percentage}%</div>
-                              <div className="text-xs text-gray-500">{progress.sent}/{progress.totalPlanned}</div>
-                              {/* Progress bar */}
-                              <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                                <div 
-                                  className={`h-1.5 rounded-full transition-all ${
-                                    progress.percentage >= 75 ? 'bg-green-600' : 
-                                    progress.percentage >= 50 ? 'bg-[rgb(87,140,255)]' : 
-                                    progress.percentage >= 25 ? 'bg-orange-500' : 
-                                    'bg-gray-400'
-                                  }`}
-                                  style={{ width: `${Math.min(progress.percentage, 100)}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          )
-                        })()}
+                    </div>
+
+                    {/* Right: Quick Stats */}
+                    <div className="flex items-center gap-6 ml-6">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">{campaign.sent ?? 0}</div>
+                        <div className="text-xs text-gray-500">Emails Sent</div>
                       </div>
-                      <div>
-                        <div className="text-[#3B82F6] font-semibold">{campaign.sent ?? 0}</div>
-                        <div className="text-xs text-gray-500">Sent</div>
-                      </div>
-                      <div>
-                        <div className="text-orange-500 font-semibold">0%</div>
-                        <div className="text-xs text-gray-500">Opens</div>
-                      </div>
-                      <div>
-                        <div className="text-cyan-500 font-semibold">0%</div>
-                        <div className="text-xs text-gray-500">Clicks</div>
-                      </div>
-                      <div>
-                        <div className="text-green-500 font-semibold">0%</div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">0</div>
                         <div className="text-xs text-gray-500">Replies</div>
                       </div>
-                      <div>
-                        <div className="text-red-500 font-semibold">0%</div>
-                        <div className="text-xs text-gray-500">Bounces</div>
-                      </div>
-                      <div onClick={(e) => e.stopPropagation()}>
-                        {campaign.status === 'Completed' && (
-                          <DomainSetupButton 
-                            campaignId={campaign.id}
-                            campaignName={campaign.name}
-                          />
-                        )}
-                      </div>
+                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
                     </div>
-                  )}
-
-                  {/* LinkedIn Campaign Layout */}
-                  {activeSubTab === "campaigns-linkedin" && (
-                    <div className="grid grid-cols-8 gap-4 p-4">
-                      <div>
-                        <div className="px-3 py-1 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 border border-gray-300 w-fit">
-                          {campaign.status || 'Draft'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="font-medium">{campaign.name || 'Untitled Campaign'}</div>
-                      </div>
-                      <div>
-                        <div className="text-orange-500 font-semibold">0</div>
-                        <div className="text-xs text-gray-500">Visit profile</div>
-                      </div>
-                      <div>
-                        <div className="text-orange-500 font-semibold">0</div>
-                        <div className="text-xs text-gray-500">Invit. sent</div>
-                      </div>
-                      <div>
-                        <div className="text-cyan-500 font-semibold">0</div>
-                        <div className="text-xs text-gray-500">Accepted</div>
-                      </div>
-                      <div>
-                        <div className="text-[#3B82F6] font-semibold">0</div>
-                        <div className="text-xs text-gray-500">Sent</div>
-                      </div>
-                      <div>
-                        <div className="text-green-500 font-semibold">0</div>
-                        <div className="text-xs text-gray-500">Replies</div>
-                      </div>
-                      <div onClick={(e) => e.stopPropagation()}>
-                        {campaign.status === 'Completed' && (
-                          <DomainSetupButton 
-                            campaignId={campaign.id}
-                            campaignName={campaign.name}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Multi-Channel Campaign Layout */}
-                  {activeSubTab === "campaigns-multi-channel" && (
-                    <div className="grid grid-cols-7 gap-4 p-4">
-                      <div>
-                        <div className="px-3 py-1 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 border border-gray-300 w-fit">
-                          {campaign.status || 'Draft'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="font-medium">{campaign.name || 'Untitled Campaign'}</div>
-                      </div>
-                      <div>
-                        <div className="text-[#3B82F6] font-semibold">0</div>
-                        <div className="text-xs text-gray-500">Email sent</div>
-                      </div>
-                      <div>
-                        <div className="text-orange-500 font-semibold">0</div>
-                        <div className="text-xs text-gray-500">Email Opened</div>
-                      </div>
-                      <div>
-                        <div className="text-cyan-500 font-semibold">0</div>
-                        <div className="text-xs text-gray-500">Invitation accepted</div>
-                      </div>
-                      <div>
-                        <div className="text-green-500 font-semibold">0</div>
-                        <div className="text-xs text-gray-500">Replied</div>
-                      </div>
-                      <div onClick={(e) => e.stopPropagation()}>
-                        {campaign.status === 'Completed' && (
-                          <DomainSetupButton 
-                            campaignId={campaign.id}
-                            campaignName={campaign.name}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  )}
-
+                  </div>
                 </div>
-              ))
-            )}
-          </div>
+              )
+            })
+          )}
+        </div>
         </div>
 
         {/* Create Campaign Modal */}
@@ -1119,28 +849,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           </div>
         )}
 
-        {/* Chat Widget */}
-        <div className="fixed bottom-6 right-6">
-          <Button
-            className="rounded-full w-14 h-14 shadow-lg"
-            style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
-            onClick={() => toast({ title: "Chat", description: "Chat support coming soon!" })}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              />
-            </svg>
-            <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              1
-            </div>
-          </Button>
-        </div>
 
         {/* Advanced Campaign Popup */}
         <AddCampaignPopup 
@@ -1149,42 +857,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           onComplete={handleAdvancedCampaignComplete}
         />
 
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, campaign: null, isMultiple: false })}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Campaign{deleteDialog.isMultiple ? 's' : ''}</DialogTitle>
-              <DialogDescription>
-                {deleteDialog.isMultiple ? (
-                  <>
-                    Are you sure you want to delete {selectedCampaignIds.size} campaign(s): <br />
-                    <strong>{deleteDialog.campaign?.name}</strong>?
-                  </>
-                ) : (
-                  <>
-                    Are you sure you want to delete the campaign <strong>"{deleteDialog.campaign?.name}"</strong>?
-                  </>
-                )}
-                <br />
-                <span className="text-red-600 font-medium">This action cannot be undone.</span>
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setDeleteDialog({ open: false, campaign: null, isMultiple: false })}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={deleteDialog.isMultiple ? confirmBulkDelete : confirmDeleteCampaign}
-              >
-                Delete Campaign{deleteDialog.isMultiple ? 's' : ''}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
     </div>
   )
 }
