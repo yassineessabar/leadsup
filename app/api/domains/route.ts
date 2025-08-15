@@ -58,9 +58,10 @@ export async function GET(request: NextRequest) {
 
     const { data: domains, error } = await supabase
       .from('domains')
-      .select('*')
+      .select('id, domain, status, description, is_test_domain, verification_type, created_at, emails_sent, emails_delivered, emails_rejected, emails_received')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
+      .limit(10)
 
     if (error) {
       console.error("Error fetching domains:", error)
@@ -87,10 +88,16 @@ export async function GET(request: NextRequest) {
       }
     }))
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       domains: transformedDomains
     })
+
+    // Add caching headers for better performance
+    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30')
+    response.headers.set('Content-Type', 'application/json; charset=utf-8')
+    
+    return response
   } catch (error) {
     console.error("Error in GET /api/domains:", error)
     return NextResponse.json(

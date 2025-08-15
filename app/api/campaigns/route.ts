@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       .select("id, name, type, trigger_type, status, created_at, updated_at, scraping_status")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(50)
+      .limit(20)
 
     if (campaignError) {
       return NextResponse.json({ success: false, error: campaignError.message }, { status: 500 })
@@ -71,10 +71,16 @@ export async function GET(request: NextRequest) {
       updated_at: campaign.updated_at
     })) || []
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: formattedCampaigns
     })
+
+    // Add caching headers for better performance
+    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30')
+    response.headers.set('Content-Type', 'application/json; charset=utf-8')
+    
+    return response
   } catch (error) {
     console.error("❌ Error fetching campaign data:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })

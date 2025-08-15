@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { supabase, supabaseServer } from "@/lib/supabase"
+import { monitoredQuery } from "@/lib/performance"
 
 async function getUserIdFromSession(): Promise<string | null> {
   try {
@@ -46,13 +47,16 @@ export async function GET(
 
     const campaignId = (await params).id
 
-    // Verify campaign belongs to user
-    const { data: campaign, error: campaignError } = await supabaseServer
-      .from("campaigns")
-      .select("*")
-      .eq("id", campaignId)
-      .eq("user_id", userId)
-      .single()
+    // Verify campaign belongs to user with performance monitoring
+    const { data: campaign, error: campaignError } = await monitoredQuery(
+      `Campaign verification for ${campaignId}`,
+      () => supabaseServer
+        .from("campaigns")
+        .select("*")
+        .eq("id", campaignId)
+        .eq("user_id", userId)
+        .single()
+    )
 
     if (campaignError || !campaign) {
         return NextResponse.json({ success: false, error: "Campaign not found" }, { status: 404 })

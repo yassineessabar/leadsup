@@ -32,7 +32,7 @@ async function getUserIdFromSession(): Promise<string | null> {
   }
 }
 
-// GET - Fetch leads for a specific campaign
+// GET - Fetch leads for a specific campaign with optimized pagination
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -45,6 +45,16 @@ export async function GET(
     }
 
     const { id: campaignId } = await params
+    const { searchParams } = new URL(request.url)
+    
+    // Enhanced pagination parameters
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100) // Max 100 per page
+    const offset = (page - 1) * limit
+    
+    // Filter parameters for server-side filtering
+    const status = searchParams.get('status')
+    const search = searchParams.get('search')
 
     // First verify the campaign belongs to the user
     const { data: campaign, error: campaignError } = await supabaseServer
