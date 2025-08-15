@@ -62,8 +62,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   // Scrapping functionality state
   const [scrappingDailyLimit, setScrappingDailyLimit] = useState(100)
   const [scrappingIndustry, setScrappingIndustry] = useState("")
-  const [scrappingKeyword, setScrappingKeyword] = useState("")
-  const [scrappingLocation, setScrappingLocation] = useState("")
+  const [scrappingKeywords, setScrappingKeywords] = useState<string[]>([])
+  const [scrappingLocations, setScrappingLocations] = useState<string[]>([])
+  const [keywordInput, setKeywordInput] = useState("")
+  const [locationInput, setLocationInput] = useState("")
   const [isStartingScrapingLocal, setIsStartingScrapingLocal] = useState(false)
   const [isStoppedLocally, setIsStoppedLocally] = useState(false)
   
@@ -704,8 +706,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           isActive: isScrappingActive,
           dailyLimit: scrappingDailyLimit,
           industry: scrappingIndustry,
-          keyword: scrappingKeyword,
-          location: scrappingLocation
+          keywords: scrappingKeywords,
+          locations: scrappingLocations
         }
       }
 
@@ -795,13 +797,25 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         if (data.scrapingSettings) {
           setScrappingDailyLimit(data.scrapingSettings.dailyLimit || 100)
           setScrappingIndustry(data.scrapingSettings.industry || '')
-          setScrappingKeyword(data.scrapingSettings.keyword || '')
-          setScrappingLocation(data.scrapingSettings.location || '')
+          
+          // Handle keywords - convert string to array or use existing array
+          const keywords = data.scrapingSettings.keywords || data.scrapingSettings.keyword || []
+          setScrappingKeywords(Array.isArray(keywords) ? keywords : keywords.split(',').map((k: string) => k.trim()).filter((k: string) => k))
+          
+          // Handle locations - convert string to array or use existing array
+          const locations = data.scrapingSettings.locations || data.scrapingSettings.location || []
+          setScrappingLocations(Array.isArray(locations) ? locations : locations.split(',').map((l: string) => l.trim()).filter((l: string) => l))
         } else if (data.campaign) {
           setScrappingIndustry(data.campaign.industry || '')
-          setScrappingLocation(data.campaign.location || '')
+          
+          // Handle keywords
           const keywords = data.campaign.keywords || []
-          setScrappingKeyword(Array.isArray(keywords) ? keywords.join(', ') : keywords.toString())
+          setScrappingKeywords(Array.isArray(keywords) ? keywords : keywords.split(',').map((k: string) => k.trim()).filter((k: string) => k))
+          
+          // Handle locations  
+          const locations = data.campaign.locations || data.campaign.location || []
+          setScrappingLocations(Array.isArray(locations) ? locations : locations.split(',').map((l: string) => l.trim()).filter((l: string) => l))
+          
           setScrappingDailyLimit(100)
         }
         
@@ -928,15 +942,17 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           setScrappingIndustry(campaignData.industry)
           console.log('✅ Set scrapping industry:', campaignData.industry)
         }
-        if (campaignData.location) {
-          setScrappingLocation(campaignData.location)
-          console.log('✅ Set scrapping location:', campaignData.location)
+        if (campaignData.location || campaignData.locations) {
+          const locations = campaignData.locations || campaignData.location || []
+          const locationArray = Array.isArray(locations) ? locations : locations.split(',').map((l: string) => l.trim()).filter((l: string) => l)
+          setScrappingLocations(locationArray)
+          console.log('✅ Set scrapping locations:', locationArray)
         }
         if (campaignData.keywords) {
           const keywords = campaignData.keywords || []
-          const keywordString = Array.isArray(keywords) ? keywords.join(', ') : keywords.toString()
-          setScrappingKeyword(keywordString)
-          console.log('✅ Set scrapping keywords:', keywordString)
+          const keywordArray = Array.isArray(keywords) ? keywords : keywords.split(',').map((k: string) => k.trim()).filter((k: string) => k)
+          setScrappingKeywords(keywordArray)
+          console.log('✅ Set scrapping keywords:', keywordArray)
         }
         
         console.log('✅ Contact Scrapping fields populated from campaign data')
@@ -1618,9 +1634,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         
         // Pre-fill Contact Scrapping fields with campaign data
         setScrappingIndustry(campaignData.formData.industry || '')
-        setScrappingLocation(campaignData.formData.location || '')
+        const locations = campaignData.formData.locations || campaignData.formData.location || []
+        const locationArray = Array.isArray(locations) ? locations : locations.split(',').map((l: string) => l.trim()).filter((l: string) => l)
+        setScrappingLocations(locationArray)
         const keywords = campaignData.formData.keywords || []
-        setScrappingKeyword(keywords.join(', '))
+        const keywordArray = Array.isArray(keywords) ? keywords : keywords.split(',').map((k: string) => k.trim()).filter((k: string) => k)
+        setScrappingKeywords(keywordArray)
         
         // Populate email sequences with AI-generated content
         if (campaignData.aiAssets && campaignData.aiAssets.email_sequences) {
@@ -1795,7 +1814,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   // Scrapping functions
   const handleStartScrapping = async (mode: 'full' | 'profiles-only' | 'combined' = 'full') => {
     // Validate all fields are filled
-    if (!scrappingIndustry || !scrappingKeyword || !scrappingLocation) {
+    if (!scrappingIndustry || scrappingKeywords.length === 0 || scrappingLocations.length === 0) {
       return
     }
 
@@ -1818,8 +1837,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         credentials: 'include',
         body: JSON.stringify({ 
           mode,
-          keyword: scrappingKeyword,
-          location: scrappingLocation, 
+          keywords: scrappingKeywords,
+          locations: scrappingLocations, 
           industry: scrappingIndustry,
           dailyLimit: scrappingDailyLimit
         })
@@ -2819,23 +2838,111 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Keywords</label>
-                        <Input
-                          placeholder="e.g., CEO, Founder, Manager"
-                          value={scrappingKeyword}
-                          onChange={(e) => setScrappingKeyword(e.target.value)}
-                          disabled={isScrappingActive}
-                          className="h-10 bg-gray-50 border-gray-200 rounded-2xl"
-                        />
+                        {/* Keywords tags display */}
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {scrappingKeywords.map((keyword, index) => (
+                            <span
+                              key={index}
+                              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
+                            >
+                              {keyword}
+                              {!isScrappingActive && (
+                                <button
+                                  onClick={() => setScrappingKeywords(scrappingKeywords.filter((_, i) => i !== index))}
+                                  className="ml-1 hover:text-blue-900 transition-colors"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                        {/* Add new keyword input */}
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="e.g., CEO, Founder, Manager"
+                            value={keywordInput}
+                            onChange={(e) => setKeywordInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && keywordInput.trim()) {
+                                e.preventDefault()
+                                setScrappingKeywords([...scrappingKeywords, keywordInput.trim()])
+                                setKeywordInput("")
+                              }
+                            }}
+                            disabled={isScrappingActive}
+                            className="h-10 bg-gray-50 border-gray-200 rounded-2xl flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              if (keywordInput.trim()) {
+                                setScrappingKeywords([...scrappingKeywords, keywordInput.trim()])
+                                setKeywordInput("")
+                              }
+                            }}
+                            disabled={isScrappingActive || !keywordInput.trim()}
+                            className="h-10 px-4 border-gray-300 hover:bg-gray-50 rounded-2xl"
+                          >
+                            Add
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Press Enter or click Add to add multiple keywords</p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                        <Input
-                          placeholder="e.g., San Francisco, CA"
-                          value={scrappingLocation}
-                          onChange={(e) => setScrappingLocation(e.target.value)}
-                          disabled={isScrappingActive}
-                          className="h-10 bg-gray-50 border-gray-200 rounded-2xl"
-                        />
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Locations</label>
+                        {/* Locations tags display */}
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {scrappingLocations.map((location, index) => (
+                            <span
+                              key={index}
+                              className="inline-flex items-center gap-1 px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm font-medium"
+                            >
+                              {location}
+                              {!isScrappingActive && (
+                                <button
+                                  onClick={() => setScrappingLocations(scrappingLocations.filter((_, i) => i !== index))}
+                                  className="ml-1 hover:text-green-900 transition-colors"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                        {/* Add new location input */}
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="e.g., San Francisco, CA"
+                            value={locationInput}
+                            onChange={(e) => setLocationInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && locationInput.trim()) {
+                                e.preventDefault()
+                                setScrappingLocations([...scrappingLocations, locationInput.trim()])
+                                setLocationInput("")
+                              }
+                            }}
+                            disabled={isScrappingActive}
+                            className="h-10 bg-gray-50 border-gray-200 rounded-2xl flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              if (locationInput.trim()) {
+                                setScrappingLocations([...scrappingLocations, locationInput.trim()])
+                                setLocationInput("")
+                              }
+                            }}
+                            disabled={isScrappingActive || !locationInput.trim()}
+                            className="h-10 px-4 border-gray-300 hover:bg-gray-50 rounded-2xl"
+                          >
+                            Add
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Press Enter or click Add to add multiple locations</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Daily Limit</label>
@@ -2882,7 +2989,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       ) : scrapingStatus === 'completed' ? (
                         <Button
                           onClick={() => handleStartScrapping('combined')}
-                          disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
+                          disabled={!scrappingIndustry || scrappingKeywords.length === 0 || scrappingLocations.length === 0}
                           className="w-full bg-green-600 hover:bg-green-700 text-white rounded-2xl"
                         >
                           <Search className="w-4 h-4 mr-2" />
@@ -2891,7 +2998,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       ) : (
                         <Button
                           onClick={() => handleStartScrapping('combined')}
-                          disabled={!scrappingIndustry || !scrappingKeyword || !scrappingLocation}
+                          disabled={!scrappingIndustry || scrappingKeywords.length === 0 || scrappingLocations.length === 0}
                           className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl"
                         >
                           <Search className="w-4 h-4 mr-2" />
