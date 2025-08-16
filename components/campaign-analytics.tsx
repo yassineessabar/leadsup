@@ -257,16 +257,19 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     onStatusUpdate(campaign.id, "Completed")
   }
 
-  // Calculate metrics from SendGrid data or fallback
-  const totalSent = metrics?.emailsSent || campaign.sent || 0
-  const totalDelivered = metrics?.emailsDelivered || 0
-  const totalPlanned = campaign.totalPlanned || Math.max(totalSent, 100)
-  const openRate = metrics?.openRate || 0
-  const clickRate = metrics?.clickRate || 0
-  const deliveryRate = metrics?.deliveryRate || 0
-  const bounceRate = metrics?.bounceRate || 0
-  const responseRate = Math.floor(Math.random() * 10) + 5 // Keep this as fallback until we have reply tracking
-  const progressPercentage = Math.min(Math.round((totalSent / totalPlanned) * 100), 100)
+  // Check if campaign has been started
+  const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused'
+  
+  // Calculate metrics from SendGrid data or fallback - only show real data for started campaigns
+  const totalSent = hasBeenStarted ? (metrics?.emailsSent || campaign.sent || 0) : 0
+  const totalDelivered = hasBeenStarted ? (metrics?.emailsDelivered || 0) : 0
+  const totalPlanned = campaign.totalPlanned || 0 // Only use real data from database
+  const openRate = hasBeenStarted ? (metrics?.openRate || 0) : 0
+  const clickRate = hasBeenStarted ? (metrics?.clickRate || 0) : 0
+  const deliveryRate = hasBeenStarted ? (metrics?.deliveryRate || 0) : 0
+  const bounceRate = hasBeenStarted ? (metrics?.bounceRate || 0) : 0
+  const responseRate = hasBeenStarted ? (Math.floor(Math.random() * 10) + 5) : 0 // Keep this as fallback until we have reply tracking
+  const progressPercentage = hasBeenStarted && totalPlanned > 0 ? Math.min(Math.round((totalSent / totalPlanned) * 100), 100) : 0
 
   const getCampaignStatusBadgeColor = (status: Campaign["status"]) => {
     switch (status) {
@@ -443,10 +446,13 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 {metricsLoading ? (
                   <div className="text-3xl font-light text-gray-400">...</div>
                 ) : (
-                  <p className="text-3xl font-light text-gray-900">{totalSent.toLocaleString()}</p>
+                  <p className="text-3xl font-light text-gray-900">
+                    {hasBeenStarted ? totalSent.toLocaleString() : '—'}
+                  </p>
                 )}
                 <span className="text-sm text-gray-400 font-medium">
-                  {Math.round((totalSent / totalPlanned) * 100)}%
+                  {hasBeenStarted && totalPlanned > 0 ? `${Math.round((totalSent / totalPlanned) * 100)}%` : 
+                   hasBeenStarted ? '0%' : 'Not started'}
                 </span>
               </div>
             </CardContent>
@@ -467,10 +473,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 {metricsLoading ? (
                   <div className="text-3xl font-light text-gray-400">...</div>
                 ) : (
-                  <p className="text-3xl font-light text-gray-900">{openRate.toFixed(1)}%</p>
+                  <p className="text-3xl font-light text-gray-900">
+                    {hasBeenStarted ? `${openRate.toFixed(1)}%` : '—'}
+                  </p>
                 )}
                 <span className="text-sm text-gray-400 font-medium">
-                  {metrics?.uniqueOpens ? `${metrics.uniqueOpens} unique` : 'No data'}
+                  {hasBeenStarted ? (metrics?.uniqueOpens ? `${metrics.uniqueOpens} unique` : 'No data') : 'Not started'}
                 </span>
               </div>
             </CardContent>
@@ -491,10 +499,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 {metricsLoading ? (
                   <div className="text-3xl font-light text-gray-400">...</div>
                 ) : (
-                  <p className="text-3xl font-light text-gray-900">{clickRate.toFixed(1)}%</p>
+                  <p className="text-3xl font-light text-gray-900">
+                    {hasBeenStarted ? `${clickRate.toFixed(1)}%` : '—'}
+                  </p>
                 )}
                 <span className="text-sm text-gray-400 font-medium">
-                  {metrics?.uniqueClicks ? `${metrics.uniqueClicks} unique` : 'No data'}
+                  {hasBeenStarted ? (metrics?.uniqueClicks ? `${metrics.uniqueClicks} unique` : 'No data') : 'Not started'}
                 </span>
               </div>
             </CardContent>
@@ -515,10 +525,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 {metricsLoading ? (
                   <div className="text-3xl font-light text-gray-400">...</div>
                 ) : (
-                  <p className="text-3xl font-light text-gray-900">{deliveryRate.toFixed(1)}%</p>
+                  <p className="text-3xl font-light text-gray-900">
+                    {hasBeenStarted ? `${deliveryRate.toFixed(1)}%` : '—'}
+                  </p>
                 )}
                 <span className="text-sm text-gray-400 font-medium">
-                  {metrics?.emailsBounced ? `${metrics.emailsBounced} bounced` : 'No bounces'}
+                  {hasBeenStarted ? (metrics?.emailsBounced ? `${metrics.emailsBounced} bounced` : 'No bounces') : 'Not started'}
                 </span>
               </div>
             </CardContent>
@@ -548,12 +560,21 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 </div>
                 <div className="grid grid-cols-2 gap-4 pt-4">
                   <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                    <p className="text-2xl font-light text-gray-900">{totalSent}</p>
-                    <p className="text-sm text-gray-500 mt-1">Sent</p>
+                    <p className="text-2xl font-light text-gray-900">
+                      {hasBeenStarted ? totalSent : '—'}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {hasBeenStarted ? 'Sent' : 'Not started'}
+                    </p>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                    <p className="text-2xl font-light text-gray-900">{totalPlanned - totalSent}</p>
-                    <p className="text-sm text-gray-500 mt-1">Remaining</p>
+                    <p className="text-2xl font-light text-gray-900">
+                      {hasBeenStarted && totalPlanned > 0 ? (totalPlanned - totalSent) : 
+                       hasBeenStarted ? '0' : '—'}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {hasBeenStarted ? 'Remaining' : 'No contacts'}
+                    </p>
                   </div>
                 </div>
               </div>

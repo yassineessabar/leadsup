@@ -175,7 +175,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
             return {
               ...campaign,
               outreachStrategy: campaign.outreach_strategy || campaign.outreachStrategy,
-              totalPlanned: campaign.total_planned || Math.floor(Math.random() * 200) + 50,
+              totalPlanned: campaign.total_planned || 0, // Only use real data from database
               sendgridMetrics
             }
           })
@@ -259,8 +259,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
             type: result.data.type,
             trigger: result.data.trigger_type,
             status: result.data.status,
-            sent: Math.floor(Math.random() * 30), // Sample data for demo
-            totalPlanned: Math.floor(Math.random() * 200) + 50 // Sample data for demo
+            sent: 0, // No emails sent for new campaign
+            totalPlanned: 0 // No contacts uploaded yet
           }
 
           setCampaigns([newCampaign, ...campaigns])
@@ -467,8 +467,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           type: existingCampaign.type || "Email",
           trigger: existingCampaign.trigger_type || "Manual",
           status: existingCampaign.status || "Draft",
-          sent: Math.floor(Math.random() * 30), // Sample data for demo
-          totalPlanned: Math.floor(Math.random() * 200) + 50, // Sample data for demo
+          sent: 0, // No emails sent for new campaign
+          totalPlanned: 0, // No contacts uploaded yet
           outreachStrategy: campaignData.selectedOutreachStrategy || "email",
         }
 
@@ -557,6 +557,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   }
 
   const getCampaignProgress = (campaign: Campaign) => {
+    // Check if campaign has been started
+    const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused'
+    
+    // For new/draft campaigns, show zero progress
+    if (!hasBeenStarted) {
+      return { percentage: 0, sent: 0, totalPlanned: campaign.totalPlanned || 0 }
+    }
+    
     // Use SendGrid emails sent if available, otherwise fall back to campaign.sent
     const sent = campaign.sendgridMetrics?.emailsSent || campaign.sent || 0
     const totalPlanned = campaign.totalPlanned || 100 // Default to 100 if not specified
@@ -835,9 +843,18 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           ) : (
             filteredCampaigns.map((campaign) => {
               const progress = getCampaignProgress(campaign)
-              // Use real SendGrid metrics or fallback to mock data
-              const openRate = Math.round(campaign.sendgridMetrics?.openRate ?? Math.floor(Math.random() * 40) + 20)
-              const responseRate = Math.round(campaign.sendgridMetrics?.clickRate ?? Math.floor(Math.random() * 15) + 5) // Using click rate as "response" proxy
+              
+              // Only show real metrics for campaigns that have been started
+              const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused'
+              const hasRealMetrics = campaign.sendgridMetrics && (campaign.sendgridMetrics.emailsSent > 0)
+              
+              // Use real SendGrid metrics only if campaign has been started and has data
+              const openRate = hasBeenStarted && hasRealMetrics 
+                ? Math.round(campaign.sendgridMetrics.openRate) 
+                : 0
+              const responseRate = hasBeenStarted && hasRealMetrics 
+                ? Math.round(campaign.sendgridMetrics.clickRate) 
+                : 0
               
               return (
                 <div
@@ -927,20 +944,34 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     {/* Metrics */}
                     <div className="grid grid-cols-2 gap-4 mb-6">
                       <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                        <p className="text-2xl font-light text-gray-900">{openRate}%</p>
-                        <p className="text-sm text-gray-500 mt-1">Open Rate</p>
+                        <p className="text-2xl font-light text-gray-900">
+                          {hasBeenStarted && hasRealMetrics ? `${openRate}%` : 
+                           hasBeenStarted ? '0%' : '—'}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {hasBeenStarted ? 'Open Rate' : 'Not started'}
+                        </p>
                       </div>
                       <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                        <p className="text-2xl font-light text-gray-900">{responseRate}%</p>
-                        <p className="text-sm text-gray-500 mt-1">Response</p>
+                        <p className="text-2xl font-light text-gray-900">
+                          {hasBeenStarted && hasRealMetrics ? `${responseRate}%` : 
+                           hasBeenStarted ? '0%' : '—'}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {hasBeenStarted ? 'Response' : 'Not started'}
+                        </p>
                       </div>
                     </div>
 
                     {/* Progress */}
                     <div className="mb-6">
                       <div className="flex justify-between text-sm mb-3">
-                        <span className="text-gray-600 font-medium">Progress</span>
-                        <span className="font-semibold text-gray-900">{progress.percentage}%</span>
+                        <span className="text-gray-600 font-medium">
+                          {hasBeenStarted ? 'Progress' : 'Ready to Start'}
+                        </span>
+                        <span className="font-semibold text-gray-900">
+                          {hasBeenStarted ? `${progress.percentage}%` : '—'}
+                        </span>
                       </div>
                       <div className="w-full bg-gray-100 rounded-full h-3">
                         <div 
@@ -949,8 +980,12 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         ></div>
                       </div>
                       <div className="flex justify-between text-sm text-gray-500 mt-2">
-                        <span>{progress.sent} sent</span>
-                        <span>{progress.totalPlanned} total</span>
+                        <span>
+                          {hasBeenStarted ? `${progress.sent} sent` : 'Not started'}
+                        </span>
+                        <span>
+                          {progress.totalPlanned > 0 ? `${progress.totalPlanned} total` : 'No contacts'}
+                        </span>
                       </div>
                     </div>
 
