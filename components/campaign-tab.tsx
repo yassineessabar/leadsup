@@ -517,6 +517,11 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         setCampaigns([newCampaign, ...campaigns])
         setShowAdvancedPopup(false)
         
+        // Automatically open the new campaign in target tab to show pre-populated keywords
+        setSelectedCampaign(newCampaign)
+        setCurrentView("dashboard")
+        setDashboardInitialTab("target") // Start at target tab to show keywords
+        
         // Notify sidebar that campaigns have changed
         const event = new CustomEvent('campaigns-changed')
         window.dispatchEvent(event)
@@ -538,10 +543,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           description: `${newCampaign.name} (${campaignData.selectedOutreachStrategy === 'email' ? 'Email Only' : campaignData.selectedOutreachStrategy === 'linkedin' ? 'LinkedIn Only' : 'Multi-Channel'}) has been created successfully`,
         })
         
-        // Navigate to target tab for lead generation
-        setSelectedCampaign(newCampaign)
-        setCurrentView("dashboard")
-        setDashboardInitialTab("target")
+        // Already navigated above - removed duplicate
       } else {
         toast({
           title: "Error",
