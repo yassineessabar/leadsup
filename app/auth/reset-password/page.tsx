@@ -42,30 +42,25 @@ export default function ResetPasswordPage() {
       if (data.success) {
         setIsValidToken(true)
       } else {
-        setIsValidToken(false)
         setMessage(data.error || "Invalid or expired reset token")
+        setIsValidToken(false)
       }
     } catch (error) {
-      setIsValidToken(false)
       setMessage("Error validating reset token")
+      setIsValidToken(false)
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!password.trim()) {
-      setMessage("Please enter a new password")
+    
+    if (password !== confirmPassword) {
+      setMessage("Passwords do not match")
       return
     }
 
     if (password.length < 8) {
       setMessage("Password must be at least 8 characters long")
-      return
-    }
-
-    if (password !== confirmPassword) {
-      setMessage("Passwords do not match")
       return
     }
 
@@ -84,7 +79,7 @@ export default function ResetPasswordPage() {
       const data = await response.json()
 
       if (data.success) {
-        setMessage("Password reset successful! Redirecting to login...")
+        setMessage("Password reset successfully! Redirecting to login...")
         setTimeout(() => {
           router.push("/auth/login")
         }, 2000)
@@ -100,10 +95,14 @@ export default function ResetPasswordPage() {
 
   if (isValidToken === null) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-white p-6">
-        <div className="w-full max-w-md text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto"></div>
-          <p className="mt-4 text-gray-600">Validating reset token...</p>
+      <main className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
+            <div className="p-8 text-center">
+              <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">LeadsUp</h1>
+              <p className="text-gray-600">Validating reset token...</p>
+            </div>
+          </div>
         </div>
       </main>
     )
@@ -111,25 +110,19 @@ export default function ResetPasswordPage() {
 
   if (isValidToken === false) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-white p-6">
-        <div className="w-full max-w-md text-center space-y-6">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight text-red-600">Invalid Token</h1>
-            <p className="text-lg text-gray-600">{message}</p>
-          </div>
-
-          <div className="space-y-4">
-            <Button
-              onClick={() => router.push("/auth/forgot-password")}
-              className="w-full bg-black hover:bg-gray-800 text-white py-3 rounded-full font-semibold text-lg"
-            >
-              Request New Reset Link
-            </Button>
-            <p className="text-center text-sm">
-              <a href="/auth/login" className="underline text-[#8A2BE2] font-semibold">
-                Back to log in
+      <main className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
+            <div className="p-8 text-center">
+              <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">LeadsUp</h1>
+              <p className="text-gray-600 mb-4">Invalid Reset Link</p>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl mb-6">
+                <p className="text-red-600 text-sm">{message}</p>
+              </div>
+              <a href="/auth/forgot-password" className="text-blue-600 hover:text-blue-700 text-sm">
+                Request a new reset link
               </a>
-            </p>
+            </div>
           </div>
         </div>
       </main>
@@ -137,56 +130,72 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-white p-6">
-      <div className="w-full max-w-md text-center space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">Reset Your Password</h1>
-          <p className="text-lg text-gray-600">
-            Enter your new password below
-          </p>
+    <main className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
+          {/* Header */}
+          <div className="p-8 text-center">
+            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">LeadsUp</h1>
+            <p className="text-gray-600">Set new password</p>
+          </div>
+
+          {/* Form */}
+          <div className="px-8 pb-8">
+            {message && (
+              <div className={`mb-6 p-4 rounded-2xl ${
+                message.includes("successfully") 
+                  ? "bg-green-50 border border-green-200"
+                  : "bg-red-50 border border-red-200"
+              }`}>
+                <p className={`text-sm ${
+                  message.includes("successfully") 
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}>
+                  {message}
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input
+                type="password"
+                placeholder="New password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                disabled={isLoading}
+                className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
+              />
+              
+              <Input
+                type="password"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={8}
+                disabled={isLoading}
+                className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
+              />
+
+              <Button
+                type="submit"
+                disabled={isLoading || !password || !confirmPassword}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3 font-medium transition-all duration-300 mt-6"
+              >
+                {isLoading ? "Updating..." : "Update Password"}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <a href="/auth/login" className="text-blue-600 hover:text-blue-700 text-sm">
+                Back to sign in
+              </a>
+            </div>
+          </div>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            type="password"
-            placeholder="New password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black focus:border-transparent"
-            disabled={isLoading}
-            minLength={8}
-          />
-
-          <Input
-            type="password"
-            placeholder="Confirm new password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black focus:border-transparent"
-            disabled={isLoading}
-            minLength={8}
-          />
-
-          <Button
-            type="submit"
-            disabled={isLoading || !password.trim() || !confirmPassword.trim()}
-            className="w-full bg-black hover:bg-gray-800 text-white py-3 rounded-full font-semibold text-lg disabled:bg-[#EAEAEA] disabled:text-[#A0A0A0] disabled:cursor-not-allowed"
-          >
-            {isLoading ? "Resetting..." : "Reset Password"}
-          </Button>
-        </form>
-
-        {message && (
-          <p className={`text-sm ${message.includes("successful") ? "text-green-600" : "text-red-600"}`}>
-            {message}
-          </p>
-        )}
-
-        <p className="text-center text-sm">
-          <a href="/auth/login" className="underline text-[#8A2BE2] font-semibold">
-            Back to log in
-          </a>
-        </p>
       </div>
     </main>
   )

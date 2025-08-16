@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { supabaseServer } from "@/lib/supabase"
 import bcrypt from "bcryptjs"
 
 export async function POST(request: NextRequest) {
@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the reset token in database
-    const { data: resetToken, error: tokenError } = await supabase
+    const { data: resetToken, error: tokenError } = await supabaseServer
       .from("password_reset_tokens")
-      .select("user_id, expires_at, used_at")
+      .select("user_id, expires_at")
       .eq("token", token)
       .maybeSingle()
 
@@ -32,10 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Invalid reset token" }, { status: 400 })
     }
 
-    // Check if token has been used
-    if (resetToken.used_at) {
-      return NextResponse.json({ success: false, error: "Reset token has already been used" }, { status: 400 })
-    }
+    // Note: We skip the used_at check and instead delete the token after use
 
     // Check if token has expired
     const now = new Date()
@@ -50,7 +47,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, saltRounds)
 
     // Update user's password
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseServer
       .from("users")
       .update({ password_hash: hashedPassword })
       .eq("id", resetToken.user_id)
@@ -60,14 +57,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Failed to update password" }, { status: 500 })
     }
 
-    // Mark the reset token as used
-    const { error: markUsedError } = await supabase
+    // Delete the reset token to prevent reuse
+    const { error: deleteError } = await supabaseServer
       .from("password_reset_tokens")
-      .update({ used_at: new Date().toISOString() })
+      .delete()
       .eq("token", token)
 
-    if (markUsedError) {
-      console.error("Error marking token as used:", markUsedError.message)
+    if (deleteError) {
+      console.error("Error deleting used token:", deleteError.message)
       // Don't fail the request since password was already updated
     }
 

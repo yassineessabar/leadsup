@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { supabaseServer } from "@/lib/supabase"
 import nodemailer from "nodemailer"
 import crypto from "crypto"
 
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user in database
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await supabaseServer
       .from("users")
       .select("id, email, company")
       .eq("email", email.toLowerCase().trim())
@@ -38,13 +38,13 @@ export async function POST(request: NextRequest) {
     const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000) // 1 hour from now
 
     // Delete any existing reset tokens for this user
-    await supabase
+    await supabaseServer
       .from("password_reset_tokens")
       .delete()
       .eq("user_id", user.id)
 
     // Store new reset token in database
-    const { error: tokenError } = await supabase
+    const { error: tokenError } = await supabaseServer
       .from("password_reset_tokens")
       .insert({
         user_id: user.id,
@@ -54,8 +54,14 @@ export async function POST(request: NextRequest) {
       })
 
     if (tokenError) {
-      console.error("Error storing reset token:", tokenError.message)
-      return NextResponse.json({ success: false, error: "Failed to generate reset token" }, { status: 500 })
+      console.error("Error storing reset token:", tokenError)
+      console.error("Token data being inserted:", {
+        user_id: user.id,
+        token: resetToken,
+        expires_at: resetTokenExpiry.toISOString(),
+        created_at: new Date().toISOString()
+      })
+      return NextResponse.json({ success: false, error: `Failed to generate reset token: ${tokenError.message}` }, { status: 500 })
     }
 
     // Email configuration
@@ -63,11 +69,24 @@ export async function POST(request: NextRequest) {
     const smtpPort = process.env.SMTP_PORT
     const smtpUser = process.env.SMTP_USER
     const smtpPass = process.env.SMTP_PASS
-    const fromEmail = process.env.FROM_EMAIL || "noreply@yourbusiness.com"
+    const fromEmail = process.env.FROM_EMAIL || "noreply@leadsup.com"
 
     if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
-      console.error("SMTP configuration missing")
-      return NextResponse.json({ success: false, error: "Email service not configured" }, { status: 500 })
+      console.error("SMTP configuration missing. Please configure SMTP settings.")
+      console.error("Required environment variables: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS")
+      
+      // For development, log the reset token to console
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔐 DEV MODE: Reset token for ${user.email}: ${resetToken}`)
+        console.log(`🔗 DEV MODE: Reset URL: ${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/auth/reset-password?token=${resetToken}`)
+        return NextResponse.json({ 
+          success: true, 
+          message: "Development mode: Check console for reset link",
+          devToken: resetToken // Only in development
+        })
+      }
+      
+      return NextResponse.json({ success: false, error: "Email service not configured. Please contact support." }, { status: 500 })
     }
 
     // Create reset URL
@@ -93,61 +112,41 @@ export async function POST(request: NextRequest) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reset Your Password</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; }
-  </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f8fafc;">
-  <div style="max-width: 600px; margin: 0 auto; background-color: white; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+<body style="margin: 0; padding: 0; background-color: rgb(243, 243, 241); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 12px; overflow: hidden; margin-top: 40px; margin-bottom: 40px;">
+
+    <!-- Header -->
+    <div style="padding: 40px 32px 32px 32px; text-align: center; background-color: white;">
+      <h1 style="font-size: 32px; font-weight: 300; color: #1f2937; margin: 0; letter-spacing: -0.5px;">LeadsUp</h1>
+    </div>
 
     <!-- Main Content -->
-    <div style="padding: 40px 24px;">
-      <div style="text-align: center; margin-bottom: 32px;">
-        <h1 style="font-size: 24px; font-weight: bold; color: #1f2937; margin-bottom: 8px;">Reset Your Password</h1>
-        <p style="color: #6b7280;">We received a request to reset your password.</p>
-      </div>
-
-      <div style="margin-bottom: 32px;">
-        <p style="color: #374151; margin-bottom: 16px;">Hi there,</p>
-        <p style="color: #374151; margin-bottom: 16px;">
-          You requested to reset your password for your ${user.company || 'LoopDev'} account.
-          Click the button below to reset your password:
-        </p>
-      </div>
+    <div style="padding: 0 32px 40px 32px;">
+      <h2 style="font-size: 22px; font-weight: 400; color: #1f2937; margin: 0 0 16px 0;">Reset Your Password</h2>
+      
+      <p style="color: #6b7280; margin: 0 0 24px 0; line-height: 1.5;">
+        We received a request to reset your password. Click the button below to create a new password.
+      </p>
 
       <!-- Reset Button -->
-      <div style="text-align: center; margin-bottom: 32px;">
+      <div style="text-align: center; margin: 32px 0;">
         <a href="${resetUrl}"
-           style="display: inline-block; background-color: #000; color: white; padding: 12px 32px;
-                  border-radius: 8px; text-decoration: none; font-weight: 600;">
+           style="display: inline-block; background-color: rgb(87, 140, 255); color: white; padding: 14px 28px;
+                  border-radius: 12px; text-decoration: none; font-weight: 500; font-size: 16px;">
           Reset Password
         </a>
       </div>
 
-      <div style="margin-bottom: 24px;">
-        <p style="color: #374151; margin-bottom: 16px;">
-          If the button doesn't work, copy and paste this link into your browser:
-        </p>
-        <p style="color: #6b7280; word-break: break-all; font-size: 14px;">
-          ${resetUrl}
-        </p>
-      </div>
-
-      <div style="border-top: 1px solid #e5e7eb; padding-top: 24px; margin-top: 24px;">
-        <p style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">
-          This link will expire in 1 hour for security reasons.
-        </p>
-        <p style="color: #6b7280; font-size: 14px;">
-          If you didn't request this password reset, you can safely ignore this email.
-        </p>
-      </div>
+      <p style="color: #9ca3af; font-size: 14px; margin: 24px 0 0 0; line-height: 1.4;">
+        This link expires in 1 hour. If you didn't request this, you can safely ignore this email.
+      </p>
     </div>
 
     <!-- Footer -->
-    <div style="background-color: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb;">
-      <p style="color: #6b7280; font-size: 14px;">
-        © ${new Date().getFullYear()} ${user.company || 'LoopDev'}. All rights reserved.
+    <div style="background-color: rgb(249, 250, 251); padding: 24px 32px; border-top: 1px solid #e5e7eb;">
+      <p style="color: #9ca3af; font-size: 13px; margin: 0; text-align: center;">
+        © ${new Date().getFullYear()} LeadsUp
       </p>
     </div>
   </div>
@@ -158,23 +157,19 @@ export async function POST(request: NextRequest) {
     const textContent = `
 Reset Your Password
 
-Hi there,
-
-You requested to reset your password for your ${user.company || 'LoopDev'} account.
+We received a request to reset your password. 
 
 Click this link to reset your password: ${resetUrl}
 
-This link will expire in 1 hour for security reasons.
+This link expires in 1 hour. If you didn't request this, you can safely ignore this email.
 
-If you didn't request this password reset, you can safely ignore this email.
-
-© ${new Date().getFullYear()} ${user.company || 'LoopDev'}. All rights reserved.
+© ${new Date().getFullYear()} LeadsUp
     `
 
     // Send email
     try {
       await transporter.sendMail({
-        from: `"${user.company || 'LoopDev'}" <${fromEmail}>`,
+        from: `"LeadsUp Support" <${fromEmail}>`,
         to: user.email,
         subject: subject,
         text: textContent,
