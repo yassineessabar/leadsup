@@ -84,15 +84,146 @@ export async function GET(request: NextRequest) {
       console.warn('⚠️ Database aggregation failed:', dbError)
     }
 
-    // Method 2: Use the exact same logic as campaign sync that works
+    // Method 2: Use direct webhook data aggregation from sendgrid_events
     try {
-      console.log('📡 Method 2: Using SendGrid sync logic...')
+      console.log('📡 Method 2: Using webhook data aggregation...')
       
-      // Call the same sync logic that works for campaigns
-      const syncResult = await sendGridAPI.syncCampaignData('account-level', userId)
+      // Query sendgrid_events table directly for account metrics
+      const { data: webhookEvents, error: webhookError } = await supabase
+        .from('sendgrid_events')
+        .select('event_type, timestamp, email')
+        .eq('user_id', userId)
+        .gte('timestamp', startDate + 'T00:00:00Z')
+        .lte('timestamp', endDate + 'T23:59:59Z')
+
+      if (!webhookError && webhookEvents && webhookEvents.length > 0) {
+        console.log(`📊 Found ${webhookEvents.length} webhook events for aggregation`)
+        
+        // Aggregate events into metrics
+        const eventCounts = webhookEvents.reduce((acc, event) => {
+          switch (event.event_type) {
+            case 'processed':
+              acc.emailsSent++
+              break
+            case 'delivered':
+              acc.emailsDelivered++
+              break
+            case 'bounce':
+              acc.emailsBounced++
+              break
+            case 'blocked':
+              acc.emailsBlocked++
+              break
+            case 'open':
+              acc.totalOpens++
+              if (!acc.uniqueEmails.has(event.email)) {
+                acc.uniqueOpens++
+                acc.uniqueEmails.add(event.email)
+              }
+              break
+            case 'click':
+              acc.totalClicks++
+              if (!acc.clickedEmails.has(event.email)) {
+                acc.uniqueClicks++
+                acc.clickedEmails.add(event.email)
+              }
+              break
+            case 'unsubscribe':
+            case 'group_unsubscribe':
+              acc.unsubscribes++
+              break
+            case 'spam_report':
+              acc.spamReports++
+              break
+          }
+          return acc
+        }, {
+          emailsSent: 0,
+          emailsDelivered: 0,
+          emailsBounced: 0,
+          emailsBlocked: 0,
+          uniqueOpens: 0,
+          totalOpens: 0,
+          uniqueClicks: 0,
+          totalClicks: 0,
+          unsubscribes: 0,
+          spamReports: 0,
+          uniqueEmails: new Set(),
+          clickedEmails: new Set()
+        })
+
+        // Calculate rates
+        const deliveryRate = eventCounts.emailsSent > 0 
+          ? (eventCounts.emailsDelivered / eventCounts.emailsSent) * 100 
+          : 0
+        const bounceRate = eventCounts.emailsSent > 0 
+          ? (eventCounts.emailsBounced / eventCounts.emailsSent) * 100 
+          : 0
+        const openRate = eventCounts.emailsDelivered > 0 
+          ? (eventCounts.uniqueOpens / eventCounts.emailsDelivered) * 100 
+          : 0
+        const clickRate = eventCounts.emailsDelivered > 0 
+          ? (eventCounts.uniqueClicks / eventCounts.emailsDelivered) * 100 
+          : 0
+        const unsubscribeRate = eventCounts.emailsDelivered > 0 
+          ? (eventCounts.unsubscribes / eventCounts.emailsDelivered) * 100 
+          : 0
+
+        accountMetrics = {
+          emailsSent: eventCounts.emailsSent,
+          emailsDelivered: eventCounts.emailsDelivered,
+          emailsBounced: eventCounts.emailsBounced,
+          emailsBlocked: eventCounts.emailsBlocked,
+          uniqueOpens: eventCounts.uniqueOpens,
+          totalOpens: eventCounts.totalOpens,
+          uniqueClicks: eventCounts.uniqueClicks,
+          totalClicks: eventCounts.totalClicks,
+          unsubscribes: eventCounts.unsubscribes,
+          spamReports: eventCounts.spamReports,
+          deliveryRate: Math.round(deliveryRate * 100) / 100,
+          bounceRate: Math.round(bounceRate * 100) / 100,
+          openRate: Math.round(openRate * 100) / 100,
+          clickRate: Math.round(clickRate * 100) / 100,
+          unsubscribeRate: Math.round(unsubscribeRate * 100) / 100
+        }
+
+        console.log('✅ Webhook aggregation successful:', accountMetrics)
+
+        if (accountMetrics.emailsSent > 0) {
+          return NextResponse.json({
+            success: true,
+            data: {
+              metrics: accountMetrics,
+              source: 'webhook_aggregation',
+              period: `${startDate} to ${endDate}`,
+              eventCount: webhookEvents.length
+            }
+          })
+        }
+      } else {
+        console.log('⚠️ No webhook events found for this period')
+      }
+    } catch (webhookAggError) {
+      console.warn('⚠️ Webhook aggregation failed:', webhookAggError)
+    }
+
+    // Method 3: Try legacy SendGrid API (fallback)
+    try {
+      console.log('📡 Method 3: Trying legacy SendGrid API...')
       
-      if (syncResult) {
-        const rates = sendGridAPI.calculateRates(syncResult.stats)
+      // Skip the problematic 'account-level' sync that causes 404 errors
+      console.log('⚠️ Skipping account-level sync to avoid 404 errors')
+      
+      // Try to get global stats instead (if available)
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      const globalStartDate = yesterday.toISOString().split('T')[0]
+      
+      const globalStats = await sendGridAPI.getGlobalStats(globalStartDate)
+      
+      if (globalStats && globalStats.length > 0) {
+        const stats = globalStats[0]
+        const rates = sendGridAPI.calculateRates(stats)
         
         accountMetrics = {
           emailsSent: rates.emailsSent,

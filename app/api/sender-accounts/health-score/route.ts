@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { supabase, supabaseServer } from '@/lib/supabase'
+import { calculateHealthScoresFromRealData, getRealSenderStats, calculateRealHealthScore } from '@/lib/sendgrid-tracking'
 
 async function getUserIdFromSession(): Promise<string | null> {
   try {
@@ -238,143 +239,182 @@ export async function GET(request: NextRequest) {
 
     console.log(`📋 Found ${senderAccounts?.length || 0} sender accounts for user ${userId}`)
 
-    // Use the accounts directly since we already filtered by user_id
-    const userSenderAccounts = senderAccounts || []
-
-    const healthScores: Record<string, { score: number; breakdown: HealthMetrics; lastUpdated: string }> = {}
-
-    // Calculate health score for each sender
-    for (const sender of userSenderAccounts) {
-      try {
-        console.log(`🧮 Calculating health score for sender: ${sender.email}`)
+    // Use real data calculation instead of simulated data
+    console.log('🔄 Using real SendGrid webhook data for health calculation...')
+    
+    try {
+      const healthScores = await calculateHealthScoresFromRealData(userId, senderIds)
+      
+      if (Object.keys(healthScores).length === 0) {
+        console.log('⚠️ No health scores calculated from real data, falling back to simulated data')
         
-        // Calculate account age and warmup days - handle missing fields gracefully
-        const createdAt = sender.created_at ? new Date(sender.created_at) : new Date()
-        const accountAge = Math.max(1, Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)))
+        // Fallback to simulated data if no real data available
+        const fallbackScores = await calculateFallbackHealthScores(senderAccounts, userId)
         
-        // Since warmup_status column doesn't exist yet, infer status from account age
-        let warmupStatus = 'inactive'
-        if (accountAge >= 30) {
-          warmupStatus = 'completed' // Assume older accounts are fully warmed
-        } else if (accountAge >= 7) {
-          warmupStatus = 'warming_up' // Accounts 1-4 weeks old are likely warming up
-        } else {
-          warmupStatus = 'inactive' // Very new accounts haven't started
-        }
-        
-        console.log(`📅 Account details - Age: ${accountAge} days, Inferred Warmup: ${warmupStatus}`)
-        
-        // For now, use realistic baseline stats based on account state
-        // TODO: Replace with actual email tracking data from email_sending_logs table
-        let baseStats: SenderStats
-        
-        if (warmupStatus === 'inactive' || warmupStatus === 'pending') {
-          // New account that hasn't started sending
-          baseStats = {
-            totalSent: 0,
-            totalBounced: 0,
-            totalOpened: 0,
-            totalClicked: 0,
-            totalReplied: 0,
-            recentSent: 0,
-            warmupDays: 0,
-            warmupStatus,
-            accountAge
-          }
-        } else if (warmupStatus === 'warming_up' || warmupStatus === 'active') {
-          // Account in warmup phase - limited sending
-          const warmupDays = Math.min(30, accountAge)
-          baseStats = {
-            totalSent: warmupDays * 5, // Conservative warmup volume
-            totalBounced: Math.max(0, Math.floor((warmupDays * 5) * 0.02)), // 2% bounce rate
-            totalOpened: Math.floor((warmupDays * 5) * 0.25), // 25% open rate
-            totalClicked: Math.floor((warmupDays * 5) * 0.03), // 3% click rate
-            totalReplied: Math.floor((warmupDays * 5) * 0.01), // 1% reply rate
-            recentSent: Math.min(15, warmupDays * 2),
-            warmupDays,
-            warmupStatus,
-            accountAge
-          }
-        } else if (warmupStatus === 'completed') {
-          // Fully warmed account - normal sending volume
-          const sendingDays = Math.min(90, accountAge - 30) // Exclude warmup period
-          baseStats = {
-            totalSent: sendingDays * 25, // Normal sending volume
-            totalBounced: Math.floor((sendingDays * 25) * 0.015), // 1.5% bounce rate
-            totalOpened: Math.floor((sendingDays * 25) * 0.28), // 28% open rate
-            totalClicked: Math.floor((sendingDays * 25) * 0.04), // 4% click rate
-            totalReplied: Math.floor((sendingDays * 25) * 0.015), // 1.5% reply rate
-            recentSent: 50,
-            warmupDays: 30,
-            warmupStatus,
-            accountAge
-          }
-        } else {
-          // Error or paused state
-          baseStats = {
-            totalSent: Math.max(0, accountAge * 3),
-            totalBounced: Math.floor((accountAge * 3) * 0.08), // Higher bounce rate for problematic accounts
-            totalOpened: Math.floor((accountAge * 3) * 0.15), // Lower engagement
-            totalClicked: Math.floor((accountAge * 3) * 0.02),
-            totalReplied: Math.floor((accountAge * 3) * 0.005),
-            recentSent: 0, // Not currently sending
-            warmupDays: Math.min(15, accountAge),
-            warmupStatus,
-            accountAge
-          }
-        }
-        
-        console.log(`📊 Stats for ${sender.email}:`, {
-          warmupStatus: baseStats.warmupStatus,
-          accountAge: baseStats.accountAge,
-          totalSent: baseStats.totalSent,
-          warmupDays: baseStats.warmupDays
+        return NextResponse.json({
+          success: true,
+          healthScores: fallbackScores,
+          message: `Calculated health scores for ${Object.keys(fallbackScores).length} accounts (fallback mode - no real data)`,
+          dataSource: 'simulated'
         })
-
-        const { score, breakdown } = calculateHealthScore(baseStats)
-        
-        healthScores[sender.id] = {
-          score,
-          breakdown,
-          lastUpdated: new Date().toISOString()
-        }
-
-        // Update the database with the calculated score
-        await supabaseServer
-          .from('sender_accounts')
-          .update({ 
-            health_score: score,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', sender.id)
-
-      } catch (error) {
-        console.error(`Error calculating health score for sender ${sender.id}:`, error)
-        // Use existing score or default
-        healthScores[sender.id] = {
-          score: 75,
-          breakdown: {
-            warmupScore: 50,
-            deliverabilityScore: 75,
-            engagementScore: 75,
-            volumeScore: 75,
-            reputationScore: 75
-          },
-          lastUpdated: new Date().toISOString()
-        }
       }
+      
+      console.log(`✅ Successfully calculated real health scores for ${Object.keys(healthScores).length} accounts`)
+      
+      return NextResponse.json({
+        success: true,
+        healthScores,
+        message: `Calculated health scores for ${Object.keys(healthScores).length} accounts from real data`,
+        dataSource: 'webhook'
+      })
+      
+    } catch (realDataError) {
+      console.error('❌ Error calculating health scores from real data:', realDataError)
+      
+      // Fallback to simulated calculation
+      console.log('🔄 Falling back to simulated health score calculation...')
+      const fallbackScores = await calculateFallbackHealthScores(senderAccounts, userId)
+      
+      return NextResponse.json({
+        success: true,
+        healthScores: fallbackScores,
+        message: `Calculated health scores for ${Object.keys(fallbackScores).length} accounts (fallback mode)`,
+        dataSource: 'simulated',
+        warning: 'Real data calculation failed, using simulated data'
+      })
     }
-
-    return NextResponse.json({
-      success: true,
-      healthScores,
-      message: `Calculated health scores for ${Object.keys(healthScores).length} accounts`
-    })
 
   } catch (error) {
     console.error('Error in health score calculation:', error)
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
   }
+}
+
+// Fallback health score calculation using simulated data
+async function calculateFallbackHealthScores(senderAccounts: any[], userId: string) {
+  const healthScores: Record<string, { score: number; breakdown: HealthMetrics; lastUpdated: string }> = {}
+
+  for (const sender of senderAccounts) {
+    try {
+      console.log(`🧮 Calculating fallback health score for sender: ${sender.email}`)
+      
+      // Calculate account age and warmup days - handle missing fields gracefully
+      const createdAt = sender.created_at ? new Date(sender.created_at) : new Date()
+      const accountAge = Math.max(1, Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)))
+      
+      // Since warmup_status column doesn't exist yet, infer status from account age
+      let warmupStatus = 'inactive'
+      if (accountAge >= 30) {
+        warmupStatus = 'completed' // Assume older accounts are fully warmed
+      } else if (accountAge >= 7) {
+        warmupStatus = 'warming_up' // Accounts 1-4 weeks old are likely warming up
+      } else {
+        warmupStatus = 'inactive' // Very new accounts haven't started
+      }
+      
+      console.log(`📅 Fallback calculation - Age: ${accountAge} days, Inferred Warmup: ${warmupStatus}`)
+      
+      // For now, use realistic baseline stats based on account state
+      let baseStats: SenderStats
+      
+      if (warmupStatus === 'inactive' || warmupStatus === 'pending') {
+        // New account that hasn't started sending
+        baseStats = {
+          totalSent: 0,
+          totalBounced: 0,
+          totalOpened: 0,
+          totalClicked: 0,
+          totalReplied: 0,
+          recentSent: 0,
+          warmupDays: 0,
+          warmupStatus,
+          accountAge
+        }
+      } else if (warmupStatus === 'warming_up' || warmupStatus === 'active') {
+        // Account in warmup phase - limited sending
+        const warmupDays = Math.min(30, accountAge)
+        baseStats = {
+          totalSent: warmupDays * 5, // Conservative warmup volume
+          totalBounced: Math.max(0, Math.floor((warmupDays * 5) * 0.02)), // 2% bounce rate
+          totalOpened: Math.floor((warmupDays * 5) * 0.25), // 25% open rate
+          totalClicked: Math.floor((warmupDays * 5) * 0.03), // 3% click rate
+          totalReplied: Math.floor((warmupDays * 5) * 0.01), // 1% reply rate
+          recentSent: Math.min(15, warmupDays * 2),
+          warmupDays,
+          warmupStatus,
+          accountAge
+        }
+      } else if (warmupStatus === 'completed') {
+        // Fully warmed account - normal sending volume
+        const sendingDays = Math.min(90, accountAge - 30) // Exclude warmup period
+        baseStats = {
+          totalSent: sendingDays * 25, // Normal sending volume
+          totalBounced: Math.floor((sendingDays * 25) * 0.015), // 1.5% bounce rate
+          totalOpened: Math.floor((sendingDays * 25) * 0.28), // 28% open rate
+          totalClicked: Math.floor((sendingDays * 25) * 0.04), // 4% click rate
+          totalReplied: Math.floor((sendingDays * 25) * 0.015), // 1.5% reply rate
+          recentSent: 50,
+          warmupDays: 30,
+          warmupStatus,
+          accountAge
+        }
+      } else {
+        // Error or paused state
+        baseStats = {
+          totalSent: Math.max(0, accountAge * 3),
+          totalBounced: Math.floor((accountAge * 3) * 0.08), // Higher bounce rate for problematic accounts
+          totalOpened: Math.floor((accountAge * 3) * 0.15), // Lower engagement
+          totalClicked: Math.floor((accountAge * 3) * 0.02),
+          totalReplied: Math.floor((accountAge * 3) * 0.005),
+          recentSent: 0, // Not currently sending
+          warmupDays: Math.min(15, accountAge),
+          warmupStatus,
+          accountAge
+        }
+      }
+      
+      console.log(`📊 Fallback stats for ${sender.email}:`, {
+        warmupStatus: baseStats.warmupStatus,
+        accountAge: baseStats.accountAge,
+        totalSent: baseStats.totalSent,
+        warmupDays: baseStats.warmupDays
+      })
+
+      const { score, breakdown } = calculateHealthScore(baseStats)
+      
+      healthScores[sender.id] = {
+        score,
+        breakdown,
+        lastUpdated: new Date().toISOString()
+      }
+
+      // Update the database with the calculated score
+      await supabaseServer
+        .from('sender_accounts')
+        .update({ 
+          health_score: score,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sender.id)
+
+    } catch (error) {
+      console.error(`Error calculating fallback health score for sender ${sender.id}:`, error)
+      // Use existing score or default
+      healthScores[sender.id] = {
+        score: 75,
+        breakdown: {
+          warmupScore: 50,
+          deliverabilityScore: 75,
+          engagementScore: 75,
+          volumeScore: 75,
+          reputationScore: 75
+        },
+        lastUpdated: new Date().toISOString()
+      }
+    }
+  }
+  
+  return healthScores
 }
 
 // POST - Update health scores for specific senders

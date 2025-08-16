@@ -98,8 +98,9 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
     const totalAccounts = senders.length
     const activeWarmup = senders.filter(s => s.setup_status === 'warming_up').length
     const needAttention = senders.filter(s => s.setup_status === 'needs_attention').length
-    const avgScore = senders.length > 0 ? 
-      Math.round(senders.reduce((sum, s) => sum + (healthScores[s.id]?.score || s.health_score || 0), 0) / senders.length) : 0
+    const healthScoreValues = senders.map(s => healthScores[s.id]?.score).filter(score => score !== undefined)
+    const avgScore = healthScoreValues.length > 0 ? 
+      Math.round(healthScoreValues.reduce((sum, score) => sum + score, 0) / healthScoreValues.length) : 0
     
     return { totalAccounts, activeWarmup, needAttention, avgScore }
   }
@@ -511,9 +512,15 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                           </div>
                           <div>
                             <div className="text-gray-500 mb-1">Health Score</div>
-                            <div className={`font-medium text-lg ${getHealthScoreColor(healthScores[sender.id]?.score || sender.health_score || 0)}`}>
-                              {healthScores[sender.id]?.score || sender.health_score || 0}%
-                            </div>
+                            {Object.keys(healthScores).length === 0 ? (
+                              <div className="font-medium text-lg text-gray-400">
+                                <div className="animate-pulse">--</div>
+                              </div>
+                            ) : (
+                              <div className={`font-medium text-lg ${getHealthScoreColor(healthScores[sender.id]?.score || 0)}`}>
+                                {healthScores[sender.id]?.score || '--'}%
+                              </div>
+                            )}
                           </div>
                         </div>
 

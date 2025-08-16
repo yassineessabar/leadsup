@@ -59,6 +59,7 @@ export default function CampaignSenderSelection({
   const [lastSavedSelection, setLastSavedSelection] = useState<Set<string>>(new Set())
   const [renderKey, setRenderKey] = useState(0)
   const [healthScores, setHealthScores] = useState<Record<string, HealthScoreResult>>({})
+  const [healthScoresLoading, setHealthScoresLoading] = useState(false)
   
   // Test email modal state
   const [showTestModal, setShowTestModal] = useState(false)
@@ -142,6 +143,7 @@ export default function CampaignSenderSelection({
 
   const loadHealthScores = async () => {
     try {
+      setHealthScoresLoading(true)
       console.log('📊 Loading health scores...')
       
       // Get all sender IDs from domains
@@ -151,6 +153,7 @@ export default function CampaignSenderSelection({
       
       if (allSenderIds.length === 0) {
         console.log('⚠️ No sender IDs available for health score calculation')
+        setHealthScoresLoading(false)
         return
       }
       
@@ -162,6 +165,8 @@ export default function CampaignSenderSelection({
     } catch (error) {
       console.error('❌ Error loading health scores:', error)
       // Don't show error toast as this is not critical functionality
+    } finally {
+      setHealthScoresLoading(false)
     }
   }
 
@@ -902,9 +907,15 @@ export default function CampaignSenderSelection({
                                   </div>
                                   <div className="text-center">
                                     <div className="text-sm text-gray-500 mb-1">Health Score</div>
-                                    <div className={`font-semibold text-xl ${getHealthScoreColor(healthScores[sender.id]?.score || sender.health_score || 0)}`}>
-                                      {healthScores[sender.id]?.score || sender.health_score || 0}%
-                                    </div>
+                                    {healthScoresLoading ? (
+                                      <div className="font-semibold text-xl text-gray-400">
+                                        <div className="animate-pulse">--</div>
+                                      </div>
+                                    ) : (
+                                      <div className={`font-semibold text-xl ${getHealthScoreColor(healthScores[sender.id]?.score || 0)}`}>
+                                        {healthScores[sender.id]?.score || '--'}%
+                                      </div>
+                                    )}
                                   </div>
                                   <Button
                                     onClick={(e) => {

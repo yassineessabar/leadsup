@@ -198,7 +198,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           location: contact.location || '',
           industry: contact.industry || '',
           linkedin: contact.linkedin || '',
-          image_url: contact.image_url || `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 99) + 1}.jpg`,
+          image_url: contact.image_url || undefined,
           status: sequenceProgressMap[contact.id] || "Pending",
           campaign_name: contact.campaign_name || campaign.name
         }))
