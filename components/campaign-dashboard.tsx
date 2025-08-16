@@ -50,6 +50,22 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       setEditedName(campaign.name)
     }
   }, [campaign?.name, isEditingName])
+
+  // Initialize guided flow for draft campaigns
+  useEffect(() => {
+    if (campaign?.status === 'Draft') {
+      setIsGuidedFlow(true)
+      // Set the initial tab based on the current active tab or start from target
+      const currentStepIndex = guidedFlowSteps.findIndex(step => step.tab === activeTab)
+      setGuidedFlowStep(currentStepIndex >= 0 ? currentStepIndex : 0)
+      // If we're starting fresh, go to the target tab
+      if (currentStepIndex < 0) {
+        setActiveTab('target')
+      }
+    } else {
+      setIsGuidedFlow(false)
+    }
+  }, [campaign?.status, activeTab])
   
   // Load sequences when component mounts or campaign changes
   useEffect(() => {
@@ -87,10 +103,76 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [showLaunchValidationModal, setShowLaunchValidationModal] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showAdvancedPopup, setShowAdvancedPopup] = useState(false)
+
+  // Guided flow state for draft campaigns
+  const [isGuidedFlow, setIsGuidedFlow] = useState(false)
+  const [guidedFlowStep, setGuidedFlowStep] = useState(0)
+  
+  // Define the guided flow steps
+  const guidedFlowSteps = [
+    { tab: 'target', title: 'Add Target Audience', description: 'Import contacts or set up automated scraping' },
+    { tab: 'sequence', title: 'Create Email Sequences', description: 'Design your outreach messages and timing' },
+    { tab: 'sender', title: 'Select Sender Accounts', description: 'Choose which email accounts to send from' },
+    { tab: 'settings', title: 'Configure Settings', description: 'Set sending schedule and campaign preferences' }
+  ]
   const [launchValidationErrors, setLaunchValidationErrors] = useState([])
   const editorRef = useRef<HTMLDivElement>(null)
   const [testModalAccountId, setTestModalAccountId] = useState(null)
   const [testModalLoading, setTestModalLoading] = useState(false)
+
+  // Guided flow navigation functions
+  const handleGuidedNext = () => {
+    if (guidedFlowStep < guidedFlowSteps.length - 1) {
+      const nextStep = guidedFlowStep + 1
+      setGuidedFlowStep(nextStep)
+      setActiveTab(guidedFlowSteps[nextStep].tab)
+    }
+  }
+
+  const handleGuidedPrevious = () => {
+    if (guidedFlowStep > 0) {
+      const prevStep = guidedFlowStep - 1
+      setGuidedFlowStep(prevStep)
+      setActiveTab(guidedFlowSteps[prevStep].tab)
+    }
+  }
+
+  const handleLaunchCampaign = async () => {
+    try {
+      // Validate campaign is ready to launch
+      const errors = []
+      
+      // Check if we have contacts
+      if (!contacts || contacts.length === 0) {
+        errors.push('Add at least one contact to your campaign')
+      }
+      
+      // Check if we have sequences
+      if (!steps || steps.length === 0) {
+        errors.push('Create at least one email sequence')
+      }
+      
+      // Check if we have sender accounts
+      if (!selectedSenderAccounts || selectedSenderAccounts.length === 0) {
+        errors.push('Select at least one sender account')
+      }
+      
+      if (errors.length > 0) {
+        setLaunchValidationErrors(errors)
+        setShowLaunchValidationModal(true)
+        return
+      }
+
+      // Launch the campaign
+      if (onStatusUpdate) {
+        onStatusUpdate(campaign.id, 'Active')
+        setIsGuidedFlow(false)
+      }
+      
+    } catch (error) {
+      console.error('Error launching campaign:', error)
+    }
+  }
   const [testModalEmail, setTestModalEmail] = useState("")
   const [testEmail, setTestEmail] = useState("contact@leadsupbase.com")
   const [testPhone, setTestPhone] = useState("+1 (555) 123-4567")
@@ -922,6 +1004,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
     
     setActiveTab(tabId)
+    
+    // Update guided flow step if in guided mode
+    if (isGuidedFlow) {
+      const stepIndex = guidedFlowSteps.findIndex(step => step.tab === tabId)
+      if (stepIndex >= 0) {
+        setGuidedFlowStep(stepIndex)
+      }
+    }
     
     // Lazy load data when specific tabs are accessed
     if (tabId === 'sequence' || tabId === 'automation') {
@@ -2591,6 +2681,92 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           />
         );
 
+      case 'contacts':
+        return (
+          <div className="w-full animate-in fade-in duration-500">
+            {/* Clean Header */}
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight">Contacts</h1>
+                <p className="text-gray-500 mt-2 font-light">Review and manage your campaign contacts</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-500">
+                  {contacts?.length || 0} contacts
+                </span>
+                <Button
+                  onClick={() => handleTabChange('target')}
+                  variant="outline"
+                  className="border-blue-300 text-blue-700 hover:bg-blue-50 rounded-2xl"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add More Contacts
+                </Button>
+              </div>
+            </div>
+
+            {/* Contact List */}
+            <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
+              {contacts && contacts.length > 0 ? (
+                <div className="p-6">
+                  <div className="grid gap-4">
+                    {contacts.slice(0, 10).map((contact, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 font-medium text-sm">
+                              {contact.first_name?.charAt(0) || contact.email?.charAt(0) || '?'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {contact.first_name || contact.last_name 
+                                ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
+                                : contact.email
+                              }
+                            </p>
+                            <p className="text-sm text-gray-500">{contact.email}</p>
+                            {contact.company && (
+                              <p className="text-xs text-gray-400">{contact.company}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {contact.email_status || 'Ready'}
+                        </div>
+                      </div>
+                    ))}
+                    {contacts.length > 10 && (
+                      <div className="text-center py-4">
+                        <p className="text-gray-500 text-sm">
+                          And {contacts.length - 10} more contacts...
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                    <Users className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">No contacts yet</h3>
+                  <p className="text-gray-500 mb-8 font-light">
+                    Add contacts to your campaign using the Target tab
+                  </p>
+                  <Button
+                    onClick={() => handleTabChange('target')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Contacts
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
       case 'sequence':
         return (
           <div className="w-full animate-in fade-in duration-500">
@@ -3416,60 +3592,90 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             </div>
           </div>
 
+
           {/* Navigation Tabs */}
-          <div className="flex gap-2 overflow-x-auto pb-2">
+          {!isGuidedFlow && (
+            <div className="flex gap-2 overflow-x-auto pb-2">
             <Button 
               variant={activeTab === 'target' ? 'default' : 'outline'}
-              onClick={() => handleTabChange('target')}
+              onClick={isGuidedFlow ? undefined : () => handleTabChange('target')}
+              disabled={isGuidedFlow}
               className={`${
                 activeTab === 'target' 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
                   : 'border-gray-300 hover:bg-gray-50 text-gray-700'
-              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap`}
+              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap ${
+                isGuidedFlow ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+              }`}
             >
               <Target className="w-4 h-4 mr-2" />
               Target
             </Button>
             <Button 
+              variant={activeTab === 'contacts' ? 'default' : 'outline'}
+              onClick={isGuidedFlow ? undefined : () => handleTabChange('contacts')}
+              disabled={isGuidedFlow}
+              className={`${
+                activeTab === 'contacts' 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
+                  : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap ${
+                isGuidedFlow ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+              }`}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Contacts
+            </Button>
+            <Button 
               variant={activeTab === 'sequence' ? 'default' : 'outline'}
-              onClick={() => handleTabChange('sequence')}
+              onClick={isGuidedFlow ? undefined : () => handleTabChange('sequence')}
+              disabled={isGuidedFlow}
               className={`${
                 activeTab === 'sequence' 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
                   : 'border-gray-300 hover:bg-gray-50 text-gray-700'
-              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap`}
+              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap ${
+                isGuidedFlow ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+              }`}
             >
               <Mail className="w-4 h-4 mr-2" />
               Sequence
             </Button>
             <Button 
               variant={activeTab === 'sender' ? 'default' : 'outline'}
-              onClick={() => handleTabChange('sender')}
+              onClick={isGuidedFlow ? undefined : () => handleTabChange('sender')}
+              disabled={isGuidedFlow}
               className={`${
                 activeTab === 'sender' 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
                   : 'border-gray-300 hover:bg-gray-50 text-gray-700'
-              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap`}
+              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap ${
+                isGuidedFlow ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+              }`}
             >
               <Send className="w-4 h-4 mr-2" />
               Sender
             </Button>
             <Button 
               variant={activeTab === 'settings' ? 'default' : 'outline'}
-              onClick={() => handleTabChange('settings')}
+              onClick={isGuidedFlow ? undefined : () => handleTabChange('settings')}
+              disabled={isGuidedFlow}
               className={`${
                 activeTab === 'settings' 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
                   : 'border-gray-300 hover:bg-gray-50 text-gray-700'
-              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap`}
+              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap ${
+                isGuidedFlow ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+              }`}
             >
               <Settings className="w-4 h-4 mr-2" />
               Settings
             </Button>
           </div>
+          )}
 
           {/* Tab Content */}
-          <div className="flex-1">
+          <div className={`flex-1 ${isGuidedFlow ? 'pb-32' : ''}`}>
             {renderTabContent()}
           </div>
         </div>
@@ -3575,12 +3781,108 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           </DialogContent>
         </Dialog>
 
+        {/* Launch Validation Modal */}
+        <Dialog open={showLaunchValidationModal} onOpenChange={setShowLaunchValidationModal}>
+          <DialogContent className="max-w-md rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-orange-600">
+                <AlertTriangle className="h-5 w-5" />
+                Campaign Not Ready
+              </DialogTitle>
+              <DialogDescription>
+                Please complete the following requirements before launching your campaign:
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              {launchValidationErrors.map((error, index) => (
+                <div key={index} className="flex items-start gap-3 p-3 bg-orange-50 rounded-2xl">
+                  <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-orange-600 text-xs font-bold">!</span>
+                  </div>
+                  <span className="text-orange-800 text-sm">{error}</span>
+                </div>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button 
+                onClick={() => setShowLaunchValidationModal(false)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl"
+              >
+                Continue Setup
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Advanced Campaign Popup */}
         <AddCampaignPopup 
           isOpen={showAdvancedPopup}
           onClose={() => setShowAdvancedPopup(false)}
           onComplete={handleAdvancedCampaignComplete}
         />
+
+        {/* Guided Flow Bottom Frame */}
+        {isGuidedFlow && (
+          <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100/50 p-6 z-50">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center justify-between">
+                {/* Progress indicator */}
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-gray-500">
+                    Step {guidedFlowStep + 1} of {guidedFlowSteps.length}
+                  </div>
+                  <div className="w-64">
+                    <Progress 
+                      value={((guidedFlowStep + 1) / guidedFlowSteps.length) * 100} 
+                      className="h-2"
+                    />
+                  </div>
+                </div>
+
+                {/* Current step info */}
+                <div className="flex-1 mx-8 text-center">
+                  <div className="text-lg font-medium text-gray-900">
+                    {guidedFlowSteps[guidedFlowStep]?.title}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {guidedFlowSteps[guidedFlowStep]?.description}
+                  </div>
+                </div>
+
+                {/* Navigation buttons */}
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={handleGuidedPrevious}
+                    disabled={guidedFlowStep === 0}
+                    className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Previous
+                  </Button>
+                  
+                  {guidedFlowStep === guidedFlowSteps.length - 1 ? (
+                    <Button
+                      onClick={handleLaunchCampaign}
+                      className="bg-green-600 hover:bg-green-700 text-white rounded-2xl px-6"
+                    >
+                      <Rocket className="w-4 h-4 mr-2" />
+                      Launch Campaign
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleGuidedNext}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6"
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   )
