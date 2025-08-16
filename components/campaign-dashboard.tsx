@@ -51,9 +51,18 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }, [campaign?.name, isEditingName])
   
+  // Load sequences when component mounts or campaign changes
+  useEffect(() => {
+    if (campaign?.id) {
+      console.log('🔄 Component mounted, loading sequences for campaign:', campaign.id)
+      loadSequences()
+    }
+  }, [campaign?.id])
+  
   // Track if settings have been saved
   const [hasSettingsSaved, setHasSettingsSaved] = useState(false)
   const [hasSequenceSaved, setHasSequenceSaved] = useState(false)
+  const [isSavingSequences, setIsSavingSequences] = useState(false)
   
   
   // Delete confirmation state
@@ -69,78 +78,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     onConfirm: null
   })
   
-  // Sequences state - Preset 6-email structure
-  const [steps, setSteps] = useState(() => [
-    // Sequence 1 - 3 emails
-    { 
-      id: 1, 
-      type: 'email', 
-      sequence: 1,
-      sequenceStep: 1,
-      title: 'Email 1',
-      subject: 'Introduction - Let\'s connect', 
-      content: 'Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because I believe there might be a great opportunity for us to work together.<br/><br/>Best regards,<br/>{{senderName}}',
-      timing: 0, // Send immediately
-      variants: 1 
-    },
-    { 
-      id: 2, 
-      type: 'email', 
-      sequence: 1,
-      sequenceStep: 2,
-      title: 'Email 2',
-      subject: 'Introduction - Let\'s connect', 
-      content: 'Hi {{firstName}},<br/><br/>I wanted to follow up on my previous email. I\'m still very interested in exploring how we might work together.<br/><br/>Best regards,<br/>{{senderName}}',
-      timing: 4, // 4 days after Email 1
-      variants: 1 
-    },
-    { 
-      id: 3, 
-      type: 'email', 
-      sequence: 1,
-      sequenceStep: 3,
-      title: 'Email 3',
-      subject: 'Introduction - Let\'s connect', 
-      content: 'Hi {{firstName}},<br/><br/>This is my final follow-up in this sequence. I understand you\'re busy, but I believe this opportunity could be valuable for {{company}}.<br/><br/>Best regards,<br/>{{senderName}}',
-      timing: 8, // 4 days after Email 2 (8 days total from Email 1)
-      variants: 1 
-    },
-    // 90-day gap here
-    // Sequence 2 - 3 more emails
-    { 
-      id: 4, 
-      type: 'email', 
-      sequence: 2,
-      sequenceStep: 1,
-      title: 'Email 4',
-      subject: 'New opportunities - Let\'s reconnect', 
-      content: 'Hi {{firstName}},<br/><br/>It\'s been a while since we last connected. I wanted to reach out with some exciting new developments that might interest you.<br/><br/>Best regards,<br/>{{senderName}}',
-      timing: 98, // 90 days after Sequence 1 ends (8 + 90 = 98 days from start)
-      variants: 1 
-    },
-    { 
-      id: 5, 
-      type: 'email', 
-      sequence: 2,
-      sequenceStep: 2,
-      title: 'Email 5',
-      subject: 'New opportunities - Let\'s reconnect', 
-      content: 'Hi {{firstName}},<br/><br/>I hope my previous email caught your attention. The opportunities I mentioned are time-sensitive and I believe {{company}} would benefit greatly.<br/><br/>Best regards,<br/>{{senderName}}',
-      timing: 102, // 4 days after Email 4
-      variants: 1 
-    },
-    { 
-      id: 6, 
-      type: 'email', 
-      sequence: 2,
-      sequenceStep: 3,
-      title: 'Email 6',
-      subject: 'New opportunities - Let\'s reconnect', 
-      content: 'Hi {{firstName}},<br/><br/>This is my final outreach in this campaign. I truly believe this could be a game-changer for {{company}} and would love to discuss it with you.<br/><br/>Best regards,<br/>{{senderName}}',
-      timing: 106, // 4 days after Email 5
-      variants: 1 
-    }
-  ])
+  // Sequences state - Start empty and load from database
+  const [steps, setSteps] = useState([])
   const [activeStepId, setActiveStepId] = useState(1)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [showTestModal, setShowTestModal] = useState(false)
@@ -732,8 +671,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   // Individual save functions for backward compatibility
   const saveSequence = async () => {
-    if (!campaign?.id || steps.length === 0) return
+    if (!campaign?.id || steps.length === 0 || isSavingSequences) return
     
+    setIsSavingSequences(true)
     try {
       console.log('💾 Saving sequences using dedicated endpoint...', steps.length, 'steps')
       console.log('📤 Sending to sequences API:', JSON.stringify(steps, null, 2))
@@ -759,6 +699,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     } catch (error) {
       console.error("❌ Error saving sequences via dedicated endpoint:", error)
+    } finally {
+      setIsSavingSequences(false)
     }
   }
   const saveSettings = () => saveCampaignData('settings')
@@ -890,7 +832,23 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         setSteps(result.data)
         setActiveStepId(result.data[0]?.id || 1)
       } else {
-        console.log('ℹ️ No existing sequences found, keeping current state')
+        // No sequences found in database, create a default sequence
+        console.log('ℹ️ No existing sequences found, creating default sequence')
+        const defaultSequence = [
+          { 
+            id: 1, 
+            type: 'email', 
+            sequence: 1,
+            sequenceStep: 1,
+            title: 'Email 1',
+            subject: 'Introduction - Let\'s connect', 
+            content: 'Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because I believe there might be a great opportunity for us to work together.<br/><br/>Best regards,<br/>{{senderName}}',
+            timing: 0,
+            variants: 1 
+          }
+        ]
+        setSteps(defaultSequence)
+        setActiveStepId(1)
       }
     } catch (error) {
       console.error('❌ Error loading sequences:', error)
@@ -954,8 +912,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   // Handle tab changes with lazy loading
-  const handleTabChange = (tabId: string) => {
+  const handleTabChange = async (tabId: string) => {
     console.log(`🔄 Tab changed to: ${tabId}`)
+    
+    // If leaving sequence tab, save immediately to prevent data loss
+    if (activeTab === 'sequence' && tabId !== 'sequence' && steps.length > 0) {
+      console.log('💾 Saving sequences before leaving sequence tab...')
+      await saveSequence()
+    }
+    
     setActiveTab(tabId)
     
     // Lazy load data when specific tabs are accessed
@@ -1268,19 +1233,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   const activeStep = steps.find((s) => s.id === activeStepId)
 
-  // Initialize steps with default step if empty
-  useEffect(() => {
-    if (steps.length === 0) {
-      setSteps([{
-        id: 1,
-        subject: "",
-        content: "",
-        variants: 1,
-        timing: 1,
-      }])
-      setActiveStepId(1)
-    }
-  }, [steps.length])
 
   // Update filter count when filters change
   useEffect(() => {
