@@ -193,20 +193,22 @@ export async function GET(request: NextRequest) {
     let senderAccounts: any[] = []
     let sendersError: any = null
 
-    // First try: Direct query with user_id filter
+    // Query with only existing columns
     try {
       const result = await supabaseServer
         .from('sender_accounts')
-        .select('id, email, warmup_status, created_at, user_id')
+        .select('id, email, created_at, user_id')
         .in('id', senderIds)
         .eq('user_id', userId)
       
       senderAccounts = result.data || []
       sendersError = result.error
-    } catch (error) {
-      console.log('First query failed, trying alternative approach...')
       
-      // Fallback: Query without user_id filter (for compatibility)
+      console.log(`📋 Query successful: found ${senderAccounts.length} accounts`)
+    } catch (error) {
+      console.log('Query with user_id failed, trying fallback without user_id...')
+      
+      // Fallback: Query without user_id filter if the column doesn't exist
       try {
         const result = await supabaseServer
           .from('sender_accounts')
@@ -216,9 +218,10 @@ export async function GET(request: NextRequest) {
         senderAccounts = result.data || []
         sendersError = result.error
         
-        console.log('Using fallback query without warmup_status and user_id')
+        console.log('Using fallback query - all sender accounts without user filtering')
       } catch (fallbackError) {
         sendersError = fallbackError
+        console.error('Both queries failed:', fallbackError)
       }
     }
 
@@ -248,9 +251,18 @@ export async function GET(request: NextRequest) {
         // Calculate account age and warmup days - handle missing fields gracefully
         const createdAt = sender.created_at ? new Date(sender.created_at) : new Date()
         const accountAge = Math.max(1, Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)))
-        const warmupStatus = sender.warmup_status || 'inactive'
         
-        console.log(`📅 Account details - Age: ${accountAge} days, Warmup: ${warmupStatus}`)
+        // Since warmup_status column doesn't exist yet, infer status from account age
+        let warmupStatus = 'inactive'
+        if (accountAge >= 30) {
+          warmupStatus = 'completed' // Assume older accounts are fully warmed
+        } else if (accountAge >= 7) {
+          warmupStatus = 'warming_up' // Accounts 1-4 weeks old are likely warming up
+        } else {
+          warmupStatus = 'inactive' // Very new accounts haven't started
+        }
+        
+        console.log(`📅 Account details - Age: ${accountAge} days, Inferred Warmup: ${warmupStatus}`)
         
         // For now, use realistic baseline stats based on account state
         // TODO: Replace with actual email tracking data from email_sending_logs table
