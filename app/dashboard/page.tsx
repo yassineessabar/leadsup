@@ -43,53 +43,34 @@ export default function DashboardPage() {
 
   const fetchDashboardStats = async () => {
     try {
-      // Get user from session API since we're using custom auth
-      const response = await fetch('/api/auth/me', {
+      // Use dedicated dashboard stats API
+      const response = await fetch('/api/dashboard/stats', {
         credentials: 'include',
         cache: 'no-cache'
       })
       const result = await response.json()
       
-      if (!result.success || !result.user) return
+      if (!result.success) {
+        console.error('❌ Dashboard stats failed:', result)
+        return
+      }
       
-      const userId = result.user.id
-
-      // Fetch total leads
-      const { count: totalLeads } = await supabase
-        .from('contacts')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-
-      // Fetch valid leads (with verified emails)
-      const { count: validLeads } = await supabase
-        .from('contacts')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .neq('email_status', 'Unknown')
-        .neq('email_status', '')
-        .not('email_status', 'is', null)
-
-      // Fetch active campaigns
-      const { count: activeCampaigns } = await supabase
-        .from('campaigns')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('status', 'Active')
-
-      // Fetch recent campaigns
-      const { data: recentCampaigns } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(5)
+      // Fetch recent campaigns separately
+      const campaignsResponse = await fetch('/api/campaigns', {
+        credentials: 'include'
+      })
+      const campaignsData = await campaignsResponse.json()
+      
+      const recentCampaigns = campaignsData.success ? campaignsData.data.slice(0, 5) : []
 
       setStats({
-        totalLeads: totalLeads || 0,
-        validLeads: validLeads || 0,
-        activeCampaigns: activeCampaigns || 0,
-        recentCampaigns: recentCampaigns || []
+        totalLeads: result.data.totalLeads,
+        validLeads: result.data.validLeads,
+        activeCampaigns: result.data.activeCampaigns,
+        recentCampaigns: recentCampaigns
       })
+      
+      console.log('✅ Dashboard stats loaded:', result.data)
     } catch (error) {
       console.error('Error fetching dashboard stats:', error)
     }
