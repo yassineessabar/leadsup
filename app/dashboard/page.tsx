@@ -65,14 +65,16 @@ export default function DashboardPage() {
         .from('contacts')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('email_verified', true)
+        .neq('email_status', 'Unknown')
+        .neq('email_status', '')
+        .not('email_status', 'is', null)
 
       // Fetch active campaigns
       const { count: activeCampaigns } = await supabase
         .from('campaigns')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('status', 'active')
+        .eq('status', 'Active')
 
       // Fetch recent campaigns
       const { data: recentCampaigns } = await supabase
@@ -170,9 +172,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <p className="text-2xl md:text-3xl font-bold text-slate-900">
-                  {stats.validLeads > 0 ? `${((stats.validLeads / stats.totalLeads) * 100).toFixed(1)}%` : '0%'}
-                </p>
+                <p className="text-2xl md:text-3xl font-bold text-slate-900">{stats.validLeads}</p>
                 <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-none">
                   <ArrowUp className="w-3 h-3 mr-1" />
                   +2.1%

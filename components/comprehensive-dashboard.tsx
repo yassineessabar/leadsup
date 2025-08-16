@@ -144,14 +144,16 @@ export function ComprehensiveDashboard() {
         .from('contacts')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .eq('email_verified', true)
+        .neq('email_status', 'Unknown')
+        .neq('email_status', '')
+        .not('email_status', 'is', null)
 
       // Fetch active campaigns
       const { count: activeCampaigns } = await supabase
         .from('campaigns')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .eq('status', 'active')
+        .eq('status', 'Active')
 
       // Fetch recent campaigns
       const { data: recentCampaigns } = await supabase
@@ -357,7 +359,7 @@ export function ComprehensiveDashboard() {
                     {isLoading ? (
                       <span className="text-gray-400">...</span>
                     ) : (
-                      stats.totalLeads > 0 ? `${((animatedStats.validLeads / stats.totalLeads) * 100).toFixed(1)}%` : '0%'
+                      animatedStats.validLeads
                     )}
                   </p>
                   <span className="text-sm text-gray-400 font-medium">
