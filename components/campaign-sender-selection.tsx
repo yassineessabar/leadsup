@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe, Trash2, Save } from "lucide-react"
+import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe, Trash2, Save, RefreshCw, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { toast } from "sonner"
+import { fetchHealthScores, updateHealthScores, getHealthScoreColor, getHealthScoreBgColor, getHealthStatus, getHealthScoreIcon, type HealthScoreResult } from "@/lib/health-score"
 
 interface Domain {
   id: string
@@ -57,6 +58,8 @@ export default function CampaignSenderSelection({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [lastSavedSelection, setLastSavedSelection] = useState<Set<string>>(new Set())
   const [renderKey, setRenderKey] = useState(0)
+  const [healthScores, setHealthScores] = useState<Record<string, HealthScoreResult>>({})
+  const [isUpdatingHealthScores, setIsUpdatingHealthScores] = useState(false)
   
   // Test email modal state
   const [showTestModal, setShowTestModal] = useState(false)
@@ -73,6 +76,7 @@ export default function CampaignSenderSelection({
   useEffect(() => {
     if (domainsWithSenders.length > 0) {
       loadExistingSenderAssignments()
+      loadHealthScores()
     }
   }, [domainsWithSenders])
 
@@ -134,6 +138,58 @@ export default function CampaignSenderSelection({
       toast.error('Failed to load sender accounts')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadHealthScores = async () => {
+    try {
+      console.log('📊 Loading health scores...')
+      
+      // Get all sender IDs from domains
+      const allSenderIds = domainsWithSenders
+        .flatMap(domain => domain.senders)
+        .map(sender => sender.id)
+      
+      if (allSenderIds.length === 0) {
+        console.log('⚠️ No sender IDs available for health score calculation')
+        return
+      }
+      
+      console.log('🔍 Fetching health scores for:', allSenderIds.length, 'senders')
+      const scores = await fetchHealthScores(allSenderIds, campaignId.toString())
+      setHealthScores(scores)
+      
+      console.log('✅ Loaded health scores for', Object.keys(scores).length, 'accounts')
+    } catch (error) {
+      console.error('❌ Error loading health scores:', error)
+      // Don't show error toast as this is not critical functionality
+    }
+  }
+
+  const handleUpdateHealthScores = async () => {
+    try {
+      setIsUpdatingHealthScores(true)
+      
+      // Get all sender IDs from domains
+      const allSenderIds = domainsWithSenders
+        .flatMap(domain => domain.senders)
+        .map(sender => sender.id)
+      
+      console.log('🔄 Updating health scores for:', allSenderIds.length, 'senders')
+      const success = await updateHealthScores(allSenderIds)
+      
+      if (success) {
+        // Reload health scores
+        await loadHealthScores()
+        toast.success(`Health scores updated for ${allSenderIds.length} accounts`)
+      } else {
+        toast.error('Failed to update health scores')
+      }
+    } catch (error) {
+      console.error('❌ Error updating health scores:', error)
+      toast.error('Failed to update health scores')
+    } finally {
+      setIsUpdatingHealthScores(false)
     }
   }
 
@@ -670,6 +726,24 @@ export default function CampaignSenderSelection({
             </div>
             <div className="flex items-center gap-3">
               <Button
+                onClick={handleUpdateHealthScores}
+                disabled={isUpdatingHealthScores}
+                className="bg-green-600 hover:bg-green-700 text-white border-0 rounded-2xl px-6 py-3 shadow-sm"
+                title="Refresh health scores for all accounts"
+              >
+                {isUpdatingHealthScores ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Health Scores
+                  </>
+                )}
+              </Button>
+              <Button
                 onClick={handleManualSave}
                 disabled={isSaving || !hasUnsavedChanges}
                 className={`border-0 rounded-2xl px-6 py-3 shadow-sm transition-colors ${
@@ -873,10 +947,19 @@ export default function CampaignSenderSelection({
                                   </div>
                                   <div className="text-center">
                                     <div className="text-sm text-gray-500 mb-1">Health Score</div>
-                                    <div className={`font-semibold text-lg ${getHealthScoreColor(sender.health_score || 0)}`}>
-                                      {sender.health_score || 0}%
+                                    <div className="flex items-center justify-center gap-1">
+                                      <span className="text-sm">{getHealthScoreIcon(healthScores[sender.id]?.score || sender.health_score || 0)}</span>
+                                      <div className={`font-semibold text-lg ${getHealthScoreColor(healthScores[sender.id]?.score || sender.health_score || 0)}`}>
+                                        {healthScores[sender.id]?.score || sender.health_score || 0}%
+                                      </div>
                                     </div>
-                                    <div className="text-xs text-gray-500">reputation</div>
+                                    <div className="text-xs">
+                                      <Badge 
+                                        className={`text-xs px-2 py-0.5 ${getHealthScoreBgColor(healthScores[sender.id]?.score || sender.health_score || 0)}`}
+                                      >
+                                        {getHealthStatus(healthScores[sender.id]?.score || sender.health_score || 0)}
+                                      </Badge>
+                                    </div>
                                   </div>
                                   <Button
                                     onClick={(e) => {
