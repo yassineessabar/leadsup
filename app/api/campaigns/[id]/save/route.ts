@@ -65,12 +65,10 @@ export async function GET(
     // Only fetch essential data initially - lazy load the rest when needed
     const [
       settings,
-      senders,
-      scrapingSettings
+      senders
     ] = await Promise.all([
       fetchSettings(campaignId),
-      fetchSenders(campaignId),
-      fetchScrapingSettings(campaignId)
+      fetchSenders(campaignId)
     ])
 
     // Fetch sequences and accounts only if needed (when tab is accessed)
@@ -86,7 +84,6 @@ export async function GET(
       sequences,
       settings,
       senders,
-      scrapingSettings,
       connectedAccounts
     }
 
@@ -144,9 +141,6 @@ export async function POST(
       
       // Save connected accounts
       await saveConnectedAccounts(userId, campaignData.connectedAccounts)
-      
-      // Save scraping settings
-      await saveScrapingSettings(campaignId, campaignData.scraping)
     }
 
     return NextResponse.json({ success: true, message: "Campaign data saved successfully" })
@@ -304,46 +298,6 @@ async function saveConnectedAccounts(userId: string, connectedAccounts: any) {
   // We could store account preferences here if needed
 }
 
-// Helper function to save scraping settings
-async function saveScrapingSettings(campaignId: string, scrapingSettings: any) {
-  if (!scrapingSettings) return
-
-  const scrapingData = {
-    campaign_id: campaignId,
-    is_active: scrapingSettings.isActive || false,
-    daily_limit: scrapingSettings.dailyLimit || 100,
-    industry: scrapingSettings.industry || '',
-    keyword: scrapingSettings.keyword || '',
-    location: scrapingSettings.location || '',
-    updated_at: new Date().toISOString()
-  }
-
-  // Try to update existing scraping settings first
-  const { data: existing } = await supabaseServer
-    .from("campaign_scraping_settings")
-    .select("id")
-    .eq("campaign_id", campaignId)
-    .single()
-
-  if (existing) {
-    const { error: updateError } = await supabaseServer
-      .from("campaign_scraping_settings")
-      .update(scrapingData)
-      .eq("campaign_id", campaignId)
-
-    if (updateError) {
-      throw new Error(`Failed to update scraping settings: ${updateError.message}`)
-    }
-  } else {
-    const { error: insertError } = await supabaseServer
-      .from("campaign_scraping_settings")
-      .insert(scrapingData)
-
-    if (insertError) {
-      throw new Error(`Failed to create scraping settings: ${insertError.message}`)
-    }
-  }
-}
 
 // ============================================
 // FETCH HELPER FUNCTIONS
@@ -451,32 +405,6 @@ async function fetchSenders(campaignId: string) {
   return data.map(sender => sender.id)
 }
 
-// Helper function to fetch scraping settings
-async function fetchScrapingSettings(campaignId: string) {
-  const { data, error } = await supabaseServer
-    .from("campaign_scraping_settings")
-    .select("*")
-    .eq("campaign_id", campaignId)
-    .single()
-
-  if (error || !data) {
-    return {
-      isActive: false,
-      dailyLimit: 100,
-      industry: '',
-      keyword: '',
-      location: ''
-    }
-  }
-
-  return {
-    isActive: data.is_active,
-    dailyLimit: data.daily_limit,
-    industry: data.industry,
-    keyword: data.keyword,
-    location: data.location
-  }
-}
 
 // Helper function to fetch Gmail accounts from campaign_senders table for a specific campaign
 async function fetchGmailAccounts(userId: string, campaignId?: string) {
