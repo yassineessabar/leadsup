@@ -131,92 +131,92 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   }
 
   // Fetch real contacts with sequence progress from database
-  useEffect(() => {
-    const fetchCampaignContacts = async () => {
-      setLoading(true)
-      try {
-        const contactsParams = new URLSearchParams()
-        if (campaign?.id) contactsParams.append('campaign_id', campaign.id.toString())
-        contactsParams.append('limit', '50')
-        contactsParams.append('offset', '0')
+  const fetchCampaignContacts = async () => {
+    setLoading(true)
+    try {
+      const contactsParams = new URLSearchParams()
+      if (campaign?.id) contactsParams.append('campaign_id', campaign.id.toString())
+      contactsParams.append('limit', '50')
+      contactsParams.append('offset', '0')
 
-        const contactsResponse = await fetch(`/api/contacts?${contactsParams.toString()}`, {
-          credentials: "include"
-        })
+      const contactsResponse = await fetch(`/api/contacts?${contactsParams.toString()}`, {
+        credentials: "include"
+      })
+      
+      const contactsResult = await contactsResponse.json()
+
+      if (contactsResult.contacts && contactsResult.contacts.length > 0) {
+        const contactIds = contactsResult.contacts.map((c: any) => c.id)
         
-        const contactsResult = await contactsResponse.json()
-
-        if (contactsResult.contacts && contactsResult.contacts.length > 0) {
-          const contactIds = contactsResult.contacts.map((c: any) => c.id)
+        let sequenceProgressMap: Record<string, any> = {}
+        try {
+          const progressResponse = await fetch('/api/debug/check-database-tables', {
+            credentials: "include"
+          })
           
-          let sequenceProgressMap: Record<string, any> = {}
-          try {
-            const progressResponse = await fetch('/api/debug/check-database-tables', {
-              credentials: "include"
-            })
+          contactsResult.contacts.forEach((contact: any) => {
+            const daysSinceCreated = Math.floor((Date.now() - new Date(contact.created_at).getTime()) / (1000 * 60 * 60 * 24))
             
-            contactsResult.contacts.forEach((contact: any) => {
-              const daysSinceCreated = Math.floor((Date.now() - new Date(contact.created_at).getTime()) / (1000 * 60 * 60 * 24))
-              
-              let status: Contact["status"]
-              if (daysSinceCreated === 0) {
-                status = "Pending"
-              } else if (daysSinceCreated <= 1) {
-                status = "Email 1"
-              } else if (daysSinceCreated <= 4) {
-                status = "Email 2" 
-              } else if (daysSinceCreated <= 7) {
-                status = "Email 3"
-              } else if (daysSinceCreated <= 11) {
-                status = "Email 4"
-              } else if (daysSinceCreated <= 15) {
-                status = "Email 5"
-              } else if (daysSinceCreated <= 20) {
-                status = "Email 6"
-              } else {
-                const finalStates = ["Completed", "Replied", "Unsubscribed", "Bounced"]
-                const weights = [0.4, 0.3, 0.2, 0.1]
-                const rand = Math.random()
-                if (rand < weights[0]) status = "Completed"
-                else if (rand < weights[0] + weights[1]) status = "Replied"
-                else if (rand < weights[0] + weights[1] + weights[2]) status = "Unsubscribed"
-                else status = "Bounced"
-              }
-              
-              sequenceProgressMap[contact.id] = status
-            })
-          } catch (progressError) {
-            console.log('Using fallback sequence progress logic')
-          }
-
-          const mappedContacts = contactsResult.contacts.map((contact: any) => ({
-            id: contact.id,
-            first_name: contact.first_name || '',
-            last_name: contact.last_name || '',
-            email: contact.email || contact.email_address || '',
-            title: contact.title || contact.job_title || '',
-            company: contact.company || contact.company_name || '',
-            location: contact.location || '',
-            industry: contact.industry || '',
-            linkedin: contact.linkedin || '',
-            image_url: contact.image_url || `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 99) + 1}.jpg`,
-            status: sequenceProgressMap[contact.id] || "Pending",
-            campaign_name: contact.campaign_name || campaign.name
-          }))
-          
-          setContacts(mappedContacts)
-        } else {
-          console.log('No contacts found for campaign')
-          setContacts([])
+            let status: Contact["status"]
+            if (daysSinceCreated === 0) {
+              status = "Pending"
+            } else if (daysSinceCreated <= 1) {
+              status = "Email 1"
+            } else if (daysSinceCreated <= 4) {
+              status = "Email 2" 
+            } else if (daysSinceCreated <= 7) {
+              status = "Email 3"
+            } else if (daysSinceCreated <= 11) {
+              status = "Email 4"
+            } else if (daysSinceCreated <= 15) {
+              status = "Email 5"
+            } else if (daysSinceCreated <= 20) {
+              status = "Email 6"
+            } else {
+              const finalStates = ["Completed", "Replied", "Unsubscribed", "Bounced"]
+              const weights = [0.4, 0.3, 0.2, 0.1]
+              const rand = Math.random()
+              if (rand < weights[0]) status = "Completed"
+              else if (rand < weights[0] + weights[1]) status = "Replied"
+              else if (rand < weights[0] + weights[1] + weights[2]) status = "Unsubscribed"
+              else status = "Bounced"
+            }
+            
+            sequenceProgressMap[contact.id] = status
+          })
+        } catch (progressError) {
+          console.log('Using fallback sequence progress logic')
         }
-      } catch (error) {
-        console.error('Error fetching campaign contacts:', error)
-        setContacts([])
-      } finally {
-        setLoading(false)
-      }
-    }
 
+        const mappedContacts = contactsResult.contacts.map((contact: any) => ({
+          id: contact.id,
+          first_name: contact.first_name || '',
+          last_name: contact.last_name || '',
+          email: contact.email || contact.email_address || '',
+          title: contact.title || contact.job_title || '',
+          company: contact.company || contact.company_name || '',
+          location: contact.location || '',
+          industry: contact.industry || '',
+          linkedin: contact.linkedin || '',
+          image_url: contact.image_url || `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 99) + 1}.jpg`,
+          status: sequenceProgressMap[contact.id] || "Pending",
+          campaign_name: contact.campaign_name || campaign.name
+        }))
+        
+        setContacts(mappedContacts)
+      } else {
+        console.log('No contacts found for campaign')
+        setContacts([])
+      }
+    } catch (error) {
+      console.error('Error fetching campaign contacts:', error)
+      setContacts([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     if (campaign?.id) {
       fetchCampaignContacts()
       fetchMetrics()
