@@ -30,6 +30,7 @@ export default function DashboardPage() {
     totalLeads: 0,
     contactedLeads: 0,
     activeCampaigns: 0,
+    responseRate: '0%',
     recentCampaigns: []
   })
   const supabase = createClient(
@@ -67,6 +68,7 @@ export default function DashboardPage() {
         totalLeads: result.data.totalLeads,
         contactedLeads: result.data.contactedLeads,
         activeCampaigns: result.data.activeCampaigns,
+        responseRate: result.data.responseRate,
         recentCampaigns: recentCampaigns
       })
       
@@ -123,7 +125,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Metric Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full opacity-5 transform translate-x-16 -translate-y-16"></div>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -176,6 +178,25 @@ export default function DashboardPage() {
                 <Badge variant="secondary" className="bg-purple-50 text-purple-600 border-none">
                   <ArrowUp className="w-3 h-3 mr-1" />
                   +2
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500 to-green-600 rounded-full opacity-5 transform translate-x-16 -translate-y-16"></div>
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardDescription className="text-sm font-medium text-slate-600">Response Rate</CardDescription>
+              <div className="p-2 rounded-xl bg-green-50">
+                <TrendingUp className="w-4 h-4 text-green-700" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p className="text-2xl md:text-3xl font-bold text-slate-900">{stats.responseRate}</p>
+                <Badge variant="secondary" className="bg-green-50 text-green-600 border-none">
+                  <ArrowUp className="w-3 h-3 mr-1" />
+                  +1.2%
                 </Badge>
               </div>
             </CardContent>

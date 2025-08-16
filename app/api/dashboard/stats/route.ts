@@ -73,8 +73,18 @@ export async function GET() {
       .eq('user_id', userId)
       .eq('status', 'Active')
 
+    // Fetch responded leads (contacts with response/reply status)
+    const { count: respondedLeads } = await supabaseServer
+      .from('contacts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .in('email_status', ['Replied', 'Responded', 'Reply'])
+
     // Calculate contact rate (percentage of leads that have been contacted)
     const contactRate = allTimeLeads > 0 ? ((contactedLeads / allTimeLeads) * 100).toFixed(1) : '0'
+
+    // Calculate response rate (percentage of contacted leads that responded)
+    const responseRate = contactedLeads > 0 ? ((respondedLeads / contactedLeads) * 100).toFixed(1) : '0'
 
     // Calculate growth rate (simplified - would need historical data for accurate calculation)
     const growthRate = '+12.5%' // Placeholder - would need historical comparison
@@ -85,7 +95,9 @@ export async function GET() {
         totalLeads: totalLeads || 0,
         contactedLeads: contactedLeads || 0,
         activeCampaigns: activeCampaigns || 0,
+        respondedLeads: respondedLeads || 0,
         contactRate: `${contactRate}%`,
+        responseRate: `${responseRate}%`,
         growthRate: growthRate,
         period: 'Last 30 days',
         allTimeLeads: allTimeLeads || 0

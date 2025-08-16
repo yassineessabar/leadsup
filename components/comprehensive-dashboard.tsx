@@ -59,6 +59,7 @@ export function ComprehensiveDashboard() {
     totalLeads: 0,
     contactedLeads: 0,
     activeCampaigns: 0,
+    responseRate: '0%',
     recentCampaigns: []
   })
   const [isLoading, setIsLoading] = useState(true)
@@ -155,6 +156,7 @@ export function ComprehensiveDashboard() {
         totalLeads: result.data.totalLeads,
         contactedLeads: result.data.contactedLeads,
         activeCampaigns: result.data.activeCampaigns,
+        responseRate: result.data.responseRate,
         recentCampaigns: recentCampaigns
       }
 
@@ -200,16 +202,16 @@ export function ComprehensiveDashboard() {
     }, stepDuration)
   }
 
-  // Enhanced chart data with more realistic progression
-  const chartData = [
-    { date: '01/08', imported: 0, verified: 0, enriched: 0, opens: 0, clicks: 0 },
-    { date: '03/08', imported: 25, verified: 18, enriched: 12, opens: 8, clicks: 2 },
-    { date: '05/08', imported: 45, verified: 32, enriched: 28, opens: 15, clicks: 4 },
-    { date: '07/08', imported: 78, verified: 65, enriched: 52, opens: 28, clicks: 8 },
-    { date: '09/08', imported: 102, verified: 89, enriched: 76, opens: 42, clicks: 12 },
-    { date: '11/08', imported: 134, verified: 118, enriched: 98, opens: 58, clicks: 18 },
-    { date: '13/08', imported: 156, verified: 142, enriched: 125, opens: 72, clicks: 24 },
-    { date: '15/08', imported: 189, verified: 168, enriched: 151, opens: 89, clicks: 32 }
+  // Revenue impact chart data - showing business value
+  const revenueImpactData = [
+    { date: '01/08', emailsSent: 0, responses: 0, meetings: 0, deals: 0, revenue: 0 },
+    { date: '03/08', emailsSent: 125, responses: 8, meetings: 3, deals: 1, revenue: 5000 },
+    { date: '05/08', emailsSent: 280, responses: 22, meetings: 8, deals: 2, revenue: 15000 },
+    { date: '07/08', emailsSent: 450, responses: 38, meetings: 15, deals: 4, revenue: 32000 },
+    { date: '09/08', emailsSent: 620, responses: 55, meetings: 22, deals: 6, revenue: 58000 },
+    { date: '11/08', emailsSent: 785, responses: 71, meetings: 28, deals: 8, revenue: 89000 },
+    { date: '13/08', emailsSent: 950, responses: 89, meetings: 35, deals: 11, revenue: 125000 },
+    { date: '15/08', emailsSent: 1120, responses: 108, meetings: 42, deals: 14, revenue: 168000 }
   ]
 
   // Pie chart data for lead sources
@@ -304,7 +306,7 @@ export function ComprehensiveDashboard() {
           </div>
 
           {/* Metric Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {/* Total Leads Card */}
             <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
               <CardContent className="p-6">
@@ -385,6 +387,33 @@ export function ComprehensiveDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Response Rate Card */}
+            <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-4 mb-6">
+                  <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">Response Rate</h3>
+                    <p className="text-gray-500 text-sm">Engagement metric</p>
+                  </div>
+                </div>
+                <div className="flex items-end justify-between">
+                  <p className="text-3xl font-light text-gray-900">
+                    {isLoading ? (
+                      <span className="text-gray-400">...</span>
+                    ) : (
+                      stats.responseRate
+                    )}
+                  </p>
+                  <span className="text-sm text-gray-400 font-medium">
+                    +1.2%
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Performance Metrics Grid */}
@@ -417,254 +446,293 @@ export function ComprehensiveDashboard() {
             })}
           </div>
 
-          {/* Charts Section */}
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              
-              {/* Analytics Chart */}
-              <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
-                <CardContent className="p-8">
-                  <div className="flex items-center space-x-4 mb-8">
-                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center">
-                      <Activity className="w-6 h-6 text-indigo-600" />
+          {/* Main Dashboard Layout - Sleek & Minimal */}
+          <div className="space-y-6">
+            
+            {/* Revenue Impact Chart - Clean Hero */}
+            <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
+                      <Activity className="w-5 h-5 text-slate-700" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-medium text-gray-900">Lead Processing Analytics</h2>
-                      <p className="text-gray-500 text-sm mt-1">Performance over the last 30 days</p>
+                      <h2 className="text-xl font-semibold text-slate-900">Revenue Impact</h2>
+                      <p className="text-slate-500 text-sm">Last 30 days performance</p>
                     </div>
                   </div>
-                
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis 
-                          dataKey="date" 
-                          stroke="#6b7280" 
-                          fontSize={12}
-                        />
-                        <YAxis 
-                          stroke="#6b7280" 
-                          fontSize={12}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'white',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                          }}
-                        />
-                        <Legend />
-                        <Line
-                          type="monotone"
-                          dataKey="imported"
-                          stroke="#3b82f6"
-                          strokeWidth={2}
-                          dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                          name="Imported Leads"
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="verified"
-                          stroke="#10b981"
-                          strokeWidth={2}
-                          dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
-                          name="Verified Leads"
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="enriched"
-                          stroke="#8b5cf6"
-                          strokeWidth={2}
-                          dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
-                          name="Enriched Leads"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                  <div className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-lg">
+                    Live
                   </div>
-                </CardContent>
-              </Card>
-
-            </div>
-
-            {/* Right Sidebar */}
-            <div className="space-y-6">
+                </div>
               
-              {/* Deliverability Score */}
-              <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4 mb-6">
-                    <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center">
-                      <ShieldCheck className="w-6 h-6 text-green-600" />
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={revenueImpactData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#e2e8f0" strokeOpacity={0.5} />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#94a3b8" 
+                        fontSize={11}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        stroke="#94a3b8" 
+                        fontSize={11}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        yAxisId="revenue"
+                        orientation="right"
+                        stroke="#94a3b8" 
+                        fontSize={11}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                          fontSize: '12px'
+                        }}
+                        formatter={(value, name) => {
+                          if (name === 'Revenue ($)') {
+                            return [`$${value.toLocaleString()}`, name]
+                          }
+                          return [value, name]
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="responses"
+                        stroke="#64748b"
+                        strokeWidth={2}
+                        dot={false}
+                        name="Responses"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="meetings"
+                        stroke="#475569"
+                        strokeWidth={2}
+                        dot={false}
+                        name="Meetings"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="deals"
+                        stroke="#334155"
+                        strokeWidth={2}
+                        dot={false}
+                        name="Deals"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="#0f172a"
+                        strokeWidth={3}
+                        dot={false}
+                        name="Revenue ($)"
+                        yAxisId="revenue"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Content Grid - Balanced Layout */}
+            <div className="grid lg:grid-cols-5 gap-6">
+              
+              {/* AI Insights - Clean & Minimal */}
+              <div className="lg:col-span-3">
+                <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden h-full">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
+                          <Brain className="w-5 h-5 text-slate-700" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-slate-900">Insights</h3>
+                          <p className="text-slate-500 text-sm">AI recommendations</p>
+                        </div>
+                      </div>
+                      <button className="text-sm text-slate-500 hover:text-slate-700 transition-colors">
+                        View all
+                      </button>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900">Deliverability Health</h3>
-                      <p className="text-gray-500 text-sm mt-1">Email reputation score</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center">
-                    <div className="relative w-24 h-24">
-                      <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
-                        <path
-                          className="text-gray-200"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          fill="transparent"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path
-                          className="text-green-500"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          strokeDasharray="85, 100"
-                          fill="transparent"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-gray-900">85%</span>
+                    
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-2xl border border-slate-200/60 hover:bg-slate-50/50 transition-colors">
+                        <div className="flex gap-4">
+                          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <TrendingUp className="w-4 h-4 text-slate-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-medium text-slate-900">Subject Line Optimization</h4>
+                              <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
+                                High Impact
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-600 mb-3">
+                              Improve open rates by 15% with shorter, personalized subject lines.
+                            </p>
+                            <ul className="text-sm text-slate-600 space-y-1">
+                              <li className="flex items-center gap-2">
+                                <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
+                                Keep under 50 characters
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
+                                Add company name
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-2xl border border-slate-200/60 hover:bg-slate-50/50 transition-colors">
+                        <div className="flex gap-4">
+                          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Clock className="w-4 h-4 text-slate-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-medium text-slate-900">Send Time Optimization</h4>
+                              <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
+                                Medium Impact
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-600 mb-2">
+                              Best engagement: Tuesday-Thursday, 10-11 AM
+                            </p>
+                            <div className="text-sm text-slate-500">
+                              Optimal: 10:30 AM EST
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="text-center space-y-3">
-                    <Badge className="bg-green-100 text-green-700 border-green-200">
-                      Excellent
-                    </Badge>
-                    <p className="text-sm text-gray-600">
-                      Your deliverability is performing well
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">IP Reputation</p>
-                      <p className="font-semibold text-gray-900">Good</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Authentication</p>
-                      <p className="font-semibold text-gray-900">Active</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
 
-              {/* AI Insights */}
-              <Card className="bg-white border border-gray-200">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <Brain className="w-5 h-5 text-blue-600" />
+              {/* Right Column - Minimal Stats */}
+              <div className="lg:col-span-2 space-y-6">
+                
+                {/* Deliverability - Compact */}
+                <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                          <ShieldCheck className="w-4 h-4 text-slate-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-slate-900">Deliverability</h3>
+                          <p className="text-xs text-slate-500">Email health</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-slate-900">85%</div>
+                        <div className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
+                          Excellent
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="text-center p-3 rounded-xl bg-slate-50">
+                        <div className="text-xs text-slate-500 mb-1">IP Rep</div>
+                        <div className="text-sm font-medium text-slate-900">Good</div>
+                      </div>
+                      <div className="text-center p-3 rounded-xl bg-slate-50">
+                        <div className="text-xs text-slate-500 mb-1">Auth</div>
+                        <div className="text-sm font-medium text-slate-900">Active</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Quick Actions - Minimal */}
+                <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                        <Zap className="w-4 h-4 text-slate-600" />
                       </div>
                       <div>
-                        <CardTitle className="text-lg font-bold text-gray-900">AI Insights</CardTitle>
-                        <p className="text-gray-600 text-sm">Smart recommendations</p>
+                        <h3 className="font-medium text-slate-900">Quick Actions</h3>
+                        <p className="text-xs text-slate-500">Common tasks</p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm">
-                      View All
-                    </Button>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <div className="p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <TrendingUp className="w-4 h-4 text-orange-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-semibold text-gray-900">Optimize Subject Lines</h4>
-                          <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs">
-                            High Impact
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">
-                          Your open rate could improve by 15% with shorter, more personalized subject lines.
-                        </p>
-                        <ul className="text-sm text-gray-600 space-y-1">
-                          <li className="flex items-start gap-2">
-                            <CheckCircle2 className="w-3 h-3 mt-0.5 text-green-500 flex-shrink-0" />
-                            <span>Keep under 50 characters</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <CheckCircle2 className="w-3 h-3 mt-0.5 text-green-500 flex-shrink-0" />
-                            <span>Add company name for personalization</span>
-                          </li>
-                        </ul>
-                      </div>
+                    
+                    <div className="space-y-3">
+                      <Button 
+                        className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-10 text-sm font-medium"
+                        onClick={() => {
+                          const event = new CustomEvent('tab-switched', { detail: 'leads' })
+                          window.dispatchEvent(event)
+                        }}
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        Import Leads
+                      </Button>
+                      
+                      <Button 
+                        variant="outline"
+                        className="w-full border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl h-10 text-sm font-medium"
+                        onClick={() => {
+                          const event = new CustomEvent('tab-switched', { detail: 'campaigns-email' })
+                          window.dispatchEvent(event)
+                        }}
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        New Campaign
+                      </Button>
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <Clock className="w-4 h-4 text-blue-600" />
+                {/* Performance Stats - New Minimal Section */}
+                <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                        <BarChart3 className="w-4 h-4 text-slate-600" />
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-semibold text-gray-900">Perfect Timing</h4>
-                          <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
-                            Medium Impact
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          Send emails on Tuesday-Thursday, 10-11 AM for best engagement.
-                        </p>
+                      <div>
+                        <h3 className="font-medium text-slate-900">This Week</h3>
+                        <p className="text-xs text-slate-500">Key metrics</p>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                    
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-600">Open Rate</span>
+                        <span className="text-sm font-medium text-slate-900">68%</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-600">Click Rate</span>
+                        <span className="text-sm font-medium text-slate-900">42%</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-600">Response Rate</span>
+                        <span className="text-sm font-medium text-slate-900">24%</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              {/* Quick Actions */}
-              <Card className="bg-white border border-gray-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-3 text-lg font-bold text-gray-900">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Zap className="w-5 h-5 text-blue-600" />
-                    </div>
-                    Quick Actions
-                  </CardTitle>
-                </CardHeader>
-                
-                <CardContent className="space-y-3">
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start h-10 hover:bg-gray-50"
-                    onClick={() => {
-                      const event = new CustomEvent('tab-switched', { detail: 'leads' })
-                      window.dispatchEvent(event)
-                    }}
-                  >
-                    <Users className="w-4 h-4 mr-3 text-gray-600" />
-                    Import CSV List
-                  </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start h-10 hover:bg-gray-50"
-                    onClick={() => {
-                      const event = new CustomEvent('tab-switched', { detail: 'campaigns-email' })
-                      window.dispatchEvent(event)
-                    }}
-                  >
-                    <Mail className="w-4 h-4 mr-3 text-gray-600" />
-                    Create Template
-                  </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start h-10 hover:bg-gray-50"
-                  >
-                    <BarChart3 className="w-4 h-4 mr-3 text-gray-600" />
-                    View Analytics
-                  </Button>
-                </CardContent>
-              </Card>
+              </div>
             </div>
           </div>
         </div>
