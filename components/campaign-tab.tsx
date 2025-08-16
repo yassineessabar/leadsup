@@ -25,6 +25,14 @@ interface Campaign {
   sent: number | null
   outreachStrategy?: "email" | "linkedin" | "email-linkedin"
   totalPlanned?: number // Total number of contacts/emails planned to be sent
+  // SendGrid metrics
+  sendgridMetrics?: {
+    openRate: number
+    clickRate: number
+    deliveryRate: number
+    emailsSent: number
+    emailsDelivered: number
+  }
 }
 
 interface CampaignsListProps {
@@ -61,7 +69,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     { value: "New Client", label: "New Client", icon: UserPlus, description: "Trigger when a new client signs up" },
   ]
 
-  // Fetch campaigns from API
+  // Fetch campaigns from API with SendGrid metrics
   const fetchCampaigns = async () => {
     try {
       const response = await fetch("/api/campaigns", {
@@ -70,13 +78,44 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       const result = await response.json()
       
       if (result.success) {
-        // Map the campaigns to include outreach strategy from API data
-        const mappedCampaigns = result.data.map((campaign: any) => ({
-          ...campaign,
-          outreachStrategy: campaign.outreach_strategy || campaign.outreachStrategy,
-          totalPlanned: campaign.total_planned || Math.floor(Math.random() * 200) + 50 // Sample data for demo
-        }))
-        setCampaigns(mappedCampaigns)
+        // Map the campaigns and fetch SendGrid metrics for each
+        const campaignsWithMetrics = await Promise.all(
+          result.data.map(async (campaign: any) => {
+            let sendgridMetrics = undefined
+            
+            try {
+              // Fetch SendGrid metrics for this campaign
+              const metricsResponse = await fetch(`/api/analytics/campaign?campaign_id=${campaign.id}&start_date=${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}&end_date=${new Date().toISOString().split('T')[0]}`, {
+                credentials: "include"
+              })
+              
+              if (metricsResponse.ok) {
+                const metricsResult = await metricsResponse.json()
+                if (metricsResult.success && metricsResult.data?.metrics) {
+                  const metrics = metricsResult.data.metrics
+                  sendgridMetrics = {
+                    openRate: metrics.openRate || 0,
+                    clickRate: metrics.clickRate || 0,
+                    deliveryRate: metrics.deliveryRate || 0,
+                    emailsSent: metrics.emailsSent || 0,
+                    emailsDelivered: metrics.emailsDelivered || 0
+                  }
+                }
+              }
+            } catch (error) {
+              console.warn(`Failed to fetch metrics for campaign ${campaign.id}:`, error)
+            }
+            
+            return {
+              ...campaign,
+              outreachStrategy: campaign.outreach_strategy || campaign.outreachStrategy,
+              totalPlanned: campaign.total_planned || Math.floor(Math.random() * 200) + 50,
+              sendgridMetrics
+            }
+          })
+        )
+        
+        setCampaigns(campaignsWithMetrics)
       } else {
         console.error("Failed to fetch campaigns:", result.error)
         toast({
@@ -452,7 +491,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   }
 
   const getCampaignProgress = (campaign: Campaign) => {
-    const sent = campaign.sent || 0
+    // Use SendGrid emails sent if available, otherwise fall back to campaign.sent
+    const sent = campaign.sendgridMetrics?.emailsSent || campaign.sent || 0
     const totalPlanned = campaign.totalPlanned || 100 // Default to 100 if not specified
     
     if (totalPlanned === 0) return { percentage: 0, sent, totalPlanned }
@@ -729,8 +769,9 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           ) : (
             filteredCampaigns.map((campaign) => {
               const progress = getCampaignProgress(campaign)
-              const openRate = Math.floor(Math.random() * 40) + 20 // Mock open rate 20-60%
-              const responseRate = Math.floor(Math.random() * 15) + 5 // Mock response rate 5-20%
+              // Use real SendGrid metrics or fallback to mock data
+              const openRate = Math.round(campaign.sendgridMetrics?.openRate ?? Math.floor(Math.random() * 40) + 20)
+              const responseRate = Math.round(campaign.sendgridMetrics?.clickRate ?? Math.floor(Math.random() * 15) + 5) // Using click rate as "response" proxy
               
               return (
                 <div

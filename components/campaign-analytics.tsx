@@ -10,6 +10,27 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+// Remove direct import of SendGrid service since it's server-side only
+// import { SendGridAnalyticsService, type SendGridMetrics } from "@/lib/sendgrid-analytics"
+
+// Define metrics interface locally
+interface SendGridMetrics {
+  emailsSent: number
+  emailsDelivered: number
+  emailsBounced: number
+  emailsBlocked: number
+  uniqueOpens: number
+  totalOpens: number
+  uniqueClicks: number
+  totalClicks: number
+  unsubscribes: number
+  spamReports: number
+  deliveryRate: number
+  bounceRate: number
+  openRate: number
+  clickRate: number
+  unsubscribeRate: number
+}
 
 interface Campaign {
   id: string | number
@@ -49,6 +70,65 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [selectedContacts, setSelectedContacts] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  
+  // SendGrid analytics state
+  const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
+  const [metricsLoading, setMetricsLoading] = useState(true)
+  const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
+    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+    end: new Date()
+  })
+
+  // Fetch SendGrid analytics metrics
+  const fetchMetrics = async () => {
+    if (!campaign?.id) return
+    
+    setMetricsLoading(true)
+    try {
+      // Build query parameters
+      const params = new URLSearchParams({
+        campaign_id: campaign.id.toString(),
+        start_date: dateRange.start.toISOString().split('T')[0],
+        end_date: dateRange.end.toISOString().split('T')[0]
+      })
+      
+      const response = await fetch(`/api/analytics/campaign?${params.toString()}`, {
+        credentials: 'include'
+      })
+      
+      if (!response.ok) {
+        console.warn("Failed to fetch campaign metrics:", response.statusText)
+        return
+      }
+      
+      const result = await response.json()
+      if (result.success && result.data?.metrics) {
+        setMetrics(result.data.metrics)
+      }
+    } catch (error) {
+      console.error('Error fetching SendGrid metrics:', error)
+      // Fall back to empty metrics
+      setMetrics({
+        emailsSent: 0,
+        emailsDelivered: 0,
+        emailsBounced: 0,
+        emailsBlocked: 0,
+        uniqueOpens: 0,
+        totalOpens: 0,
+        uniqueClicks: 0,
+        totalClicks: 0,
+        unsubscribes: 0,
+        spamReports: 0,
+        deliveryRate: 0,
+        bounceRate: 0,
+        openRate: 0,
+        clickRate: 0,
+        unsubscribeRate: 0,
+      })
+    } finally {
+      setMetricsLoading(false)
+    }
+  }
 
   // Fetch real contacts with sequence progress from database
   useEffect(() => {
@@ -139,77 +219,27 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
 
     if (campaign?.id) {
       fetchCampaignContacts()
+      fetchMetrics()
     }
   }, [campaign?.id, campaign.name])
+
+  // Fetch metrics when date range changes
+  useEffect(() => {
+    if (campaign?.id) {
+      fetchMetrics()
+    }
+  }, [dateRange])
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
     try {
-      const contactsParams = new URLSearchParams()
-      if (campaign?.id) contactsParams.append('campaign_id', campaign.id.toString())
-      contactsParams.append('limit', '50')
-      contactsParams.append('offset', '0')
-
-      const contactsResponse = await fetch(`/api/contacts?${contactsParams.toString()}`, {
-        credentials: "include"
-      })
-      
-      const contactsResult = await contactsResponse.json()
-
-      if (contactsResult.contacts && contactsResult.contacts.length > 0) {
-        let sequenceProgressMap: Record<string, any> = {}
-        contactsResult.contacts.forEach((contact: any) => {
-          const daysSinceCreated = Math.floor((Date.now() - new Date(contact.created_at).getTime()) / (1000 * 60 * 60 * 24))
-          
-          let status: Contact["status"]
-          if (daysSinceCreated === 0) {
-            status = "Pending"
-          } else if (daysSinceCreated <= 1) {
-            status = "Email 1"
-          } else if (daysSinceCreated <= 4) {
-            status = "Email 2" 
-          } else if (daysSinceCreated <= 7) {
-            status = "Email 3"
-          } else if (daysSinceCreated <= 11) {
-            status = "Email 4"
-          } else if (daysSinceCreated <= 15) {
-            status = "Email 5"
-          } else if (daysSinceCreated <= 20) {
-            status = "Email 6"
-          } else {
-            const finalStates = ["Completed", "Replied", "Unsubscribed", "Bounced"]
-            const weights = [0.4, 0.3, 0.2, 0.1]
-            const rand = Math.random()
-            if (rand < weights[0]) status = "Completed"
-            else if (rand < weights[0] + weights[1]) status = "Replied"
-            else if (rand < weights[0] + weights[1] + weights[2]) status = "Unsubscribed"
-            else status = "Bounced"
-          }
-          
-          sequenceProgressMap[contact.id] = status
-        })
-
-        const mappedContacts = contactsResult.contacts.map((contact: any) => ({
-          id: contact.id,
-          first_name: contact.first_name || '',
-          last_name: contact.last_name || '',
-          email: contact.email || contact.email_address || '',
-          title: contact.title || contact.job_title || '',
-          company: contact.company || contact.company_name || '',
-          location: contact.location || '',
-          industry: contact.industry || '',
-          linkedin: contact.linkedin || '',
-          image_url: contact.image_url || `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 99) + 1}.jpg`,
-          status: sequenceProgressMap[contact.id] || "Pending",
-          campaign_name: contact.campaign_name || campaign.name
-        }))
-        
-        setContacts(mappedContacts)
-      } else {
-        setContacts([])
-      }
+      // Refresh both contacts and metrics
+      await Promise.all([
+        fetchCampaignContacts(),
+        fetchMetrics()
+      ])
     } catch (error) {
-      console.error('Error refreshing contacts:', error)
+      console.error('Error refreshing data:', error)
     } finally {
       setIsRefreshing(false)
     }
@@ -227,12 +257,15 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     onStatusUpdate(campaign.id, "Completed")
   }
 
-  // Calculate metrics
-  const totalSent = campaign.sent || 0
-  const totalPlanned = campaign.totalPlanned || 100
-  const openRate = Math.floor(Math.random() * 40) + 20
-  const clickRate = Math.floor(Math.random() * 15) + 5
-  const responseRate = Math.floor(Math.random() * 10) + 5
+  // Calculate metrics from SendGrid data or fallback
+  const totalSent = metrics?.emailsSent || campaign.sent || 0
+  const totalDelivered = metrics?.emailsDelivered || 0
+  const totalPlanned = campaign.totalPlanned || Math.max(totalSent, 100)
+  const openRate = metrics?.openRate || 0
+  const clickRate = metrics?.clickRate || 0
+  const deliveryRate = metrics?.deliveryRate || 0
+  const bounceRate = metrics?.bounceRate || 0
+  const responseRate = Math.floor(Math.random() * 10) + 5 // Keep this as fallback until we have reply tracking
   const progressPercentage = Math.min(Math.round((totalSent / totalPlanned) * 100), 100)
 
   const getCampaignStatusBadgeColor = (status: Campaign["status"]) => {
@@ -344,6 +377,22 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 Refresh
               </Button>
               
+              <select 
+                value={`${dateRange.start.toISOString().split('T')[0]}_${dateRange.end.toISOString().split('T')[0]}`}
+                onChange={(e) => {
+                  const [startStr, endStr] = e.target.value.split('_')
+                  setDateRange({
+                    start: new Date(startStr),
+                    end: new Date(endStr)
+                  })
+                }}
+                className="border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-2.5 font-medium transition-all duration-300 rounded-2xl border"
+              >
+                <option value={`${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>Last 7 days</option>
+                <option value={`${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>Last 30 days</option>
+                <option value={`${new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>Last 90 days</option>
+              </select>
+              
               {campaign.status === "Active" ? (
                 <Button
                   variant="outline"
@@ -391,7 +440,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 </div>
               </div>
               <div className="flex items-end justify-between">
-                <p className="text-3xl font-light text-gray-900">{totalSent.toLocaleString()}</p>
+                {metricsLoading ? (
+                  <div className="text-3xl font-light text-gray-400">...</div>
+                ) : (
+                  <p className="text-3xl font-light text-gray-900">{totalSent.toLocaleString()}</p>
+                )}
                 <span className="text-sm text-gray-400 font-medium">
                   {Math.round((totalSent / totalPlanned) * 100)}%
                 </span>
@@ -411,9 +464,13 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 </div>
               </div>
               <div className="flex items-end justify-between">
-                <p className="text-3xl font-light text-gray-900">{openRate}%</p>
+                {metricsLoading ? (
+                  <div className="text-3xl font-light text-gray-400">...</div>
+                ) : (
+                  <p className="text-3xl font-light text-gray-900">{openRate.toFixed(1)}%</p>
+                )}
                 <span className="text-sm text-gray-400 font-medium">
-                  +2.3%
+                  {metrics?.uniqueOpens ? `${metrics.uniqueOpens} unique` : 'No data'}
                 </span>
               </div>
             </CardContent>
@@ -431,9 +488,13 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 </div>
               </div>
               <div className="flex items-end justify-between">
-                <p className="text-3xl font-light text-gray-900">{clickRate}%</p>
+                {metricsLoading ? (
+                  <div className="text-3xl font-light text-gray-400">...</div>
+                ) : (
+                  <p className="text-3xl font-light text-gray-900">{clickRate.toFixed(1)}%</p>
+                )}
                 <span className="text-sm text-gray-400 font-medium">
-                  +1.8%
+                  {metrics?.uniqueClicks ? `${metrics.uniqueClicks} unique` : 'No data'}
                 </span>
               </div>
             </CardContent>
@@ -442,18 +503,22 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4 mb-6">
-                <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center">
-                  <Activity className="w-6 h-6 text-orange-600" />
+                <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center">
+                  <Target className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">Response Rate</h3>
-                  <p className="text-gray-500 text-sm">Conversation rate</p>
+                  <h3 className="text-lg font-medium text-gray-900">Delivery Rate</h3>
+                  <p className="text-gray-500 text-sm">Successfully delivered</p>
                 </div>
               </div>
               <div className="flex items-end justify-between">
-                <p className="text-3xl font-light text-gray-900">{responseRate}%</p>
+                {metricsLoading ? (
+                  <div className="text-3xl font-light text-gray-400">...</div>
+                ) : (
+                  <p className="text-3xl font-light text-gray-900">{deliveryRate.toFixed(1)}%</p>
+                )}
                 <span className="text-sm text-gray-400 font-medium">
-                  +0.5%
+                  {metrics?.emailsBounced ? `${metrics.emailsBounced} bounced` : 'No bounces'}
                 </span>
               </div>
             </CardContent>

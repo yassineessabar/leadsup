@@ -32,6 +32,27 @@ import {
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell } from 'recharts'
+// Remove direct import of SendGrid service since it's server-side only
+// import { SendGridAnalyticsService, type SendGridMetrics } from "@/lib/sendgrid-analytics"
+
+// Define metrics interface locally
+interface SendGridMetrics {
+  emailsSent: number
+  emailsDelivered: number
+  emailsBounced: number
+  emailsBlocked: number
+  uniqueOpens: number
+  totalOpens: number
+  uniqueClicks: number
+  totalClicks: number
+  unsubscribes: number
+  spamReports: number
+  deliveryRate: number
+  bounceRate: number
+  openRate: number
+  clickRate: number
+  unsubscribeRate: number
+}
 
 export function ComprehensiveDashboard() {
   const [stats, setStats] = useState({
@@ -48,13 +69,48 @@ export function ComprehensiveDashboard() {
   })
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   
+  // SendGrid metrics state
+  const [sendGridMetrics, setSendGridMetrics] = useState<SendGridMetrics | null>(null)
+  const [metricsLoading, setMetricsLoading] = useState(true)
+  
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
   useEffect(() => {
     fetchDashboardStats()
+    fetchSendGridMetrics()
   }, [])
+
+  const fetchSendGridMetrics = async () => {
+    try {
+      setMetricsLoading(true)
+      
+      // Build query parameters for last 30 days
+      const params = new URLSearchParams({
+        start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        end_date: new Date().toISOString().split('T')[0]
+      })
+      
+      const response = await fetch(`/api/analytics/user?${params.toString()}`, {
+        credentials: 'include'
+      })
+      
+      if (!response.ok) {
+        console.warn("Failed to fetch user metrics:", response.statusText)
+        return
+      }
+      
+      const result = await response.json()
+      if (result.success && result.data?.metrics) {
+        setSendGridMetrics(result.data.metrics)
+      }
+    } catch (error) {
+      console.error('Error fetching SendGrid metrics:', error)
+    } finally {
+      setMetricsLoading(false)
+    }
+  }
 
   const fetchDashboardStats = async () => {
     try {
@@ -157,12 +213,12 @@ export function ComprehensiveDashboard() {
     { name: 'Referrals', value: 10, color: '#e5e7eb' }
   ]
 
-  // Performance metrics
+  // Performance metrics with real SendGrid data
   const performanceMetrics = [
     { 
       title: 'Open Rate', 
-      value: '24.8%', 
-      change: '+3.2%', 
+      value: metricsLoading ? '...' : `${(sendGridMetrics?.openRate || 0).toFixed(1)}%`, 
+      change: sendGridMetrics?.uniqueOpens ? `${sendGridMetrics.uniqueOpens} unique` : 'No data', 
       trend: 'up',
       icon: Eye,
       color: 'blue',
@@ -171,8 +227,8 @@ export function ComprehensiveDashboard() {
     },
     { 
       title: 'Click Rate', 
-      value: '6.4%', 
-      change: '+1.1%', 
+      value: metricsLoading ? '...' : `${(sendGridMetrics?.clickRate || 0).toFixed(1)}%`, 
+      change: sendGridMetrics?.uniqueClicks ? `${sendGridMetrics.uniqueClicks} unique` : 'No data', 
       trend: 'up',
       icon: MousePointer,
       color: 'emerald',
@@ -180,21 +236,21 @@ export function ComprehensiveDashboard() {
       iconColor: 'text-emerald-600'
     },
     { 
-      title: 'Response Rate', 
-      value: '12.1%', 
-      change: '-0.5%', 
-      trend: 'down',
-      icon: Activity,
+      title: 'Delivery Rate', 
+      value: metricsLoading ? '...' : `${(sendGridMetrics?.deliveryRate || 0).toFixed(1)}%`, 
+      change: sendGridMetrics?.emailsBounced ? `${sendGridMetrics.emailsBounced} bounced` : 'No bounces', 
+      trend: sendGridMetrics && sendGridMetrics.deliveryRate > 95 ? 'up' : 'down',
+      icon: Target,
       color: 'orange',
       bgColor: 'bg-orange-50',
       iconColor: 'text-orange-600'
     },
     { 
-      title: 'Conversion Rate', 
-      value: '2.8%', 
-      change: '+0.8%', 
+      title: 'Emails Sent', 
+      value: metricsLoading ? '...' : `${(sendGridMetrics?.emailsSent || 0).toLocaleString()}`, 
+      change: sendGridMetrics?.emailsDelivered ? `${sendGridMetrics.emailsDelivered} delivered` : 'No data', 
       trend: 'up',
-      icon: Target,
+      icon: Mail,
       color: 'violet',
       bgColor: 'bg-violet-50',
       iconColor: 'text-violet-600'
