@@ -60,7 +60,7 @@ export async function GET(
     // Fetch only essential campaign data for quick loading
     const { data: campaign, error: campaignError } = await supabaseServer
       .from("campaigns")
-      .select("id, name, type, trigger_type, status, created_at, updated_at, scraping_status, form_data")
+      .select("id, name, type, trigger_type, status, created_at, updated_at, form_data")
       .eq("id", campaignId)
       .eq("user_id", userId)
       .single()
@@ -96,8 +96,8 @@ export async function GET(
         senders: senderCount || 0,
         contacts: contactCount || 0
       },
-      // Include form data for scraping tab if available
-      scrapingData: campaign.form_data ? {
+      // Include form data for target tab if available
+      targetData: campaign.form_data ? {
         industry: campaign.form_data.industry || '',
         keywords: campaign.form_data.keywords || [],
         locations: campaign.form_data.locations || [],

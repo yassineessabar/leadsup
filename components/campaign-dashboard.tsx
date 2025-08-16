@@ -55,15 +55,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [hasSettingsSaved, setHasSettingsSaved] = useState(false)
   const [hasSequenceSaved, setHasSequenceSaved] = useState(false)
   
-  // Dummy scraping state variables (not used but prevent undefined errors)
-  const [scrappingIndustry, setScrappingIndustry] = useState("")
-  const [scrappingKeywords, setScrappingKeywords] = useState<string[]>([])
-  const [scrappingLocations, setScrappingLocations] = useState<string[]>([])
-  const [scrappingDailyLimit, setScrappingDailyLimit] = useState(100)
-  const scrapingStatus = 'idle'
-  const scrapingProgress = { totalContacts: 0 }
-  const refetchScrapingStatus = () => {}
-  
   
   // Delete confirmation state
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -185,6 +176,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   })
   const [importLoading, setImportLoading] = useState(false)
 
+  // Target tab dummy state for backwards compatibility
+  const targetStatus = 'idle'
+  const targetProgress = { totalContacts: 0 }
+
   // Gmail OAuth state
   const [gmailAuthLoading, setGmailAuthLoading] = useState(false)
   const [connectedEmailAccounts, setConnectedEmailAccounts] = useState([])
@@ -267,7 +262,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [locationFilter, setLocationFilter] = useState("")
   const [keywordFilter, setKeywordFilter] = useState("")
   const [industryFilter, setIndustryFilter] = useState("")
-
 
   const pageSize = 20
 
@@ -589,7 +583,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     setSteps(steps.map((step) => (step.id === stepId ? { ...step, timing } : step)))
   }
 
-
   // Comprehensive campaign save function
   const saveCampaignData = async (dataType = 'all') => {
     if (!campaign?.id) return
@@ -736,13 +729,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           console.log('📊 Campaign counts loaded:', data.counts)
         }
         
-        // Load scraping data if available
-        if (data.scrapingData) {
-          setScrappingIndustry(data.scrapingData.industry || '')
-          setScrappingKeywords(data.scrapingData.keywords || [])
-          setScrappingLocations(data.scrapingData.locations || [])
-          setScrappingDailyLimit(data.scrapingData.daily_contacts_limit || 50)
-        }
+        // Campaign data loaded successfully
         
         setCampaignDataLoaded(true)
         
@@ -886,121 +873,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     window.addEventListener('create-campaign', handleCreateCampaign)
     return () => window.removeEventListener('create-campaign', handleCreateCampaign)
   }, [])
-
-    if (!campaign?.id) {
-      console.log('⚠️ No campaign ID available for scrapping population')
-      return
-    }
-    
-    // Check if data is already loaded from quick API
-    if (scrappingIndustry || scrappingKeywords.length > 0 || scrappingLocations.length > 0) {
-      console.log('✅ Scrapping fields already populated from quick API')
-      return
-    }
-    
-    console.log('🔍 Fetching campaign data for Contact Scrapping fields...')
-    
-    try {
-      // Try the quick endpoint first for faster loading
-      let url = `/api/campaigns/${campaign.id}/quick`
-      console.log('🔍 Fetching from URL:', url)
-      
-      let response = await fetch(url, {
-        credentials: "include"
-      })
-      
-      // If quick endpoint fails, fallback to regular endpoint
-      if (!response.ok) {
-        console.log('Quick endpoint not available, trying regular endpoint')
-        url = `/api/campaigns/${campaign.id}/save`
-        response = await fetch(url, {
-          credentials: "include"
-        })
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`)
-        }
-      }
-      
-      const result = await response.json()
-      
-      console.log('📨 API Response for campaign data:', {
-        success: result.success,
-        hasScrapingData: !!result.data?.scrapingData,
-        hasCampaignData: !!result.data?.campaign,
-        cached: result.cached
-      })
-      
-      if (result.success && result.data) {
-        // Check if it's from quick API (has scrapingData) or regular API (has campaign)
-        if (result.data.scrapingData) {
-          // Quick API response structure
-          const scrapingData = result.data.scrapingData
-          
-          if (scrapingData.industry) {
-            setScrappingIndustry(scrapingData.industry)
-            console.log('✅ Set scrapping industry:', scrapingData.industry)
-          }
-          if (scrapingData.locations) {
-            setScrappingLocations(scrapingData.locations)
-            console.log('✅ Set scrapping locations:', scrapingData.locations)
-          }
-          if (scrapingData.keywords) {
-            setScrappingKeywords(scrapingData.keywords)
-            console.log('✅ Set scrapping keywords:', scrapingData.keywords)
-          }
-          if (scrapingData.daily_contacts_limit) {
-            setScrappingDailyLimit(scrapingData.daily_contacts_limit)
-            console.log('✅ Set scrapping daily limit:', scrapingData.daily_contacts_limit)
-          }
-        } else if (result.data.campaign) {
-          // Regular API response structure (fallback)
-          const campaignData = result.data.campaign
-          
-          if (campaignData.industry) {
-            setScrappingIndustry(campaignData.industry)
-            console.log('✅ Set scrapping industry:', campaignData.industry)
-          }
-          if (campaignData.location || campaignData.locations) {
-            const locations = campaignData.locations || campaignData.location || []
-            const locationArray = Array.isArray(locations) ? locations : locations.split(',').map((l: string) => l.trim()).filter((l: string) => l)
-            setScrappingLocations(locationArray)
-            console.log('✅ Set scrapping locations:', locationArray)
-          }
-          if (campaignData.keywords) {
-            const keywords = campaignData.keywords || []
-            const keywordArray = Array.isArray(keywords) ? keywords : keywords.split(',').map((k: string) => k.trim()).filter((k: string) => k)
-            setScrappingKeywords(keywordArray)
-            console.log('✅ Set scrapping keywords:', keywordArray)
-          }
-        }
-        
-        console.log('✅ Contact Scrapping fields populated from campaign data')
-      } else {
-        console.log('❌ Failed to get campaign data from API response')
-      }
-    } catch (error) {
-      console.error('❌ Error fetching campaign data for scrapping fields:', error)
-      console.error('❌ Error details:', {
-        message: error.message,
-        type: error.constructor.name,
-        campaignId: campaign?.id
-      })
-      
-      // Don't let this error break the UI - just log it
-      if (error.message?.includes('Failed to fetch')) {
-        console.log('💡 This might be a network issue or the server might be down')
-      }
-    }
-  }
-
-  // Load tab-specific data when tab becomes active - LAZY LOADING
-  useEffect(() => {
-    if (activeTab === 'target' && campaign?.id) {
-      // Load contacts data if not already loaded
-      populateScrapingFromCampaignData()
-    }
-  }, [activeTab, campaign?.id])
 
   // Auto-save functionality (only after data is loaded)
   useEffect(() => {
@@ -1654,14 +1526,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       if (result.success) {
         setShowAdvancedPopup(false)
         
-        // Pre-fill Contact Scrapping fields with campaign data
-        setScrappingIndustry(campaignData.formData.industry || '')
+        // Pre-fill target fields with campaign data
         const locations = campaignData.formData.locations || campaignData.formData.location || []
         const locationArray = Array.isArray(locations) ? locations : locations.split(',').map((l: string) => l.trim()).filter((l: string) => l)
-        setScrappingLocations(locationArray)
         const keywords = campaignData.formData.keywords || []
         const keywordArray = Array.isArray(keywords) ? keywords : keywords.split(',').map((k: string) => k.trim()).filter((k: string) => k)
-        setScrappingKeywords(keywordArray)
         
         // Populate email sequences with AI-generated content
         if (campaignData.aiAssets && campaignData.aiAssets.email_sequences) {
@@ -1833,149 +1702,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }
 
-  // Scrapping functions
-  const handleStartScrapping = async (mode: 'full' | 'profiles-only' | 'combined' = 'full') => {
-    // Validate all fields are filled
-    if (!scrappingIndustry || scrappingKeywords.length === 0 || scrappingLocations.length === 0) {
-      return
-    }
-
-    if (!campaign?.id) {
-      return
-    }
-
-    console.log('Starting scraping...')
-    
-    // Set immediate local loading state and clear stopped flag
-    setIsStartingScrapingLocal(true)
-    setIsStoppedLocally(false)
-    
-    try {
-      const response = await fetch(`/api/campaigns/${campaign.id}/scraping`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          mode,
-          keywords: scrappingKeywords,
-          locations: scrappingLocations, 
-          industry: scrappingIndustry,
-          dailyLimit: scrappingDailyLimit
-        })
-      })
-
-      const result = await response.json()
-      
-      if (response.ok) {
-        console.log('Scraping started successfully')
-        
-        // Clear any existing interval
-        if (window.scrapingPollInterval) {
-          clearInterval(window.scrapingPollInterval)
-        }
-        
-        // Start polling for status updates more frequently during active scraping
-        const pollInterval = setInterval(() => {
-          console.log('Polling for scraping status...')
-          refetchScrapingStatus()
-        }, 2000) // Poll every 2 seconds
-        
-        window.scrapingPollInterval = pollInterval
-        
-        // Initial status check after 1 second
-        setTimeout(() => refetchScrapingStatus(), 1000)
-      } else {
-        throw new Error(result.error || 'Failed to start scraping')
-      }
-    } catch (error) {
-      console.error('Error starting scraping:', error)
-      // Clear local loading state on error
-      setIsStartingScrapingLocal(false)
-    }
-  }
-
-  const handleStopScrapping = async () => {
-    if (!campaign?.id) return
-
-    // Immediately override all active states to show start button
-    setIsStartingScrapingLocal(false)
-    setIsStoppedLocally(true)
-    
-    // Clear polling interval immediately
-    if (window.scrapingPollInterval) {
-      clearInterval(window.scrapingPollInterval)
-      window.scrapingPollInterval = null
-    }
-
-    try {
-      const response = await fetch(`/api/campaigns/${campaign.id}/scraping`, {
-        method: 'DELETE',
-        credentials: 'include'
-      })
-
-      if (response.ok) {
-        // Fetch status to confirm it's stopped
-        setTimeout(() => refetchScrapingStatus(), 500)
-      }
-    } catch (error) {
-      console.error('Error stopping scraping:', error)
-      // Even if API call fails, we've cleared the local state
-    }
-  }
-
-  // Monitor scraping status changes and manage polling
-  useEffect(() => {
-    console.log('Scraping status changed to:', scrapingStatus)
-    
-    if (scrapingStatus === 'running') {
-      console.log('Scraping is running, starting polling')
-      
-      // Clear local loading state since database status is now running
-      setIsStartingScrapingLocal(false)
-      
-      // Ensure polling is active during running state
-      if (!window.scrapingPollInterval) {
-        const pollInterval = setInterval(() => {
-          console.log('Polling for scraping status...')
-          refetchScrapingStatus()
-        }, 2000)
-        window.scrapingPollInterval = pollInterval
-      }
-    } else if (scrapingStatus === 'completed') {
-      console.log('Scraping completed')
-      // Clear all local states
-      setIsStartingScrapingLocal(false)
-      setIsStoppedLocally(false)
-      fetchContacts() // Refresh contacts list
-      // Clear polling interval when scraping is completed
-      if (window.scrapingPollInterval) {
-        clearInterval(window.scrapingPollInterval)
-        window.scrapingPollInterval = null
-      }
-    } else if (scrapingStatus === 'failed' || scrapingStatus === 'idle') {
-      console.log('Scraping failed or idle')
-      // Clear all local states
-      setIsStartingScrapingLocal(false)
-      setIsStoppedLocally(false)
-      // Clear polling interval when scraping fails or is idle
-      if (window.scrapingPollInterval) {
-        clearInterval(window.scrapingPollInterval)
-        window.scrapingPollInterval = null
-      }
-    }
-  }, [scrapingStatus])
-
-  // Refresh contacts when scraping progress changes (new contacts are being added)
-  useEffect(() => {
-    if (activeTab === 'target' && scrapingStatus === 'running' && scrapingProgress.totalContacts > 0) {
-      // Refresh contacts when new contacts are being added during scraping
-      fetchContacts()
-    }
-  }, [scrapingProgress.totalContacts, activeTab])
-
-
   // Open test modal
   const testGmailConnection = (accountId) => {
     const account = connectedEmailAccounts.find(acc => acc.id === accountId)
@@ -2127,7 +1853,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           industry: contact.industry,
           image_url: contact.image_url,
           campaign_name: contact.campaign_name,
-          status: 'Valid' // Default status since contacts from scraping are valid
+          status: 'Valid' // Default status for imported contacts
         }))
         
         setContacts(mappedContacts)
@@ -2190,7 +1916,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       await Promise.all(updatePromises)
 
-
       setSelectedContacts([])
       fetchContacts()
     } catch (error) {
@@ -2227,7 +1952,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       await Promise.all(deletePromises)
 
-
       setSelectedContacts([])
       fetchContacts()
     } catch (error) {
@@ -2254,7 +1978,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       )
 
       await Promise.all(deletePromises)
-
 
       // Clear selection if we were deleting selected contacts
       if (!contactIds) {
@@ -2422,7 +2145,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     
   }
 
-
   // Load connected accounts ONLY when sender tab is active - LAZY LOADING
   useEffect(() => {
     if (activeTab === 'senders') {
@@ -2451,7 +2173,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }, 500)
     return () => clearTimeout(timer)
   }, [searchQuery])
-
 
   // Combine all connected accounts for sender tab
   const allConnectedAccounts = [
@@ -3518,7 +3239,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
           </div>
         );
-
 
       default:
         return null;
