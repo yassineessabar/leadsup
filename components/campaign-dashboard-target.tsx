@@ -63,10 +63,18 @@ export function TargetTab({
           setScrappingLocation(campaign.location)
         }
         
+        // Set scraping status based on database value
+        if (campaign.scrapping_status === 'Active') {
+          setScrapingStatus('running')
+        } else {
+          setScrapingStatus('idle')
+        }
+        
         console.log('✅ Loaded scraping configuration:', {
           industry: campaign.industry,
           keywords: campaign.keywords,
-          location: campaign.location
+          location: campaign.location,
+          scrapping_status: campaign.scrapping_status
         })
       }
     } catch (error) {
@@ -103,7 +111,8 @@ export function TargetTab({
         industry: scrappingIndustry,
         keywords: scrappingKeywords,
         location: scrappingLocation,
-        dailyLimit: scrappingDailyLimit
+        dailyLimit: scrappingDailyLimit,
+        scrappingStatus: 'Active' // Set status to Active when starting scraping
       }
 
       const response = await fetch(`/api/campaigns/${campaignId}/save`, {
@@ -136,9 +145,42 @@ export function TargetTab({
     }
   }
 
-  const handlePauseScraping = () => {
-    setScrapingStatus('idle')
-    toast.success("Scraping paused. Click 'Resume Scraping' to continue.")
+  const handlePauseScraping = async () => {
+    try {
+      const scrapingData = {
+        industry: scrappingIndustry,
+        keywords: scrappingKeywords,
+        location: scrappingLocation,
+        dailyLimit: scrappingDailyLimit,
+        scrappingStatus: 'Inactive' // Set status to Inactive when pausing
+      }
+
+      const response = await fetch(`/api/campaigns/${campaignId}/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          campaignData: {
+            scrapingConfig: scrapingData
+          },
+          saveType: 'scraping'
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        setScrapingStatus('idle')
+        toast.success("Scraping paused. Click 'Start Scraping' to continue.")
+      } else {
+        throw new Error(result.error || 'Failed to pause scraping')
+      }
+    } catch (error) {
+      console.error('Error pausing scraping:', error)
+      toast.error('Failed to pause scraping')
+    }
   }
 
   const handleStopScraping = () => {

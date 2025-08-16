@@ -693,6 +693,7 @@ async function saveScrapingConfig(campaignId: string, scrapingConfig: any) {
     industry: scrapingConfig.industry || '',
     keywords: scrapingConfig.keywords || [],
     location: scrapingConfig.location || '',
+    scrapping_status: scrapingConfig.scrappingStatus || 'Active', // Set to Active when scraping is started
     updated_at: new Date().toISOString()
   }
 
