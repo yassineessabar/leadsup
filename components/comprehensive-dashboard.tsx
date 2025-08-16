@@ -57,14 +57,14 @@ interface SendGridMetrics {
 export function ComprehensiveDashboard() {
   const [stats, setStats] = useState({
     totalLeads: 0,
-    validLeads: 0,
+    contactedLeads: 0,
     activeCampaigns: 0,
     recentCampaigns: []
   })
   const [isLoading, setIsLoading] = useState(true)
   const [animatedStats, setAnimatedStats] = useState({
     totalLeads: 0,
-    validLeads: 0,
+    contactedLeads: 0,
     activeCampaigns: 0
   })
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
@@ -153,7 +153,7 @@ export function ComprehensiveDashboard() {
 
       const newStats = {
         totalLeads: result.data.totalLeads,
-        validLeads: result.data.validLeads,
+        contactedLeads: result.data.contactedLeads,
         activeCampaigns: result.data.activeCampaigns,
         recentCampaigns: recentCampaigns
       }
@@ -185,7 +185,7 @@ export function ComprehensiveDashboard() {
 
       setAnimatedStats({
         totalLeads: Math.floor(targetStats.totalLeads * easeOutQuart),
-        validLeads: Math.floor(targetStats.validLeads * easeOutQuart),
+        contactedLeads: Math.floor(targetStats.contactedLeads * easeOutQuart),
         activeCampaigns: Math.floor(targetStats.activeCampaigns * easeOutQuart)
       })
 
@@ -193,7 +193,7 @@ export function ComprehensiveDashboard() {
         clearInterval(interval)
         setAnimatedStats({
           totalLeads: targetStats.totalLeads,
-          validLeads: targetStats.validLeads,
+          contactedLeads: targetStats.contactedLeads,
           activeCampaigns: targetStats.activeCampaigns
         })
       }
@@ -332,16 +332,16 @@ export function ComprehensiveDashboard() {
               </CardContent>
             </Card>
 
-            {/* Valid Leads Card */}
+            {/* Contacted Leads Card */}
             <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4 mb-6">
                   <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
-                    <Shield className="w-6 h-6 text-emerald-600" />
+                    <Mail className="w-6 h-6 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">Valid Leads</h3>
-                    <p className="text-gray-500 text-sm">Verification rate</p>
+                    <h3 className="text-lg font-medium text-gray-900">Contacted Leads</h3>
+                    <p className="text-gray-500 text-sm">Outreach activity</p>
                   </div>
                 </div>
                 <div className="flex items-end justify-between">
@@ -349,7 +349,7 @@ export function ComprehensiveDashboard() {
                     {isLoading ? (
                       <span className="text-gray-400">...</span>
                     ) : (
-                      animatedStats.validLeads
+                      animatedStats.contactedLeads
                     )}
                   </p>
                   <span className="text-sm text-gray-400 font-medium">

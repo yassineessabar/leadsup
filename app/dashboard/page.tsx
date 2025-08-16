@@ -28,7 +28,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalLeads: 0,
-    validLeads: 0,
+    contactedLeads: 0,
     activeCampaigns: 0,
     recentCampaigns: []
   })
@@ -65,7 +65,7 @@ export default function DashboardPage() {
 
       setStats({
         totalLeads: result.data.totalLeads,
-        validLeads: result.data.validLeads,
+        contactedLeads: result.data.contactedLeads,
         activeCampaigns: result.data.activeCampaigns,
         recentCampaigns: recentCampaigns
       })
@@ -146,14 +146,14 @@ export default function DashboardPage() {
           <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full opacity-5 transform translate-x-16 -translate-y-16"></div>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardDescription className="text-sm font-medium text-slate-600">Valid Leads</CardDescription>
+              <CardDescription className="text-sm font-medium text-slate-600">Contacted Leads</CardDescription>
               <div className="p-2 rounded-xl bg-emerald-50">
-                <Shield className="w-4 h-4 text-emerald-700" />
+                <Mail className="w-4 h-4 text-emerald-700" />
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <p className="text-2xl md:text-3xl font-bold text-slate-900">{stats.validLeads}</p>
+                <p className="text-2xl md:text-3xl font-bold text-slate-900">{stats.contactedLeads}</p>
                 <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-none">
                   <ArrowUp className="w-3 h-3 mr-1" />
                   +2.1%

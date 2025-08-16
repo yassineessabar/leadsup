@@ -58,12 +58,13 @@ export async function GET() {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
 
-    // Fetch valid leads (contacts with valid email status - not Unknown/empty/null)
-    const { count: validLeads } = await supabaseServer
+    // Fetch contacted leads (contacts that have been reached out to in campaigns)
+    const { count: contactedLeads } = await supabaseServer
       .from('contacts')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .not('email_status', 'in', '("Unknown","",null)')
+      .not('email_status', 'in', '("Unknown","Pending","Ready","")') // Exclude non-contacted statuses
+      .not('email_status', 'is', null)
 
     // Fetch active campaigns (status = 'Active')
     const { count: activeCampaigns } = await supabaseServer
@@ -72,8 +73,8 @@ export async function GET() {
       .eq('user_id', userId)
       .eq('status', 'Active')
 
-    // Calculate verification rate (percentage of valid leads)
-    const verificationRate = allTimeLeads > 0 ? ((validLeads / allTimeLeads) * 100).toFixed(1) : '0'
+    // Calculate contact rate (percentage of leads that have been contacted)
+    const contactRate = allTimeLeads > 0 ? ((contactedLeads / allTimeLeads) * 100).toFixed(1) : '0'
 
     // Calculate growth rate (simplified - would need historical data for accurate calculation)
     const growthRate = '+12.5%' // Placeholder - would need historical comparison
@@ -82,9 +83,9 @@ export async function GET() {
       success: true,
       data: {
         totalLeads: totalLeads || 0,
-        validLeads: validLeads || 0,
+        contactedLeads: contactedLeads || 0,
         activeCampaigns: activeCampaigns || 0,
-        verificationRate: `${verificationRate}%`,
+        contactRate: `${contactRate}%`,
         growthRate: growthRate,
         period: 'Last 30 days',
         allTimeLeads: allTimeLeads || 0
