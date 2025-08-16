@@ -565,9 +565,20 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       return { percentage: 0, sent: 0, totalPlanned: campaign.totalPlanned || 0 }
     }
     
-    // Use SendGrid emails sent if available, otherwise fall back to campaign.sent
-    const sent = campaign.sendgridMetrics?.emailsSent || campaign.sent || 0
-    const totalPlanned = campaign.totalPlanned || 100 // Default to 100 if not specified
+    // ULTRA STRICT: Only show data if campaign has contacts AND has started AND metrics match contacts
+    // Check if campaign has any actual contacts uploaded
+    const hasContacts = campaign.totalPlanned && campaign.totalPlanned > 0
+    
+    // Check if campaign has REAL metrics that match actual campaign activity
+    const hasRealCampaignData = campaign.sendgridMetrics && 
+      campaign.sendgridMetrics.emailsSent > 0 && 
+      hasContacts && // Must have contacts to have real activity
+      campaign.sent && campaign.sent > 0 && 
+      campaign.sent === campaign.sendgridMetrics.emailsSent
+    
+    // STRICT: Only show sent emails if campaign has contacts and real metrics
+    const sent = hasRealCampaignData ? campaign.sendgridMetrics.emailsSent : 0
+    const totalPlanned = hasContacts ? campaign.totalPlanned : 0
     
     if (totalPlanned === 0) return { percentage: 0, sent, totalPlanned }
     
@@ -847,12 +858,15 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               // Only show real metrics for campaigns that have been started AND have real campaign data
               const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused'
               
-              // Check if this campaign has REAL metrics (not global account fallback data)
-              // Only show metrics if this specific campaign has actually sent emails
+              // ULTRA STRICT: Only show metrics if campaign has contacts AND real activity
+              const hasContacts = campaign.totalPlanned && campaign.totalPlanned > 0
+              
+              // Check if this campaign has REAL metrics (not fake injected data)
               const hasRealCampaignData = campaign.sendgridMetrics && 
                 campaign.sendgridMetrics.emailsSent > 0 && 
-                // Ensure it's not just global account data
-                (campaign.sent === campaign.sendgridMetrics.emailsSent || campaign.sent === null)
+                hasContacts && // Must have contacts to have real activity
+                campaign.sent && campaign.sent > 0 && 
+                campaign.sent === campaign.sendgridMetrics.emailsSent
               
               // Use real SendGrid metrics only if campaign has actual activity
               const openRate = hasBeenStarted && hasRealCampaignData 

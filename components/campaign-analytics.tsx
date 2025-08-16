@@ -260,12 +260,15 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Check if campaign has been started
   const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused'
   
-  // Check if campaign has REAL metrics (not just global SendGrid fallback data)
-  // Only show SendGrid data if this campaign has actually sent emails
-  const hasRealCampaignData = metrics && metrics.emailsSent > 0 && (
-    // STRICT: Campaign must have sent count that matches the metrics, AND it must be > 0
-    campaign.sent && campaign.sent > 0 && campaign.sent === metrics.emailsSent
-  )
+  // ULTRA STRICT: Only show metrics if campaign has contacts AND real activity
+  // Check if campaign has any actual contacts uploaded
+  const hasContacts = campaign.totalPlanned && campaign.totalPlanned > 0
+  
+  // Check if campaign has REAL metrics (not fake injected data)
+  const hasRealCampaignData = metrics && metrics.emailsSent > 0 && 
+    hasContacts && // Must have contacts to have real activity
+    campaign.sent && campaign.sent > 0 && 
+    campaign.sent === metrics.emailsSent
   
   
   // Calculate metrics - only show real data for campaigns with actual activity
