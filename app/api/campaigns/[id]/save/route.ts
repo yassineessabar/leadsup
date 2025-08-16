@@ -135,6 +135,10 @@ export async function POST(
       await saveSenderAccounts(campaignId, campaignData.senderAccounts)
     }
 
+    if (saveType === 'all' || saveType === 'scraping') {
+      await saveScrapingConfig(campaignId, campaignData.scrapingConfig)
+    }
+
     if (saveType === 'all') {
       // Save basic campaign info
       await saveCampaignBasics(campaignId, campaignData)
@@ -252,24 +256,209 @@ async function saveSettings(campaignId: string, settings: any) {
 
 // Helper function to save sender accounts (now stores account IDs as selected senders)
 async function saveSenderAccounts(campaignId: string, senderAccounts: string[]) {
-  if (!senderAccounts) return
+  if (!senderAccounts) {
+    console.log('⚠️ saveSenderAccounts called with null/undefined senderAccounts')
+    return
+  }
 
-  // Update all accounts for this campaign to mark them as not selected
-  await supabaseServer
+  console.log(`💾 saveSenderAccounts called for campaign ${campaignId}`)
+  console.log(`📋 senderAccounts parameter:`, senderAccounts)
+
+  // First check what's currently in the campaign_senders table
+  const { data: existingSenders, error: checkError } = await supabaseServer
     .from("campaign_senders")
-    .update({ is_selected: false })
+    .select("*")
     .eq("campaign_id", campaignId)
+  
+  console.log('🔍 Current campaign_senders data:', existingSenders)
+  if (checkError) {
+    console.error('❌ Error checking existing senders:', checkError)
+  }
 
-  if (senderAccounts.length > 0) {
-    // Mark selected accounts as selected
-    const { error: updateError } = await supabaseServer
+  // If no existing records, we need to create them first
+  if (!existingSenders || existingSenders.length === 0) {
+    console.log('🔄 No existing records found - need to create campaign_senders records first')
+    
+    // Get all available sender accounts for the user to create the base records
+    const { data: allSenderAccounts, error: sendersError } = await supabaseServer
+      .from("sender_accounts")
+      .select(`
+        id,
+        email,
+        display_name,
+        domain_id,
+        domains:domain_id (
+          user_id,
+          status
+        )
+      `)
+      .eq("domains.status", "verified")
+    
+    if (sendersError) {
+      console.error('❌ Error fetching sender accounts:', sendersError)
+      throw new Error(`Failed to fetch sender accounts: ${sendersError.message}`)
+    }
+
+    // Filter for user's verified domains only
+    const { data: campaign, error: campaignError } = await supabaseServer
+      .from("campaigns")
+      .select("user_id")
+      .eq("id", campaignId)
+      .single()
+
+    if (campaignError || !campaign) {
+      throw new Error("Campaign not found")
+    }
+
+    const userSenderAccounts = allSenderAccounts?.filter(sender => 
+      sender.domains?.user_id === campaign.user_id
+    ) || []
+
+    console.log(`🔄 Creating ${userSenderAccounts.length} campaign_senders records...`)
+
+    if (userSenderAccounts.length > 0) {
+      // Create base records for all user's sender accounts
+      const baseRecords = userSenderAccounts.map(sender => ({
+        campaign_id: campaignId,
+        email: sender.email,
+        display_name: sender.display_name || sender.email.split('@')[0],
+        is_selected: senderAccounts.includes(sender.id),
+        sender_type: 'email',
+        is_active: true,
+        user_id: campaign.user_id
+      }))
+
+      const { error: insertError } = await supabaseServer
+        .from("campaign_senders")
+        .insert(baseRecords)
+
+      if (insertError) {
+        console.error('❌ Error creating campaign_senders records:', insertError)
+        throw new Error(`Failed to create sender records: ${insertError.message}`)
+      }
+
+      console.log(`✅ Successfully created ${baseRecords.length} campaign_senders records`)
+    }
+  } else {
+    // Update existing records
+    console.log('🔄 Updating existing campaign_senders records...')
+    
+    // Update all accounts for this campaign to mark them as not selected
+    console.log('🔄 Marking all campaign senders as not selected...')
+    const { error: unselectError } = await supabaseServer
       .from("campaign_senders")
-      .update({ is_selected: true })
+      .update({ is_selected: false })
       .eq("campaign_id", campaignId)
-      .in("id", senderAccounts)
 
-    if (updateError) {
-      throw new Error(`Failed to save sender selection: ${updateError.message}`)
+    if (unselectError) {
+      console.error('❌ Error unsetting all senders:', unselectError)
+      throw new Error(`Failed to unselect all senders: ${unselectError.message}`)
+    }
+
+    if (senderAccounts.length > 0) {
+      console.log(`🔄 Marking ${senderAccounts.length} accounts as selected:`, senderAccounts)
+      
+      // Since sender_id column doesn't exist, we need to match by email
+      // First get the emails for the selected sender account IDs
+      console.log(`🔍 Looking up emails for sender IDs:`, senderAccounts)
+      
+      const { data: selectedSenderDetails, error: senderError } = await supabaseServer
+        .from("sender_accounts")
+        .select("id, email")
+        .in("id", senderAccounts)
+      
+      console.log(`🔍 Found sender details:`, selectedSenderDetails)
+      
+      if (senderError || !selectedSenderDetails) {
+        console.error('❌ Error fetching sender details:', senderError)
+        throw new Error(`Failed to fetch sender details: ${senderError?.message}`)
+      }
+
+      const selectedEmails = selectedSenderDetails.map(sender => sender.email)
+      console.log(`🔄 Matching by emails:`, selectedEmails)
+      console.log(`⚠️ Warning: Input ${senderAccounts.length} IDs but found ${selectedSenderDetails.length} sender accounts`)
+      
+      // First check which records actually exist for these emails
+      const { data: existingRecords, error: checkError } = await supabaseServer
+        .from("campaign_senders")
+        .select("email, is_selected")
+        .eq("campaign_id", campaignId)
+        .in("email", selectedEmails)
+      
+      console.log(`🔍 Existing records for selected emails:`, existingRecords)
+      
+      if (checkError) {
+        console.error('❌ Error checking existing records:', checkError)
+      }
+
+      // Find which emails are missing records
+      const existingEmails = existingRecords?.map(record => record.email) || []
+      const missingEmails = selectedEmails.filter(email => !existingEmails.includes(email))
+      
+      console.log(`🔍 Missing emails (need to create records):`, missingEmails)
+
+      // Create missing records first
+      if (missingEmails.length > 0) {
+        // Get sender details for missing emails
+        const missingSenderDetails = selectedSenderDetails.filter(sender => 
+          missingEmails.includes(sender.email)
+        )
+
+        // Get campaign info for user_id
+        const { data: campaign, error: campaignError } = await supabaseServer
+          .from("campaigns")
+          .select("user_id")
+          .eq("id", campaignId)
+          .single()
+
+        if (campaignError || !campaign) {
+          throw new Error("Campaign not found")
+        }
+
+        const newRecords = missingSenderDetails.map(sender => ({
+          campaign_id: campaignId,
+          email: sender.email,
+          name: sender.email.split('@')[0], // Use 'name' not 'display_name'
+          is_selected: true, // Create as selected since this is a save operation
+          sender_type: 'email',
+          is_active: true,
+          user_id: campaign.user_id
+        }))
+
+        console.log(`🔄 Creating ${newRecords.length} missing records:`, newRecords)
+
+        const { error: insertError } = await supabaseServer
+          .from("campaign_senders")
+          .insert(newRecords)
+
+        if (insertError) {
+          console.error('❌ Error creating missing records:', insertError)
+          throw new Error(`Failed to create missing sender records: ${insertError.message}`)
+        }
+
+        console.log(`✅ Successfully created ${newRecords.length} missing records`)
+      }
+      
+      // Now update existing records (only those that already existed)
+      if (existingEmails.length > 0) {
+        const { data: updateResult, error: updateError } = await supabaseServer
+          .from("campaign_senders")
+          .update({ is_selected: true })
+          .eq("campaign_id", campaignId)
+          .in("email", existingEmails)
+          .select("email, is_selected")
+        
+        console.log(`🔍 Update result for existing records:`, updateResult)
+
+        if (updateError) {
+          console.error('❌ Error updating existing records:', updateError)
+          throw new Error(`Failed to update existing sender selection: ${updateError.message}`)
+        }
+      }
+      
+      console.log(`✅ Successfully processed ${senderAccounts.length} sender selections (${missingEmails.length} created, ${existingEmails.length} updated)`)
+    } else {
+      console.log('✅ No senders to select - all have been unselected')
     }
   }
 }
@@ -470,4 +659,31 @@ async function fetchSmtpAccounts(userId: string) {
     daily_limit: 50, // Default value
     is_active: true // Assume active if it exists
   }))
+}
+
+// Helper function to save scraping configuration
+async function saveScrapingConfig(campaignId: string, scrapingConfig: any) {
+  if (!scrapingConfig) return
+
+  console.log(`💾 Saving scraping config for campaign ${campaignId}`, scrapingConfig)
+
+  // Update campaign with scraping configuration using actual table columns
+  const updateData = {
+    industry: scrapingConfig.industry || '',
+    keywords: scrapingConfig.keywords || [],
+    location: scrapingConfig.location || '',
+    updated_at: new Date().toISOString()
+  }
+
+  const { error: updateError } = await supabaseServer
+    .from("campaigns")
+    .update(updateData)
+    .eq("id", campaignId)
+
+  if (updateError) {
+    console.error("❌ Error saving scraping config:", updateError)
+    throw new Error(`Failed to save scraping configuration: ${updateError.message}`)
+  }
+
+  console.log(`✅ Successfully saved scraping config for campaign ${campaignId}`)
 }

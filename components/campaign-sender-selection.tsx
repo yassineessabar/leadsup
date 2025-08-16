@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe, Trash2 } from "lucide-react"
+import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe, Trash2, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -53,6 +53,10 @@ export default function CampaignSenderSelection({
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [lastSavedSelection, setLastSavedSelection] = useState<Set<string>>(new Set())
+  const [renderKey, setRenderKey] = useState(0)
   
   // Test email modal state
   const [showTestModal, setShowTestModal] = useState(false)
@@ -65,9 +69,17 @@ export default function CampaignSenderSelection({
     loadData()
   }, [])
 
+  // Trigger automatic loading of saved selections when domains become available
+  useEffect(() => {
+    if (domainsWithSenders.length > 0) {
+      loadExistingSenderAssignments()
+    }
+  }, [domainsWithSenders])
+
   const loadData = async () => {
-    // Load domains and senders (will auto-select all senders)
+    // Load domains and senders first
     await fetchDomainsAndSenders()
+    // loadExistingSenderAssignments will be triggered automatically by useEffect when domains are loaded
   }
 
   // Note: All domains are auto-expanded by default in fetchDomainsAndSenders()
@@ -111,15 +123,9 @@ export default function CampaignSenderSelection({
         .map((sender: any) => sender.id)
       
       if (allSenderIds.length > 0) {
-        console.log('🎯 Auto-selecting all available senders:', allSenderIds)
-        const allSelectedSet = new Set(allSenderIds)
-        setSelectedSenders(allSelectedSet)
-        onSelectionChange(allSenderIds)
-        
-        // Auto-save the selection
-        saveSenderSelection(allSenderIds).catch(error => {
-          console.error('Failed to auto-save initial selection:', error)
-        })
+        console.log('🎯 Available senders loaded:', allSenderIds.length, 'senders')
+        console.log('📝 Skipping auto-selection - will load saved selections instead')
+        // Don't auto-select here - let loadExistingSenderAssignments handle it
       }
 
     } catch (error) {
@@ -133,56 +139,98 @@ export default function CampaignSenderSelection({
 
   const loadExistingSenderAssignments = async () => {
     try {
+      console.log('📡 Loading saved sender selections...')
+      console.log('🔍 domainsWithSenders available:', domainsWithSenders.length, 'domains')
+      
+      if (domainsWithSenders.length === 0) {
+        console.log('⚠️ No domains loaded yet - cannot map emails to IDs')
+        return
+      }
+      
       const response = await fetch(`/api/campaigns/${campaignId}/senders`)
       const data = await response.json()
+
+      console.log('📡 API response:', data)
 
       if (response.ok && data.success) {
         // Handle both old and new format
         let assignedSenderIds: string[] = []
         
         if (data.assignments) {
-          // Try different possible column names for sender ID
-          assignedSenderIds = data.assignments.map((assignment: any) => 
-            assignment.sender_account_id || assignment.sender_id || assignment.id
-          ).filter(Boolean)
+          // Get the selected assignment emails
+          const selectedEmails = data.assignments
+            .filter((assignment: any) => assignment.is_selected)
+            .map((assignment: any) => assignment.email)
+            .filter(Boolean)
+          
+          console.log('📧 Found saved selections for emails:', selectedEmails)
+          
+          // Debug: Show available senders for mapping
+          const availableSenders = domainsWithSenders.flatMap(domain => domain.senders)
+          console.log('🔍 Available senders for mapping:', availableSenders.map(s => ({ id: s.id, email: s.email })))
+          
+          // Map emails back to sender account IDs by matching with current domain senders
+          assignedSenderIds = availableSenders
+            .filter(sender => selectedEmails.includes(sender.email))
+            .map(sender => sender.id)
+          
+          console.log('✅ Mapped to sender IDs:', assignedSenderIds)
+          console.log('✅ Restored', assignedSenderIds.length, 'saved sender selections')
         }
         
-        console.log('📋 Loaded existing sender assignments:', assignedSenderIds)
-        console.log('📊 Setting selectedSenders size to:', assignedSenderIds.length)
-        const newSelectedSet = new Set(assignedSenderIds)
-        console.log('📊 New Set size:', newSelectedSet.size)
-        setSelectedSenders(newSelectedSet)
-        onSelectionChange(assignedSenderIds)
+        if (assignedSenderIds.length > 0) {
+          const newSelectedSet = new Set(assignedSenderIds)
+          console.log('🔄 Setting selectedSenders state:', Array.from(newSelectedSet))
+          
+          // Use functional state update to ensure React recognizes the change
+          setSelectedSenders(prevSelected => {
+            console.log('🔄 State update - previous:', Array.from(prevSelected))
+            console.log('🔄 State update - new:', Array.from(newSelectedSet))
+            return newSelectedSet
+          })
+          
+          setLastSavedSelection(newSelectedSet) // This is the saved state from database
+          setHasUnsavedChanges(false) // No unsaved changes since we just loaded from database
+          onSelectionChange(assignedSenderIds)
+          console.log('🎯 Applied restored selections to UI')
+          
+          // Force a re-render to ensure checkboxes reflect the state
+          setTimeout(() => {
+            console.log('🔍 Post-load verification - selectedSenders size:', newSelectedSet.size)
+            console.log('🔍 Post-load verification - selectedSenders content:', Array.from(newSelectedSet))
+            
+            // Force re-render of all checkboxes by incrementing render key
+            setRenderKey(prev => prev + 1)
+          }, 100)
+        } else {
+          console.log('ℹ️ No saved selections found or no matches')
+        }
       }
     } catch (error) {
-      console.error('Error loading existing sender assignments:', error)
+      console.error('❌ Error loading existing sender assignments:', error)
       // Don't show error toast for this as it's not critical
     }
   }
 
   const saveSenderSelection = async (selectedSenderIds: string[]) => {
     try {
+      setIsSaving(true)
       console.log(`🔄 Saving ${selectedSenderIds.length} sender(s) to campaign ${campaignId}...`)
-      console.log('📍 API URL:', `/api/campaigns/${campaignId}/senders`)
+      console.log('📍 API URL:', `/api/campaigns/${campaignId}/save`)
       console.log('📋 Selected sender IDs:', selectedSenderIds)
       
-      // Quick auth check first
-      console.log('🔐 Testing authentication...')
-      const authTest = await fetch('/api/auth/me')
-      console.log('🔐 Auth test status:', authTest.status, authTest.statusText)
-      
-      if (!authTest.ok) {
-        console.error('❌ Authentication failed - user not logged in')
-        throw new Error('You must be logged in to save sender selections')
-      }
-      
-      const response = await fetch(`/api/campaigns/${campaignId}/senders`, {
+      // Use the same save endpoint as the campaign dashboard
+      const response = await fetch(`/api/campaigns/${campaignId}/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
-          selectedSenderIds
+          campaignData: {
+            senderAccounts: selectedSenderIds
+          },
+          saveType: 'senders'
         }),
       }).catch(error => {
         console.error('🚨 Network error during fetch:', error)
@@ -190,7 +238,6 @@ export default function CampaignSenderSelection({
       })
 
       console.log('📡 Response status:', response.status, response.statusText)
-      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()))
 
       let data
       try {
@@ -229,6 +276,10 @@ export default function CampaignSenderSelection({
       console.log(`✅ Saved ${selectedSenderIds.length} sender(s) to campaign`)
       toast.success(`✅ Saved ${selectedSenderIds.length} sender(s) to campaign`)
 
+      // Update tracking state
+      setLastSavedSelection(new Set(selectedSenderIds))
+      setHasUnsavedChanges(false)
+
       // Auto-enable inbound tracking for domains with selected senders
       if (selectedSenderIds.length > 0) {
         await enableInboundTrackingForDomains(selectedSenderIds)
@@ -237,8 +288,31 @@ export default function CampaignSenderSelection({
       console.error('❌ Error saving sender selection:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       toast.error(`Failed to save sender selection: ${errorMessage}`)
+      throw error // Re-throw so caller knows it failed
+    } finally {
+      setIsSaving(false)
     }
   }
+
+  // Helper function to compare two sets of selections
+  const areSelectionsSame = (set1: Set<string>, set2: Set<string>): boolean => {
+    if (set1.size !== set2.size) return false
+    for (const item of set1) {
+      if (!set2.has(item)) return false
+    }
+    return true
+  }
+
+  // Manual save function for the save button
+  const handleManualSave = async () => {
+    try {
+      await saveSenderSelection(Array.from(selectedSenders))
+    } catch (error) {
+      // Error already handled in saveSenderSelection
+    }
+  }
+
+
 
   const enableInboundTrackingForDomains = async (selectedSenderIds: string[]) => {
     try {
@@ -307,18 +381,17 @@ export default function CampaignSenderSelection({
     });
     onSelectionChange(Array.from(newSelectedSenders))
     
+    // Mark as having unsaved changes
+    const hasChanges = !areSelectionsSame(newSelectedSenders, lastSavedSelection)
+    setHasUnsavedChanges(hasChanges)
+    console.log('📝 Has unsaved changes:', hasChanges)
+    
     console.log('✅ State updated - React will re-render with new state')
     
     // Add a small delay to verify state update
     setTimeout(() => {
       console.log('🔍 Post-update verification - sender selected?', newSelectedSenders.has(senderId))
     }, 100)
-    
-    // Auto-save the selection (don't block UI)
-    saveSenderSelection(Array.from(newSelectedSenders)).catch(error => {
-      console.error('Failed to save selection:', error)
-      // Could revert the UI state here if needed
-    })
   }
 
   const handleDomainToggle = (domain: DomainWithSenders, checked: boolean) => {
@@ -342,11 +415,10 @@ export default function CampaignSenderSelection({
     });
     onSelectionChange(Array.from(newSelectedSenders))
     
-    // Auto-save the selection (don't block UI)
-    saveSenderSelection(Array.from(newSelectedSenders)).catch(error => {
-      console.error('Failed to save selection:', error)
-      // Could revert the UI state here if needed
-    })
+    // Mark as having unsaved changes
+    const hasChanges = !areSelectionsSame(newSelectedSenders, lastSavedSelection)
+    setHasUnsavedChanges(hasChanges)
+    console.log('📝 Domain toggle - Has unsaved changes:', hasChanges)
   }
 
   const toggleDomainExpansion = (domainId: string) => {
@@ -589,18 +661,47 @@ export default function CampaignSenderSelection({
               <p className="text-gray-600 text-lg">
                 Select which sender accounts will be used for this campaign
               </p>
+              {hasUnsavedChanges && (
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <span className="text-orange-600 text-sm font-medium">You have unsaved changes</span>
+                </div>
+              )}
             </div>
-            <Button
-              onClick={() => {
-                // Navigate to root page with domain tab selected
-                console.log('🔄 Navigating to /?tab=domain to add new domain...')
-                window.location.href = '/?tab=domain'
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3 shadow-sm"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Domain
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={handleManualSave}
+                disabled={isSaving || !hasUnsavedChanges}
+                className={`border-0 rounded-2xl px-6 py-3 shadow-sm transition-colors ${
+                  hasUnsavedChanges 
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                    : 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    {hasUnsavedChanges ? 'Save Selection' : 'Saved'}
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => {
+                  // Navigate to root page with domain tab selected
+                  console.log('🔄 Navigating to /?tab=domain to add new domain...')
+                  window.location.href = '/?tab=domain'
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3 shadow-sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Domain
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -715,6 +816,7 @@ export default function CampaignSenderSelection({
                         <div className="space-y-4 mt-6">
                           {domain.senders.map((sender) => {
                             const isSelected = selectedSenders.has(sender.id);
+                            console.log(`🔍 Rendering sender ${sender.email} (ID: ${sender.id}) - isSelected: ${isSelected}`)
                             
                             return (
                             <div 
@@ -726,17 +828,21 @@ export default function CampaignSenderSelection({
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                   <Checkbox
-                                    key={`checkbox-${sender.id}-${isSelected}`}
+                                    key={`checkbox-${sender.id}-${renderKey}-${isSelected}`}
                                     checked={isSelected}
                                     onCheckedChange={(checked) => {
                                       console.log(`🔍 Checkbox clicked - sender: ${sender.id}, checked: ${checked}, current isSelected: ${isSelected}`);
                                       console.log(`🎯 Element state - checkbox should be: ${checked ? 'CHECKED' : 'UNCHECKED'}`);
                                       handleSenderToggle(sender.id, checked === true);
                                     }}
-                                    className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
+                                    className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 data-[state=checked]:text-white rounded-md"
                                     aria-label={`Select sender ${sender.email}`}
                                     data-testid={`sender-checkbox-${sender.id}`}
                                     data-selected={isSelected}
+                                    style={{
+                                      backgroundColor: isSelected ? '#2563eb' : 'transparent',
+                                      borderColor: isSelected ? '#2563eb' : '#d1d5db'
+                                    }}
                                   />
                                   
                                   <div className="flex items-center gap-4">
