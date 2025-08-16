@@ -13,7 +13,6 @@ import {
   AlertCircle,
   Loader2,
   Edit3,
-  RefreshCw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,7 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { fetchHealthScores, updateHealthScores, getHealthScoreColor, type HealthScoreResult } from "@/lib/health-score"
+import { fetchHealthScores, getHealthScoreColor, type HealthScoreResult } from "@/lib/health-score"
 
 interface Sender {
   id: string
@@ -69,7 +68,6 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
   const [submitting, setSubmitting] = useState(false)
   const [creatingPresets, setCreatingPresets] = useState(false)
   const [healthScores, setHealthScores] = useState<Record<string, HealthScoreResult>>({})
-  const [isUpdatingHealthScores, setIsUpdatingHealthScores] = useState(false)
 
   // Load health scores for all senders
   const loadHealthScores = async () => {
@@ -94,29 +92,6 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
     }
   }
 
-  const handleUpdateHealthScores = async () => {
-    try {
-      setIsUpdatingHealthScores(true)
-      
-      const senderIds = senders.map(sender => sender.id)
-      
-      console.log('🔄 Updating health scores for:', senderIds.length, 'senders')
-      const success = await updateHealthScores(senderIds)
-      
-      if (success) {
-        // Reload health scores
-        await loadHealthScores()
-        toast.success(`Health scores updated for ${senderIds.length} accounts`)
-      } else {
-        toast.error('Failed to update health scores')
-      }
-    } catch (error) {
-      console.error('❌ Error updating health scores:', error)
-      toast.error('Failed to update health scores')
-    } finally {
-      setIsUpdatingHealthScores(false)
-    }
-  }
 
   // Calculate statistics
   const getStats = () => {
@@ -417,33 +392,13 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleUpdateHealthScores}
-                  disabled={isUpdatingHealthScores || senders.length === 0}
-                  className="bg-green-600 hover:bg-green-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
-                  title="Refresh health scores for all sender accounts"
-                >
-                  {isUpdatingHealthScores ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Refresh Health Scores
-                    </>
-                  )}
-                </Button>
-                <Button 
-                  onClick={() => setShowAddSender(true)} 
-                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Sender
-                </Button>
-              </div>
+              <Button 
+                onClick={() => setShowAddSender(true)} 
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Sender
+              </Button>
             </div>
           </div>
         </div>

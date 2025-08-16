@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe, Trash2, Save, RefreshCw, TrendingUp, TrendingDown, Minus } from "lucide-react"
+import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe, Trash2, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { toast } from "sonner"
-import { fetchHealthScores, updateHealthScores, getHealthScoreColor, type HealthScoreResult } from "@/lib/health-score"
+import { fetchHealthScores, getHealthScoreColor, type HealthScoreResult } from "@/lib/health-score"
 
 interface Domain {
   id: string
@@ -59,7 +59,6 @@ export default function CampaignSenderSelection({
   const [lastSavedSelection, setLastSavedSelection] = useState<Set<string>>(new Set())
   const [renderKey, setRenderKey] = useState(0)
   const [healthScores, setHealthScores] = useState<Record<string, HealthScoreResult>>({})
-  const [isUpdatingHealthScores, setIsUpdatingHealthScores] = useState(false)
   
   // Test email modal state
   const [showTestModal, setShowTestModal] = useState(false)
@@ -166,32 +165,6 @@ export default function CampaignSenderSelection({
     }
   }
 
-  const handleUpdateHealthScores = async () => {
-    try {
-      setIsUpdatingHealthScores(true)
-      
-      // Get all sender IDs from domains
-      const allSenderIds = domainsWithSenders
-        .flatMap(domain => domain.senders)
-        .map(sender => sender.id)
-      
-      console.log('🔄 Updating health scores for:', allSenderIds.length, 'senders')
-      const success = await updateHealthScores(allSenderIds)
-      
-      if (success) {
-        // Reload health scores
-        await loadHealthScores()
-        toast.success(`Health scores updated for ${allSenderIds.length} accounts`)
-      } else {
-        toast.error('Failed to update health scores')
-      }
-    } catch (error) {
-      console.error('❌ Error updating health scores:', error)
-      toast.error('Failed to update health scores')
-    } finally {
-      setIsUpdatingHealthScores(false)
-    }
-  }
 
   const loadExistingSenderAssignments = async () => {
     try {
@@ -725,24 +698,6 @@ export default function CampaignSenderSelection({
               )}
             </div>
             <div className="flex items-center gap-3">
-              <Button
-                onClick={handleUpdateHealthScores}
-                disabled={isUpdatingHealthScores}
-                className="bg-green-600 hover:bg-green-700 text-white border-0 rounded-2xl px-6 py-3 shadow-sm"
-                title="Refresh health scores for all accounts"
-              >
-                {isUpdatingHealthScores ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
-                    Updating...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh Health Scores
-                  </>
-                )}
-              </Button>
               <Button
                 onClick={handleManualSave}
                 disabled={isSaving || !hasUnsavedChanges}
