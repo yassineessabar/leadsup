@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Eye, Share2, Filter, ChevronDown, FileText, X } from "lucide-react"
+import { Eye, Share2, Filter, ChevronDown, FileText, X, Copy, Mail, Check, Link } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -29,6 +29,9 @@ export function TemplatesTab() {
   const [templateToUse, setTemplateToUse] = useState<Template | null>(null)
   const [campaigns, setCampaigns] = useState<any[]>([])
   const [loadingCampaigns, setLoadingCampaigns] = useState(false)
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [templateToShare, setTemplateToShare] = useState<Template | null>(null)
+  const [shareSuccess, setShareSuccess] = useState(false)
 
   const templates: Template[] = [
     {
@@ -176,7 +179,14 @@ Best,
         })
         if (response.ok) {
           const data = await response.json()
-          setCampaigns(data.campaigns || [])
+          console.log('Campaigns API response:', data) // Debug log
+          
+          // Handle different possible response structures
+          const campaignsData = data.data || data.campaigns || data || []
+          setCampaigns(Array.isArray(campaignsData) ? campaignsData : [])
+        } else {
+          console.error('Failed to fetch campaigns:', response.status)
+          setCampaigns([])
         }
       } catch (error) {
         console.error('Error fetching campaigns:', error)
@@ -187,11 +197,105 @@ Best,
     }
   }
 
-  const handleAddToCampaign = (campaignId: string) => {
-    console.log('Adding template', templateToUse?.id, 'to campaign', campaignId)
-    // TODO: Implement actual template addition to campaign
+  const handleAddToCampaign = async (campaignId: string) => {
+    if (!templateToUse) return
+
+    // Copy template content to clipboard
+    const templateContent = templateToUse.content || `Subject: ${templateToUse.title}
+
+${templateToUse.subtitle}
+
+Hi {{firstName}},
+
+[Template content for ${templateToUse.title}]
+
+Best regards,
+{{senderName}}`
+
+    try {
+      await navigator.clipboard.writeText(templateContent)
+      
+      // Show success message with instructions
+      const event = new CustomEvent('template-copied', {
+        detail: {
+          templateTitle: templateToUse.title,
+          campaignId: campaignId,
+          message: `Template "${templateToUse.title}" copied to clipboard! You can now paste it in your campaign sequence.`
+        }
+      })
+      window.dispatchEvent(event)
+      
+    } catch (error) {
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea')
+      textArea.value = templateContent
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+    }
+
+    // Close modal
     setIsCampaignSelectOpen(false)
     setTemplateToUse(null)
+
+    // Redirect to campaign sequences section
+    window.location.href = `/?tab=campaigns-email&campaignId=${campaignId}&subtab=sequence`
+  }
+
+  const handleShareTemplate = (template?: Template) => {
+    const templateToShareData = template || filteredTemplates[0] // Share first template if none specified
+    setTemplateToShare(templateToShareData)
+    setIsShareModalOpen(true)
+    setShareSuccess(false)
+  }
+
+  const copyTemplateLink = async () => {
+    if (!templateToShare) return
+    
+    const shareUrl = `${window.location.origin}/?tab=templates&template=${templateToShare.id}`
+    
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setShareSuccess(true)
+      setTimeout(() => setShareSuccess(false), 2000)
+    } catch (error) {
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea')
+      textArea.value = shareUrl
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      setShareSuccess(true)
+      setTimeout(() => setShareSuccess(false), 2000)
+    }
+  }
+
+  const shareViaEmail = () => {
+    if (!templateToShare) return
+    
+    const subject = `Check out this email template: ${templateToShare.title}`
+    const body = `Hi there!
+
+I wanted to share this amazing email template with you:
+
+"${templateToShare.title}"
+${templateToShare.subtitle}
+
+This template has achieved:
+- ${templateToShare.metrics.openRate} open rate
+- ${templateToShare.metrics.responseRate} response rate
+- ${templateToShare.metrics.conversionRate} conversion rate
+
+You can view and use it here: ${window.location.origin}/?tab=templates&template=${templateToShare.id}
+
+Best regards!`
+
+    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    window.open(mailtoLink)
   }
 
   return (
@@ -222,15 +326,6 @@ Best,
                   <SelectItem value="premium">Premium</SelectItem>
                 </SelectContent>
               </Select>
-              
-              {/* Share Template Button */}
-              <Button 
-                variant="outline" 
-                className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
-              >
-                <Share2 className="w-4 h-4 mr-2" />
-                Share Template
-              </Button>
             </div>
           </div>
         </div>
@@ -286,6 +381,14 @@ Best,
                   >
                     Use Template
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="px-3 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl"
+                    onClick={() => handleShareTemplate(template)}
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
             </div>
@@ -312,7 +415,7 @@ Best,
 
         {/* Template Preview Modal */}
         <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-          <DialogContent className="max-w-4xl max-h-[20vh] overflow-y-auto rounded-3xl">
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto rounded-3xl">
             <DialogHeader>
               <DialogTitle className="text-2xl font-light text-gray-900 tracking-tight">
                 {selectedTemplate?.title}
@@ -384,15 +487,29 @@ Best,
 
         {/* Campaign Selection Modal */}
         <Dialog open={isCampaignSelectOpen} onOpenChange={setIsCampaignSelectOpen}>
-          <DialogContent className="max-w-md max-h-[60vh] overflow-y-auto rounded-3xl">
+          <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto rounded-3xl">
             <DialogHeader>
               <DialogTitle className="text-xl font-light text-gray-900 tracking-tight">
-                Add Template to Campaign
+                Use Template in Campaign
               </DialogTitle>
               <p className="text-sm text-gray-500 mt-2">
-                Select which campaign to add "{templateToUse?.title}" to
+                Select a campaign to copy "{templateToUse?.title}" content to your clipboard
               </p>
             </DialogHeader>
+            
+            {/* Instructions */}
+            <div className="bg-blue-50/50 border border-blue-100/50 rounded-2xl p-4 my-4">
+              <h4 className="font-medium text-gray-900 mb-2 text-sm flex items-center">
+                <Copy className="w-4 h-4 text-blue-600 mr-2" />
+                How it works
+              </h4>
+              <ol className="text-xs text-gray-600 space-y-1 list-decimal list-inside">
+                <li>Select your campaign below</li>
+                <li>Template content will be copied to your clipboard</li>
+                <li>You'll be redirected to the campaign's sequence editor</li>
+                <li>Paste the template content into your email sequence</li>
+              </ol>
+            </div>
             
             <div className="space-y-4">
               {loadingCampaigns ? (
@@ -409,19 +526,24 @@ Best,
                   {campaigns.map((campaign) => (
                     <div
                       key={campaign.id}
-                      className="p-4 border border-gray-200 hover:border-blue-300 hover:bg-blue-50 rounded-2xl cursor-pointer transition-all duration-200"
+                      className="p-4 border border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 rounded-2xl cursor-pointer transition-all duration-200 group"
                       onClick={() => handleAddToCampaign(campaign.id)}
                     >
                       <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                           <h4 className="font-medium text-gray-900">{campaign.name}</h4>
                           <p className="text-sm text-gray-500">
                             {campaign.status} • {campaign.type || 'Email Campaign'}
                           </p>
                         </div>
-                        <Badge variant="outline" className="text-xs">
-                          {campaign.status}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {campaign.status}
+                          </Badge>
+                          <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Copy className="w-4 h-4 text-blue-600" />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -429,16 +551,46 @@ Best,
               ) : (
                 <div className="text-center py-6">
                   <p className="text-gray-500 mb-4">No campaigns found</p>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsCampaignSelectOpen(false)
-                      // TODO: Navigate to create campaign
-                    }}
-                    className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
-                  >
-                    Create New Campaign
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        setLoadingCampaigns(true)
+                        // Retry fetching campaigns
+                        try {
+                          const response = await fetch('/api/campaigns', {
+                            credentials: 'include'
+                          })
+                          if (response.ok) {
+                            const data = await response.json()
+                            console.log('Retry campaigns API response:', data)
+                            const campaignsData = data.data || data.campaigns || data || []
+                            setCampaigns(Array.isArray(campaignsData) ? campaignsData : [])
+                          }
+                        } catch (error) {
+                          console.error('Error retrying campaigns:', error)
+                        } finally {
+                          setLoadingCampaigns(false)
+                        }
+                      }}
+                      disabled={loadingCampaigns}
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50 rounded-2xl"
+                    >
+                      {loadingCampaigns ? 'Loading...' : 'Refresh Campaigns'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsCampaignSelectOpen(false)
+                        setTemplateToUse(null)
+                        // Navigate to campaigns tab to create new campaign
+                        window.location.href = '/?tab=campaigns-email'
+                      }}
+                      className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
+                    >
+                      Create New Campaign
+                    </Button>
+                  </div>
                 </div>
               )}
               
@@ -451,6 +603,94 @@ Best,
                   Cancel
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Share Template Modal */}
+        <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
+          <DialogContent className="max-w-md rounded-3xl border border-gray-100/20">
+            <DialogHeader className="pb-6">
+              <DialogTitle className="text-center text-2xl font-light text-gray-900 tracking-tight">
+                Share Template
+              </DialogTitle>
+              <p className="text-center text-gray-500 text-sm mt-2">
+                Share "{templateToShare?.title}" with others
+              </p>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {/* Template Preview */}
+              <div className="bg-gray-50/50 border border-gray-100/50 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-gray-900">{templateToShare?.title}</h4>
+                  <Badge 
+                    variant="outline"
+                    className={`${
+                      templateToShare?.category === 'Premium' 
+                        ? 'bg-amber-50 text-amber-700 border-amber-200' 
+                        : 'bg-blue-50 text-blue-700 border-blue-200'
+                    } border rounded-full px-2 py-1 text-xs`}
+                  >
+                    {templateToShare?.category}
+                  </Badge>
+                </div>
+                <p className="text-sm text-gray-500 mb-3">{templateToShare?.subtitle}</p>
+                <div className="flex justify-center gap-4 text-xs">
+                  <span className="text-gray-600">{templateToShare?.metrics.openRate} open rate</span>
+                  <span className="text-gray-600">{templateToShare?.metrics.responseRate} response rate</span>
+                </div>
+              </div>
+
+              {/* Share Options */}
+              <div className="space-y-3">
+                <Button
+                  onClick={copyTemplateLink}
+                  className="w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-200 hover:scale-105"
+                >
+                  {shareSuccess ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Link Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      Copy Share Link
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  onClick={shareViaEmail}
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-3 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium transition-all duration-200"
+                >
+                  <Mail className="w-4 h-4" />
+                  Share via Email
+                </Button>
+              </div>
+
+              {/* Share URL Display */}
+              <div className="bg-gray-50/50 border border-gray-100/50 rounded-2xl p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Link className="w-4 h-4 text-gray-500" />
+                  <span className="text-xs font-medium text-gray-700">Share URL</span>
+                </div>
+                <p className="text-xs text-gray-500 break-all">
+                  {window.location.origin}/?tab=templates&template={templateToShare?.id}
+                </p>
+              </div>
+            </div>
+            
+            <div className="pt-6 border-t border-gray-100/50">
+              <Button
+                variant="outline"
+                onClick={() => setIsShareModalOpen(false)}
+                className="w-full border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium"
+              >
+                Close
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
