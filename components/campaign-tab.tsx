@@ -91,10 +91,19 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       const result = await response.json()
 
       if (!response.ok) {
+        // Handle specific case where no stats are found (normal for new campaigns)
+        if (result.error && result.error.includes('No stats found')) {
+          toast({
+            title: "ℹ️ No SendGrid Data",
+            description: "This campaign hasn't sent any emails through SendGrid yet.",
+            variant: "default"
+          })
+          return // Exit gracefully, this is not an error
+        }
         throw new Error(result.error || 'Failed to sync with SendGrid')
       }
 
-      if (result.success) {
+      if (result.success && result.data && result.data.rates) {
         // Update the campaign with real SendGrid metrics
         const rates = result.data.rates
         setCampaigns(prevCampaigns => 
@@ -117,6 +126,13 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         toast({
           title: "✅ Sync Complete",
           description: `Campaign metrics updated from SendGrid (${rates.openRate}% open rate, ${rates.clickRate}% click rate)`
+        })
+      } else {
+        // No metrics found - this is normal for campaigns that haven't sent emails
+        toast({
+          title: "ℹ️ No Metrics Found",
+          description: "This campaign has no SendGrid activity to sync.",
+          variant: "default"
         })
       }
     } catch (error) {
