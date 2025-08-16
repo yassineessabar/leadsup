@@ -77,62 +77,38 @@ export default function CampaignSenderSelection({
       setLoading(true)
       setError(null)
 
-      // Fetch all verified domains
-      const domainsResponse = await fetch('/api/domains').catch(error => {
-        console.error('🚨 Network error fetching domains:', error)
+      console.log('🚀 Fetching domains and senders (optimized)...')
+      const startTime = Date.now()
+
+      // Use the optimized single API call
+      const response = await fetch('/api/domains/with-senders').catch(error => {
+        console.error('🚨 Network error fetching domains with senders:', error)
         throw new Error(`Failed to connect to server: ${error.message}`)
       })
-      const domainsData = await domainsResponse.json()
+      
+      const data = await response.json()
 
-      if (!domainsResponse.ok || !domainsData.success) {
-        throw new Error('Failed to fetch domains')
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to fetch domains and senders')
       }
 
-      // Filter only verified domains
-      const verifiedDomains = domainsData.domains.filter((domain: Domain) => domain.status === 'verified')
+      const endTime = Date.now()
+      const duration = endTime - startTime
 
-      // Fetch senders for each verified domain
-      const domainsWithSendersPromises = verifiedDomains.map(async (domain: Domain) => {
-        try {
-          const sendersResponse = await fetch(`/api/domains/${domain.id}/senders`).catch(error => {
-            console.error(`🚨 Network error fetching senders for domain ${domain.id}:`, error)
-            throw new Error(`Failed to fetch senders for ${domain.domain}: ${error.message}`)
-          })
-          const sendersData = await sendersResponse.json()
+      console.log(`⚡ Optimized fetch completed in ${duration}ms`)
+      console.log(`📊 Received ${data.domains.length} domains with ${data.performance?.senders_count || 0} senders`)
 
-          if (sendersResponse.ok && sendersData.success) {
-            return {
-              ...domain,
-              senders: sendersData.senders || []
-            }
-          } else {
-            console.warn(`Failed to fetch senders for domain ${domain.domain}`)
-            return {
-              ...domain,
-              senders: []
-            }
-          }
-        } catch (error) {
-          console.error(`Error fetching senders for domain ${domain.domain}:`, error)
-          return {
-            ...domain,
-            senders: []
-          }
-        }
-      })
-
-      const domainsWithSendersResults = await Promise.all(domainsWithSendersPromises)
-      setDomainsWithSenders(domainsWithSendersResults)
+      setDomainsWithSenders(data.domains)
 
       // Auto-expand all domains by default to show sender accounts
-      const allDomainIds = domainsWithSendersResults.map(domain => domain.id)
+      const allDomainIds = data.domains.map((domain: any) => domain.id)
       setExpandedDomains(new Set(allDomainIds))
       console.log('🎯 Auto-expanding all domains:', allDomainIds)
 
       // Auto-select all available senders by default
-      const allSenderIds = domainsWithSendersResults
-        .flatMap(domain => domain.senders)
-        .map(sender => sender.id)
+      const allSenderIds = data.domains
+        .flatMap((domain: any) => domain.senders)
+        .map((sender: any) => sender.id)
       
       if (allSenderIds.length > 0) {
         console.log('🎯 Auto-selecting all available senders:', allSenderIds)
@@ -533,12 +509,13 @@ export default function CampaignSenderSelection({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="max-w-4xl mx-auto px-6 py-8">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'rgb(87, 140, 255)', borderTopColor: 'transparent' }}></div>
-              <span className="text-gray-600">Loading sender accounts...</span>
+      <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center min-h-[500px]">
+            <div className="text-center">
+              <div className="w-12 h-12 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Sender Accounts</h3>
+              <p className="text-gray-600">Please wait while we fetch your domain accounts...</p>
             </div>
           </div>
         </div>
@@ -548,14 +525,19 @@ export default function CampaignSenderSelection({
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="max-w-4xl mx-auto px-6 py-8">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to Load Accounts</h3>
-              <p className="text-gray-600 mb-4">{error}</p>
-              <Button onClick={fetchDomainsAndSenders} style={{ backgroundColor: 'rgb(87, 140, 255)' }}>
+      <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center min-h-[500px]">
+            <div className="text-center bg-white rounded-3xl p-12 shadow-sm border border-gray-100/50">
+              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="text-xl font-medium text-gray-900 mb-3">Failed to Load Accounts</h3>
+              <p className="text-gray-600 mb-6 max-w-sm mx-auto">{error}</p>
+              <Button 
+                onClick={fetchDomainsAndSenders} 
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
+              >
                 Try Again
               </Button>
             </div>
@@ -567,29 +549,29 @@ export default function CampaignSenderSelection({
 
   if (domainsWithSenders.length === 0) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="max-w-4xl mx-auto px-6 py-8">
-          <div className="text-center py-16">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Globe className="h-8 w-8 text-gray-400" />
+      <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center min-h-[500px]">
+            <div className="text-center bg-white rounded-3xl p-12 shadow-sm border border-gray-100/50">
+              <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Globe className="h-10 w-10 text-gray-400" />
+              </div>
+              <h3 className="text-2xl font-medium text-gray-900 mb-4">No Verified Domains</h3>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto leading-relaxed">
+                You need to set up and verify at least one domain before you can select sender accounts for campaigns.
+              </p>
+              <Button 
+                onClick={() => {
+                  // Navigate to root page with domain tab selected
+                  console.log('🔄 Navigating to /?tab=domain...')
+                  window.location.href = '/?tab=domain'
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-8 py-4 text-lg"
+              >
+                <Plus className="h-5 w-5 mr-3" />
+                Set Up Domain
+              </Button>
             </div>
-            <h3 className="text-xl font-medium text-gray-900 mb-4">No Verified Domains</h3>
-            <p className="text-gray-600 mb-8 max-w-md mx-auto">
-              You need to set up and verify at least one domain before you can select sender accounts for campaigns.
-            </p>
-            <Button 
-              onClick={() => {
-                // Navigate to root page with domain tab selected
-                console.log('🔄 Navigating to /?tab=domain...')
-                window.location.href = '/?tab=domain'
-              }}
-              style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Set Up Domain
-            </Button>
           </div>
         </div>
       </div>
@@ -597,29 +579,29 @@ export default function CampaignSenderSelection({
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-3xl font-light text-gray-900">Campaign Senders</h1>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-light text-gray-900 mb-2">Campaign Senders</h1>
+              <p className="text-gray-600 text-lg">
+                Select which sender accounts will be used for this campaign
+              </p>
+            </div>
             <Button
               onClick={() => {
                 // Navigate to root page with domain tab selected
                 console.log('🔄 Navigating to /?tab=domain to add new domain...')
                 window.location.href = '/?tab=domain'
               }}
-              style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+              className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3 shadow-sm"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add New Domain
             </Button>
           </div>
-          <p className="text-gray-500 text-lg mb-6">
-            Select which sender accounts will be used for this campaign
-          </p>
         </div>
 
         {/* Domain Groups */}
@@ -632,29 +614,31 @@ export default function CampaignSenderSelection({
             const someSelected = selectedInDomain > 0 && !allSelected
 
             return (
-              <Card key={domain.id} className="border-gray-200">
-                <CardHeader className="pb-4">
+              <div key={domain.id} className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden shadow-sm">
+                <div className="p-8">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <button
                         onClick={() => toggleDomainExpansion(domain.id)}
-                        className="flex items-center gap-3 hover:bg-gray-50 rounded-lg p-2 -ml-2 transition-colors"
+                        className="flex items-center gap-4 hover:bg-gray-50 rounded-2xl p-3 -ml-3 transition-colors duration-200"
                       >
                         {isExpanded ? (
-                          <ChevronDown className="h-4 w-4 text-gray-500" />
+                          <ChevronDown className="h-5 w-5 text-gray-400" />
                         ) : (
-                          <ChevronRight className="h-4 w-4 text-gray-500" />
+                          <ChevronRight className="h-5 w-5 text-gray-400" />
                         )}
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                            <Globe className="h-5 w-5 text-green-600" />
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center">
+                            <Globe className="h-6 w-6 text-green-600" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-medium text-gray-900">{domain.domain}</h3>
-                            <p className="text-sm text-gray-500">
-                              {domain.senders.length} account{domain.senders.length !== 1 ? 's' : ''}
+                            <h3 className="text-xl font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                              {domain.domain}
+                            </h3>
+                            <p className="text-gray-500 mt-1">
+                              {domain.senders.length} sender account{domain.senders.length !== 1 ? 's' : ''}
                               {selectedInDomain > 0 && (
-                                <span className="ml-2 text-blue-600">
+                                <span className="ml-2 text-blue-600 font-medium">
                                   • {selectedInDomain} selected
                                 </span>
                               )}
@@ -664,31 +648,29 @@ export default function CampaignSenderSelection({
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                        Verified
+                    <div className="flex items-center gap-4">
+                      <Badge className="bg-green-50 text-green-700 border-green-200 px-3 py-1 rounded-xl font-medium">
+                        ✓ Verified
                       </Badge>
                       
-                      
                       {domain.senders.length > 0 && (
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-2">
                           <Checkbox
                             checked={allSelected}
                             onCheckedChange={(checked) => handleDomainToggle(domain, checked === true)}
-                            className="data-[state=checked]:bg-[rgb(87,140,255)] data-[state=checked]:border-[rgb(87,140,255)]"
+                            className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
                             ref={el => {
                               if (el && someSelected) {
                                 el.setAttribute('data-indeterminate', 'true')
                               }
                             }}
                           />
-                          <label className="ml-2 text-sm text-gray-700 cursor-pointer">
+                          <label className="text-sm text-gray-700 cursor-pointer font-medium">
                             Select All
                           </label>
                         </div>
                       )}
                       
-                      {/* Delete Domain Button */}
                       <Button
                         variant="outline"
                         size="sm"
@@ -696,51 +678,49 @@ export default function CampaignSenderSelection({
                           e.stopPropagation()
                           handleDeleteDomain(domain)
                         }}
-                        className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                        className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 rounded-xl"
                       >
-                        <Trash2 className="h-4 w-4 mr-1" />
+                        <Trash2 className="h-4 w-4 mr-2" />
                         Delete
                       </Button>
                     </div>
                   </div>
-                </CardHeader>
+                </div>
 
                 <Collapsible open={isExpanded}>
                   <CollapsibleContent>
-                    <CardContent className="pt-0">
+                    <div className="px-8 pb-8">
                       {domain.senders.length === 0 ? (
-                        <div className="text-center py-8">
-                          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <User className="h-6 w-6 text-gray-400" />
+                        <div className="text-center py-12 bg-gray-50 rounded-2xl">
+                          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                            <User className="h-8 w-8 text-gray-400" />
                           </div>
-                          <h4 className="text-sm font-medium text-gray-900 mb-2">No Sender Accounts</h4>
-                          <p className="text-sm text-gray-500 mb-4">
+                          <h4 className="text-lg font-medium text-gray-900 mb-3">No Sender Accounts</h4>
+                          <p className="text-gray-600 mb-6 max-w-sm mx-auto">
                             Add sender accounts to this domain to use them in campaigns
                           </p>
                           <Button
-                            variant="outline"
-                            size="sm"
                             onClick={() => {
                               // Navigate to root page with domain tab to add senders
                               console.log('🔄 Navigating to /?tab=domain to add senders...')
                               window.location.href = '/?tab=domain'
                             }}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
                           >
                             <Plus className="h-4 w-4 mr-2" />
                             Add Senders
                           </Button>
                         </div>
                       ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-4 mt-6">
                           {domain.senders.map((sender) => {
                             const isSelected = selectedSenders.has(sender.id);
                             
                             return (
                             <div 
                               key={sender.id} 
-                              className={`border rounded-lg p-4 hover:bg-gray-50 transition-colors ${
-                                isSelected ? 'bg-blue-50 border-blue-200' : 'border-gray-200'
+                              className={`border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-2xl p-6 ${
+                                isSelected ? 'bg-blue-50/50 border-blue-200' : 'bg-white hover:shadow-sm'
                               }`}
                             >
                               <div className="flex items-center justify-between">
@@ -753,54 +733,54 @@ export default function CampaignSenderSelection({
                                       console.log(`🎯 Element state - checkbox should be: ${checked ? 'CHECKED' : 'UNCHECKED'}`);
                                       handleSenderToggle(sender.id, checked === true);
                                     }}
-                                    className="data-[state=checked]:bg-[rgb(87,140,255)] data-[state=checked]:border-[rgb(87,140,255)]"
+                                    className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
                                     aria-label={`Select sender ${sender.email}`}
                                     data-testid={`sender-checkbox-${sender.id}`}
                                     data-selected={isSelected}
                                   />
                                   
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                                      <User className="h-5 w-5 text-gray-600" />
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                                      <User className="h-6 w-6 text-blue-600" />
                                     </div>
                                     <div>
-                                      <div className="flex items-center gap-2">
-                                        <h4 className="font-medium text-gray-900">
+                                      <div className="flex items-center gap-3">
+                                        <h4 className="font-medium text-gray-900 text-lg">
                                           {sender.display_name || sender.email.split('@')[0]}
                                         </h4>
                                         {sender.is_default && (
-                                          <Badge variant="secondary" className="text-xs">Primary</Badge>
+                                          <Badge className="bg-blue-50 text-blue-700 border-blue-200 px-2 py-1 rounded-lg text-xs font-medium">
+                                            Primary
+                                          </Badge>
                                         )}
                                       </div>
-                                      <p className="text-sm text-gray-600">{sender.email}</p>
+                                      <p className="text-gray-600 mt-1">{sender.email}</p>
                                     </div>
                                   </div>
                                 </div>
 
-                                <div className="flex items-center gap-6 text-sm">
+                                <div className="flex items-center gap-8">
                                   <div className="text-center">
-                                    <div className="text-gray-500">Daily Limit</div>
-                                    <div className="font-medium text-gray-900">{sender.daily_limit || 50}/day</div>
+                                    <div className="text-sm text-gray-500 mb-1">Daily Limit</div>
+                                    <div className="font-semibold text-gray-900 text-lg">{sender.daily_limit || 50}</div>
+                                    <div className="text-xs text-gray-500">emails/day</div>
                                   </div>
                                   <div className="text-center">
-                                    <div className="text-gray-500">Health Score</div>
-                                    <div className={`font-medium ${getHealthScoreColor(sender.health_score || 0)}`}>
+                                    <div className="text-sm text-gray-500 mb-1">Health Score</div>
+                                    <div className={`font-semibold text-lg ${getHealthScoreColor(sender.health_score || 0)}`}>
                                       {sender.health_score || 0}%
                                     </div>
+                                    <div className="text-xs text-gray-500">reputation</div>
                                   </div>
-                                  <div className="text-center">
-                                    <Button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleTestClick(sender)
-                                      }}
-                                      variant="outline"
-                                      size="sm"
-                                      className="text-[rgb(87,140,255)] border-[rgb(87,140,255)] hover:bg-[rgb(87,140,255)] hover:text-white"
-                                    >
-                                      Test Email
-                                    </Button>
-                                  </div>
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleTestClick(sender)
+                                    }}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-xl px-4 py-2"
+                                  >
+                                    Test Email
+                                  </Button>
                                 </div>
                               </div>
                             </div>
@@ -808,10 +788,10 @@ export default function CampaignSenderSelection({
                           })}
                         </div>
                       )}
-                    </CardContent>
+                    </div>
                   </CollapsibleContent>
                 </Collapsible>
-              </Card>
+              </div>
             )
           })}
         </div>
@@ -819,33 +799,40 @@ export default function CampaignSenderSelection({
 
         {/* Test Email Modal */}
         {showTestModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl border border-gray-100/50">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl font-medium text-gray-900">
                   Send Test Email
                 </h3>
                 <button
                   onClick={() => setShowTestModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-2xl flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  ×
+                  <span className="text-xl">×</span>
                 </button>
               </div>
 
               {testModalSender && (
-                <div className="bg-[rgba(87,140,255,0.05)] border border-[rgba(87,140,255,0.2)] rounded-lg p-4 mb-6">
-                  <div className="text-sm text-gray-900 mb-1">
-                    <strong>From:</strong> {testModalSender.email}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    {testModalSender.display_name || 'Sender Account'}
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                      <Mail className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        From: {testModalSender.email}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {testModalSender.display_name || 'Sender Account'}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-900 mb-3">
                   Send test email to:
                 </label>
                 <input
@@ -853,41 +840,51 @@ export default function CampaignSenderSelection({
                   value={testModalEmail}
                   onChange={(e) => setTestModalEmail(e.target.value)}
                   placeholder="Enter email address"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)] outline-none"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
                 />
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
-                <div className="text-sm text-blue-800 font-medium mb-1">
-                  📧 What will be sent:
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 mb-8">
+                <div className="text-sm text-blue-900 font-medium mb-3 flex items-center gap-2">
+                  <span className="text-lg">📧</span>
+                  What will be sent:
                 </div>
-                <div className="text-xs text-blue-700 mb-2">
+                <div className="text-sm text-blue-800 mb-4 leading-relaxed">
                   This will send your <strong>actual campaign sequence</strong> (first email) with test variables:
                   <br/>• firstName: John • lastName: Doe • company: Acme Corp
                 </div>
-                <div className="text-sm text-blue-800 font-medium mb-1">
-                  💡 Test Instructions:
+                <div className="text-sm text-blue-900 font-medium mb-2 flex items-center gap-2">
+                  <span className="text-lg">💡</span>
+                  Test Instructions:
                 </div>
-                <div className="text-xs text-blue-700">
+                <div className="text-sm text-blue-800 leading-relaxed">
                   1. Click "Send Test Email" below<br/>
                   2. Check your email and reply to the test message<br/>
                   3. Your reply should appear in both "Sent" and "Inbox" folders in LeadsUp
                 </div>
               </div>
 
-              <div className="flex gap-3 justify-end">
+              <div className="flex gap-4">
                 <Button
                   onClick={() => setShowTestModal(false)}
                   variant="outline"
+                  className="flex-1 rounded-2xl py-3 border-gray-200 hover:bg-gray-50"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={sendTestEmail}
                   disabled={testModalLoading}
-                  className="bg-[rgb(87,140,255)] hover:bg-[rgb(67,120,235)] text-white"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl py-3"
                 >
-                  {testModalLoading ? 'Sending...' : 'Send Test Email'}
+                  {testModalLoading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Sending...
+                    </div>
+                  ) : (
+                    'Send Test Email'
+                  )}
                 </Button>
               </div>
             </div>

@@ -655,6 +655,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   const updateSequenceSubject = (sequenceNumber: number, subject: string) => {
+    console.log(`🔄 Updating sequence ${sequenceNumber} subject to: "${subject}"`)
     setSteps(steps.map((step) => 
       step.sequence === sequenceNumber ? { ...step, subject } : step
     ))
@@ -715,6 +716,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         }
       }
 
+      console.log('📤 Sending sequence data:', JSON.stringify({
+        sequences: steps,
+        saveType: dataType
+      }, null, 2))
+
       const response = await fetch(`/api/campaigns/${campaign.id}/save`, {
         method: "POST",
         headers: {
@@ -733,6 +739,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         // Update saved states
         if (dataType === 'all' || dataType === 'sequences') {
           setHasSequenceSaved(true)
+          console.log('✅ Sequences saved successfully')
         }
         if (dataType === 'all' || dataType === 'settings') {
           setHasSettingsSaved(true)
@@ -744,14 +751,44 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             dataType === 'senders' ? 'Sender Selection' : 'Data'
                             
       } else {
+        console.error('❌ Save failed:', result.error)
       }
     } catch (error) {
-      console.error("Error saving campaign:", error)
+      console.error("❌ Error saving campaign:", error)
     }
   }
 
   // Individual save functions for backward compatibility
-  const saveSequence = () => saveCampaignData('sequences')
+  const saveSequence = async () => {
+    if (!campaign?.id || steps.length === 0) return
+    
+    try {
+      console.log('💾 Saving sequences using dedicated endpoint...', steps.length, 'steps')
+      console.log('📤 Sending to sequences API:', JSON.stringify(steps, null, 2))
+      
+      const response = await fetch(`/api/campaigns/${campaign.id}/sequences`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          sequences: steps
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setHasSequenceSaved(true)
+        console.log('✅ Sequences saved successfully via dedicated endpoint')
+      } else {
+        console.error('❌ Save failed via sequences endpoint:', result.error)
+      }
+    } catch (error) {
+      console.error("❌ Error saving sequences via dedicated endpoint:", error)
+    }
+  }
   const saveSettings = () => saveCampaignData('settings')
   const saveAll = () => saveCampaignData('all')
   const saveSenders = () => saveCampaignData('senders')
@@ -897,8 +934,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const result = await response.json()
       
       if (result.success && result.data && result.data.length > 0) {
+        console.log('📥 Loaded sequences from database:', JSON.stringify(result.data, null, 2))
         setSteps(result.data)
         setActiveStepId(result.data[0]?.id || 1)
+      } else {
+        console.log('ℹ️ No existing sequences found, keeping defaults')
       }
     } catch (error) {
       console.error('Error loading sequences:', error)
@@ -1081,7 +1121,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     const autoSaveTimer = setTimeout(() => {
       // Auto-save sequences when steps change
       if (steps.length > 0) {
-        saveCampaignData('sequences')
+        console.log('🔄 Auto-saving sequences after change...', steps.length, 'steps')
+        saveSequence()
       }
     }, 5000) // Auto-save after 5 seconds of inactivity
 
@@ -2879,6 +2920,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       case 'target':
         return (
           <TargetTab
+            campaignId={campaign?.id || 0}
             scrappingIndustry={scrappingIndustry}
             setScrappingIndustry={setScrappingIndustry}
             scrappingKeywords={scrappingKeywords}

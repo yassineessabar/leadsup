@@ -70,7 +70,41 @@ export async function GET(
       return NextResponse.json({ success: false, error: sequenceError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, data: sequences || [] })
+    if (!sequences || sequences.length === 0) {
+      console.log("ℹ️ No sequences found for campaign:", campaignId)
+      return NextResponse.json({ success: true, data: [] })
+    }
+
+    console.log(`📖 Fetched ${sequences.length} sequences from database for campaign ${campaignId}`)
+    console.log('🔍 Raw database data:', JSON.stringify(sequences, null, 2))
+
+    // Transform database format back to component format
+    const transformedSequences = sequences.map((seq) => ({
+      id: seq.step_number, // Use step_number as frontend ID for consistency
+      type: seq.outreach_method || "email",
+      subject: seq.subject || "",
+      content: seq.content || "",
+      timing: seq.timing_days || (seq.step_number === 1 ? 0 : 1),
+      variants: seq.variants || 1,
+      sequence: seq.sequence_number || 1,
+      sequenceStep: seq.sequence_step || seq.step_number,
+      title: seq.title || `Email ${seq.sequence_step || seq.step_number}`,
+      outreach_method: seq.outreach_method || "email",
+      // Keep database metadata for debugging
+      _dbId: seq.id,
+      _stepNumber: seq.step_number
+    }))
+
+    console.log('🔄 Transformed sequences for frontend:', JSON.stringify(transformedSequences.map(s => ({
+      id: s.id,
+      title: s.title,
+      subject: s.subject,
+      timing: s.timing,
+      sequence: s.sequence,
+      sequenceStep: s.sequenceStep
+    })), null, 2))
+
+    return NextResponse.json({ success: true, data: transformedSequences })
 
   } catch (error) {
     console.error("❌ Error fetching sequences:", error)
@@ -119,15 +153,32 @@ export async function POST(
 
     // Insert new sequences
     if (sequences && sequences.length > 0) {
+      console.log('💾 Processing sequences for database insert:', JSON.stringify(sequences.map(s => ({
+        id: s.id,
+        title: s.title,
+        subject: s.subject,
+        sequence: s.sequence,
+        sequenceStep: s.sequenceStep,
+        timing: s.timing,
+        type: s.type
+      })), null, 2))
+
       const sequenceData = sequences.map((seq: any, index: number) => ({
         campaign_id: campaignId,
         step_number: index + 1,
-        subject: seq.subject || null,
+        subject: seq.subject || `Email ${seq.sequenceStep || index + 1} Subject`,
         content: seq.content || "",
-        timing_days: seq.timing || 1,
+        timing_days: seq.timing || (index === 0 ? 0 : seq.timing || 1),
         variants: seq.variants || 1,
-        outreach_method: seq.outreach_method || "email"
+        outreach_method: seq.outreach_method || seq.type || "email",
+        sequence_number: seq.sequence || 1,
+        sequence_step: seq.sequenceStep || (index + 1),
+        title: seq.title || `Email ${seq.sequenceStep || index + 1}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }))
+
+      console.log('💽 Final data for database insert:', JSON.stringify(sequenceData, null, 2))
 
       const { data: newSequences, error: insertError } = await supabaseServer
         .from("campaign_sequences")
