@@ -86,24 +86,39 @@ export function ComprehensiveDashboard() {
     try {
       setMetricsLoading(true)
       
+      console.log('🔍 Fetching account-level SendGrid metrics...')
+      
       // Build query parameters for last 30 days
       const params = new URLSearchParams({
         start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        end_date: new Date().toISOString().split('T')[0]
+        end_date: new Date().toISOString().split('T')[0],
+        user_id: 'd155d4c2-2f06-45b7-9c90-905e3648e8df' // This should come from your auth system
       })
       
-      const response = await fetch(`/api/analytics/user?${params.toString()}`, {
+      const response = await fetch(`/api/analytics/account?${params.toString()}`, {
         credentials: 'include'
       })
       
       if (!response.ok) {
-        console.warn("Failed to fetch user metrics:", response.statusText)
+        console.warn("Failed to fetch account metrics:", response.statusText)
         return
       }
       
       const result = await response.json()
       if (result.success && result.data?.metrics) {
-        setSendGridMetrics(result.data.metrics)
+        const metrics = result.data.metrics
+        setSendGridMetrics(metrics)
+        
+        console.log('✅ Account-level SendGrid metrics loaded:', {
+          source: result.data.source,
+          period: result.data.period,
+          emailsSent: metrics.emailsSent,
+          openRate: metrics.openRate,
+          clickRate: metrics.clickRate,
+          deliveryRate: metrics.deliveryRate
+        })
+      } else {
+        console.warn('⚠️ No SendGrid metrics available:', result)
       }
     } catch (error) {
       console.error('Error fetching SendGrid metrics:', error)
