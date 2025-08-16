@@ -844,15 +844,21 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
             filteredCampaigns.map((campaign) => {
               const progress = getCampaignProgress(campaign)
               
-              // Only show real metrics for campaigns that have been started
+              // Only show real metrics for campaigns that have been started AND have real campaign data
               const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused'
-              const hasRealMetrics = campaign.sendgridMetrics && (campaign.sendgridMetrics.emailsSent > 0)
               
-              // Use real SendGrid metrics only if campaign has been started and has data
-              const openRate = hasBeenStarted && hasRealMetrics 
+              // Check if this campaign has REAL metrics (not global account fallback data)
+              // Only show metrics if this specific campaign has actually sent emails
+              const hasRealCampaignData = campaign.sendgridMetrics && 
+                campaign.sendgridMetrics.emailsSent > 0 && 
+                // Ensure it's not just global account data
+                (campaign.sent === campaign.sendgridMetrics.emailsSent || campaign.sent === null)
+              
+              // Use real SendGrid metrics only if campaign has actual activity
+              const openRate = hasBeenStarted && hasRealCampaignData 
                 ? Math.round(campaign.sendgridMetrics.openRate) 
                 : 0
-              const responseRate = hasBeenStarted && hasRealMetrics 
+              const responseRate = hasBeenStarted && hasRealCampaignData 
                 ? Math.round(campaign.sendgridMetrics.clickRate) 
                 : 0
               
@@ -945,7 +951,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     <div className="grid grid-cols-2 gap-4 mb-6">
                       <div className="text-center p-4 bg-gray-50 rounded-2xl">
                         <p className="text-2xl font-light text-gray-900">
-                          {hasBeenStarted && hasRealMetrics ? `${openRate}%` : 
+                          {hasBeenStarted && hasRealCampaignData ? `${openRate}%` : 
                            hasBeenStarted ? '0%' : '—'}
                         </p>
                         <p className="text-sm text-gray-500 mt-1">
@@ -954,7 +960,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                       </div>
                       <div className="text-center p-4 bg-gray-50 rounded-2xl">
                         <p className="text-2xl font-light text-gray-900">
-                          {hasBeenStarted && hasRealMetrics ? `${responseRate}%` : 
+                          {hasBeenStarted && hasRealCampaignData ? `${responseRate}%` : 
                            hasBeenStarted ? '0%' : '—'}
                         </p>
                         <p className="text-sm text-gray-500 mt-1">

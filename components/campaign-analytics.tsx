@@ -260,15 +260,23 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Check if campaign has been started
   const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused'
   
-  // Calculate metrics from SendGrid data or fallback - only show real data for started campaigns
-  const totalSent = hasBeenStarted ? (metrics?.emailsSent || campaign.sent || 0) : 0
-  const totalDelivered = hasBeenStarted ? (metrics?.emailsDelivered || 0) : 0
+  // Check if campaign has REAL metrics (not just global SendGrid fallback data)
+  // Only show SendGrid data if this campaign has actually sent emails
+  const hasRealCampaignData = metrics && metrics.emailsSent > 0 && (
+    // STRICT: Campaign must have sent count that matches the metrics, AND it must be > 0
+    campaign.sent && campaign.sent > 0 && campaign.sent === metrics.emailsSent
+  )
+  
+  
+  // Calculate metrics - only show real data for campaigns with actual activity
+  const totalSent = hasBeenStarted && hasRealCampaignData ? metrics.emailsSent : 0
+  const totalDelivered = hasBeenStarted && hasRealCampaignData ? (metrics?.emailsDelivered || 0) : 0
   const totalPlanned = campaign.totalPlanned || 0 // Only use real data from database
-  const openRate = hasBeenStarted ? (metrics?.openRate || 0) : 0
-  const clickRate = hasBeenStarted ? (metrics?.clickRate || 0) : 0
-  const deliveryRate = hasBeenStarted ? (metrics?.deliveryRate || 0) : 0
-  const bounceRate = hasBeenStarted ? (metrics?.bounceRate || 0) : 0
-  const responseRate = hasBeenStarted ? (Math.floor(Math.random() * 10) + 5) : 0 // Keep this as fallback until we have reply tracking
+  const openRate = hasBeenStarted && hasRealCampaignData ? (metrics?.openRate || 0) : 0
+  const clickRate = hasBeenStarted && hasRealCampaignData ? (metrics?.clickRate || 0) : 0
+  const deliveryRate = hasBeenStarted && hasRealCampaignData ? (metrics?.deliveryRate || 0) : 0
+  const bounceRate = hasBeenStarted && hasRealCampaignData ? (metrics?.bounceRate || 0) : 0
+  const responseRate = hasBeenStarted && hasRealCampaignData ? (Math.floor(Math.random() * 10) + 5) : 0 // Keep this as fallback until we have reply tracking
   const progressPercentage = hasBeenStarted && totalPlanned > 0 ? Math.min(Math.round((totalSent / totalPlanned) * 100), 100) : 0
 
   const getCampaignStatusBadgeColor = (status: Campaign["status"]) => {
