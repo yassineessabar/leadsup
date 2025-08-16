@@ -23,9 +23,8 @@ import {
   Building2, 
   User, 
   Target,
-  Database, 
   FileText, 
-  Linkedin, 
+  Linkedin,
   ChevronDown, 
   Users2, 
   Users, 
@@ -37,7 +36,8 @@ import {
   X,
   Edit,
   MapPin,
-  Tag
+  Tag,
+  AlertCircle
 } from 'lucide-react'
 
 interface Contact {
@@ -78,6 +78,11 @@ export function LeadsTab() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingContact, setEditingContact] = useState<Partial<Contact>>({})
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [contactToDelete, setContactToDelete] = useState<Contact | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [selectedScrapperCampaign, setSelectedScrapperCampaign] = useState<string>('')
+  const [showCSVGuide, setShowCSVGuide] = useState(false)
   const [filterCount, setFilterCount] = useState(0)
   const [showFilters, setShowFilters] = useState(false)
   const [locationFilter, setLocationFilter] = useState("")
@@ -291,30 +296,166 @@ export function LeadsTab() {
   }
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Are you sure you want to delete ${selectedContacts.length} selected contacts?`)) return
+    setContactToDelete(null) // Bulk delete, no single contact
+    setShowDeleteModal(true)
+  }
 
+  const confirmDelete = async () => {
+    setIsDeleting(true)
+    
     try {
-      const deletePromises = selectedContacts.map(contactId =>
-        fetch(`/api/contacts/${contactId}`, { 
+      if (contactToDelete) {
+        // Single contact deletion
+        await fetch(`/api/contacts/${contactToDelete.id}`, { 
           method: 'DELETE',
           credentials: 'include'
         })
-      )
+        
+        toast({
+          title: "Contact deleted",
+          description: `${contactToDelete.first_name} ${contactToDelete.last_name} has been deleted successfully`
+        })
+      } else {
+        // Bulk deletion
+        const deletePromises = selectedContacts.map(contactId =>
+          fetch(`/api/contacts/${contactId}`, { 
+            method: 'DELETE',
+            credentials: 'include'
+          })
+        )
 
-      await Promise.all(deletePromises)
+        await Promise.all(deletePromises)
 
-      toast({
-        title: "Contacts deleted",
-        description: `${selectedContacts.length} contacts have been deleted successfully`
-      })
+        toast({
+          title: "Contacts deleted",
+          description: `${selectedContacts.length} contacts have been deleted successfully`
+        })
+        
+        setSelectedContacts([])
+      }
 
-      setSelectedContacts([])
       fetchContacts()
+      setShowDeleteModal(false)
+      setContactToDelete(null)
     } catch (error) {
       console.error('Error deleting contacts:', error)
       toast({
         title: "Error",
         description: "Failed to delete contacts",
+        variant: "destructive"
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleCSVImport = async (file: File) => {
+    try {
+      const text = await file.text()
+      const lines = text.split('\n').filter(line => line.trim())
+      
+      if (lines.length < 2) {
+        toast({
+          title: "Invalid CSV",
+          description: "CSV file must have at least a header and one data row",
+          variant: "destructive"
+        })
+        return
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+      const contacts = []
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''))
+        
+        if (values.length !== headers.length) continue
+
+        const contact: Partial<Contact> = {}
+        
+        headers.forEach((header, index) => {
+          const value = values[index]
+          if (!value) return
+
+          switch (header) {
+            case 'first_name':
+            case 'firstname':
+            case 'first name':
+              contact.first_name = value
+              break
+            case 'last_name':
+            case 'lastname':
+            case 'last name':
+              contact.last_name = value
+              break
+            case 'email':
+              contact.email = value
+              break
+            case 'title':
+            case 'job_title':
+            case 'position':
+              contact.title = value
+              break
+            case 'company':
+            case 'company_name':
+              contact.company = value
+              break
+            case 'industry':
+              contact.industry = value
+              break
+            case 'location':
+            case 'city':
+              contact.location = value
+              break
+            case 'linkedin':
+            case 'linkedin_url':
+              contact.linkedin = value
+              break
+            case 'website':
+              contact.website = value
+              break
+          }
+        })
+
+        if (contact.email || (contact.first_name && contact.last_name)) {
+          contacts.push(contact)
+        }
+      }
+
+      if (contacts.length === 0) {
+        toast({
+          title: "No Valid Contacts",
+          description: "No valid contacts found in the CSV file",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Import contacts via API
+      const response = await fetch('/api/contacts/bulk-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ contacts })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: "Import Successful",
+          description: `${data.imported || contacts.length} contacts imported successfully`
+        })
+        setShowImportModal(false)
+        fetchContacts()
+      } else {
+        throw new Error(data.error || 'Import failed')
+      }
+    } catch (error) {
+      console.error('Error importing CSV:', error)
+      toast({
+        title: "Import Failed",
+        description: error instanceof Error ? error.message : "Failed to import CSV file",
         variant: "destructive"
       })
     }
@@ -643,21 +784,10 @@ export function LeadsTab() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rounded-xl border-gray-200">
-                            <DropdownMenuItem onClick={() => handleEditContact(contact)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Contact
-                            </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => {
-                                if (confirm('Are you sure you want to delete this contact?')) {
-                                  // Handle single contact deletion
-                                  fetch(`/api/contacts/${contact.id}`, { 
-                                    method: 'DELETE',
-                                    credentials: 'include'
-                                  }).then(() => {
-                                    fetchContacts()
-                                  })
-                                }
+                                setContactToDelete(contact)
+                                setShowDeleteModal(true)
                               }}
                               className="text-red-600"
                             >
@@ -679,53 +809,197 @@ export function LeadsTab() {
 
       {/* Import Modal */}
       <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
-        <DialogContent className="max-w-md rounded-3xl border border-gray-100/20">
+        <DialogContent className="max-w-lg rounded-3xl border border-gray-100/20">
           <DialogHeader className="pb-6">
             <DialogTitle className="text-center text-2xl font-light text-gray-900 tracking-tight">
-              Select your import source
+              Import Contacts
             </DialogTitle>
+            <p className="text-center text-gray-500 text-sm mt-2">
+              Choose how you'd like to add contacts to your database
+            </p>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            <div className="flex items-center space-x-4 p-6 border border-gray-200/50 rounded-2xl hover:bg-gray-50/80 cursor-pointer transition-all duration-200 hover:scale-[1.02]">
-              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center">
-                <Database className="w-6 h-6 text-gray-600" />
+            {/* CSV Import */}
+            <div className="border border-gray-200/50 rounded-2xl overflow-hidden">
+              <div 
+                onClick={() => {
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.accept = '.csv'
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0]
+                    if (file) {
+                      handleCSVImport(file)
+                    }
+                  }
+                  input.click()
+                }}
+                className="flex items-center space-x-4 p-6 hover:bg-gray-50/80 cursor-pointer transition-all duration-200 group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
+                  <FileText className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-medium text-gray-900">CSV Import</h3>
+                  <p className="text-sm text-gray-500">Upload a CSV file with your contacts</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
               </div>
-              <div>
-                <h3 className="font-medium text-gray-900">Contacts database</h3>
-                <p className="text-sm text-gray-500">Import from existing database</p>
+              
+              {/* CSV Guide Toggle */}
+              <div className="px-6 pb-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowCSVGuide(!showCSVGuide)}
+                  className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 rounded-xl px-3 py-2 h-auto font-medium"
+                >
+                  {showCSVGuide ? 'Hide' : 'Show'} CSV Format Guide
+                  <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${showCSVGuide ? 'rotate-180' : ''}`} />
+                </Button>
+                
+                {showCSVGuide && (
+                  <div className="mt-3 space-y-4">
+                    <div className="bg-blue-50/50 border border-blue-100/50 rounded-2xl p-4">
+                      <h4 className="font-medium text-gray-900 mb-2 text-sm">Required Format</h4>
+                      <p className="text-xs text-gray-600 mb-3">
+                        Your CSV file should have column headers in the first row. We support these column names:
+                      </p>
+                      
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <p className="font-medium text-gray-700 mb-1">Name Fields:</p>
+                          <ul className="text-gray-600 space-y-0.5">
+                            <li>• first_name, firstname, "first name"</li>
+                            <li>• last_name, lastname, "last name"</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-700 mb-1">Contact Fields:</p>
+                          <ul className="text-gray-600 space-y-0.5">
+                            <li>• email</li>
+                            <li>• title, job_title, position</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-700 mb-1">Company Fields:</p>
+                          <ul className="text-gray-600 space-y-0.5">
+                            <li>• company, company_name</li>
+                            <li>• industry</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-700 mb-1">Other Fields:</p>
+                          <ul className="text-gray-600 space-y-0.5">
+                            <li>• location, city</li>
+                            <li>• linkedin, linkedin_url</li>
+                            <li>• website</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-green-50/50 border border-green-100/50 rounded-2xl p-4">
+                      <h4 className="font-medium text-gray-900 mb-2 text-sm">Example CSV Format</h4>
+                      <div className="bg-white/80 rounded-xl p-3 text-xs font-mono">
+                        <div className="text-gray-600">
+                          first_name,last_name,email,title,company,location<br/>
+                          John,Doe,john@example.com,CEO,Tech Corp,San Francisco<br/>
+                          Jane,Smith,jane@startup.com,CTO,Startup Inc,New York
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-yellow-50/50 border border-yellow-100/50 rounded-2xl p-4">
+                      <h4 className="font-medium text-gray-900 mb-2 text-sm flex items-center">
+                        <AlertCircle className="w-4 h-4 text-yellow-600 mr-2" />
+                        Important Notes
+                      </h4>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        <li>• At minimum, contacts need either an email OR both first and last name</li>
+                        <li>• Column headers are case-insensitive and flexible (see supported names above)</li>
+                        <li>• Empty cells are okay - we'll skip missing information</li>
+                        <li>• Maximum file size: 10MB</li>
+                        <li>• Contacts will be automatically validated before import</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
-            <div className="flex items-center space-x-4 p-6 border border-gray-200/50 rounded-2xl hover:bg-gray-50/80 cursor-pointer transition-all duration-200 hover:scale-[1.02]">
-              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center">
-                <FileText className="w-6 h-6 text-gray-600" />
+            {/* Auto Scrapper */}
+            <div className="border border-blue-200/50 rounded-2xl overflow-hidden">
+              <div className="flex items-center space-x-4 p-6 hover:bg-blue-50/30 transition-all duration-200">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center">
+                  <Target className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-medium text-gray-900">Auto Scrapper</h3>
+                  <p className="text-sm text-gray-500">Automatically find and import leads from LinkedIn</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-medium text-gray-900">CSV import</h3>
-                <p className="text-sm text-gray-500">Import your contacts from CSV file</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4 p-6 border border-blue-200/50 rounded-2xl hover:bg-blue-50/80 cursor-pointer transition-all duration-200 hover:scale-[1.02]">
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center">
-                <Linkedin className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-medium text-gray-900">LinkedIn import</h3>
-                <p className="text-sm text-gray-500">Import contacts from LinkedIn</p>
+              
+              <div className="px-6 pb-6">
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Select Campaign
+                  </label>
+                  <Select value={selectedScrapperCampaign} onValueChange={setSelectedScrapperCampaign}>
+                    <SelectTrigger className="w-full border-gray-200/50 rounded-2xl bg-white/50 h-11">
+                      <SelectValue placeholder="Choose a campaign for scraped contacts" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {campaigns.length > 0 ? (
+                        campaigns.map((campaign) => (
+                          <SelectItem key={campaign.id} value={campaign.id.toString()}>
+                            {campaign.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-campaigns" disabled>
+                          No campaigns available
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Button
+                    onClick={() => {
+                      if (!selectedScrapperCampaign) {
+                        toast({
+                          title: "Campaign Required",
+                          description: "Please select a campaign first",
+                          variant: "destructive"
+                        })
+                        return
+                      }
+                      // Redirect to campaign Target Audience -> Auto Scrapping section
+                      window.location.href = `/?tab=campaigns-email&campaignId=${selectedScrapperCampaign}&subtab=target`
+                    }}
+                    disabled={!selectedScrapperCampaign || campaigns.length === 0}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    <Zap className="w-4 h-4 mr-2" />
+                    Start Auto Scrapping
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
           
           <div className="pt-6 border-t border-gray-100/50">
-            <button 
-              className="text-sm text-gray-500 hover:text-gray-700 flex items-center transition-colors rounded-2xl px-3 py-2 hover:bg-gray-50"
-              onClick={() => setShowImportModal(false)}
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowImportModal(false)
+                setSelectedScrapperCampaign('')
+              }}
+              className="text-sm text-gray-500 hover:text-gray-700 transition-colors rounded-2xl px-3 py-2 hover:bg-gray-50"
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
               Back to contacts
-            </button>
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -852,6 +1126,65 @@ export function LeadsTab() {
               className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-200 hover:scale-105"
             >
               {editingContact.id ? 'Save Changes' : 'Add Contact'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="max-w-md rounded-3xl border border-gray-100/20">
+          <DialogHeader className="pb-6">
+            <DialogTitle className="text-center text-2xl font-light text-gray-900 tracking-tight">
+              Confirm Deletion
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
+                <Trash2 className="w-8 h-8 text-red-600" />
+              </div>
+              
+              <div className="space-y-2">
+                <p className="text-gray-900 font-medium">
+                  {contactToDelete 
+                    ? `Delete ${contactToDelete.first_name} ${contactToDelete.last_name}?`
+                    : `Delete ${selectedContacts.length} selected contacts?`
+                  }
+                </p>
+                <p className="text-sm text-gray-500">
+                  {contactToDelete 
+                    ? "This contact will be permanently removed from your database."
+                    : "These contacts will be permanently removed from your database."
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-100/50">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDeleteModal(false)}
+              disabled={isDeleting}
+              className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-200"
+            >
+              {isDeleting ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Deleting...
+                </div>
+              ) : (
+                "Delete"
+              )}
             </Button>
           </div>
         </DialogContent>

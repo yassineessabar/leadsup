@@ -680,7 +680,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   if (currentView === "dashboard" && selectedCampaign) {
     // Check URL params for specific tab, otherwise use dashboardInitialTab state
     const subtab = searchParams.get('subtab')
-    const initialTab = subtab && ['contacts', 'sequence', 'sender', 'inbox', 'settings'].includes(subtab) 
+    const initialTab = subtab && ['contacts', 'sequence', 'sender', 'inbox', 'settings', 'target'].includes(subtab) 
       ? subtab 
       : dashboardInitialTab
     
