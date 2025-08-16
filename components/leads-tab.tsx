@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
@@ -27,6 +28,7 @@ import {
   Linkedin, 
   ChevronDown, 
   Users2, 
+  Users, 
   UserCheck, 
   Zap, 
   UserCog, 
@@ -406,295 +408,309 @@ export function LeadsTab() {
 
 
   return (
-    <div className={`min-h-screen bg-white ${selectedContacts.length > 0 ? 'pb-20' : ''}`}>
+    <div className={`min-h-screen bg-gray-50/30 p-6 ${selectedContacts.length > 0 ? 'pb-32' : ''}`}>
       {/* Header */}
-      <div className="border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <User className="w-5 h-5 text-gray-400" />
-              <span className="text-lg font-medium text-gray-900">All contacts</span>
-              <Badge variant="secondary" className="bg-gray-100 text-gray-600">
-                {totalContacts}
-              </Badge>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Search name, email, title..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-64 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
-              />
-            </div>
-            
-            <Button 
-              variant="outline" 
-              className="border-gray-200 text-gray-700 hover:bg-gray-50"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <Filter className="w-4 h-4 mr-2" />
-              Filters
-              {filterCount > 0 && (
-                <Badge className="ml-2 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
-                  {filterCount}
+      <div className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-3xl shadow-sm mb-6">
+        <div className="p-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-light text-gray-900 tracking-tight">All Contacts</h1>
+                  <p className="text-gray-600 text-sm">Manage your contact database</p>
+                </div>
+                <Badge className="bg-blue-100 text-blue-700 rounded-xl px-3 py-1 font-medium">
+                  {totalContacts}
                 </Badge>
-              )}
-            </Button>
+              </div>
+            </div>
             
-            <Button 
-              className="text-white" style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
-              onClick={() => setShowImportModal(true)}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Import new contacts
-            </Button>
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Search name, email, title..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-64 border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
+                />
+              </div>
+              
+              <Button 
+                variant="outline" 
+                className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-4 py-3 font-medium"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                Filters
+                {filterCount > 0 && (
+                  <Badge className="ml-2 bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-xl">
+                    {filterCount}
+                  </Badge>
+                )}
+              </Button>
+              
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-200 hover:scale-105"
+                onClick={() => setShowImportModal(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Import new contacts
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Filters Panel */}
       {showFilters && (
-        <div className="bg-gray-50 border-b border-gray-200 px-6 py-4">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-48">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location Filter
-              </label>
-              <Input
-                placeholder="Filter by location..."
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                className="w-full"
-              />
+        <div className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-3xl shadow-sm mb-6">
+          <div className="p-8">
+            <div className="flex flex-wrap gap-6">
+              <div className="flex-1 min-w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Location Filter
+                </label>
+                <Input
+                  placeholder="Filter by location..."
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  className="w-full border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
+                />
+              </div>
+              <div className="flex-1 min-w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Keyword Filter
+                </label>
+                <Input
+                  placeholder="Filter by keywords..."
+                  value={keywordFilter}
+                  onChange={(e) => setKeywordFilter(e.target.value)}
+                  className="w-full border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
+                />
+              </div>
+              <div className="flex-1 min-w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Industry Filter
+                </label>
+                <Input
+                  placeholder="Filter by industry..."
+                  value={industryFilter}
+                  onChange={(e) => setIndustryFilter(e.target.value)}
+                  className="w-full border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setLocationFilter("")
+                    setKeywordFilter("")
+                    setIndustryFilter("")
+                  }}
+                  className="h-11 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-4 font-medium"
+                >
+                  Clear All
+                </Button>
+              </div>
             </div>
-            <div className="flex-1 min-w-48">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Keyword Filter
-              </label>
-              <Input
-                placeholder="Filter by keywords..."
-                value={keywordFilter}
-                onChange={(e) => setKeywordFilter(e.target.value)}
-                className="w-full"
-              />
-            </div>
-            <div className="flex-1 min-w-48">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Industry Filter
-              </label>
-              <Input
-                placeholder="Filter by industry..."
-                value={industryFilter}
-                onChange={(e) => setIndustryFilter(e.target.value)}
-                className="w-full"
-              />
-            </div>
-            <div className="flex items-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setLocationFilter("")
-                  setKeywordFilter("")
-                  setIndustryFilter("")
-                }}
-                className="h-10"
-              >
-                Clear All
-              </Button>
-            </div>
+            {filterCount > 0 && (
+              <div className="mt-4 text-sm text-gray-600 bg-blue-50/50 border border-blue-100/50 rounded-2xl px-4 py-2">
+                <span className="font-medium">{filterCount}</span> filter{filterCount > 1 ? 's' : ''} applied
+              </div>
+            )}
           </div>
-          {filterCount > 0 && (
-            <div className="mt-2 text-sm text-gray-600">
-              {filterCount} filter{filterCount > 1 ? 's' : ''} applied
-            </div>
-          )}
         </div>
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="w-12 px-4 py-3">
-                <Checkbox
-                  checked={selectedContacts.length === contacts.length && contacts.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Avatar
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                First Name
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Last Name
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Title
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Location
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Industry
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                LinkedIn
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Campaign
-              </th>
-              <th className="w-12 px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {loading ? (
-              <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
-                  Loading contacts...
-                </td>
+      <div className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-3xl shadow-sm overflow-hidden">
+        <div className="bg-gray-50 rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200/60">
+                <th className="text-left p-4">
+                  <Checkbox
+                    checked={selectedContacts.length === contacts.length && contacts.length > 0}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Campaign</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Company</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Industry</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
               </tr>
-            ) : contacts.length === 0 ? (
-              <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
-                  No contacts found
-                </td>
-              </tr>
-            ) : (
-              contacts.map((contact) => (
-                <tr key={contact.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-4">
-                    <Checkbox
-                      checked={selectedContacts.includes(contact.id)}
-                      onCheckedChange={() => handleSelectContact(contact.id)}
-                    />
-                  </td>
-                  
-                  <td className="px-4 py-4">
-                    <Avatar className="w-8 h-8">
-                      {contact.image_url && (
-                        <AvatarImage src={contact.image_url} alt={`${contact.first_name} ${contact.last_name}`} />
-                      )}
-                      <AvatarFallback className="bg-gray-100 text-gray-600 text-xs">
-                        {getInitials(contact.first_name, contact.last_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </td>
-                  
-                  <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                    {contact.first_name || "-"}
-                  </td>
-                  
-                  <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                    {contact.last_name || "-"}
-                  </td>
-                  
-                  <td className="px-4 py-4 text-sm text-gray-600 max-w-xs">
-                    <div className="truncate" title={contact.title}>
-                      {contact.title || "-"}
-                    </div>
-                  </td>
-                  
-                  <td className="px-4 py-4 text-sm text-blue-600">
-                    {contact.email ? (
-                      <a href={`mailto:${contact.email}`} className="hover:underline">
-                        {contact.email}
-                      </a>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  
-                  <td className="px-4 py-4 text-sm text-gray-600">
-                    {contact.location ? (
-                      <div className="flex items-center space-x-1">
-                        <MapPin className="w-3 h-3 text-gray-400" />
-                        <span>{contact.location}</span>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {loading ? (
+                [...Array(5)].map((_, index) => (
+                  <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="p-4">
+                      <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
+                        <div className="space-y-2">
+                          <div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
+                          <div className="h-2 bg-gray-200 rounded w-32 animate-pulse"></div>
+                        </div>
                       </div>
-                    ) : "-"}
-                  </td>
-                  
-                  <td className="px-4 py-4 text-sm text-gray-600">
-                    {contact.industry || "-"}
-                  </td>
-                  
-                  <td className="px-4 py-4">
-                    {contact.linkedin ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-blue-200 text-blue-600 hover:bg-blue-50 text-xs h-7"
-                        onClick={() => window.open(contact.linkedin, '_blank')}
-                      >
-                        <Linkedin className="w-3 h-3 mr-1" />
-                        LinkedIn
-                      </Button>
-                    ) : "-"}
-                  </td>
-                  
-                  <td className="px-4 py-4">
-                    {contact.campaign_name ? (
-                      <Badge className="bg-blue-100 text-blue-800 text-xs">
-                        {contact.campaign_name}
-                      </Badge>
-                    ) : "-"}
-                  </td>
-                  
-                  <td className="px-4 py-4">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-gray-400 hover:text-gray-600"
-                      onClick={() => handleEditContact(contact)}
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
+                    </td>
+                    <td className="p-4"><div className="h-5 bg-gray-200 rounded-full w-16 animate-pulse"></div></td>
+                    <td className="p-4"><div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div></td>
+                    <td className="p-4"><div className="h-3 bg-gray-200 rounded w-20 animate-pulse"></div></td>
+                    <td className="p-4"><div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div></td>
+                    <td className="p-4"><div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div></td>
+                  </tr>
+                ))
+              ) : contacts.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-12 text-center text-gray-500">
+                    <Users2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-lg font-medium text-gray-900 mb-2">No contacts found</p>
+                    <p className="text-sm text-gray-500">Try adjusting your search or filters</p>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                contacts.map((contact) => (
+                  <tr key={contact.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="p-4">
+                      <Checkbox
+                        checked={selectedContacts.includes(contact.id)}
+                        onCheckedChange={() => handleSelectContact(contact.id)}
+                      />
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-10 h-10">
+                          {contact.image_url && (
+                            <AvatarImage src={contact.image_url} alt={`${contact.first_name} ${contact.last_name}`} />
+                          )}
+                          <AvatarFallback className="bg-blue-50 text-blue-600 text-sm font-medium">
+                            {getInitials(contact.first_name, contact.last_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-gray-900">{contact.first_name} {contact.last_name}</p>
+                          <p className="text-sm text-gray-500">{contact.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      {contact.campaign_name ? (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs border rounded-full px-2 py-1">
+                          {contact.campaign_name}
+                        </Badge>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <p className="font-medium text-gray-900">{contact.company || '-'}</p>
+                      {contact.title && (
+                        <p className="text-sm text-gray-500">{contact.title}</p>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <p className="text-sm text-gray-500">{contact.location || '-'}</p>
+                    </td>
+                    <td className="p-4">
+                      <p className="text-sm text-gray-500">{contact.industry || '-'}</p>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        {contact.linkedin && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
+                            onClick={() => window.open(contact.linkedin, '_blank')}
+                          >
+                            <Linkedin className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-gray-100 rounded-xl transition-all duration-200">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl border-gray-200">
+                            <DropdownMenuItem onClick={() => handleEditContact(contact)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Contact
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                if (confirm('Are you sure you want to delete this contact?')) {
+                                  // Handle single contact deletion
+                                  fetch(`/api/contacts/${contact.id}`, { 
+                                    method: 'DELETE',
+                                    credentials: 'include'
+                                  }).then(() => {
+                                    fetchContacts()
+                                  })
+                                }
+                              }}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {/* Import Modal */}
       <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center text-lg font-medium text-gray-900">
+        <DialogContent className="max-w-md rounded-3xl border border-gray-100/20">
+          <DialogHeader className="pb-6">
+            <DialogTitle className="text-center text-2xl font-light text-gray-900 tracking-tight">
               Select your import source
             </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-              <Database className="w-6 h-6 text-gray-400" />
+            <div className="flex items-center space-x-4 p-6 border border-gray-200/50 rounded-2xl hover:bg-gray-50/80 cursor-pointer transition-all duration-200 hover:scale-[1.02]">
+              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center">
+                <Database className="w-6 h-6 text-gray-600" />
+              </div>
               <div>
                 <h3 className="font-medium text-gray-900">Contacts database</h3>
                 <p className="text-sm text-gray-500">Import from existing database</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-              <FileText className="w-6 h-6 text-gray-400" />
+            <div className="flex items-center space-x-4 p-6 border border-gray-200/50 rounded-2xl hover:bg-gray-50/80 cursor-pointer transition-all duration-200 hover:scale-[1.02]">
+              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-gray-600" />
+              </div>
               <div>
                 <h3 className="font-medium text-gray-900">CSV import</h3>
                 <p className="text-sm text-gray-500">Import your contacts from CSV file</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-              <Linkedin className="w-6 h-6 text-blue-600" />
+            <div className="flex items-center space-x-4 p-6 border border-blue-200/50 rounded-2xl hover:bg-blue-50/80 cursor-pointer transition-all duration-200 hover:scale-[1.02]">
+              <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center">
+                <Linkedin className="w-6 h-6 text-blue-600" />
+              </div>
               <div>
                 <h3 className="font-medium text-gray-900">LinkedIn import</h3>
                 <p className="text-sm text-gray-500">Import contacts from LinkedIn</p>
@@ -702,9 +718,9 @@ export function LeadsTab() {
             </div>
           </div>
           
-          <div className="pt-4 border-t">
+          <div className="pt-6 border-t border-gray-100/50">
             <button 
-              className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
+              className="text-sm text-gray-500 hover:text-gray-700 flex items-center transition-colors rounded-2xl px-3 py-2 hover:bg-gray-50"
               onClick={() => setShowImportModal(false)}
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
@@ -716,45 +732,48 @@ export function LeadsTab() {
 
       {/* Edit Prospect Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="max-w-2xl rounded-3xl border border-gray-100/20">
+          <DialogHeader className="pb-6">
+            <DialogTitle className="text-2xl font-light text-gray-900 tracking-tight">
               {editingContact.id ? 'Edit Contact' : 'Add New Contact'}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="grid grid-cols-2 gap-6 py-4">
             <div>
-              <label className="text-sm font-medium">First Name</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">First Name</label>
               <Input
                 value={editingContact.first_name || ''}
                 onChange={(e) => setEditingContact({...editingContact, first_name: e.target.value})}
                 placeholder="First name"
+                className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Last Name</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Last Name</label>
               <Input
                 value={editingContact.last_name || ''}
                 onChange={(e) => setEditingContact({...editingContact, last_name: e.target.value})}
                 placeholder="Last name"
+                className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div className="col-span-2">
-              <label className="text-sm font-medium">Email</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Email</label>
               <Input
                 type="email"
                 value={editingContact.email || ''}
                 onChange={(e) => setEditingContact({...editingContact, email: e.target.value})}
                 placeholder="email@example.com"
+                className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Campaign</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Campaign</label>
               <Select 
                 value={editingContact.campaign_id?.toString() || ''} 
                 onValueChange={(value) => setEditingContact({...editingContact, campaign_id: value ? parseInt(value) : undefined})}
               >
-                <SelectTrigger>
+                <SelectTrigger className="border-gray-200/50 rounded-2xl bg-white/50 h-11">
                   <SelectValue placeholder="Select campaign" />
                 </SelectTrigger>
                 <SelectContent>
@@ -766,59 +785,72 @@ export function LeadsTab() {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium">Title</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Title</label>
               <Input
                 value={editingContact.title || ''}
                 onChange={(e) => setEditingContact({...editingContact, title: e.target.value})}
                 placeholder="Job title"
+                className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Company</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Company</label>
               <Input
                 value={editingContact.company || ''}
                 onChange={(e) => setEditingContact({...editingContact, company: e.target.value})}
                 placeholder="Company name"
+                className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Industry</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Industry</label>
               <Input
                 value={editingContact.industry || ''}
                 onChange={(e) => setEditingContact({...editingContact, industry: e.target.value})}
                 placeholder="Industry"
+                className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Location</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Location</label>
               <Input
                 value={editingContact.location || ''}
                 onChange={(e) => setEditingContact({...editingContact, location: e.target.value})}
                 placeholder="City, Country"
+                className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div className="col-span-1">
-              <label className="text-sm font-medium">LinkedIn</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">LinkedIn</label>
               <Input
                 value={editingContact.linkedin || ''}
                 onChange={(e) => setEditingContact({...editingContact, linkedin: e.target.value})}
                 placeholder="https://linkedin.com/in/username"
+                className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div className="col-span-1">
-              <label className="text-sm font-medium">Avatar URL</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Avatar URL</label>
               <Input
                 value={editingContact.image_url || ''}
                 onChange={(e) => setEditingContact({...editingContact, image_url: e.target.value})}
                 placeholder="https://example.com/avatar.jpg"
+                className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
           </div>
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setShowEditModal(false)}>
+          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-100/50">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowEditModal(false)}
+              className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium"
+            >
               Cancel
             </Button>
-            <Button onClick={saveContact}>
+            <Button 
+              onClick={saveContact}
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-200 hover:scale-105"
+            >
               {editingContact.id ? 'Save Changes' : 'Add Contact'}
             </Button>
           </div>
@@ -827,57 +859,59 @@ export function LeadsTab() {
 
       {/* Selection Bar - appears when contacts are selected */}
       {selectedContacts.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 shadow-lg">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={() => setSelectedContacts([])}
-                className="text-sm text-red-600 hover:text-red-700 flex items-center"
-              >
-                <X className="w-4 h-4 mr-1" />
-                Clear selection
-              </button>
-              <button 
-                onClick={handleSelectAll}
-                className="text-sm text-blue-600 hover:text-blue-700"
-              >
-                Select all
-              </button>
-              <span className="text-sm text-gray-600">
-                {selectedContacts.length} selected.
-              </span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Select onValueChange={handleCampaignAssignment}>
-                <SelectTrigger className="w-auto min-w-32">
-                  <Users2 className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder={campaigns.length > 0 ? "Assign to Campaign" : "No campaigns found"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {campaigns.length > 0 ? (
-                    campaigns.map((campaign) => (
-                      <SelectItem key={campaign.id} value={campaign.id.toString()}>
-                        {campaign.name}
+        <div className="fixed bottom-6 left-6 right-6 bg-white/90 backdrop-blur-xl border border-gray-100/20 rounded-3xl shadow-lg">
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button 
+                  onClick={() => setSelectedContacts([])}
+                  className="text-sm text-red-600 hover:text-red-700 flex items-center transition-colors"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Clear selection
+                </button>
+                <button 
+                  onClick={handleSelectAll}
+                  className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                  Select all
+                </button>
+                <span className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-xl">
+                  {selectedContacts.length} selected
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <Select onValueChange={handleCampaignAssignment}>
+                  <SelectTrigger className="w-auto min-w-40 rounded-2xl border-gray-200 bg-white/50">
+                    <Users2 className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder={campaigns.length > 0 ? "Assign to Campaign" : "No campaigns found"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {campaigns.length > 0 ? (
+                      campaigns.map((campaign) => (
+                        <SelectItem key={campaign.id} value={campaign.id.toString()}>
+                          {campaign.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-campaigns" disabled>
+                        No campaigns available
                       </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-campaigns" disabled>
-                      No campaigns available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              
-              <Button variant="outline" size="sm" className="text-gray-700 border-gray-300" onClick={handleExportCSV}>
-                <Download className="w-4 h-4 mr-2" />
-                Export as CSV
-              </Button>
-              
-              <Button variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50" onClick={handleBulkDelete}>
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </Button>
+                    )}
+                  </SelectContent>
+                </Select>
+                
+                <Button variant="outline" className="text-gray-700 border-gray-200 rounded-2xl px-4 py-2 font-medium" onClick={handleExportCSV}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </Button>
+                
+                <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 rounded-2xl px-4 py-2 font-medium" onClick={handleBulkDelete}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -885,46 +919,52 @@ export function LeadsTab() {
 
       {/* Regular Footer - only show when no contacts selected */}
       {selectedContacts.length === 0 && (
-        <div className="border-t border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalContacts)} of {totalContacts}
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                className="text-gray-600"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              
-              <div className="flex items-center space-x-1">
-                {[...Array(Math.min(5, Math.ceil(totalContacts / pageSize)))].map((_, index) => (
-                  <Button 
-                    key={index + 1}
-                    variant="outline" 
-                    size="sm" 
-                    className={currentPage === index + 1 ? "bg-blue-50 border-blue-200 text-blue-600" : "text-gray-600"}
-                    onClick={() => setCurrentPage(index + 1)}
-                  >
-                    {index + 1}
-                  </Button>
-                ))}
+        <div className="mt-6 bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-3xl shadow-sm">
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-xl">
+                {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalContacts)} of {totalContacts} contacts
               </div>
               
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-gray-600"
-                disabled={!hasMore}
-                onClick={() => setCurrentPage(currentPage + 1)}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  className="text-gray-600 rounded-2xl h-10 w-10 p-0"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                
+                <div className="flex items-center space-x-1">
+                  {[...Array(Math.min(5, Math.ceil(totalContacts / pageSize)))].map((_, index) => (
+                    <Button 
+                      key={index + 1}
+                      variant="outline" 
+                      size="sm" 
+                      className={`rounded-2xl h-10 w-10 p-0 font-medium ${
+                        currentPage === index + 1 
+                          ? "bg-blue-600 border-blue-600 text-white hover:bg-blue-700" 
+                          : "text-gray-600 border-gray-200 hover:bg-gray-50"
+                      }`}
+                      onClick={() => setCurrentPage(index + 1)}
+                    >
+                      {index + 1}
+                    </Button>
+                  ))}
+                </div>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-gray-600 rounded-2xl h-10 w-10 p-0"
+                  disabled={!hasMore}
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>

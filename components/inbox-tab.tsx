@@ -620,13 +620,13 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="h-screen bg-white flex">
+    <div className="h-screen bg-gray-50/30 flex gap-6 p-6">
       {/* Left Sidebar */}
-      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-72 bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-3xl flex flex-col shadow-sm">
         {/* Folders Section */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="text-sm font-medium text-gray-700 mb-3">Folders</div>
-          <div className="space-y-1">
+        <div className="p-6 border-b border-gray-100/50">
+          <div className="text-sm font-medium text-gray-700 uppercase tracking-wide mb-4">Folders</div>
+          <div className="space-y-2">
             {[
               { name: 'Inbox', key: 'inbox', icon: Mail, count: folderCounts.inbox },
               { name: 'Sent', key: 'sent', icon: Send, count: folderCounts.sent },
@@ -635,24 +635,22 @@ export default function InboxPage() {
               <button
                 key={index}
                 onClick={() => setSelectedFolder(folder.key)}
-                className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left rounded-lg transition-colors ${
+                className={`w-full flex items-center justify-between px-4 py-3 text-sm text-left rounded-2xl transition-all duration-200 ${
                   selectedFolder === folder.key 
-                    ? 'font-medium'  
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-blue-50/80 text-blue-600 font-medium shadow-sm'  
+                    : 'text-gray-700 hover:bg-gray-50/80'
                 }`}
-                style={selectedFolder === folder.key ? { backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' } : {}}
               >
                 <div className="flex items-center space-x-3">
                   <folder.icon className="w-4 h-4" />
                   <span>{folder.name}</span>
                 </div>
                 {folder.count > 0 && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  <span className={`text-xs px-2 py-1 rounded-xl font-medium ${
                     selectedFolder === folder.key 
-                      ? '' 
+                      ? 'bg-blue-100 text-blue-700' 
                       : 'bg-gray-100 text-gray-600'
-                  }`}
-                  style={selectedFolder === folder.key ? { backgroundColor: 'rgba(87, 140, 255, 0.2)', color: 'rgb(87, 140, 255)' } : {}}>
+                  }`}>
                     {folder.count}
                   </span>
                 )}
@@ -662,16 +660,16 @@ export default function InboxPage() {
         </div>
 
         {/* Filters Section */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="text-sm font-medium text-gray-700 mb-3">Filters</div>
+        <div className="p-6 border-b border-gray-100/50">
+          <div className="text-sm font-medium text-gray-700 uppercase tracking-wide mb-4">Filters</div>
           
           {/* Campaign Filter */}
-          <div className="mb-3">
+          <div className="mb-4">
             <label className="block text-xs font-medium text-gray-700 mb-2">Campaign</label>
             <select 
               value={selectedCampaign || ''}
               onChange={(e) => setSelectedCampaign(e.target.value || null)}
-              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[rgb(87,140,255)]"
+              className="w-full text-sm border border-gray-200/50 rounded-2xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white/50"
             >
               <option value="">All Campaigns</option>
               {campaigns.map(campaign => (
@@ -683,12 +681,12 @@ export default function InboxPage() {
           </div>
 
           {/* Status Filter */}
-          <div className="mb-3">
+          <div className="mb-4">
             <label className="block text-xs font-medium text-gray-700 mb-2">Lead Status</label>
             <select 
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[rgb(87,140,255)]"
+              className="w-full text-sm border border-gray-200/50 rounded-2xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white/50"
             >
               <option value="">All Statuses</option>
               {Object.entries(statusConfig).map(([key, config]) => (
@@ -698,12 +696,12 @@ export default function InboxPage() {
           </div>
 
           {/* Date Range Filter */}
-          <div className="mb-3">
+          <div className="mb-4">
             <label className="block text-xs font-medium text-gray-700 mb-2">Date Range</label>
             <select 
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[rgb(87,140,255)]"
+              className="w-full text-sm border border-gray-200/50 rounded-2xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white/50"
             >
               <option value="7">Last 7 days</option>
               <option value="30">Last 30 days</option>
@@ -711,32 +709,31 @@ export default function InboxPage() {
               <option value="custom">Custom range</option>
             </select>
           </div>
-
         </div>
 
         {/* Search Section */}
-        <div className="p-4">
+        <div className="p-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               placeholder="Search messages..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 text-sm border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
+              className="pl-10 text-sm border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
             />
           </div>
         </div>
       </div>
 
       {/* Middle Panel - Email List */}
-      <div className="w-96 border-r border-gray-200 flex flex-col">
+      <div className="w-96 bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-3xl flex flex-col shadow-sm">
         {/* Tabs */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-100/50">
           <div className="flex space-x-6 mb-4">
             <button
-              className={`pb-2 px-1 border-b-2 font-medium text-sm ${
+              className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === "primary"
-                  ? "border-[rgb(87,140,255)] text-[rgb(87,140,255)]"
+                  ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
               onClick={() => setActiveTab("primary")}
@@ -744,9 +741,9 @@ export default function InboxPage() {
               Primary
             </button>
             <button
-              className={`pb-2 px-1 border-b-2 font-medium text-sm ${
+              className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === "others"
-                  ? "border-[rgb(87,140,255)] text-[rgb(87,140,255)]"
+                  ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
               onClick={() => setActiveTab("others")}
@@ -762,7 +759,7 @@ export default function InboxPage() {
               placeholder="Search mail"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
+              className="pl-10 border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
             />
           </div>
         </div>
@@ -771,103 +768,113 @@ export default function InboxPage() {
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center h-32">
-              <div className="text-sm text-gray-500">Loading emails...</div>
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <div className="text-sm text-gray-500">Loading emails...</div>
+              </div>
             </div>
           ) : emails.length === 0 ? (
             <div className="flex items-center justify-center h-32">
-              <div className="text-sm text-gray-500">No emails found</div>
+              <div className="text-center">
+                <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <div className="text-sm text-gray-500">No emails found</div>
+              </div>
             </div>
           ) : (
-            emails.map((email) => {
-              const isRead = email.isRead || email.is_read
-              const isImportant = email.isImportant || email.is_important
-              const statusLabel = email.statusLabel || email.status_label
-              
-              return (
-                <div
-                  key={email.id}
-                  className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                    selectedEmail?.id === email.id ? 'bg-[rgba(87,140,255,0.05)] border-l-4 border-l-[rgb(87,140,255)]' : ''
-                  }`}
-                  onClick={() => handleEmailSelect(email)}
-                >
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      checked={selectedEmails.includes(email.id)}
-                      onCheckedChange={() => handleCheckboxChange(email.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="mt-1"
-                    />
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center space-x-2">
-                          <span className={`text-sm truncate ${isRead ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>
-                            {email.sender}
+            <div className="p-3 space-y-2">
+              {emails.map((email) => {
+                const isRead = email.isRead || email.is_read
+                const isImportant = email.isImportant || email.is_important
+                const statusLabel = email.statusLabel || email.status_label
+                
+                return (
+                  <div
+                    key={email.id}
+                    className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 border ${
+                      selectedEmail?.id === email.id 
+                        ? 'bg-blue-50/80 border-blue-200/50 shadow-sm' 
+                        : 'border-transparent hover:bg-gray-50/80 hover:border-gray-100/50'
+                    }`}
+                    onClick={() => handleEmailSelect(email)}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        checked={selectedEmails.includes(email.id)}
+                        onCheckedChange={() => handleCheckboxChange(email.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-1"
+                      />
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2 min-w-0 flex-1">
+                            <span className={`text-sm truncate ${isRead ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>
+                              {email.sender}
+                            </span>
+                            {email.status && statusConfig[email.status as keyof typeof statusConfig] && (
+                              <Zap className={`w-3 h-3 flex-shrink-0 ${statusConfig[email.status as keyof typeof statusConfig].color}`} />
+                            )}
+                            {isImportant && (
+                              <Star className="w-3 h-3 text-red-500 fill-current flex-shrink-0" />
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0 ml-2">
+                            {email.date}
                           </span>
-                          {email.status && statusConfig[email.status as keyof typeof statusConfig] && (
-                            <Zap className={`w-3 h-3 ${statusConfig[email.status as keyof typeof statusConfig].color}`} />
-                          )}
-                          {isImportant && (
-                            <Star className="w-3 h-3 text-red-500 fill-current" />
-                          )}
                         </div>
-                        <span className="text-xs text-gray-500 whitespace-nowrap">
-                          {email.date}
-                        </span>
+                        
+                        <div className={`text-sm mb-2 ${isRead ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>
+                          {email.subject}
+                        </div>
+                        
+                        {(statusLabel || email.campaign_name) && (
+                          <div className="flex items-center space-x-2 mb-2">
+                            {email.campaign_name && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-xl font-medium">
+                                {email.campaign_name}
+                              </span>
+                            )}
+                            {statusLabel && (
+                              <span className="text-xs text-gray-500">
+                                {statusLabel}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {email.preview && (
+                          <div className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                            {email.preview}
+                          </div>
+                        )}
                       </div>
-                      
-                      <div className={`text-sm mb-1 ${isRead ? 'text-gray-600' : 'text-gray-900 font-medium'}`}>
-                        {email.subject}
-                      </div>
-                      
-                      {(statusLabel || email.campaign_name) && (
-                        <div className="flex items-center space-x-2 mb-1">
-                          {email.campaign_name && (
-                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                              {email.campaign_name}
-                            </span>
-                          )}
-                          {statusLabel && (
-                            <span className="text-xs text-gray-500">
-                              {statusLabel}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      
-                      {email.preview && (
-                        <div className="text-xs text-gray-500 truncate">
-                          {email.preview}
-                        </div>
-                      )}
                     </div>
                   </div>
-                </div>
-              )
-            })
+                )
+              })}
+            </div>
           )}
         </div>
       </div>
 
       {/* Right Panel - Email Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-3xl flex flex-col shadow-sm">
         {selectedEmail ? (
           <>
             {/* Email Header */}
-            <div className="p-6 border-b border-gray-200 bg-white">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <Avatar className="w-8 h-8 bg-gray-400 text-white">
-                    <AvatarFallback className="bg-gray-400 text-white text-sm">
+            <div className="p-8 border-b border-gray-100/50">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-4">
+                  <Avatar className="w-10 h-10 ring-2 ring-gray-100">
+                    <AvatarFallback className="bg-blue-600 text-white text-sm font-medium">
                       {selectedEmail.sender.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-900 font-medium">{selectedEmail.sender}</span>
+                      <span className="text-base text-gray-900 font-medium">{selectedEmail.sender}</span>
                       {(selectedEmail.isOutOfOffice || selectedEmail.is_out_of_office) && (
-                        <Badge className="text-xs flex items-center space-x-1" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>
+                        <Badge className="text-xs flex items-center space-x-1 bg-blue-100 text-blue-700 rounded-xl">
                           <Zap className="w-3 h-3" />
                           <span>Out of office</span>
                         </Badge>
@@ -882,7 +889,7 @@ export default function InboxPage() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 hover:text-gray-600 rounded-2xl h-10 w-10 p-0"
                       onClick={handleRestore}
                       title="Restore to Inbox"
                     >
@@ -893,7 +900,7 @@ export default function InboxPage() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 hover:text-gray-600 rounded-2xl h-10 w-10 p-0"
                       onClick={handleArchive}
                       title="Archive"
                     >
@@ -903,7 +910,7 @@ export default function InboxPage() {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-600 rounded-2xl h-10 w-10 p-0"
                     onClick={handleDelete}
                     title={selectedFolder === 'trash' ? 'Delete Permanently' : 'Move to Trash'}
                   >
@@ -912,8 +919,8 @@ export default function InboxPage() {
                 </div>
               </div>
               
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-900">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-light text-gray-900 tracking-tight">
                   {selectedEmail.subject}
                 </h2>
                 <span className="text-sm text-gray-500">
@@ -921,7 +928,7 @@ export default function InboxPage() {
                 </span>
               </div>
               
-              <div className="text-sm text-gray-600 mt-2">
+              <div className="text-sm text-gray-600 space-y-1">
                 <div>From: {selectedEmail.sender}</div>
                 {composeMode === 'forward' ? (
                   <div className="flex items-center">
@@ -930,16 +937,16 @@ export default function InboxPage() {
                       value={forwardTo}
                       onChange={(e) => setForwardTo(e.target.value)}
                       placeholder="Enter recipient email"
-                      className="flex-1 text-sm border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] h-8"
+                      className="flex-1 text-sm border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 h-8 bg-white/50"
                     />
                   </div>
                 ) : (
                   <div>To: {selectedEmail.to_email || selectedEmail.sender_email || 'Unknown'}</div>
                 )}
                 {selectedEmail.campaign_name && (
-                  <div className="flex items-center space-x-2 mt-1">
+                  <div className="flex items-center space-x-2 mt-2">
                     <span>Campaign:</span>
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)', color: 'rgb(87, 140, 255)' }}>
+                    <span className="px-3 py-1 rounded-2xl text-xs font-medium bg-blue-100 text-blue-700">
                       {selectedEmail.campaign_name}
                     </span>
                     {selectedEmail.sequence_step && (
@@ -953,7 +960,7 @@ export default function InboxPage() {
             </div>
 
             {/* Email Content or Compose View */}
-            <div className="flex-1 p-6 overflow-y-auto bg-white">
+            <div className="flex-1 p-8 overflow-y-auto">
               {composeMode ? (
                 // Compose View
                 <div className="space-y-4">
@@ -997,12 +1004,9 @@ export default function InboxPage() {
                       />
                     </div>
                     
-                    <div className="flex items-center space-x-3 pt-4 border-t border-gray-200 mt-auto">
+                    <div className="flex items-center space-x-3 pt-6 border-t border-gray-100/50 mt-auto">
                       <Button 
-                        className="text-white"
-                        style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-200 hover:scale-105"
                         onClick={composeMode === 'reply' ? sendReply : sendForward}
                       >
                         <Send className="w-4 h-4 mr-2" />
@@ -1010,7 +1014,7 @@ export default function InboxPage() {
                       </Button>
                       <Button 
                         variant="outline" 
-                        className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                        className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium"
                         onClick={cancelCompose}
                       >
                         Cancel
@@ -1055,21 +1059,21 @@ export default function InboxPage() {
               
               {/* Thread Messages */}
               {!composeMode && selectedEmail && expandedThreads.has(selectedEmail.conversation_id) && threadMessages[selectedEmail.conversation_id] && (
-                <div className="border-t border-gray-200 mt-6">
-                  <div className="px-6 py-4">
-                    <h3 className="text-sm font-medium text-gray-900 mb-4">
+                <div className="border-t border-gray-100/50 mt-8">
+                  <div className="py-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-6">
                       Thread Messages ({threadMessages[selectedEmail.conversation_id].length})
                     </h3>
                     <div className="space-y-4">
                       {threadMessages[selectedEmail.conversation_id].map((message, index) => (
-                        <div key={message.id} className={`p-4 rounded-lg border ${
+                        <div key={message.id} className={`p-6 rounded-2xl border transition-all duration-200 ${
                           message.direction === 'outbound' 
-                            ? 'bg-blue-50 border-blue-200 ml-8' 
-                            : 'bg-gray-50 border-gray-200 mr-8'
+                            ? 'bg-blue-50/80 border-blue-200/50 ml-8 shadow-sm' 
+                            : 'bg-gray-50/80 border-gray-200/50 mr-8 shadow-sm'
                         }`}>
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center space-x-2">
-                              <span className={`text-xs px-2 py-1 rounded-full ${
+                              <span className={`text-xs px-3 py-1 rounded-xl font-medium ${
                                 message.direction === 'outbound'
                                   ? 'bg-blue-100 text-blue-800'
                                   : 'bg-gray-100 text-gray-800'
@@ -1081,10 +1085,10 @@ export default function InboxPage() {
                               </span>
                             </div>
                           </div>
-                          <div className="text-sm text-gray-700">
+                          <div className="text-sm text-gray-700 leading-relaxed">
                             <div 
                               className="whitespace-pre-wrap" 
-                              style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5' }}
+                              style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}
                             >
                               {message.body_text}
                             </div>
@@ -1105,10 +1109,10 @@ export default function InboxPage() {
                   : selectedEmail.message_count
                 return totalMessages && totalMessages > 1
               })() && (
-                <div className="text-center py-4 border-t border-gray-200">
+                <div className="text-center py-6 border-t border-gray-100/50">
                   <button 
                     onClick={() => handleThreadExpansion(selectedEmail.conversation_id)}
-                    className="text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center space-x-1"
+                    className="text-sm text-gray-500 hover:text-blue-600 flex items-center justify-center space-x-2 transition-colors rounded-2xl px-4 py-2 hover:bg-gray-50"
                   >
                     <span>
                       {(() => {
@@ -1136,13 +1140,10 @@ export default function InboxPage() {
 
             {/* Action Buttons */}
             {!composeMode && (
-              <div className="p-6 border-t border-gray-200 bg-white">
+              <div className="p-8 border-t border-gray-100/50">
                 <div className="flex items-center space-x-3">
                   <Button 
-                    className="text-white"
-                    style={{ backgroundColor: 'rgb(87, 140, 255)' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'}
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-200 hover:scale-105"
                     onClick={handleReply}
                   >
                     <Reply className="w-4 h-4 mr-2" />
@@ -1150,7 +1151,7 @@ export default function InboxPage() {
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                    className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium"
                     onClick={handleForward}
                   >
                     <Forward className="w-4 h-4 mr-2" />
@@ -1161,8 +1162,12 @@ export default function InboxPage() {
             )}
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
-            Select an email to view
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <Mail className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <div className="text-gray-500 text-lg font-light">Select an email to view</div>
+              <div className="text-gray-400 text-sm mt-2">Choose a message from the list to read its contents</div>
+            </div>
           </div>
         )}
       </div>
