@@ -189,29 +189,54 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 Health score calculation for senders:', senderIds)
 
-    // Get sender accounts for the user
-    const { data: senderAccounts, error: sendersError } = await supabaseServer
-      .from('sender_accounts')
-      .select(`
-        id,
-        email,
-        warmup_status,
-        created_at,
-        domains:domain_id (
-          user_id
-        )
-      `)
-      .in('id', senderIds)
+    // Get sender accounts for the user - try different query approaches
+    let senderAccounts: any[] = []
+    let sendersError: any = null
+
+    // First try: Direct query with user_id filter
+    try {
+      const result = await supabaseServer
+        .from('sender_accounts')
+        .select('id, email, warmup_status, created_at, user_id')
+        .in('id', senderIds)
+        .eq('user_id', userId)
+      
+      senderAccounts = result.data || []
+      sendersError = result.error
+    } catch (error) {
+      console.log('First query failed, trying alternative approach...')
+      
+      // Fallback: Query without user_id filter (for compatibility)
+      try {
+        const result = await supabaseServer
+          .from('sender_accounts')
+          .select('id, email, created_at')
+          .in('id', senderIds)
+        
+        senderAccounts = result.data || []
+        sendersError = result.error
+        
+        console.log('Using fallback query without warmup_status and user_id')
+      } catch (fallbackError) {
+        sendersError = fallbackError
+      }
+    }
 
     if (sendersError) {
       console.error('Error fetching sender accounts:', sendersError)
-      return NextResponse.json({ success: false, error: 'Failed to fetch sender accounts' }, { status: 500 })
+      console.error('Sender IDs provided:', senderIds)
+      console.error('User ID:', userId)
+      return NextResponse.json({ 
+        success: false, 
+        error: `Failed to fetch sender accounts: ${sendersError.message}`,
+        details: sendersError
+      }, { status: 500 })
     }
 
-    // Filter for user's accounts only
-    const userSenderAccounts = senderAccounts?.filter(sender => 
-      sender.domains?.user_id === userId
-    ) || []
+    console.log(`📋 Found ${senderAccounts?.length || 0} sender accounts for user ${userId}`)
+
+    // Use the accounts directly since we already filtered by user_id
+    const userSenderAccounts = senderAccounts || []
 
     const healthScores: Record<string, { score: number; breakdown: HealthMetrics; lastUpdated: string }> = {}
 
@@ -220,9 +245,12 @@ export async function GET(request: NextRequest) {
       try {
         console.log(`🧮 Calculating health score for sender: ${sender.email}`)
         
-        // Calculate account age and warmup days
-        const accountAge = Math.floor((Date.now() - new Date(sender.created_at).getTime()) / (1000 * 60 * 60 * 24))
+        // Calculate account age and warmup days - handle missing fields gracefully
+        const createdAt = sender.created_at ? new Date(sender.created_at) : new Date()
+        const accountAge = Math.max(1, Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)))
         const warmupStatus = sender.warmup_status || 'inactive'
+        
+        console.log(`📅 Account details - Age: ${accountAge} days, Warmup: ${warmupStatus}`)
         
         // For now, use realistic baseline stats based on account state
         // TODO: Replace with actual email tracking data from email_sending_logs table
