@@ -624,45 +624,109 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         }
       }
 
-      console.log('📤 Sending sequence data:', JSON.stringify({
-        sequences: steps,
-        saveType: dataType
-      }, null, 2))
-
-      const response = await fetch(`/api/campaigns/${campaign.id}/save`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          campaignData,
-          saveType: dataType
-        }),
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        // Update saved states
-        if (dataType === 'all' || dataType === 'sequences') {
-          setHasSequenceSaved(true)
-          console.log('✅ Sequences saved successfully')
-        }
-        if (dataType === 'all' || dataType === 'settings') {
-          setHasSettingsSaved(true)
-        }
-        
-        const saveTypeText = dataType === 'all' ? 'Campaign Data' : 
-                            dataType === 'sequences' ? 'Sequences' :
-                            dataType === 'settings' ? 'Settings' :
-                            dataType === 'senders' ? 'Sender Selection' : 'Data'
-                            
-      } else {
-        console.error('❌ Save failed:', result.error)
-      }
+      await saveCampaignDataHelper(campaignData, dataType)
     } catch (error) {
       console.error("❌ Error saving campaign:", error)
+    }
+  }
+
+  // Helper function for saving with custom sender selection
+  const saveCampaignDataWithSenders = async (dataType = 'all', customSenderAccounts = null) => {
+    if (!campaign?.id) return
+
+    try {
+      const campaignData = {
+        // Campaign basic info
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        
+        // Sequences
+        sequences: steps,
+        
+        // Settings
+        settings: {
+          dailyContactsLimit,
+          dailySequenceLimit,
+          activeDays,
+          sendingStartTime,
+          sendingEndTime,
+          signature: {
+            firstName,
+            lastName,
+            companyName,
+            companyWebsite,
+            emailSignature
+          }
+        },
+        
+        // Sender accounts - use custom if provided, otherwise use state
+        senderAccounts: customSenderAccounts !== null ? customSenderAccounts : selectedSenderAccounts,
+        
+        // Connected accounts for reference
+        connectedAccounts: {
+          gmail: connectedGmailAccounts,
+          microsoft365: connectedMicrosoft365Accounts,
+          smtp: connectedSmtpAccounts
+        }
+      }
+
+      await saveCampaignDataHelper(campaignData, dataType)
+    } catch (error) {
+      console.error("❌ Error saving campaign:", error)
+    }
+  }
+
+  // Shared helper function for the actual save logic
+  const saveCampaignDataHelper = async (campaignData, dataType) => {
+    console.log('📤 Sending campaign data:', JSON.stringify({
+      sequences: campaignData.sequences,
+      senderAccounts: campaignData.senderAccounts,
+      saveType: dataType
+    }, null, 2))
+    
+    if (dataType === 'senders') {
+      console.log('🔍 Detailed sender save data:', {
+        campaignDataSenderAccounts: campaignData.senderAccounts,
+        saveType: dataType
+      })
+    }
+
+    const response = await fetch(`/api/campaigns/${campaign.id}/save`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        campaignData,
+        saveType: dataType
+      }),
+    })
+
+    const result = await response.json()
+
+    if (result.success) {
+      // Update saved states
+      if (dataType === 'all' || dataType === 'sequences') {
+        setHasSequenceSaved(true)
+        console.log('✅ Sequences saved successfully')
+      }
+      if (dataType === 'all' || dataType === 'settings') {
+        setHasSettingsSaved(true)
+      }
+      if (dataType === 'senders') {
+        console.log('✅ Sender selection saved successfully:', campaignData.senderAccounts)
+      }
+      
+      const saveTypeText = dataType === 'all' ? 'Campaign Data' : 
+                          dataType === 'sequences' ? 'Sequences' :
+                          dataType === 'settings' ? 'Settings' :
+                          dataType === 'senders' ? 'Sender Selection' : 'Data'
+                          
+    } else {
+      console.error('❌ Save failed:', result.error)
+      throw new Error(result.error)
     }
   }
 
@@ -735,7 +799,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         
         // Load full data only for active tab
         if (activeTab === 'sequences') {
-          loadSequencesData()
+          loadSequences()
         } else if (activeTab === 'settings') {
           loadSettingsData()
         }
@@ -802,23 +866,34 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   // Lazy load sequences when needed
   const loadSequences = async () => {
-    if (!campaign?.id || steps.length > 0) return
+    console.log('🔍 loadSequences called, campaign.id:', campaign?.id)
+    if (!campaign?.id) {
+      console.log('❌ No campaign ID, skipping sequence load')
+      return
+    }
     
     try {
+      console.log('📡 Fetching sequences from API...')
       const response = await fetch(`/api/campaigns/${campaign.id}/sequences`, {
         credentials: "include"
       })
       const result = await response.json()
       
+      console.log('📥 Sequences API response:', {
+        success: result.success,
+        dataLength: result.data?.length,
+        data: result.data
+      })
+      
       if (result.success && result.data && result.data.length > 0) {
-        console.log('📥 Loaded sequences from database:', JSON.stringify(result.data, null, 2))
+        console.log('✅ Setting sequences in state:', result.data.length, 'sequences')
         setSteps(result.data)
         setActiveStepId(result.data[0]?.id || 1)
       } else {
-        console.log('ℹ️ No existing sequences found, keeping defaults')
+        console.log('ℹ️ No existing sequences found, keeping current state')
       }
     } catch (error) {
-      console.error('Error loading sequences:', error)
+      console.error('❌ Error loading sequences:', error)
     }
   }
 
@@ -842,17 +917,57 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }
 
+  // Load selected sender accounts
+  const loadSelectedSenders = async () => {
+    console.log('🔍 loadSelectedSenders called, campaign.id:', campaign?.id)
+    if (!campaign?.id) {
+      console.log('❌ No campaign ID, skipping sender selection load')
+      return
+    }
+    
+    try {
+      console.log('📡 Fetching selected senders from API...')
+      const response = await fetch(`/api/campaigns/${campaign.id}/senders`, {
+        credentials: "include"
+      })
+      const result = await response.json()
+      
+      console.log('📥 Selected senders API response:', {
+        success: result.success,
+        assignmentsLength: result.assignments?.length,
+        assignments: result.assignments
+      })
+      
+      if (result.success && result.assignments && Array.isArray(result.assignments)) {
+        // Extract the IDs of selected senders from assignments
+        const selectedIds = result.assignments
+          .filter(assignment => assignment.is_selected)
+          .map(assignment => assignment.id)
+        console.log('✅ Setting selected sender accounts:', selectedIds.length, 'accounts')
+        setSelectedSenderAccounts(selectedIds)
+      } else {
+        console.log('ℹ️ No selected senders found, keeping current state')
+      }
+    } catch (error) {
+      console.error('❌ Error loading selected senders:', error)
+    }
+  }
+
   // Handle tab changes with lazy loading
   const handleTabChange = (tabId: string) => {
+    console.log(`🔄 Tab changed to: ${tabId}`)
     setActiveTab(tabId)
     
     // Lazy load data when specific tabs are accessed
     if (tabId === 'sequence' || tabId === 'automation') {
+      console.log('🔄 Loading sequences for sequence/automation tab...')
       loadSequences()
     }
     
     if (tabId === 'sender') {
+      console.log('🔄 Loading sender data...')
       loadConnectedAccounts()
+      loadSelectedSenders()
     }
   }
   
@@ -900,15 +1015,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     return () => clearTimeout(autoSaveTimer)
   }, [dailyContactsLimit, dailySequenceLimit, activeDays, sendingStartTime, sendingEndTime, firstName, lastName, companyName, companyWebsite, emailSignature, campaignDataLoaded])
 
-  useEffect(() => {
-    if (!campaignDataLoaded) return
-    
-    const autoSaveTimer = setTimeout(() => {
-      saveCampaignData('senders')
-    }, 2000) // Auto-save after 2 seconds of inactivity
-
-    return () => clearTimeout(autoSaveTimer)
-  }, [selectedSenderAccounts, campaignDataLoaded])
+  // Note: Sender selections are now saved immediately in onSelectionChange callback
 
   const previewSequence = () => {
     setShowPreviewModal(!showPreviewModal)
@@ -2516,11 +2623,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           <CampaignSenderSelection
             campaignId={campaign?.id || ''}
             onSelectionChange={(selectedSenders) => {
+              console.log('🔄 Sender selection changed:', selectedSenders)
+              console.log('🔄 Selected sender IDs:', selectedSenders)
               setSelectedSenderAccounts(selectedSenders)
-              // Auto-save the selection
-              setTimeout(() => {
-                saveCampaignData('senders')
-              }, 1000)
+              // Note: Manual save is now handled by the Save button in CampaignSenderSelection
             }}
             initialSelectedSenders={selectedSenderAccounts}
           />
@@ -3362,7 +3468,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           <div className="flex gap-2 overflow-x-auto pb-2">
             <Button 
               variant={activeTab === 'target' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('target')}
+              onClick={() => handleTabChange('target')}
               className={`${
                 activeTab === 'target' 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
@@ -3370,11 +3476,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap`}
             >
               <Target className="w-4 h-4 mr-2" />
-              Target ({contacts.length})
+              Target
             </Button>
             <Button 
               variant={activeTab === 'sequence' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('sequence')}
+              onClick={() => handleTabChange('sequence')}
               className={`${
                 activeTab === 'sequence' 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
@@ -3386,7 +3492,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             </Button>
             <Button 
               variant={activeTab === 'sender' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('sender')}
+              onClick={() => handleTabChange('sender')}
               className={`${
                 activeTab === 'sender' 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
@@ -3398,7 +3504,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             </Button>
             <Button 
               variant={activeTab === 'settings' ? 'default' : 'outline'}
-              onClick={() => setActiveTab('settings')}
+              onClick={() => handleTabChange('settings')}
               className={`${
                 activeTab === 'settings' 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
