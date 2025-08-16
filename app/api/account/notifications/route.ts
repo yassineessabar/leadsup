@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { supabase } from "@/lib/supabase"
+import { supabase, supabaseServer } from "@/lib/supabase"
 import type { NotificationSettings } from "@/types/db"
 
 async function getUserIdFromSession(): Promise<string | null> {
@@ -12,7 +12,7 @@ async function getUserIdFromSession(): Promise<string | null> {
       return null
     }
 
-    const { data: session, error } = await supabase
+    const { data: session, error } = await supabaseServer
       .from("user_sessions")
       .select("user_id")
       .eq("session_token", sessionToken)

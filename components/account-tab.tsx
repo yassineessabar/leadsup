@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import type { UserProfile, NotificationSettings } from "@/types/db"
+import type { UserProfile } from "@/types/db"
 
 interface AccountTabProps {
   onTabChange?: (tab: string) => void
@@ -47,20 +47,6 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
     avatar_url: "/placeholder.svg?height=80&width=80",
   })
 
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
-    user_id: "1", // Mock ID
-    email_notifications: false,
-    sms_notifications: false,
-    review_alerts: false,
-    weekly_reports: false,
-    marketing_emails: false,
-    notification_email: "", // Initialize new fields
-    reply_email: "", // Initialize new fields
-  })
-
-  const [isEditingNotificationEmail, setIsEditingNotificationEmail] = useState(false)
-  const [isEditingReplyEmail, setIsEditingReplyEmail] = useState(false)
-  const [isTogglingNotifications, setIsTogglingNotifications] = useState(false)
 
   const [loading, setLoading] = useState(true)
 
@@ -75,12 +61,8 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
   const fetchAccountData = useCallback(async () => {
     setLoading(true)
     try {
-      const [profileRes, notificationRes] = await Promise.all([
-        fetch("/api/account/profile"),
-        fetch("/api/account/notifications"),
-      ])
-
-      const [profileData, notificationData] = await Promise.all([profileRes.json(), notificationRes.json()])
+      const profileRes = await fetch("/api/account/profile")
+      const profileData = await profileRes.json()
 
       if (profileData.success) {
         setProfileData({
@@ -89,12 +71,6 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
         })
       } else {
         console.error("Error fetching profile:", profileData.error)
-      }
-
-      if (notificationData.success) {
-        setNotificationSettings(notificationData.data)
-      } else {
-        console.error("Error fetching notification settings:", notificationData.error)
       }
       // Note: isPremium and planName are now derived from useSubscription hook
     } catch (error) {
@@ -147,78 +123,6 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
     }
   }
 
-  const handleToggleEmailNotifications = async (checked: boolean) => {
-    if (isTogglingNotifications) return // Prevent multiple simultaneous calls
-
-    setIsTogglingNotifications(true)
-    const previousValue = notificationSettings.email_notifications
-
-    // Optimistically update UI
-    setNotificationSettings((prev) => ({
-      ...prev,
-      email_notifications: checked
-    }))
-
-    try {
-      const response = await fetch("/api/account/notifications", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email_notifications: checked }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to save notification settings")
-      }
-    } catch (error) {
-      console.error("Error saving notification settings:", error)
-      // Revert on error
-      setNotificationSettings((prev) => ({
-        ...prev,
-        email_notifications: previousValue
-      }))
-    } finally {
-      setIsTogglingNotifications(false)
-    }
-  }
-
-  const handleSaveNotifications = async (field: "notification_email" | "reply_email" | "toggle") => {
-    try {
-      let updates: Partial<NotificationSettings> = {}
-      if (field === "notification_email") {
-        updates = { notification_email: notificationSettings.notification_email }
-      } else if (field === "reply_email") {
-        updates = { reply_email: notificationSettings.reply_email }
-      } else if (field === "toggle") {
-        updates = { email_notifications: notificationSettings.email_notifications }
-      }
-
-      const response = await fetch("/api/account/notifications", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      })
-      const result = await response.json()
-      if (result.success) {
-        // Remove success message - no popup needed for successful save
-        if (field === "notification_email") setIsEditingNotificationEmail(false)
-        if (field === "reply_email") setIsEditingReplyEmail(false)
-      } else {
-        console.error("Error saving notifications:", result.error)
-        toast({
-          title: "Save Failed",
-          description: "Failed to save notification preferences.",
-          variant: "destructive"
-        })
-      }
-    } catch (error) {
-      console.error("Error saving notifications:", error)
-      toast({
-        title: "Save Failed",
-        description: "Failed to save notification preferences.",
-        variant: "destructive"
-      })
-    }
-  }
 
   const handleCancel = () => {
     setIsEditing(false)
@@ -282,45 +186,45 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
           </Button>
           <div className="h-6 w-px bg-gray-300" />
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Account</h1>
-            <p className="text-gray-600 mt-2">Manage your profile information and preferences</p>
+            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Account</h1>
+            <p className="text-gray-600">Manage your profile information and preferences</p>
           </div>
         </div>
       </div>
 
       {/* Account Settings */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden shadow-sm">
 
         {/* Profile Section */}
         <div className="space-y-0">
           {/* Profile Header with Avatar */}
-          <div className="p-6 border-b border-gray-200">
+          <div className="p-8 border-b border-gray-100">
             <div className="flex items-center gap-6">
-              <Avatar className="w-20 h-20 ring-4 ring-gray-100">
+              <Avatar className="w-24 h-24 ring-2 ring-gray-100">
                 <AvatarImage src={logoUrl || profileData.avatar_url || "/placeholder.svg"} />
-                <AvatarFallback className="bg-black text-white text-xl font-medium">
-                  {profileData.first_name?.[0]}
-                  {profileData.last_name?.[0]}
+                <AvatarFallback className="bg-blue-600 text-white text-xl font-medium">
+                  {profileData.first_name?.[0] || 'U'}
+                  {profileData.last_name?.[0] || ''}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900">
+                    <h3 className="text-2xl font-light text-gray-900 mb-1">
                       {profileData.first_name} {profileData.last_name}
                     </h3>
-                    <p className="text-sm text-gray-600 mt-1">{profileData.email}</p>
+                    <p className="text-gray-600 mb-1">{profileData.email}</p>
                     {profileData.position && (
-                      <p className="text-xs text-gray-500 mt-1">{profileData.position}</p>
+                      <p className="text-sm text-gray-500">{profileData.position}</p>
                     )}
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`transition-all duration-200 rounded-lg ${
+                    className={`transition-all duration-200 rounded-2xl font-medium ${
                       isEditing
                         ? "text-red-600 border-red-200 hover:bg-red-50"
-                        : "text-gray-700 border-gray-200 hover:bg-gray-50"
+                        : "text-blue-600 border-blue-200 hover:bg-blue-50"
                     }`}
                     onClick={() => setIsEditing(!isEditing)}
                   >
@@ -338,7 +242,7 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
                   </Button>
                 </div>
                 {isEditing && (
-                  <div className="mt-3">
+                  <div className="mt-4">
                     <input
                       type="file"
                       ref={fileInputRef}
@@ -349,7 +253,7 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-gray-200 text-gray-700 hover:bg-gray-50"
+                      className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       Change Photo
@@ -363,131 +267,63 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
           {/* Personal Information Section */}
           {isEditing && (
             <>
-              <div className="bg-gray-50 px-6 py-4">
-                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Personal Information</h2>
+              <div className="bg-gray-50/50 px-8 py-4">
+                <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide">Personal Information</h2>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-gray-700">First Name</Label>
                     <Input
-                      value={profileData.first_name}
+                      value={profileData.first_name || ''}
                       onChange={(e) => setProfileData((prev) => ({ ...prev, first_name: e.target.value }))}
-                      className="h-10 text-sm border-gray-200 rounded-lg"
+                      className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
+                      placeholder="Enter your first name"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-gray-700">Last Name</Label>
                     <Input
-                      value={profileData.last_name}
+                      value={profileData.last_name || ''}
                       onChange={(e) => setProfileData((prev) => ({ ...prev, last_name: e.target.value }))}
-                      className="h-10 text-sm border-gray-200 rounded-lg"
+                      className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
+                      placeholder="Enter your last name"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-gray-700">Email Address</Label>
                     <Input
                       type="email"
-                      value={profileData.email}
+                      value={profileData.email || ''}
                       onChange={(e) => setProfileData((prev) => ({ ...prev, email: e.target.value }))}
-                      className="h-10 text-sm border-gray-200 rounded-lg"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">Phone Number</Label>
-                    <Input
-                      value={profileData.phone}
-                      onChange={(e) => setProfileData((prev) => ({ ...prev, phone: e.target.value }))}
-                      className="h-10 text-sm border-gray-200 rounded-lg"
+                      className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
+                      placeholder="Enter your email"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-gray-700">Company</Label>
                     <Input
-                      value={profileData.company}
+                      value={profileData.company || ''}
                       onChange={(e) => setProfileData((prev) => ({ ...prev, company: e.target.value }))}
-                      className="h-10 text-sm border-gray-200 rounded-lg"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">Position</Label>
-                    <Input
-                      value={profileData.position}
-                      onChange={(e) => setProfileData((prev) => ({ ...prev, position: e.target.value }))}
-                      className="h-10 text-sm border-gray-200 rounded-lg"
+                      className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
+                      placeholder="Enter your company name"
                     />
                   </div>
                 </div>
 
-                <div className="h-px bg-gray-200" />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="text-sm font-medium text-gray-700">Street Address</Label>
-                    <Input
-                      value={profileData.address}
-                      onChange={(e) => setProfileData((prev) => ({ ...prev, address: e.target.value }))}
-                      className="h-10 text-sm border-gray-200 rounded-lg"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">City</Label>
-                    <Input
-                      value={profileData.city}
-                      onChange={(e) => setProfileData((prev) => ({ ...prev, city: e.target.value }))}
-                      className="h-10 text-sm border-gray-200 rounded-lg"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">Postal Code</Label>
-                    <Input
-                      value={profileData.postal_code}
-                      onChange={(e) => setProfileData((prev) => ({ ...prev, postal_code: e.target.value }))}
-                      className="h-10 text-sm border-gray-200 rounded-lg"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">Country</Label>
-                    <Select
-                      value={profileData.country}
-                      onValueChange={(value) => setProfileData((prev) => ({ ...prev, country: value }))}
-                    >
-                      <SelectTrigger className="h-10 text-sm border-gray-200 rounded-lg">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {countries.map((country) => (
-                          <SelectItem key={country} value={country}>
-                            {country}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">Timezone</Label>
-                    <Select
-                      value={profileData.timezone}
-                      onValueChange={(value) => setProfileData((prev) => ({ ...prev, timezone: value }))}
-                    >
-                      <SelectTrigger className="h-10 text-sm border-gray-200 rounded-lg">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timezones.map((timezone) => (
-                          <SelectItem key={timezone} value={timezone}>
-                            {timezone}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Password</Label>
+                  <Input
+                    type="password"
+                    placeholder="Enter your password"
+                    className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
+                  />
                 </div>
 
-                <div className="flex justify-end pt-4 border-t border-gray-200">
+                <div className="flex justify-end pt-6 border-t border-gray-100">
                   <Button
-                    className="bg-black hover:bg-gray-800 text-white rounded-lg"
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-300"
                     onClick={handleSaveProfile}
                   >
                     <Save className="w-4 h-4 mr-2" />
@@ -499,165 +335,13 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
           )}
         </div>
 
-        {/* Notifications Section */}
-        <div className="bg-gray-50 px-6 py-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Notifications</h2>
-        </div>
-
-        <div className="space-y-0">
-          <div className="p-6 hover:bg-gray-50 transition-colors duration-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                  <Mail className="h-5 w-5 text-gray-600" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-medium text-gray-900">Daily Notifications</h3>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-4 w-4 p-0">
-                            <Info className="h-3 w-3 text-gray-400 hover:text-gray-600" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p className="text-sm">
-                            <strong>Daily summary emails</strong> sent once per day with:
-                            <br />• Number of new reviews received
-                            <br />• Average rating for the day
-                            <br />• Total review link clicks
-                            <br />• Customer activity overview
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    {notificationSettings.notification_email || "No email set"}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {isEditingNotificationEmail ? (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="email"
-                      placeholder="Email for notifications"
-                      value={notificationSettings.notification_email || ""}
-                      onChange={(e) => setNotificationSettings((prev) => ({ ...prev, notification_email: e.target.value }))}
-                      className="h-9 text-sm border-gray-200 w-48"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        handleSaveNotifications("notification_email")
-                        setIsEditingNotificationEmail(false)
-                      }}
-                      className="text-green-600 border-green-200 hover:bg-green-50"
-                    >
-                      Save
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditingNotificationEmail(true)}
-                    className="text-gray-700 border-gray-200 hover:bg-gray-50"
-                  >
-                    Edit
-                  </Button>
-                )}
-                <Switch
-                  checked={notificationSettings.email_notifications}
-                  onCheckedChange={handleToggleEmailNotifications}
-                  disabled={isTogglingNotifications}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="h-px bg-gray-200" />
-
-          <div className="p-6 hover:bg-gray-50 transition-colors duration-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                  <Mail className="h-5 w-5 text-gray-600" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-medium text-gray-900">Client Replies</h3>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-4 w-4 p-0">
-                            <Info className="h-3 w-3 text-gray-400 hover:text-gray-600" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p className="text-sm">
-                            <strong>Instant email alerts</strong> when customers submit feedback:
-                            <br />• Customer name and contact info
-                            <br />• Star rating given
-                            <br />• Written feedback/comments
-                            <br />• Platform source
-                            <br />Perfect for responding quickly to reviews
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    {notificationSettings.reply_email || "No email set"}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {isEditingReplyEmail ? (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="email"
-                      placeholder="Email for replies"
-                      value={notificationSettings.reply_email || ""}
-                      onChange={(e) => setNotificationSettings((prev) => ({ ...prev, reply_email: e.target.value }))}
-                      className="h-9 text-sm border-gray-200 w-48"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        handleSaveNotifications("reply_email")
-                        setIsEditingReplyEmail(false)
-                      }}
-                      className="text-green-600 border-green-200 hover:bg-green-50"
-                    >
-                      Save
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditingReplyEmail(true)}
-                    className="text-gray-700 border-gray-200 hover:bg-gray-50"
-                  >
-                    Edit
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Subscription Section */}
-        <div className="bg-gray-50 px-6 py-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Billing & Plan</h2>
+        <div className="bg-gray-50/50 px-8 py-4">
+          <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide">Billing & Plan</h2>
         </div>
 
-        <div className="p-6">
+        <div className="p-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex-shrink-0 w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
@@ -678,7 +362,7 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
                 </div>
               )}
               <Button
-                className="bg-black hover:bg-gray-800 text-white rounded-lg"
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-300"
                 onClick={() => onTabChange?.("upgrade")}
               >
                 {isPremium ? "Change Plan" : "Upgrade"}

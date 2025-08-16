@@ -161,7 +161,7 @@ export function DashboardSidebar({
     return (
       <aside className={cn(
         "flex flex-col rounded-3xl bg-white border border-gray-100/50 shadow-sm p-1.5 dark:bg-gray-900 h-full my-8 ml-1 transition-all duration-300",
-        isCollapsed ? "max-w-[60px]" : "max-w-[200px]"
+        isCollapsed ? "max-w-[60px]" : "max-w-[240px]"
       )}>
         <div className="flex items-center px-2 py-3 mb-6 relative">
           <div className="h-10 w-10 bg-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm">

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { supabase } from "@/lib/supabase"
+import { supabase, supabaseServer } from "@/lib/supabase"
 import type { UserProfile } from "@/types/db"
 
 async function getUserIdFromSession(): Promise<string | null> {
@@ -8,22 +8,30 @@ async function getUserIdFromSession(): Promise<string | null> {
     const cookieStore = await cookies()
     const sessionToken = cookieStore.get("session")?.value
 
+    console.log("🔍 Session token from cookies:", sessionToken ? "exists" : "missing")
+
     if (!sessionToken) {
+      console.log("❌ No session token found in cookies")
       return null
     }
 
-    const { data: session, error } = await supabase
+    const { data: session, error } = await supabaseServer
       .from("user_sessions")
       .select("user_id")
       .eq("session_token", sessionToken)
       .single()
 
+    console.log("🔍 Session query result:", { session, error })
+
     if (error || !session) {
+      console.log("❌ Session not found or error:", error?.message)
       return null
     }
 
+    console.log("✅ User ID found:", session.user_id)
     return session.user_id
-  } catch {
+  } catch (err) {
+    console.log("❌ Error in getUserIdFromSession:", err)
     return null
   }
 }
@@ -38,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     const { data: userProfile, error } = await supabase
       .from("users")
-      .select("id, email, first_name, last_name, phone_number, profile_picture_url, position, street_address, city, postal_code, country, timezone, language, email_notifications, email_replies, company")
+      .select("id, email, first_name, last_name, phone_number, profile_picture_url, position, company")
       .eq("id", userId)
       .single()
 
@@ -60,12 +68,12 @@ export async function GET(request: NextRequest) {
       phone: userProfile.phone_number || "",
       company: userProfile.company || "",
       position: userProfile.position || "",
-      address: userProfile.street_address || "",
-      city: userProfile.city || "",
-      postal_code: userProfile.postal_code || "",
-      country: userProfile.country || "",
-      timezone: userProfile.timezone || "UTC",
-      language: userProfile.language || "en",
+      address: "", // Not available in current schema
+      city: "", // Not available in current schema
+      postal_code: "", // Not available in current schema
+      country: "", // Not available in current schema
+      timezone: "UTC", // Not available in current schema
+      language: "en", // Not available in current schema
       bio: "", // Not in database schema
       avatar_url: userProfile.profile_picture_url || "/placeholder.svg?height=80&width=80",
     }
@@ -87,7 +95,7 @@ export async function PUT(request: NextRequest) {
 
     const updates = (await request.json()) as Partial<UserProfile>
 
-    // Map frontend fields back to database fields
+    // Map frontend fields back to database fields (only fields that exist in schema)
     const dbUpdates: any = {}
     if (updates.first_name !== undefined) dbUpdates.first_name = updates.first_name
     if (updates.last_name !== undefined) dbUpdates.last_name = updates.last_name
@@ -95,13 +103,8 @@ export async function PUT(request: NextRequest) {
     if (updates.phone !== undefined) dbUpdates.phone_number = updates.phone
     if (updates.company !== undefined) dbUpdates.company = updates.company
     if (updates.position !== undefined) dbUpdates.position = updates.position
-    if (updates.address !== undefined) dbUpdates.street_address = updates.address
-    if (updates.city !== undefined) dbUpdates.city = updates.city
-    if (updates.postal_code !== undefined) dbUpdates.postal_code = updates.postal_code
-    if (updates.country !== undefined) dbUpdates.country = updates.country
-    if (updates.timezone !== undefined) dbUpdates.timezone = updates.timezone
-    if (updates.language !== undefined) dbUpdates.language = updates.language
     if (updates.avatar_url !== undefined) dbUpdates.profile_picture_url = updates.avatar_url
+    // Note: address, city, postal_code, country, timezone, language not available in current schema
 
     const { data, error } = await supabase
       .from("users")

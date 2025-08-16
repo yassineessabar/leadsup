@@ -2,16 +2,19 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { CreditCard, DollarSign, Calendar, CheckCircle, Download, ExternalLink, Info, ArrowRight } from "lucide-react"
+import { CreditCard, DollarSign, Calendar, CheckCircle, Download, ExternalLink, Info, ArrowRight, ArrowLeft, Sparkles, Shield, Clock, TrendingUp } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/hooks/use-auth"
 import type { Subscription, Invoice } from "@/types/db"
 
-export function BillingSubscriptionPage() {
+interface BillingSubscriptionPageProps {
+  onTabChange?: (tab: string) => void
+}
+
+export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPageProps = {}) {
   const { user, loading: authLoading, isAuthenticated } = useAuth()
   const router = useRouter()
   const [subscription, setSubscription] = useState<Subscription | null>(null)
@@ -101,7 +104,10 @@ export function BillingSubscriptionPage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-violet-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-gray-600 text-sm">Loading your billing information...</p>
+        </div>
       </div>
     )
   }
@@ -114,185 +120,322 @@ export function BillingSubscriptionPage() {
   const hasActiveSubscription = subscription && subscription.status === 'active'
 
   return (
-    <div className="space-y-8">
-      {/* Upgrade Banner for non-pro/enterprise users */}
-      {!isProOrEnterprise && (
-        <Card className="bg-gradient-to-r from-violet-50 to-blue-50 border border-violet-200/60 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-violet-900">
-                  Unlock Advanced Billing Features
-                </h3>
-                <p className="text-violet-700 text-sm">
-                  Upgrade to Pro or Enterprise for detailed billing management, invoice history, and subscription controls.
-                </p>
-              </div>
-              <Button
-                onClick={() => router.push("/?tab=upgrade")}
-                className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2"
-              >
+    <div className="max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-4 mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              if (onTabChange) {
+                onTabChange("settings")
+              } else {
+                window.history.back()
+              }
+            }}
+            className="text-gray-600 hover:text-gray-900 p-2 h-auto"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div className="h-6 w-px bg-gray-300" />
+          <div>
+            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Billing & Subscription</h1>
+            <p className="text-gray-600">Manage your subscription and view billing history</p>
+          </div>
+        </div>
+      </div>
 
-                Upgrade Now
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Current Plan */}
-      <Card className="bg-white border border-gray-200/60 shadow-sm">
-        <CardHeader className="pb-4 border-b border-gray-100">
-          <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <CreditCard className="w-5 h-5" />
-            Current Plan
-          </CardTitle>
-          <CardDescription className="text-gray-600">Details about your current subscription plan</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6 p-6">
-          {hasActiveSubscription ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-gray-900">Plan Name</h4>
-                  <p className="text-gray-700 text-lg font-semibold">{subscription.plan_name}</p>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-medium text-gray-900">Status</h4>
-                  <Badge
-                    className={
-                      subscription.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : subscription.status === "trialing"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-red-100 text-red-800"
-                    }
-                  >
-                    {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-medium text-gray-900">Price</h4>
-                  <p className="text-gray-700 text-lg font-semibold">
-                    {subscription.currency} {subscription.price} / month
+      <div className="space-y-8">
+        {/* Upgrade Banner for non-pro/enterprise users */}
+        {!isProOrEnterprise && (
+          <div className="relative bg-gradient-to-br from-gray-50 to-white border border-gray-100/50 rounded-3xl p-8 overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-gray-100/30 to-transparent rounded-full blur-3xl"></div>
+            <div className="relative">
+              <div className="flex flex-col lg:flex-row items-start justify-between gap-6">
+                <div className="space-y-4 flex-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center">
+                      <Sparkles className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-light text-gray-900">
+                        Unlock Premium Features
+                      </h3>
+                      <p className="text-gray-500 text-sm">Join thousands of satisfied customers</p>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 max-w-md">
+                    Get access to advanced billing management, detailed invoice history, subscription controls, and priority support.
                   </p>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-medium text-gray-900">Next Billing Date</h4>
-                  <p className="text-gray-700">{subscription.end_date ? formatDate(subscription.end_date) : "N/A"}</p>
-                </div>
-              </div>
-              <Separator />
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-900 flex items-center gap-2">
-                  <Info className="w-4 h-4" />
-                  Included Features
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {subscription.features.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-2 text-gray-700">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-sm">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex justify-end pt-4 border-t border-gray-100">
-                <Button
-                  className="bg-violet-600 hover:bg-violet-700 text-white disabled:bg-gray-400"
-                  onClick={handleManageSubscription}
-                  disabled={managingSubscription}
-                >
-                  {managingSubscription ? (
+                  <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500">
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Opening Portal...
+                      <Shield className="w-4 h-4" />
+                      <span>Secure payments</span>
                     </div>
-                  ) : (
-                    "Manage Subscription"
-                  )}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-8">
-              <div className="text-gray-500 mb-4">
-                {user?.subscription_type === 'free' ? 'No subscription active.' : 'No active subscription found.'}
-              </div>
-              {!isProOrEnterprise && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      <span>24/7 support</span>
+                    </div>
+                  </div>
+                </div>
                 <Button
-                 onClick={() => router.push("/?tab=upgrade")}
-                  className="bg-violet-600 hover:bg-violet-700 text-white"
+                  onClick={() => router.push("/?tab=upgrade")}
+                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 h-12 px-8 rounded-2xl font-medium transition-all duration-200 hover:scale-105"
                 >
-                  View Plans & Pricing
+                  Upgrade Now
+                  <ArrowRight className="w-4 h-4" />
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Current Plan */}
+        <div className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+          <div className="p-8 border-b border-gray-100/50">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-gray-100/50 flex items-center justify-center">
+                  <CreditCard className="w-6 h-6 text-gray-600" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-light text-gray-900">Current Plan</h2>
+                  <p className="text-gray-600">Manage your subscription details</p>
+                </div>
+              </div>
+              {hasActiveSubscription && (
+                <div className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-2xl">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium">Active</span>
+                </div>
               )}
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Billing History - only show for Pro/Enterprise users */}
-      {isProOrEnterprise && (
-        <Card className="bg-white border border-gray-200/60 shadow-sm">
-          <CardHeader className="pb-4 border-b border-gray-100">
-            <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <DollarSign className="w-5 h-5" />
-              Billing History
-            </CardTitle>
-            <CardDescription className="text-gray-600">View your past invoices and payment history</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            {invoices.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No invoices found.</div>
-            ) : (
-              <div className="space-y-4">
-              {invoices.map((invoice) => (
-                <Card key={invoice.id} className="border border-gray-200/60 shadow-sm">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center text-gray-500">
-                        <Calendar className="w-5 h-5" />
+          </div>
+          
+          <div className="space-y-8 p-8">
+            {hasActiveSubscription ? (
+              <>
+                {/* Plan Overview Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="bg-gray-50/50 rounded-2xl p-6 border border-gray-100/50">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-gray-600" />
                       </div>
                       <div>
-                        <h4 className="font-medium text-gray-900">Invoice #{invoice.invoice_number}</h4>
-                        <p className="text-sm text-gray-600">
-                          {formatDate(invoice.issue_date)} - {invoice.currency} {invoice.amount.toFixed(2)}
+                        <h4 className="font-medium text-gray-900">Plan</h4>
+                        <p className="text-2xl font-light text-gray-900">{subscription.plan_name}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-50/50 rounded-2xl p-6 border border-gray-100/50">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                        <DollarSign className="w-5 h-5 text-gray-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900">Price</h4>
+                        <p className="text-2xl font-light text-gray-900">
+                          {subscription.currency} {subscription.price}<span className="text-sm text-gray-500">/month</span>
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getInvoiceStatusColor(invoice.status)}>
-                        {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-8 p-0 border-gray-200 text-gray-700 hover:bg-gray-50 bg-transparent"
-                        onClick={() => handleDownloadInvoice(invoice.download_url)}
-                      >
-                        <Download className="w-4 h-4" />
-                        <span className="sr-only">Download</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-8 p-0 border-gray-200 text-gray-700 hover:bg-gray-50 bg-transparent"
-                        onClick={() => window.open(invoice.download_url, "_blank")}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span className="sr-only">View</span>
-                      </Button>
+                  </div>
+                  
+                  <div className="bg-gray-50/50 rounded-2xl p-6 border border-gray-100/50">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-gray-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900">Next Billing</h4>
+                        <p className="text-lg font-light text-gray-900">{subscription.end_date ? formatDate(subscription.end_date) : "N/A"}</p>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                  
+                  <div className="bg-gray-50/50 rounded-2xl p-6 border border-gray-100/50">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900">Status</h4>
+                        <Badge
+                          className={
+                            subscription.status === "active"
+                              ? "bg-green-100 text-green-800"
+                              : subscription.status === "trialing"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-red-100 text-red-800"
+                          }
+                        >
+                          {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Features Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
+                      <Info className="w-4 h-4 text-gray-600" />
+                    </div>
+                    <h4 className="text-lg font-medium text-gray-900">Plan Features</h4>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {subscription.features.map((feature, index) => (
+                      <div key={index} className="flex items-center gap-3 p-4 bg-gray-50/50 rounded-2xl border border-gray-100/50">
+                        <div className="w-6 h-6 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                        </div>
+                        <span className="text-sm text-gray-700">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-100/50">
+                  <Button
+                    onClick={() => router.push("/?tab=upgrade")}
+                    variant="outline"
+                    className="flex-1 h-12 rounded-2xl font-medium border-gray-200 text-gray-700 hover:bg-gray-50"
+                  >
+                    Change Plan
+                  </Button>
+                  <Button
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400 h-12 px-6 rounded-2xl font-medium transition-all duration-200 hover:scale-105"
+                    onClick={handleManageSubscription}
+                    disabled={managingSubscription}
+                  >
+                    {managingSubscription ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Opening Portal...
+                      </div>
+                    ) : (
+                      "Manage Subscription"
+                    )}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <div className="w-20 h-20 rounded-3xl bg-gray-100 flex items-center justify-center mx-auto mb-6">
+                  <CreditCard className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-light text-gray-900 mb-2">
+                  {user?.subscription_type === 'free' ? 'No Active Subscription' : 'Subscription Not Found'}
+                </h3>
+                <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                  {user?.subscription_type === 'free' 
+                    ? 'Start your journey with one of our premium plans to unlock powerful features.' 
+                    : 'We couldn\'t find an active subscription for your account.'}
+                </p>
+                {!isProOrEnterprise && (
+                  <Button
+                   onClick={() => router.push("/?tab=upgrade")}
+                    className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-8 rounded-2xl font-medium transition-all duration-200 hover:scale-105"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    View Plans & Pricing
+                  </Button>
+                )}
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </div>
+
+        {/* Billing History - only show for Pro/Enterprise users */}
+        {isProOrEnterprise && (
+          <div className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+            <div className="p-8 border-b border-gray-100/50">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gray-100/50 flex items-center justify-center">
+                    <DollarSign className="w-6 h-6 text-gray-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-light text-gray-900">Billing History</h2>
+                    <p className="text-gray-600">Download invoices and track payments</p>
+                  </div>
+                </div>
+                {invoices.length > 0 && (
+                  <div className="text-sm text-gray-500">
+                    {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-8">
+              {invoices.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 rounded-3xl bg-gray-100 flex items-center justify-center mx-auto mb-6">
+                    <Calendar className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-light text-gray-900 mb-2">No Invoices Yet</h3>
+                  <p className="text-gray-600 max-w-md mx-auto">
+                    Your billing history will appear here once you start using our services. All invoices are automatically generated and stored securely.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                {invoices.map((invoice) => (
+                  <div key={invoice.id} className="group bg-gray-50/50 border border-gray-100/50 rounded-2xl p-6 hover:bg-gray-50 transition-all duration-200">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center border border-gray-100 group-hover:shadow-sm transition-all duration-200">
+                          <Calendar className="w-6 h-6 text-gray-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-1">Invoice #{invoice.invoice_number}</h4>
+                          <p className="text-sm text-gray-500 mb-1">
+                            {formatDate(invoice.issue_date)}
+                          </p>
+                          <p className="text-lg font-light text-gray-900">
+                            {invoice.currency} {invoice.amount.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <Badge className={getInvoiceStatusColor(invoice.status)}>
+                          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                        </Badge>
+                        <div className="flex items-center gap-2 ml-auto">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-10 w-10 p-0 border-gray-200 text-gray-600 hover:bg-gray-100 bg-white rounded-xl transition-all duration-200 hover:scale-105"
+                            onClick={() => handleDownloadInvoice(invoice.download_url)}
+                          >
+                            <Download className="w-4 h-4" />
+                            <span className="sr-only">Download</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-10 w-10 p-0 border-gray-200 text-gray-600 hover:bg-gray-100 bg-white rounded-xl transition-all duration-200 hover:scale-105"
+                            onClick={() => window.open(invoice.download_url, "_blank")}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            <span className="sr-only">View</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
