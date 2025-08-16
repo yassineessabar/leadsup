@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { toast } from "sonner"
-import { fetchHealthScores, updateHealthScores, getHealthScoreColor, getHealthScoreBgColor, getHealthStatus, getHealthScoreIcon, type HealthScoreResult } from "@/lib/health-score"
+import { fetchHealthScores, updateHealthScores, getHealthScoreColor, type HealthScoreResult } from "@/lib/health-score"
 
 interface Domain {
   id: string
@@ -947,18 +947,8 @@ export default function CampaignSenderSelection({
                                   </div>
                                   <div className="text-center">
                                     <div className="text-sm text-gray-500 mb-1">Health Score</div>
-                                    <div className="flex items-center justify-center gap-1">
-                                      <span className="text-sm">{getHealthScoreIcon(healthScores[sender.id]?.score || sender.health_score || 0)}</span>
-                                      <div className={`font-semibold text-lg ${getHealthScoreColor(healthScores[sender.id]?.score || sender.health_score || 0)}`}>
-                                        {healthScores[sender.id]?.score || sender.health_score || 0}%
-                                      </div>
-                                    </div>
-                                    <div className="text-xs">
-                                      <Badge 
-                                        className={`text-xs px-2 py-0.5 ${getHealthScoreBgColor(healthScores[sender.id]?.score || sender.health_score || 0)}`}
-                                      >
-                                        {getHealthStatus(healthScores[sender.id]?.score || sender.health_score || 0)}
-                                      </Badge>
+                                    <div className={`font-semibold text-xl ${getHealthScoreColor(healthScores[sender.id]?.score || sender.health_score || 0)}`}>
+                                      {healthScores[sender.id]?.score || sender.health_score || 0}%
                                     </div>
                                   </div>
                                   <Button
