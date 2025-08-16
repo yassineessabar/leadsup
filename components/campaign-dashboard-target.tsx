@@ -1,11 +1,12 @@
 // Target tab content component
 import React, { useState, KeyboardEvent, useEffect } from 'react'
-import { Upload, Check, Search, X, Plus } from 'lucide-react'
+import { Upload, Check, Search, X, Plus, Bot, Zap, Pause, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 
 interface TargetTabProps {
@@ -34,6 +35,7 @@ export function TargetTab({
   const [scrapingStatus, setScrapingStatus] = useState<'idle' | 'running' | 'completed'>('idle')
   const [isStartingScraping, setIsStartingScraping] = useState(false)
   const [isLoadingConfig, setIsLoadingConfig] = useState(true)
+  const [showScrapingConfirmation, setShowScrapingConfirmation] = useState(false)
 
   // Fetch saved scraping configuration
   const fetchScrapingConfig = async () => {
@@ -82,13 +84,18 @@ export function TargetTab({
     }
   }, [campaignId])
 
-  // Save scraping configuration
-  const handleSaveScraping = async () => {
+  // Show confirmation popup before saving
+  const handleSaveScrapingClick = () => {
     if (!scrappingIndustry || scrappingKeywords.length === 0 || !scrappingLocation) {
       toast.error("Please fill in all required fields")
       return
     }
+    setShowScrapingConfirmation(true)
+  }
 
+  // Save scraping configuration
+  const handleSaveScraping = async () => {
+    setShowScrapingConfirmation(false)
     setIsStartingScraping(true)
     
     try {
@@ -116,8 +123,8 @@ export function TargetTab({
       const result = await response.json()
 
       if (response.ok && result.success) {
-        toast.success("Scraping configuration saved! We will start scraping and you'll see the leads in your campaign contacts.")
-        setScrapingStatus('idle') // Reset status after successful save
+        toast.success("Scraping started! The scraper is now running in the background.")
+        setScrapingStatus('running') // Set status to running after successful save
       } else {
         throw new Error(result.error || 'Failed to save scraping configuration')
       }
@@ -127,6 +134,11 @@ export function TargetTab({
     } finally {
       setIsStartingScraping(false)
     }
+  }
+
+  const handlePauseScraping = () => {
+    setScrapingStatus('idle')
+    toast.success("Scraping paused. Click 'Resume Scraping' to continue.")
   }
 
   const handleStopScraping = () => {
@@ -469,49 +481,61 @@ export function TargetTab({
                   </div>
 
                   <div className="flex items-center space-x-3">
-                    {isScrappingActive ? (
-                      <>
+                    {isStartingScraping ? (
+                      <Button
+                        className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
+                        disabled={true}
+                      >
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Starting scraping...
+                        </div>
+                      </Button>
+                    ) : scrapingStatus === 'running' ? (
+                      <div className="flex items-center gap-3">
                         <Button
-                          className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
+                          className="bg-green-600 hover:bg-green-700 text-white border-0 rounded-2xl px-6 py-3"
                           disabled={true}
                         >
                           <div className="flex items-center">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            {isStartingScraping ? "Starting scraping..." : "Scraping is running..."}
+                            <div className="animate-pulse w-2 h-2 bg-white rounded-full mr-2"></div>
+                            Scraping Started
                           </div>
                         </Button>
                         <Button
-                          onClick={handleStopScraping}
+                          onClick={handlePauseScraping}
                           size="sm"
-                          className="bg-red-600 hover:bg-red-700 text-white border-0 rounded-2xl px-3 py-1 text-xs"
+                          className="bg-gray-500 hover:bg-gray-600 text-white border-0 rounded-2xl px-4 py-2"
                         >
-                          <X className="w-3 h-3 mr-1" />
-                          Stop
+                          <Pause className="w-4 h-4 mr-1" />
+                          Pause
                         </Button>
-                      </>
+                      </div>
                     ) : scrapingStatus === 'completed' ? (
                       <Button
-                        onClick={handleSaveScraping}
-                        disabled={!scrappingIndustry || scrappingKeywords.length === 0 || !scrappingLocation}
-                        className="bg-green-600 hover:bg-green-700 text-white border-0 rounded-2xl px-6 py-3"
-                      >
-                        <Search className="w-4 h-4 mr-2" />
-                        Save Configuration
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={handleSaveScraping}
+                        onClick={handleSaveScrapingClick}
                         disabled={!scrappingIndustry || scrappingKeywords.length === 0 || !scrappingLocation}
                         className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
                       >
-                        <Search className="w-4 h-4 mr-2" />
-                        Save Configuration
+                        <Play className="w-4 h-4 mr-2" />
+                        Resume Scraping
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleSaveScrapingClick}
+                        disabled={!scrappingIndustry || scrappingKeywords.length === 0 || !scrappingLocation}
+                        className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        Start Scraping
                       </Button>
                     )}
                     <div className="text-xs text-gray-500">
-                      {isScrappingActive 
+                      {isStartingScraping 
+                        ? "Starting scraping process..."
+                        : scrapingStatus === 'running'
                         ? "Scraping process is running in the background..."
-                        : "Fill in industry, add keywords, and specify location to save scraping configuration"
+                        : "Fill in industry, add keywords, and specify location to start scraping"
                       }
                     </div>
                   </div>
@@ -522,6 +546,46 @@ export function TargetTab({
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Scraping Confirmation Dialog */}
+      <Dialog open={showScrapingConfirmation} onOpenChange={setShowScrapingConfirmation}>
+        <DialogContent className="max-w-sm rounded-3xl">
+          <DialogHeader className="text-center">
+            <DialogTitle className="text-xl font-medium text-gray-900">
+              Start Scraping
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 text-sm mt-2">
+              {scrappingIndustry} • {scrappingLocation} • {scrappingDailyLimit}/day
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="pt-6">
+            <div className="flex gap-3 w-full">
+              <Button
+                variant="outline"
+                onClick={() => setShowScrapingConfirmation(false)}
+                className="flex-1 rounded-2xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveScraping}
+                disabled={isStartingScraping}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl"
+              >
+                {isStartingScraping ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                    Starting...
+                  </>
+                ) : (
+                  "Start"
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

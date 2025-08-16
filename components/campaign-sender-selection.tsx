@@ -250,8 +250,36 @@ export default function CampaignSenderSelection({
     try {
       setIsSaving(true)
       console.log(`🔄 Saving ${selectedSenderIds.length} sender(s) to campaign ${campaignId}...`)
+      console.log('📋 Campaign ID type:', typeof campaignId, 'value:', campaignId)
       console.log('📍 API URL:', `/api/campaigns/${campaignId}/save`)
       console.log('📋 Selected sender IDs:', selectedSenderIds)
+      
+      // Validate campaign ID
+      if (!campaignId || campaignId === 'undefined' || campaignId === 'null') {
+        throw new Error(`Invalid campaign ID: ${campaignId}`)
+      }
+      console.log('📋 Request body:', JSON.stringify({
+        campaignData: {
+          senderAccounts: selectedSenderIds
+        },
+        saveType: 'senders'
+      }, null, 2))
+
+      // First, test if we can access the API at all by making a GET request
+      console.log('🧪 Testing API accessibility with GET request...')
+      try {
+        const testResponse = await fetch(`/api/campaigns/${campaignId}/save`, {
+          method: 'GET',
+          credentials: 'include'
+        })
+        console.log('🧪 GET test response:', testResponse.status, testResponse.statusText)
+        if (!testResponse.ok) {
+          const testText = await testResponse.text()
+          console.log('🧪 GET test response body:', testText.substring(0, 200))
+        }
+      } catch (testError) {
+        console.error('🧪 GET test failed:', testError)
+      }
       
       // Use the same save endpoint as the campaign dashboard
       const response = await fetch(`/api/campaigns/${campaignId}/save`, {
@@ -277,19 +305,31 @@ export default function CampaignSenderSelection({
       try {
         const responseText = await response.text()
         console.log('📡 Raw response text (first 500 chars):', responseText.substring(0, 500))
+        console.log('📡 Full response text length:', responseText.length)
         
         if (!responseText) {
+          console.error('❌ Empty response from server')
           throw new Error('Empty response from server')
         }
         
         // Check if response is HTML (error page)
         if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
           console.error('❌ Received HTML instead of JSON - likely an error page')
+          console.error('📄 HTML content:', responseText.substring(0, 1000))
           throw new Error('Server returned an error page instead of JSON. Check if you are logged in and the API route exists.')
+        }
+        
+        // Check if response is empty JSON
+        if (responseText.trim() === '{}') {
+          console.error('❌ Received empty JSON object from server')
+          throw new Error('Server returned empty JSON object - this indicates an API processing issue')
         }
         
         data = JSON.parse(responseText)
         console.log('📡 Parsed response data:', data)
+        console.log('📡 Response data type:', typeof data)
+        console.log('📡 Response data keys:', data ? Object.keys(data) : 'no keys')
+        console.log('📡 Response data JSON string:', JSON.stringify(data))
       } catch (parseError) {
         console.error('❌ Failed to parse response:', parseError)
         if (parseError.message.includes('Unexpected token')) {
@@ -298,13 +338,18 @@ export default function CampaignSenderSelection({
         throw new Error(`Invalid response from server: ${parseError.message}`)
       }
 
-      if (!response.ok || !data.success) {
+      if (!response.ok) {
         console.error('❌ API Error Response:', { 
           status: response.status, 
           statusText: response.statusText,
-          data 
+          data: data || 'No response data'
         })
-        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`)
+        throw new Error(data?.error || `HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      if (!data || !data.success) {
+        console.error('❌ API Response indicates failure:', data || 'No response data')
+        throw new Error(data?.error || 'Save operation failed - no success confirmation from server')
       }
 
       console.log(`✅ Saved ${selectedSenderIds.length} sender(s) to campaign`)
@@ -342,7 +387,8 @@ export default function CampaignSenderSelection({
     try {
       await saveSenderSelection(Array.from(selectedSenders))
     } catch (error) {
-      // Error already handled in saveSenderSelection
+      console.error('❌ Error in handleManualSave:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to save sender selection')
     }
   }
 

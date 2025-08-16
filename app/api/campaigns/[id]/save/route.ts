@@ -110,6 +110,17 @@ export async function POST(
     const body = await request.json()
     const { campaignData, saveType = 'all' } = body
 
+    console.log('📥 POST /api/campaigns/[id]/save received:', {
+      campaignId,
+      saveType,
+      campaignDataKeys: campaignData ? Object.keys(campaignData) : 'campaignData is null/undefined'
+    })
+
+    if (!campaignData) {
+      console.error('❌ Missing campaignData in request body')
+      return NextResponse.json({ success: false, error: "Missing campaignData in request body" }, { status: 400 })
+    }
+
     // Verify campaign belongs to user
     const { data: campaign, error: campaignError } = await supabaseServer
       .from("campaigns")
@@ -150,7 +161,12 @@ export async function POST(
     return NextResponse.json({ success: true, message: "Campaign data saved successfully" })
 
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+    console.error('❌ Error in POST /api/campaigns/[id]/save:', error)
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    return NextResponse.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : "Internal server error" 
+    }, { status: 500 })
   }
 }
 
@@ -256,10 +272,11 @@ async function saveSettings(campaignId: string, settings: any) {
 
 // Helper function to save sender accounts (now stores account IDs as selected senders)
 async function saveSenderAccounts(campaignId: string, senderAccounts: string[]) {
-  if (!senderAccounts) {
-    console.log('⚠️ saveSenderAccounts called with null/undefined senderAccounts')
-    return
-  }
+  try {
+    if (!senderAccounts) {
+      console.log('⚠️ saveSenderAccounts called with null/undefined senderAccounts')
+      return
+    }
 
   console.log(`💾 saveSenderAccounts called for campaign ${campaignId}`)
   console.log(`📋 senderAccounts parameter:`, senderAccounts)
@@ -321,7 +338,7 @@ async function saveSenderAccounts(campaignId: string, senderAccounts: string[]) 
       const baseRecords = userSenderAccounts.map(sender => ({
         campaign_id: campaignId,
         email: sender.email,
-        display_name: sender.display_name || sender.email.split('@')[0],
+        name: sender.display_name || sender.email.split('@')[0],
         is_selected: senderAccounts.includes(sender.id),
         sender_type: 'email',
         is_active: true,
@@ -460,6 +477,10 @@ async function saveSenderAccounts(campaignId: string, senderAccounts: string[]) 
     } else {
       console.log('✅ No senders to select - all have been unselected')
     }
+  }
+  } catch (error) {
+    console.error('❌ Error in saveSenderAccounts:', error)
+    throw error // Re-throw to be caught by the main POST handler
   }
 }
 

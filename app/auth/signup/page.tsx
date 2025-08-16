@@ -57,8 +57,10 @@ export default function SignupPage() {
       if (data.success) {
         localStorage.removeItem('auth_cache')
         sessionStorage.removeItem('auth_cache')
+        // Set flag to indicate user just signed up
+        sessionStorage.setItem('just_signed_up', 'true')
         setTimeout(() => {
-          window.location.href = "/"
+          window.location.href = "/?from=signup"
         }, 100)
       } else {
         setError(data.error || "Signup failed")

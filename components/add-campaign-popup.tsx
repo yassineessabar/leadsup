@@ -110,6 +110,26 @@ const outreachStrategies = [
   // LinkedIn and Multi-Channel options temporarily hidden
 ]
 
+// Helper function to get suggested roles based on campaign objective
+const getSuggestedRoles = (objective: string): string[] => {
+  switch (objective) {
+    case 'sell-service':
+      return ['CEO', 'CTO', 'VP Sales', 'Head of Sales', 'Sales Director', 'Business Development Manager']
+    case 'raise-money':
+      return ['Partner', 'Investment Director', 'Managing Director', 'Principal', 'Venture Partner', 'Investment Manager']
+    case 'book-meetings':
+      return ['Decision Maker', 'Head of Department', 'Director', 'VP', 'C-Suite Executive', 'Manager']
+    case 'grow-brand':
+      return ['CMO', 'VP Marketing', 'Head of Marketing', 'Marketing Director', 'Brand Manager', 'Content Manager']
+    case 'collect-reviews':
+      return ['Customer Success Manager', 'Account Manager', 'Product Manager', 'Operations Manager', 'Client Director']
+    case 'recruit':
+      return ['Software Engineer', 'Senior Developer', 'Product Designer', 'Data Scientist', 'DevOps Engineer', 'Engineering Manager']
+    default:
+      return ['CEO', 'Director', 'Manager', 'Head of Department', 'VP']
+  }
+}
+
 export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCampaignPopupProps) {
   const [currentStep, setCurrentStep] = useState("company")
   const [isProcessing, setIsProcessing] = useState(false)
@@ -120,6 +140,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   const [campaignResult, setCampaignResult] = useState<any>(null)
   const [formData, setFormData] = useState({
     campaignName: "",
+    campaignObjective: "",
     companyName: "",
     website: "",
     noWebsite: false,
@@ -261,6 +282,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
           step: 'create-campaign',
           formData: {
             campaignName: formData.campaignName,
+            campaignObjective: formData.campaignObjective,
             companyName: formData.companyName,
             website: formData.website,
             noWebsite: formData.noWebsite,
@@ -294,8 +316,15 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         setCampaignId(result.data.campaign.id);
         setAiAssets(prev => ({ ...prev, ...result.data.aiAssets }));
         
-        // Auto-fill keywords from AI extraction
-        if (result.data.extractedKeywords && result.data.extractedKeywords.length > 0) {
+        // Auto-fill AI-generated target prospect roles based on campaign objective and company info
+        if (result.data.aiGeneratedRoles && result.data.aiGeneratedRoles.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            keywords: [...new Set([...prev.keywords, ...result.data.aiGeneratedRoles])]
+          }));
+        }
+        // Fallback to extractedKeywords for backward compatibility
+        else if (result.data.extractedKeywords && result.data.extractedKeywords.length > 0) {
           setFormData(prev => ({
             ...prev,
             keywords: [...new Set([...prev.keywords, ...result.data.extractedKeywords])]
@@ -449,6 +478,10 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         setError("Campaign name is required");
         return;
       }
+      if (!formData.campaignObjective) {
+        setError("Campaign objective is required");
+        return;
+      }
       if (!formData.companyName?.trim()) {
         setError("Company name is required");
         return;
@@ -550,23 +583,34 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
 
   const renderProcessingSteps = () => {
     return (
-      <div className="flex flex-col items-center justify-center h-full space-y-4">
-        <div className="w-12 h-12 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <span className="text-lg font-medium text-blue-600">
-          {currentStep === "company" ? "Generating AI campaign assets..." : "Processing..."}
-        </span>
-        <p className="text-sm text-gray-500 font-light">This may take a few seconds</p>
+      <div className="flex flex-col items-center justify-center h-full space-y-6">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-100 rounded-full"></div>
+          <div className="absolute top-0 left-0 w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="absolute top-2 left-2 w-12 h-12 border-3 border-blue-200 border-t-transparent rounded-full animate-spin animation-delay-300"></div>
+        </div>
+        <div className="text-center space-y-3">
+          <span className="text-xl font-light text-gray-900 tracking-tight">
+            {currentStep === "company" ? "Generating AI campaign assets..." : "Processing..."}
+          </span>
+          <p className="text-sm text-gray-500 font-light">This may take a few seconds</p>
+          <div className="flex justify-center space-x-1 mt-4">
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce animation-delay-100"></div>
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce animation-delay-200"></div>
+          </div>
+        </div>
       </div>
     )
   }
 
   const renderCompanyForm = () => (
-    <div className="max-w-2xl mx-auto space-y-8">
-      <div className="space-y-3">
-        <h2 className="text-3xl font-light text-gray-900 tracking-tight">
+    <div className="max-w-3xl mx-auto space-y-4">
+      <div>
+        <h2 className="text-2xl font-medium text-gray-900">
           Your company name and website
         </h2>
-        <p className="text-gray-500 font-light">Let's start by getting to know your business</p>
+        <p className="text-sm text-gray-500 mt-1">Let's start by getting to know your business</p>
       </div>
 
       {/* Error Display */}
@@ -595,44 +639,68 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         </div>
       )}
       
-      <div className="space-y-6">
-        <div className="space-y-3">
-          <Label htmlFor="campaign-name" className="text-base font-semibold text-gray-800">Campaign name</Label>
-          <Input
-            id="campaign-name"
-            value={formData.campaignName}
-            onChange={(e) => setFormData(prev => ({ ...prev, campaignName: e.target.value }))}
-            className="h-12 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-2xl"
-            placeholder="Enter your campaign name"
-          />
-        </div>
-
-        <div className="space-y-3">
-          <Label htmlFor="company" className="text-base font-semibold text-gray-800">Company name</Label>
-          <Input
-            id="company"
-            value={formData.companyName}
-            onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
-            className="h-12 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-2xl"
-            placeholder="Enter your company name"
-          />
-        </div>
-        
-        <div className="space-y-3">
-          <Label htmlFor="website" className="text-base font-semibold text-gray-800">Website</Label>
-          <div className="relative">
-            <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="campaign-name" className="text-sm font-medium text-gray-700">Campaign name</Label>
             <Input
-              id="website"
-              className="pl-12 h-12 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-2xl"
-              value={formData.website}
-              onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-              disabled={formData.noWebsite}
-              placeholder="https://yourcompany.com"
+              id="campaign-name"
+              value={formData.campaignName}
+              onChange={(e) => setFormData(prev => ({ ...prev, campaignName: e.target.value }))}
+              className="h-10 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-xl text-sm"
+              placeholder="Enter your campaign name"
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="campaign-objective" className="text-sm font-medium text-gray-700">Campaign objective</Label>
+            <Select value={formData.campaignObjective} onValueChange={(value) => setFormData(prev => ({ ...prev, campaignObjective: value }))}>
+              <SelectTrigger className="h-10 border-gray-200 focus:border-blue-600 focus:ring-blue-600 text-sm rounded-xl">
+                <SelectValue placeholder="Select your objective" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sell-service">💼 Sell your service</SelectItem>
+                <SelectItem value="raise-money">💰 Raise money</SelectItem>
+                <SelectItem value="book-meetings">📅 Book more meetings</SelectItem>
+                <SelectItem value="grow-brand">📢 Grow your brand awareness</SelectItem>
+                <SelectItem value="collect-reviews">⭐ Collect reviews/testimonials</SelectItem>
+                <SelectItem value="recruit">👥 Recruit candidates</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="company" className="text-sm font-medium text-gray-700">Company name</Label>
+            <Input
+              id="company"
+              value={formData.companyName}
+              onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+              className="h-10 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-xl text-sm"
+              placeholder="Enter your company name"
+            />
+          </div>
+          <div></div>
+        </div>
         
-          <div className="flex items-center space-x-3 mt-3">
+        <div className="grid grid-cols-3 gap-4 items-end">
+          <div className="col-span-2 space-y-2">
+            <Label htmlFor="website" className="text-sm font-medium text-gray-700">Website</Label>
+            <div className="relative">
+              <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                id="website"
+                className="pl-10 h-10 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-xl text-sm"
+                value={formData.website}
+                onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                disabled={formData.noWebsite}
+                placeholder="https://yourcompany.com"
+              />
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
             <Checkbox
               id="no-website"
               checked={formData.noWebsite}
@@ -643,17 +711,17 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
               }))}
               className="border-gray-300"
             />
-            <Label htmlFor="no-website" className="text-sm text-gray-600 cursor-pointer">
-              {"I don't have a website"}
+            <Label htmlFor="no-website" className="text-xs text-gray-600 cursor-pointer">
+              No website
             </Label>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <Label htmlFor="location" className="text-base font-semibold text-gray-800">Location</Label>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="location" className="text-sm font-medium text-gray-700">Location</Label>
             <Select value={formData.location} onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}>
-              <SelectTrigger className="h-12 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]">
+              <SelectTrigger className="h-10 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] text-sm">
                 <SelectValue placeholder="Select location" />
               </SelectTrigger>
               <SelectContent>
@@ -676,73 +744,171 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             </Select>
           </div>
 
-          <div className="space-y-3">
-            <Label htmlFor="industry" className="text-base font-semibold text-gray-800">Industry</Label>
+          <div className="space-y-2">
+            <Label htmlFor="industry" className="text-sm font-medium text-gray-700">Industry</Label>
             <Input
               id="industry"
               value={formData.industry}
               onChange={(e) => setFormData(prev => ({ ...prev, industry: e.target.value }))}
-              className="h-12 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-2xl"
-              placeholder="e.g., Technology, Healthcare, Marketing"
+              className="h-10 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-xl text-sm"
+              placeholder="e.g., Technology, Healthcare"
             />
           </div>
         </div>
       
-        <div className="space-y-3">
-          <Label htmlFor="language" className="text-base font-semibold text-gray-800">Prospecting language</Label>
-          <Select value={formData.language} onValueChange={(value) => setFormData(prev => ({ ...prev, language: value }))}>
-            <SelectTrigger className="h-12 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]">
-              <SelectValue placeholder="Select your preferred language" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="english">🇺🇸 English</SelectItem>
-              <SelectItem value="french">🇫🇷 French</SelectItem>
-              <SelectItem value="spanish">🇪🇸 Spanish</SelectItem>
-              <SelectItem value="german">🇩🇪 German</SelectItem>
-              <SelectItem value="italian">🇮🇹 Italian</SelectItem>
-              <SelectItem value="portuguese">🇵🇹 Portuguese</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="language" className="text-sm font-medium text-gray-700">Prospecting language</Label>
+            <Select value={formData.language} onValueChange={(value) => setFormData(prev => ({ ...prev, language: value }))}>
+              <SelectTrigger className="h-10 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] text-sm">
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="english">🇺🇸 English</SelectItem>
+                <SelectItem value="french">🇫🇷 French</SelectItem>
+                <SelectItem value="spanish">🇪🇸 Spanish</SelectItem>
+                <SelectItem value="german">🇩🇪 German</SelectItem>
+                <SelectItem value="italian">🇮🇹 Italian</SelectItem>
+                <SelectItem value="portuguese">🇵🇹 Portuguese</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div></div>
         </div>
       </div>
     </div>
   )
 
   const renderCompanyInfo = () => (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="space-y-3">
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+    <div className="max-w-3xl mx-auto space-y-3">
+      <div>
+        <h2 className="text-xl font-medium text-gray-900">
           Information about your company
         </h2>
-        <p className="text-gray-600">Help our AI understand your business better</p>
+        <p className="text-sm text-gray-500 mt-1">Help our AI understand your business better</p>
       </div>
       
-      <div className="space-y-6">
-        <div className="space-y-3">
-          <Label htmlFor="activity" className="text-base font-semibold text-gray-800">Main activity</Label>
-          <p className="text-sm text-gray-600">{"Describe your company's core business, products, or services"}</p>
+      <div className="space-y-3">
+        <div className="space-y-2">
+          <Label htmlFor="activity" className="text-sm font-medium text-gray-700">Main activity</Label>
+          <p className="text-xs text-gray-500">{"Describe your company's core business, products, or services"}</p>
           <Textarea
             id="activity"
-            className="min-h-[200px] border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
+            className="min-h-[80px] max-h-[120px] border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 transition-colors text-sm rounded-xl resize-none"
             value={formData.mainActivity}
             onChange={(e) => setFormData(prev => ({ ...prev, mainActivity: e.target.value }))}
           />
         </div>
-        
-        <div className="space-y-3">
-          <Label htmlFor="location" className="text-base font-semibold text-gray-800">Location</Label>
-          <Select value={formData.location} onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}>
-            <SelectTrigger className="h-12 border-gray-200 focus:border-indigo-500 focus:ring-indigo-500">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Australia">🇦🇺 Australia</SelectItem>
-              <SelectItem value="United States">🇺🇸 United States</SelectItem>
-              <SelectItem value="United Kingdom">🇬🇧 United Kingdom</SelectItem>
-              <SelectItem value="Canada">🇨🇦 Canada</SelectItem>
-              <SelectItem value="Germany">🇩🇪 Germany</SelectItem>
-            </SelectContent>
-          </Select>
+
+        {/* Target Prospect Roles Section */}
+        <div className="space-y-3 pt-4 border-t border-gray-100">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-medium text-gray-800">Target Prospect Roles</h3>
+              {formData.keywords.length > 0 && (
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                  AI Generated
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-600">
+              {formData.keywords.length > 0 
+                ? "AI-generated prospect roles based on your campaign objective and company info. You can add more or remove any." 
+                : "Add job titles and roles of your ideal prospects (e.g., \"Head of Marketing\", \"CMO\", \"Growth Manager\")"
+              }
+            </p>
+            <p className="text-xs text-gray-500">These will help us identify the right decision-makers to reach out to</p>
+          </div>
+          <div className="flex space-x-2">
+            <Input
+              id="keywords"
+              value={newKeyword}
+              onChange={(e) => setNewKeyword(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && addKeyword()}
+              className="flex-1 h-10 border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 transition-colors rounded-xl text-sm"
+              placeholder="e.g., Head of Marketing, CMO, VP Sales"
+            />
+            <Button 
+              type="button"
+              onClick={addKeyword}
+              className="h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-4 text-sm"
+            >
+              Add Role
+            </Button>
+          </div>
+          
+          {/* Suggested roles based on campaign objective - only show if no AI roles yet */}
+          {formData.campaignObjective && formData.keywords.length === 0 && (
+            <div className="bg-blue-50/50 border border-blue-200/50 rounded-xl p-3">
+              <p className="text-xs font-medium text-blue-700 mb-2">Quick-add suggested roles while AI processes your data:</p>
+              <div className="flex flex-wrap gap-2">
+                {getSuggestedRoles(formData.campaignObjective).map((role, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      if (!formData.keywords.includes(role)) {
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          keywords: [...prev.keywords, role] 
+                        }))
+                      }
+                    }}
+                    className="text-xs bg-white border border-blue-200 text-blue-700 px-2 py-1 rounded-full hover:bg-blue-50 transition-colors"
+                  >
+                    + {role}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Additional suggestions for AI-generated roles */}
+          {formData.campaignObjective && formData.keywords.length > 0 && (
+            <div className="bg-gray-50/50 border border-gray-200/50 rounded-xl p-3">
+              <p className="text-xs font-medium text-gray-600 mb-2">Additional suggestions:</p>
+              <div className="flex flex-wrap gap-2">
+                {getSuggestedRoles(formData.campaignObjective)
+                  .filter(role => !formData.keywords.includes(role))
+                  .slice(0, 4)
+                  .map((role, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        keywords: [...prev.keywords, role] 
+                      }))
+                    }}
+                    className="text-xs bg-white border border-gray-200 text-gray-600 px-2 py-1 rounded-full hover:bg-gray-100 transition-colors"
+                  >
+                    + {role}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {formData.keywords.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-gray-700">Selected prospect roles:</p>
+              <div className="flex flex-wrap gap-2">
+                {formData.keywords.map((keyword, index) => (
+                  <div key={index} className="flex items-center space-x-2 bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
+                    <span className="text-xs font-medium">{keyword}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeKeyword(keyword)}
+                      className="text-indigo-600 hover:text-indigo-800 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -753,26 +919,43 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     const displayPersonas = aiAssets?.personas || samplePersonas
 
     return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="space-y-3">
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+    <div className="max-w-3xl mx-auto space-y-4">
+      <div className="text-center">
+        <h2 className="text-2xl font-medium text-gray-900">
           ICPs & Personas for {formData.companyName || "your company"}
         </h2>
-        <p className="text-gray-600">Review and customize your AI-generated ideal customer profile and target persona</p>
+        <p className="text-sm text-gray-500 mt-1">Review and customize your AI-generated profiles</p>
+      </div>
+
+      <div className="bg-blue-50/80 backdrop-blur-sm border border-blue-100/50 rounded-2xl p-4">
+        <div className="flex items-start space-x-3">
+          <div className="w-6 h-6 bg-blue-600 rounded-xl flex items-center justify-center mt-0.5">
+            <span className="text-white text-xs font-bold">i</span>
+          </div>
+          <p className="text-blue-900 font-medium text-sm">Review the ideal customer profile and target persona generated for your campaign.</p>
+        </div>
       </div>
       
-      {/* ICPs Section */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-semibold text-gray-800">Ideal Customer Profile</h3>
-        {displayICPs.map((icp: any) => (
-          <Card 
-            key={icp.id} 
-            className="border-2 shadow-md" style={{ borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
-          >
-            <CardContent className="p-6">
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-gray-900">{icp.title}</h3>
+      {/* ICPs Section - Compact Grid */}
+      <div className="space-y-3">
+        <h3 className="text-base font-medium text-gray-900">Ideal Customer Profile</h3>
+        <div className="grid gap-3">
+          {displayICPs.slice(0, 2).map((icp: any) => (
+            <div 
+              key={icp.id} 
+              className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+            >
+              <div className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-2">
+                    <h4 className="text-base font-medium text-gray-900">{icp.title}</h4>
+                    <p className="text-sm text-gray-600 leading-relaxed">{icp.description.substring(0, 120)}...</p>
+                    {icp.companySize && (
+                      <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                        {icp.companySize} employees
+                      </div>
+                    )}
+                  </div>
                   <Button 
                     variant="ghost" 
                     size="sm"
@@ -781,30 +964,39 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
                       setEditingICP(true)
                       setEditedData(prev => ({ ...prev, icp: { ...icp } }))
                     }}
-                    className="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                    className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl p-1.5 ml-2"
                   >
-                    <Edit className="w-4 h-4" />
+                    <Edit className="w-3 h-3" />
                   </Button>
                 </div>
-                <p className="text-gray-600 leading-relaxed">{icp.description}</p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+            </div>
+          ))}
+        </div>
       </div>
       
-      {/* Personas Section */}
-      <div className="space-y-4 pt-6 border-t">
-        <h3 className="text-xl font-semibold text-gray-800">Target Persona</h3>
-        {displayPersonas.map((persona: any) => (
-          <Card 
-            key={persona.id} 
-            className="border-2 shadow-md" style={{ borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
-          >
-            <CardContent className="p-6">
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-gray-900">{persona.title}</h3>
+      {/* Personas Section - Compact Grid */}
+      <div className="space-y-3 pt-4 border-t border-gray-100/50">
+        <h3 className="text-base font-medium text-gray-900">Target Persona</h3>
+        <div className="grid gap-3">
+          {displayPersonas.slice(0, 2).map((persona: any) => (
+            <div 
+              key={persona.id} 
+              className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+            >
+              <div className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-2">
+                    <h4 className="text-base font-medium text-gray-900">{persona.title}</h4>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {(persona.demographics || persona.description || 'Demographics information').substring(0, 120)}...
+                    </p>
+                    {persona.equivalentTitles && (
+                      <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                        Also: {persona.equivalentTitles.split(',')[0]}...
+                      </div>
+                    )}
+                  </div>
                   <Button 
                     variant="ghost" 
                     size="sm"
@@ -813,57 +1005,15 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
                       setEditingPersona(true)
                       setEditedData(prev => ({ ...prev, persona: { ...persona } }))
                     }}
-                    className="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                    className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl p-1.5 ml-2"
                   >
-                    <Edit className="w-4 h-4" />
+                    <Edit className="w-3 h-3" />
                   </Button>
                 </div>
-                <p className="text-gray-600 leading-relaxed">
-                  {(persona.demographics || persona.description || 'Demographics information').substring(0, 150)}...
-                </p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Keywords Section */}
-      <div className="space-y-4 pt-6 border-t">
-        <h3 className="text-xl font-semibold text-gray-800">Keywords</h3>
-        <p className="text-sm text-gray-600">Add relevant keywords to help identify and target the right prospects</p>
-        <div className="flex space-x-2">
-          <Input
-            id="keywords"
-            value={newKeyword}
-            onChange={(e) => setNewKeyword(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addKeyword()}
-            className="flex-1 h-12 border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
-            placeholder="Enter a keyword"
-          />
-          <Button 
-            type="button"
-            onClick={addKeyword}
-            className="h-12 bg-indigo-600 hover:bg-indigo-700 text-white"
-          >
-            Add
-          </Button>
+            </div>
+          ))}
         </div>
-        {formData.keywords.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {formData.keywords.map((keyword, index) => (
-              <div key={index} className="flex items-center space-x-2 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full">
-                <span className="text-sm font-medium">{keyword}</span>
-                <button
-                  type="button"
-                  onClick={() => removeKeyword(keyword)}
-                  className="text-indigo-600 hover:text-indigo-800 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
     )
@@ -1275,92 +1425,97 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     const displayValueProps = aiAssets?.value_propositions || sampleValuePropositions
 
     return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="space-y-3">
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+      <div className="max-w-3xl mx-auto space-y-4">
+      <div className="text-center">
+        <h2 className="text-2xl font-medium text-gray-900">
           Pain Points & Value Propositions
         </h2>
-        <p className="text-gray-600">Review the AI-generated challenges and your solutions</p>
+        <p className="text-sm text-gray-500 mt-1">Review the AI-generated challenges and your solutions</p>
       </div>
       
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 mb-8">
-        <div className="flex items-start space-x-4">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center mt-1">
-            <span className="text-white text-sm font-bold">i</span>
+      <div className="bg-blue-50/80 backdrop-blur-sm border border-blue-100/50 rounded-2xl p-4">
+        <div className="flex items-start space-x-3">
+          <div className="w-6 h-6 bg-blue-600 rounded-xl flex items-center justify-center mt-0.5">
+            <span className="text-white text-xs font-bold">i</span>
           </div>
-          <p className="text-blue-900 font-medium">Review the main challenge your customers face and how you solve it.</p>
+          <p className="text-blue-900 font-medium text-sm">Review the main challenge your customers face and how you solve it.</p>
         </div>
       </div>
       
-      {/* Pain Points Section */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-semibold text-gray-800">Customer Pain Point</h3>
-        {displayPainPoints.map((painPoint: any) => (
-          <Card 
-            key={painPoint.id} 
-            className="border-2 shadow-md" style={{ borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}
-          >
-            <CardContent className="p-6">
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-gray-900">{painPoint.title}</h3>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => {
-                      setSelectedPainPoint(painPoint.id)
-                      setEditingPainPoint(true)
-                      setEditedData(prev => ({ ...prev, painPoint: { ...painPoint } }))
-                    }}
-                    className="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
+      {/* Side-by-side layout for compact display */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Pain Points Section */}
+        <div className="space-y-3">
+          <h3 className="text-base font-medium text-gray-900">Customer Pain Point</h3>
+          {displayPainPoints.slice(0, 1).map((painPoint: any) => (
+            <div 
+              key={painPoint.id} 
+              className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+            >
+              <div className="p-4">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-gray-900">{painPoint.title}</h4>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => {
+                        setSelectedPainPoint(painPoint.id)
+                        setEditingPainPoint(true)
+                        setEditedData(prev => ({ ...prev, painPoint: { ...painPoint } }))
+                      }}
+                      className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl p-1.5"
+                    >
+                      <Edit className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-relaxed">{painPoint.description.substring(0, 100)}...</p>
                 </div>
-                <p className="text-gray-600 leading-relaxed">{painPoint.description}</p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+            </div>
+          ))}
+        </div>
+        
+        {/* Value Proposition Section */}
+        <div className="space-y-3">
+          <h3 className="text-base font-medium text-gray-900">Your Value Proposition</h3>
+          {displayValueProps.slice(0, 1).map((valueProp: any) => (
+            <div 
+              key={valueProp.id} 
+              className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+            >
+              <div className="p-4">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-gray-900">{valueProp.title}</h4>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => {
+                        setEditingValueProp(true)
+                        setEditedData(prev => ({ ...prev, valueProp: { ...valueProp } }))
+                      }}
+                      className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl p-1.5"
+                    >
+                      <Edit className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-relaxed">{valueProp.description.substring(0, 100)}...</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
       
-      {/* Value Proposition Section */}
-      <div className="space-y-4 pt-6 border-t">
-        <h3 className="text-xl font-semibold text-gray-800">Your Value Propositions</h3>
-        {displayValueProps.map((valueProp: any) => (
-          <Card key={valueProp.id} className="border-2 shadow-lg" style={{ borderColor: 'rgb(37, 99, 235)', background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
-            <CardContent className="p-6">
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-semibold text-gray-900">{valueProp.title}</h3>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => {
-                      setEditingValueProp(true)
-                      setEditedData(prev => ({ ...prev, valueProp: { ...valueProp } }))
-                    }}
-                    className="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                </div>
-                {valueProp.benefits && (
-                  <div>
-                    <span className="text-sm text-gray-600 font-medium">Benefits:</span>
-                    <ul className="text-sm text-gray-600 list-disc pl-4">
-                      {valueProp.benefits.map((benefit: string, idx: number) => (
-                        <li key={idx}>{benefit}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                <p className="text-gray-600 leading-relaxed">{valueProp.description}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Show additional items if they exist */}
+      {(displayPainPoints.length > 1 || displayValueProps.length > 1) && (
+        <div className="text-center">
+          <p className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full inline-block">
+            {displayPainPoints.length + displayValueProps.length - 2} more items available for editing after creation
+          </p>
+        </div>
+      )}
     </div>
     )
   }
@@ -1714,79 +1869,83 @@ Best regards,
     const strategyTitle = outreachStrategies.find(s => s.id === selectedOutreachStrategy)?.title || "Email only"
 
     return (
-      <div className="max-w-2xl mx-auto space-y-8">
-        <div className="space-y-3 text-center">
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+      <div className="max-w-3xl mx-auto space-y-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-medium text-gray-900">
             {aiAssets?.email_sequences ? 'AI-Generated Sequence Preview' : `Sequence Preview - ${strategyTitle}`}
           </h2>
-          <p className="text-gray-600">
+          <p className="text-sm text-gray-500 mt-1">
             {aiAssets?.email_sequences ? 'Review your AI-generated automated outreach sequence' : 'Review your automated outreach sequence'}
           </p>
         </div>
 
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 mb-8">
-          <div className="flex items-start space-x-4">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center mt-1">
-              <span className="text-white text-sm font-bold">i</span>
+        <div className="bg-blue-50/80 backdrop-blur-sm border border-blue-100/50 rounded-2xl p-4">
+          <div className="flex items-start space-x-3">
+            <div className="w-6 h-6 bg-blue-600 rounded-xl flex items-center justify-center mt-0.5">
+              <span className="text-white text-xs font-bold">i</span>
             </div>
             <div>
-              <p className="text-blue-900 font-semibold">
+              <p className="text-blue-900 font-medium text-sm">
                 {aiAssets?.email_sequences ? 'This AI-generated sequence will run automatically for each lead' : 'This sequence will run automatically for each lead'}
               </p>
-              <p className="text-blue-700 mt-1">You can edit individual steps or timing after creation</p>
+              <p className="text-blue-700 mt-1 text-xs">You can edit individual steps or timing after creation</p>
             </div>
           </div>
         </div>
         
-        <div className="relative">
-          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-200 transform -translate-x-1/2"></div>
-          
-          <div className="space-y-0">
-            {sequenceSteps.map((step, index) => {
-              if (step.type === "start") {
-                return (
-                  <div key={index} className="relative flex justify-center mb-8">
-                    <div className="bg-white border border-gray-200 rounded-2xl px-8 py-4 shadow-sm">
-                      <span className="text-gray-500 font-medium">{step.title}</span>
-                    </div>
-                  </div>
-                )
-              }
-
-              if (step.type === "timing") {
-                return (
-                  <div key={index} className="relative flex justify-center mb-6">
-                    <div className="bg-white px-4 py-2 flex items-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-gray-400 rounded-full flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+        {/* Compact sequence display - optimized to fit without scrolling */}
+        <div className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl p-4">
+          <div className="relative">
+            <div className="absolute left-4 top-0 bottom-0 w-px bg-gray-200"></div>
+            
+            <div className="space-y-2">
+              {sequenceSteps.slice(0, 6).map((step, index) => {
+                if (step.type === "start") {
+                  return (
+                    <div key={index} className="relative flex items-center mb-2">
+                      <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center mr-3 relative z-10">
+                        <div className="w-1 h-1 bg-white rounded-full"></div>
                       </div>
-                      <span className={`font-medium ${step.color || 'text-gray-700'}`}>
+                      <div className="bg-white/90 border border-gray-100 rounded-lg px-2 py-1 shadow-sm">
+                        <span className="text-gray-600 font-medium text-xs">{step.title}</span>
+                      </div>
+                    </div>
+                  )
+                }
+
+                if (step.type === "timing") {
+                  return (
+                    <div key={index} className="relative flex items-center mb-1">
+                      <div className="w-4 h-4 border-2 border-gray-300 bg-white rounded-full flex items-center justify-center mr-3 relative z-10">
+                        <div className="w-0.5 h-0.5 bg-gray-400 rounded-full"></div>
+                      </div>
+                      <span className={`font-medium text-xs ${step.color || 'text-gray-600'}`}>
                         {step.text}
                       </span>
                     </div>
-                  </div>
-                )
-              }
+                  )
+                }
 
-              if (step.type === "action") {
-                return (
-                  <div key={index} className="relative flex justify-center mb-6">
-                    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm w-full max-w-sm">
-                      <div className="flex items-center space-x-4">
-                        <div className={`w-10 h-10 ${step.iconBg} rounded-xl flex items-center justify-center`}>
-                          <span className="text-lg">{step.icon}</span>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900">{step.title}</h3>
-                          <p className="text-gray-500 text-sm">{step.subtitle}</p>
-                          {step.platform && (
-                            <div className="flex items-center space-x-1 mt-1">
-                              <span className="text-blue-600 text-xs font-medium">in</span>
-                              <span className="text-gray-400 text-xs">{step.platform}</span>
-                            </div>
-                          )}
+                if (step.type === "action") {
+                  return (
+                    <div key={index} className="relative flex items-start mb-2">
+                      <div className={`w-4 h-4 ${step.iconBg || 'bg-green-50'} rounded-full flex items-center justify-center mr-3 relative z-10 border border-gray-200`}>
+                        <span className="text-xs">{step.icon}</span>
+                      </div>
+                      <div className="bg-white/90 border border-gray-100 rounded-lg p-2 shadow-sm flex-1">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-gray-900 text-xs">{step.title}</h4>
+                            <p className="text-gray-500 text-xs mt-0.5 truncate">{step.subtitle}</p>
+                            {step.platform && (
+                              <div className="flex items-center space-x-1 mt-0.5">
+                                <span className="text-blue-600 text-xs font-medium">via</span>
+                                <span className="text-gray-400 text-xs">{step.platform}</span>
+                              </div>
+                            )}
+                          </div>
                           {step.message && (
-                            <div className="mt-3">
+                            <div className="ml-2">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -1797,24 +1956,39 @@ Best regards,
                                   })
                                   setShowMessageModal(true)
                                 }}
-                                className="text-xs px-3 py-1 h-6 border-gray-200" style={{ color: 'rgb(37, 99, 235)', borderColor: 'rgba(87, 140, 255, 0.2)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(87, 140, 255, 0.05)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                className="text-xs px-1.5 py-0.5 h-4 border-gray-200" 
+                                style={{ color: 'rgb(37, 99, 235)', borderColor: 'rgba(87, 140, 255, 0.2)' }} 
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(87, 140, 255, 0.05)'} 
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               >
-                                <Eye className="w-3 h-3 mr-1" />
-                                View Message
+                                <Eye className="w-2 h-2 mr-0.5" />
+                                View
                               </Button>
                             </div>
                           )}
                         </div>
                       </div>
                     </div>
-                  </div>
                 )
               }
 
               return null
             })}
+            
+            {/* Show indicator if there are more steps */}
+            {sequenceSteps.length > 6 && (
+              <div className="relative flex items-center text-center justify-center mt-2">
+                <div className="w-4 h-4 border-2 border-gray-300 bg-white rounded-full flex items-center justify-center mr-3 relative z-10">
+                  <div className="w-0.5 h-0.5 bg-gray-400 rounded-full"></div>
+                </div>
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                  +{sequenceSteps.length - 6} more steps
+                </span>
+              </div>
+            )}
           </div>
         </div>
+      </div>
         
         <div className="text-center">
           <span className="text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-full">
@@ -1828,28 +2002,28 @@ Best regards,
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl w-full max-w-7xl h-[90vh] overflow-hidden flex shadow-2xl relative">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white/90 backdrop-blur-xl border border-gray-100/20 rounded-3xl w-full max-w-7xl h-[85vh] max-h-[720px] overflow-hidden flex shadow-2xl relative">
         {/* Close button */}
         <button 
           onClick={onClose}
-          className="absolute top-6 right-6 z-10 text-gray-400 hover:text-gray-600 transition-all duration-300 bg-white/80 hover:bg-gray-50 rounded-full p-2 shadow-md"
+          className="absolute top-3 right-3 z-10 text-gray-400 hover:text-gray-600 transition-all duration-300 bg-white/90 backdrop-blur-xl hover:bg-gray-50/90 rounded-xl p-2 shadow-sm border border-gray-100/30"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
         <div className="flex w-full">
           {/* Sidebar */}
-          <div className="w-80 bg-[rgb(243,243,241)] border-r border-gray-100/50 h-full">
-            <div className="p-6 space-y-8">
-              <div className="space-y-2">
+          <div className="w-80 bg-gray-50/80 backdrop-blur-xl border-r border-gray-100/30 h-full overflow-y-auto">
+            <div className="p-6 space-y-5">
+              <div className="space-y-1">
                 <p className="text-xs uppercase tracking-wider font-semibold text-blue-600">GET STARTED</p>
-                <h1 className="text-3xl font-light text-gray-900 tracking-tight">
+                <h1 className="text-2xl font-medium text-gray-900">
                   Campaign creation
                 </h1>
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {steps.map((step, index) => {
                   const isCompleted = completedSteps.includes(step.id)
                   const isCurrent = currentStep === step.id
@@ -1858,32 +2032,32 @@ Best regards,
                   return (
                     <div
                       key={step.id}
-                      className={`flex items-center space-x-4 cursor-pointer transition-all duration-300 ${
-                        isClickable ? 'hover:bg-white/50' : 'cursor-not-allowed'
-                      } p-3 rounded-2xl group`}
+                      className={`flex items-center space-x-3 cursor-pointer transition-all duration-300 ${
+                        isClickable ? 'hover:bg-white/40 hover:shadow-sm' : 'cursor-not-allowed'
+                      } p-3 rounded-xl group`}
                       onClick={() => handleStepClick(step.id)}
                     >
-                      <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
+                      <div className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all duration-300 ${
                         isCompleted 
-                          ? 'bg-blue-600 border-blue-600 shadow-sm' 
+                          ? 'bg-blue-600 border-blue-600 shadow-blue-200' 
                           : isCurrent 
-                            ? 'bg-blue-600 border-blue-600 shadow-sm' 
-                            : 'border-gray-300 group-hover:border-gray-400'
+                            ? 'bg-blue-600 border-blue-600 shadow-blue-200' 
+                            : 'border-gray-300 bg-white group-hover:border-blue-300 group-hover:bg-blue-50'
                       }`}>
                         {isCompleted ? (
-                          <Check className="w-4 h-4 text-white" />
+                          <Check className="w-3 h-3 text-white" />
                         ) : isCurrent ? (
-                          <div className="w-3 h-3 bg-white rounded-full" />
+                          <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                         ) : (
-                          <div className="w-2 h-2 bg-gray-300 rounded-full group-hover:bg-gray-400 transition-colors" />
+                          <div className="w-1.5 h-1.5 bg-gray-400 rounded-full group-hover:bg-blue-400 transition-colors" />
                         )}
                       </div>
-                      <span className={`font-medium transition-colors ${
+                      <span className={`text-sm transition-colors ${
                         isCurrent 
-                          ? 'font-semibold' 
+                          ? 'font-semibold text-blue-600' 
                           : isCompleted 
                             ? 'text-gray-900' 
-                            : 'text-gray-500 group-hover:text-gray-700'
+                            : 'text-gray-600 group-hover:text-blue-600'
                       }`}>
                         {step.label}
                       </span>
@@ -1893,8 +2067,8 @@ Best regards,
               </div>
               
               {/* Helper text */}
-              <div className="mt-8 p-5 bg-white/70 rounded-2xl border border-gray-100/50">
-                <p className="text-sm text-gray-600 leading-relaxed italic">
+              <div className="mt-5 p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100/30 shadow-sm">
+                <p className="text-sm text-gray-600 leading-relaxed">
                   {currentStep === "company" 
                     ? "To create the most relevant campaign, please complete each step and provide as much context as possible to our AI. Your input is crucial for optimal results!"
                     : currentStep === "icps-personas"
@@ -1907,11 +2081,11 @@ Best regards,
               </div>
               
               {/* Copilot indicator */}
-              <div className="flex items-center space-x-3 mt-8 p-3 rounded-2xl border bg-blue-50/70 border-blue-200/50">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm bg-blue-600">
-                  <Brain className="w-5 h-5 text-white" />
+              <div className="flex items-center space-x-3 mt-5 p-3 rounded-2xl border bg-blue-50/80 backdrop-blur-sm border-blue-200/30">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-blue-600">
+                  <Brain className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-sm font-semibold text-blue-600">
+                <span className="text-sm font-medium text-blue-600">
                   AI Copilot
                 </span>
               </div>
@@ -1919,53 +2093,58 @@ Best regards,
           </div>
 
           {/* Main content */}
-          <div className="flex-1 p-8 overflow-y-auto bg-white">
-            {currentStep === "company" && showForm && renderCompanyForm()}
-            {currentStep === "company" && !showForm && !isProcessing && renderCompanyInfo()}
-            {currentStep === "icps-personas" && !isProcessing && (
-              editingICP ? renderICPDetail() : 
-              editingPersona ? renderPersonaDetail() : 
-              renderICPsAndPersonasList()
-            )}
-            {currentStep === "pain-value" && !isProcessing && (
-              editingPainPoint ? renderPainPointDetail() :
-              editingValueProp ? renderValuePropositions() :
-              renderPainAndValueList()
-            )}
-            {/* Outreach strategy step removed - using email only */}
-            {currentStep === "sequence" && !isProcessing && renderSequencePreview()}
-            {isProcessing && renderProcessingSteps()}
+          <div className="flex-1 flex flex-col bg-white/50 backdrop-blur-sm">
+            {/* Scrollable content area */}
+            <div className="flex-1 p-6 overflow-y-auto">
+              {currentStep === "company" && showForm && renderCompanyForm()}
+              {currentStep === "company" && !showForm && !isProcessing && renderCompanyInfo()}
+              {currentStep === "icps-personas" && !isProcessing && (
+                editingICP ? renderICPDetail() : 
+                editingPersona ? renderPersonaDetail() : 
+                renderICPsAndPersonasList()
+              )}
+              {currentStep === "pain-value" && !isProcessing && (
+                editingPainPoint ? renderPainPointDetail() :
+                editingValueProp ? renderValuePropositions() :
+                renderPainAndValueList()
+              )}
+              {/* Outreach strategy step removed - using email only */}
+              {currentStep === "sequence" && !isProcessing && renderSequencePreview()}
+              {isProcessing && renderProcessingSteps()}
+            </div>
             
-            {/* Navigation buttons */}
-            <div className="flex justify-between items-center mt-12">
-              <Button 
-                variant="outline" 
-                onClick={handleBack}
-                className={`border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-300 rounded-2xl px-5 py-2.5 font-medium ${
-                  currentStep === "company" && showForm ? "invisible" : ""
-                }`}
-              >
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-              <Button 
-                onClick={handleContinue}
-                disabled={isProcessing || isCreatingCampaign}
-                className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl shadow-lg disabled:opacity-50"
-              >
-                <span>
-                  {isCreatingCampaign && currentStep === "company" && showForm
-                    ? "Generating..."
-                    : isProcessing 
-                      ? "Loading..." 
-                      : currentStep === "sequence" 
-                        ? "Create Campaign" 
-                        : "Continue"
-                  }
-                </span>
-                {!isProcessing && !isCreatingCampaign && <ChevronRight className="w-4 h-4 ml-2" />}
-                {(isProcessing || isCreatingCampaign) && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2" />}
-              </Button>
+            {/* Fixed navigation buttons at bottom */}
+            <div className="border-t border-gray-100/30 bg-white/80 backdrop-blur-xl px-6 py-4">
+              <div className="flex justify-between items-center">
+                <Button 
+                  variant="outline" 
+                  onClick={handleBack}
+                  className={`border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-300 rounded-2xl px-5 py-2.5 font-medium ${
+                    currentStep === "company" && showForm ? "invisible" : ""
+                  }`}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                <Button 
+                  onClick={handleContinue}
+                  disabled={isProcessing || isCreatingCampaign}
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl shadow-lg disabled:opacity-50"
+                >
+                  <span>
+                    {isCreatingCampaign && currentStep === "company" && showForm
+                      ? "Generating..."
+                      : isProcessing 
+                        ? "Loading..." 
+                        : currentStep === "sequence" 
+                          ? "Create Campaign" 
+                          : "Continue"
+                    }
+                  </span>
+                  {!isProcessing && !isCreatingCampaign && <ChevronRight className="w-4 h-4 ml-2" />}
+                  {(isProcessing || isCreatingCampaign) && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2" />}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

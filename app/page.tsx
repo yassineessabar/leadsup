@@ -44,7 +44,20 @@ export default function Home() {
     if (tab) {
       handleTabChange(tab)
     }
-  }, [searchParams])
+    
+    // Check for force welcome popup (for testing or clearing localStorage)
+    const forceWelcome = searchParams.get("forceWelcome")
+    if (forceWelcome === "true" && user) {
+      console.log('🎯 Force welcome triggered - clearing localStorage and showing popup')
+      localStorage.removeItem(`welcome_shown_${user.id}`)
+      // Remove the parameter and reload to trigger new user flow
+      const currentUrl = new URL(window.location.href)
+      currentUrl.searchParams.delete('forceWelcome')
+      currentUrl.searchParams.set('from', 'signup')
+      window.history.replaceState({}, '', currentUrl.toString())
+      window.location.reload()
+    }
+  }, [searchParams, user])
 
   // Detect mobile screen size
   useEffect(() => {
@@ -65,6 +78,83 @@ export default function Home() {
     window.addEventListener("resize", checkMobile)
     return () => window.removeEventListener("resize", checkMobile)
   }, [])
+
+  // Auto-open Create Campaign popup for new users
+  useEffect(() => {
+    if (!isAuthenticated || !user) return
+
+    const checkIfNewUser = async () => {
+      try {
+        console.log('🔍 Checking if user is new...')
+        
+        // Check if we've already shown the welcome popup for this user
+        const hasSeenWelcome = localStorage.getItem(`welcome_shown_${user.id}`)
+        if (hasSeenWelcome) {
+          console.log('⏭️ User has already seen welcome popup, skipping')
+          return
+        }
+
+        // Check if user has any campaigns
+        const response = await fetch('/api/campaigns', {
+          credentials: 'include'
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          const campaigns = data.data || data.campaigns || data || []
+          
+          console.log('📊 User campaigns:', campaigns)
+          
+          // If user has no campaigns, they're new - show the campaign creation popup
+          if (Array.isArray(campaigns) && campaigns.length === 0) {
+            console.log('🎯 New user detected (no campaigns) - triggering welcome flow')
+            
+            // Check if they came from signup (shorter delay) or regular visit
+            const fromSignup = searchParams.get('from') === 'signup' || 
+                              sessionStorage.getItem('just_signed_up') === 'true'
+            const delay = fromSignup ? 500 : 1000
+            
+            console.log(`⏱️ Using ${delay}ms delay, fromSignup: ${fromSignup}`)
+            
+            // Clear signup flag
+            sessionStorage.removeItem('just_signed_up')
+            
+            // Small delay to let the dashboard load first
+            setTimeout(() => {
+              console.log('🔄 Switching to campaigns tab and setting autoOpen=true')
+              
+              // Switch to campaigns tab with auto-open parameter
+              const currentUrl = new URL(window.location.href)
+              currentUrl.searchParams.set('tab', 'campaigns-email')
+              currentUrl.searchParams.set('autoOpen', 'true')
+              window.history.pushState({}, '', currentUrl.toString())
+              
+              // Trigger tab change
+              handleTabChange('campaigns-email')
+              
+              // Also dispatch event as fallback
+              setTimeout(() => {
+                console.log('📡 Dispatching open-campaign-popup event')
+                window.dispatchEvent(new CustomEvent('open-campaign-popup'))
+              }, 100)
+              
+              // Mark that we've shown the welcome popup
+              localStorage.setItem(`welcome_shown_${user.id}`, 'true')
+              console.log('✅ Welcome popup marked as shown for user')
+            }, delay)
+          } else {
+            console.log('👤 User has campaigns, not showing welcome popup')
+          }
+        } else {
+          console.error('❌ Failed to fetch campaigns:', response.status)
+        }
+      } catch (error) {
+        console.error('💥 Error checking user campaigns:', error)
+      }
+    }
+
+    checkIfNewUser()
+  }, [isAuthenticated, user, searchParams, handleTabChange])
 
   // Show landing page if not authenticated
   if (!loading && !isAuthenticated) {

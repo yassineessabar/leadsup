@@ -236,14 +236,40 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     }
   }, [searchParams, campaigns])
 
+  // Check for autoOpen parameter to trigger popup for new users
+  useEffect(() => {
+    const autoOpen = searchParams.get('autoOpen')
+    
+    if (autoOpen === 'true') {
+      console.log('🚀 Auto-opening campaign creation popup for new user')
+      // Small delay to ensure component is fully mounted
+      setTimeout(() => {
+        setShowAdvancedPopup(true)
+        // Remove the autoOpen parameter from URL to prevent re-triggering
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.delete('autoOpen')
+        window.history.replaceState({}, '', newUrl.toString())
+      }, 200)
+    }
+  }, [searchParams])
+
   // Listen for create campaign event from sidebar
   useEffect(() => {
     const handleCreateCampaign = () => {
       setShowAdvancedPopup(true)
     }
 
+    const handleOpenCampaignPopup = () => {
+      setShowAdvancedPopup(true)
+    }
+
     window.addEventListener('create-campaign', handleCreateCampaign)
-    return () => window.removeEventListener('create-campaign', handleCreateCampaign)
+    window.addEventListener('open-campaign-popup', handleOpenCampaignPopup)
+    
+    return () => {
+      window.removeEventListener('create-campaign', handleCreateCampaign)
+      window.removeEventListener('open-campaign-popup', handleOpenCampaignPopup)
+    }
   }, [])
 
   const handleCreateCampaign = async () => {
@@ -512,9 +538,10 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           description: `${newCampaign.name} (${campaignData.selectedOutreachStrategy === 'email' ? 'Email Only' : campaignData.selectedOutreachStrategy === 'linkedin' ? 'LinkedIn Only' : 'Multi-Channel'}) has been created successfully`,
         })
         
-        // Navigate to dashboard
+        // Navigate to target tab for lead generation
         setSelectedCampaign(newCampaign)
         setCurrentView("dashboard")
+        setDashboardInitialTab("target")
       } else {
         toast({
           title: "Error",
@@ -898,7 +925,12 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                   className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden cursor-pointer group"
                   onClick={() => {
                     setSelectedCampaign(campaign)
-                    setCurrentView("analytics")
+                    if (campaign.status === "Draft") {
+                      setCurrentView("dashboard")
+                      setDashboardInitialTab("target")
+                    } else {
+                      setCurrentView("analytics")
+                    }
                   }}
                 >
                   <div className="p-8">
@@ -939,7 +971,12 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           onClick={(e) => {
                             e.stopPropagation()
                             setSelectedCampaign(campaign)
-                            setCurrentView("analytics")
+                            if (campaign.status === "Draft") {
+                              setCurrentView("dashboard")
+                              setDashboardInitialTab("target")
+                            } else {
+                              setCurrentView("analytics")
+                            }
                           }}
                         >
                           <TrendingUp className="w-4 h-4" />
