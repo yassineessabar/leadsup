@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { Search, Plus, MoreHorizontal, Play, Mail, MessageSquare, Users, MousePointer, UserPlus, Trash2, Eye, UserCheck, Send, Reply, TrendingUp, TrendingDown, UserX, ChevronDown, ChevronRight } from "lucide-react"
+import { Search, Plus, MoreHorizontal, Play, Mail, MessageSquare, Users, MousePointer, UserPlus, Trash2, Eye, UserCheck, Send, Reply, TrendingUp, TrendingDown, UserX, ChevronDown, ChevronRight, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -59,6 +59,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   const [showAdvancedPopup, setShowAdvancedPopup] = useState(false)
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<Set<string | number>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
+  const [syncingCampaigns, setSyncingCampaigns] = useState<Set<string | number>>(new Set())
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; campaign: any; isMultiple: boolean }>({ 
     open: false, 
     campaign: null, 
@@ -68,6 +69,71 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   const triggerOptions = [
     { value: "New Client", label: "New Client", icon: UserPlus, description: "Trigger when a new client signs up" },
   ]
+
+  // Sync campaign with SendGrid API
+  const syncCampaignWithSendGrid = async (campaignId: string | number, userId: string) => {
+    setSyncingCampaigns(prev => new Set(prev).add(campaignId))
+    
+    try {
+      console.log(`🔄 Syncing campaign ${campaignId} with SendGrid...`)
+      
+      const response = await fetch('/api/sendgrid/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          campaignId: campaignId.toString(), 
+          userId 
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to sync with SendGrid')
+      }
+
+      if (result.success) {
+        // Update the campaign with real SendGrid metrics
+        const rates = result.data.rates
+        setCampaigns(prevCampaigns => 
+          prevCampaigns.map(campaign => 
+            campaign.id === campaignId 
+              ? { 
+                  ...campaign, 
+                  sendgridMetrics: {
+                    openRate: rates.openRate,
+                    clickRate: rates.clickRate,
+                    deliveryRate: rates.deliveryRate,
+                    emailsSent: rates.emailsSent,
+                    emailsDelivered: rates.emailsDelivered
+                  }
+                }
+              : campaign
+          )
+        )
+
+        toast({
+          title: "✅ Sync Complete",
+          description: `Campaign metrics updated from SendGrid (${rates.openRate}% open rate, ${rates.clickRate}% click rate)`
+        })
+      }
+    } catch (error) {
+      console.error('❌ Sync error:', error)
+      toast({
+        title: "❌ Sync Failed",
+        description: error instanceof Error ? error.message : "Failed to sync with SendGrid",
+        variant: "destructive"
+      })
+    } finally {
+      setSyncingCampaigns(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(campaignId)
+        return newSet
+      })
+    }
+  }
 
   // Fetch campaigns from API with SendGrid metrics
   const fetchCampaigns = async () => {
@@ -798,6 +864,21 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                       </div>
                       
                       <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm" 
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            // Get user ID - you may need to adjust this based on your auth system
+                            const userId = 'd155d4c2-2f06-45b7-9c90-905e3648e8df' // This should come from your auth context
+                            syncCampaignWithSendGrid(campaign.id, userId)
+                          }}
+                          disabled={syncingCampaigns.has(campaign.id)}
+                          title="Sync with SendGrid"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${syncingCampaigns.has(campaign.id) ? 'animate-spin text-blue-600' : ''}`} />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm" 
