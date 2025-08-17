@@ -604,14 +604,27 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     // Ensure sequences are properly sorted by step number/order
     const sortedSequences = campaignSequences.length > 0 
       ? [...campaignSequences].sort((a, b) => {
-          // Sort by id (which is step_number from database) or sequenceStep as fallback
-          const aStep = a.id || a.sequenceStep || 1
-          const bStep = b.id || b.sequenceStep || 1
+          // Primary sort: by step_number (id field from API)
+          // Secondary sort: by sequenceStep as fallback
+          // Tertiary sort: by original database _stepNumber if available
+          const aStep = a.id || a._stepNumber || a.sequenceStep || 1
+          const bStep = b.id || b._stepNumber || b.sequenceStep || 1
           return aStep - bStep
         })
       : []
     
-    console.log('📋 Sorted sequence order:', sortedSequences.map(seq => ({ id: seq.id, sequenceStep: seq.sequenceStep, subject: seq.subject })))
+    console.log('📋 Original sequence order:', campaignSequences.map(seq => ({ 
+      id: seq.id, 
+      sequenceStep: seq.sequenceStep, 
+      _stepNumber: seq._stepNumber,
+      subject: seq.subject?.substring(0, 30) + '...' 
+    })))
+    console.log('📋 Sorted sequence order:', sortedSequences.map(seq => ({ 
+      id: seq.id, 
+      sequenceStep: seq.sequenceStep, 
+      _stepNumber: seq._stepNumber,
+      subject: seq.subject?.substring(0, 30) + '...'
+    })))
     
     const emailSchedule = sortedSequences.length > 0 
       ? sortedSequences.map((seq, index) => {

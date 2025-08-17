@@ -163,17 +163,31 @@ export async function POST(
         type: s.type
       })), null, 2))
 
-      const sequenceData = sequences.map((seq: any, index: number) => ({
+      // Sort sequences by their intended order before saving
+      const sortedSequences = sequences.sort((a: any, b: any) => {
+        // Sort by sequenceStep if available, otherwise by array index
+        const aStep = a.sequenceStep || a.id || 1
+        const bStep = b.sequenceStep || b.id || 1
+        return aStep - bStep
+      })
+
+      console.log('🔄 Sorted sequences before save:', JSON.stringify(sortedSequences.map(s => ({
+        id: s.id,
+        sequenceStep: s.sequenceStep,
+        subject: s.subject?.substring(0, 30)
+      })), null, 2))
+
+      const sequenceData = sortedSequences.map((seq: any, index: number) => ({
         campaign_id: campaignId,
-        step_number: index + 1,
-        subject: seq.subject || `Email ${seq.sequenceStep || index + 1} Subject`,
+        step_number: index + 1, // Use sorted array index as step_number
+        subject: seq.subject || `Email ${index + 1} Subject`,
         content: seq.content || "",
         timing_days: seq.timing || (index === 0 ? 0 : seq.timing || 1),
         variants: seq.variants || 1,
         outreach_method: seq.outreach_method || seq.type || "email",
         sequence_number: seq.sequence || 1,
-        sequence_step: seq.sequenceStep || (index + 1),
-        title: seq.title || `Email ${seq.sequenceStep || index + 1}`,
+        sequence_step: index + 1, // Use sorted array index as sequence_step too
+        title: seq.title || `Email ${index + 1}`,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }))
