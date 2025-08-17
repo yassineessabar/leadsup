@@ -223,19 +223,52 @@ async function triggerSequenceReschedule(campaignId: string) {
   try {
     console.log(`🔄 Triggering email reschedule for campaign ${campaignId} after sequence change`)
     
-    const rescheduleResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/${campaignId}/reschedule-emails`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    // Import and call the reschedule function directly to avoid URL/port issues
+    try {
+      // Dynamically import the reschedule route handler
+      const rescheduleModule = await import('../reschedule-emails/route')
+      
+      // Create a mock request object
+      const mockRequest = new Request(`http://localhost/api/campaigns/${campaignId}/reschedule-emails`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      // Create mock params
+      const mockParams = { params: Promise.resolve({ id: campaignId }) }
+      
+      // Call the POST handler directly
+      const response = await rescheduleModule.POST(mockRequest, mockParams)
+      const result = await response.json()
+      
+      if (response.ok) {
+        console.log(`✅ Successfully triggered reschedule: ${result.message || 'Reschedule completed'}`)
+      } else {
+        console.error(`❌ Reschedule failed: ${result.error || 'Unknown error'}`)
       }
-    })
+      
+    } catch (importError) {
+      console.error('❌ Failed to import reschedule module, falling back to fetch:', importError.message)
+      
+      // Fallback to fetch approach
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      const rescheduleUrl = `${baseUrl}/api/campaigns/${campaignId}/reschedule-emails`
+      
+      const rescheduleResponse = await fetch(rescheduleUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
 
-    if (rescheduleResponse.ok) {
-      const result = await rescheduleResponse.json()
-      console.log(`✅ Successfully triggered reschedule: ${result.message}`)
-    } else {
-      console.error('❌ Failed to trigger reschedule:', rescheduleResponse.statusText)
+      if (rescheduleResponse.ok) {
+        const result = await rescheduleResponse.json()
+        console.log(`✅ Successfully triggered reschedule via fetch: ${result.message}`)
+      } else {
+        console.error('❌ Failed to trigger reschedule via fetch:', rescheduleResponse.statusText)
+      }
     }
+    
   } catch (error) {
     console.error('❌ Error triggering sequence reschedule:', error)
   }
