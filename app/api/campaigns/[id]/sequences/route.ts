@@ -204,8 +204,8 @@ export async function POST(
         return NextResponse.json({ success: false, error: insertError.message }, { status: 500 })
       }
 
-      // Trigger email rescheduling after sequence changes
-      await triggerSequenceReschedule(campaignId)
+      // Note: Email rescheduling disabled until scheduled_emails table is created
+      // await triggerSequenceReschedule(campaignId)
 
       return NextResponse.json({ success: true, data: newSequences })
     }

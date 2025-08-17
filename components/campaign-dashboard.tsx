@@ -3022,24 +3022,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </div>
             </div>
             
-            {/* Save Button - Show for active campaigns or temporarily always show for testing */}
-            {console.log('Campaign status:', campaign?.status, 'isGuidedFlow:', isGuidedFlow) || true}
-            {(campaign?.status === 'Active' || true) && (
-              <div className="mt-8 flex justify-end">
-                <Button
-                  onClick={saveSequence}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
-                  disabled={campaign?.status !== 'Active'}
-                >
-                  {campaign?.status === 'Active' ? 'Save Email Sequence' : `Save (Campaign ${campaign?.status})`}
-                </Button>
-              </div>
-            )}
-            
-            {/* Debug info - remove after testing */}
-            <div className="mt-4 p-2 bg-gray-100 text-xs text-gray-600">
-              Debug: Campaign status = "{campaign?.status}", Show button = {campaign?.status === 'Active' ? 'true' : 'false'}, isGuidedFlow = {isGuidedFlow ? 'true' : 'false'}
-            </div>
           </div>
         );
       
@@ -3159,6 +3141,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <div>
                 <h1 className="text-4xl font-light text-gray-900 tracking-tight">Email Sequence</h1>
                 <p className="text-gray-500 mt-2 font-light">Configure your email sequence steps and timing</p>
+              </div>
+              <div className="flex items-center">
+                <Button 
+                  onClick={saveSequence} 
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+                  disabled={isSavingSequences}
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  {isSavingSequences ? 'Saving...' : 'Save Sequence'}
+                </Button>
               </div>
             </div>
 
