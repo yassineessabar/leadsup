@@ -610,15 +610,34 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     // Use actual campaign sequences if available, otherwise fallback to default
     console.log('🎯 Generating schedule for contact:', contact.id, 'with', campaignSequences.length, 'sequences')
     
-    // Use sequences in the exact order they come from the API (which should match sequence settings)
-    // The API already sorts by step_number, so we don't need additional sorting
-    const sortedSequences = campaignSequences.length > 0 ? [...campaignSequences] : []
+    // Debug: Show original order from API
+    console.log('📥 Original API order:', campaignSequences.map(seq => ({ 
+      id: seq.id, 
+      sequence: seq.sequence, 
+      sequenceStep: seq.sequenceStep, 
+      title: seq.title,
+      timing: seq.timing
+    })))
     
-    console.log('📋 Timeline sequence order (should match settings):', sortedSequences.map((seq, index) => ({ 
+    // Sort sequences properly: first by sequence number, then by sequenceStep within each sequence
+    const sortedSequences = campaignSequences.length > 0 
+      ? [...campaignSequences].sort((a, b) => {
+          // First sort by sequence number (1, 2, etc.)
+          if (a.sequence !== b.sequence) {
+            return (a.sequence || 1) - (b.sequence || 1)
+          }
+          // Then sort by sequenceStep within the same sequence
+          return (a.sequenceStep || 1) - (b.sequenceStep || 1)
+        })
+      : []
+    
+    console.log('📋 Sorted timeline order (Sequence 1 first, then Sequence 2):', sortedSequences.map((seq, index) => ({ 
       position: index + 1,
       id: seq.id, 
+      sequence: seq.sequence,
       sequenceStep: seq.sequenceStep, 
-      subject: seq.subject?.substring(0, 40) + '...',
+      title: seq.title,
+      subject: seq.subject?.substring(0, 30) + '...',
       timing: seq.timing
     })))
     
