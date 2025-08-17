@@ -43,6 +43,99 @@ function validateEmail(email: string): boolean {
   return emailRegex.test(email)
 }
 
+// Helper function to randomize email send time within business hours
+function randomizeWithinBusinessHours(baseDate: Date, timezone: string, emailStep?: number): Date {
+  const randomizedDate = new Date(baseDate)
+  
+  // Define preferred time ranges based on email type for more natural patterns
+  let timeRanges = [
+    { start: 9, end: 11, weight: 0.3 },   // Morning: 9-11 AM (30% chance)
+    { start: 11, end: 13, weight: 0.2 },  // Late morning: 11 AM-1 PM (20% chance)
+    { start: 13, end: 15, weight: 0.25 }, // Early afternoon: 1-3 PM (25% chance)
+    { start: 15, end: 17, weight: 0.25 }  // Late afternoon: 3-5 PM (25% chance)
+  ]
+  
+  // Adjust preferences based on email step
+  if (emailStep === 1) {
+    // Initial outreach: prefer morning hours
+    timeRanges = [
+      { start: 9, end: 11, weight: 0.5 },
+      { start: 11, end: 13, weight: 0.3 },
+      { start: 13, end: 15, weight: 0.15 },
+      { start: 15, end: 17, weight: 0.05 }
+    ]
+  } else if (emailStep && emailStep >= 4) {
+    // Follow-ups: prefer afternoon hours
+    timeRanges = [
+      { start: 9, end: 11, weight: 0.1 },
+      { start: 11, end: 13, weight: 0.2 },
+      { start: 13, end: 15, weight: 0.35 },
+      { start: 15, end: 17, weight: 0.35 }
+    ]
+  }
+  
+  // Select time range based on weighted random selection
+  const random = Math.random()
+  let cumulativeWeight = 0
+  let selectedRange = timeRanges[0]
+  
+  for (const range of timeRanges) {
+    cumulativeWeight += range.weight
+    if (random <= cumulativeWeight) {
+      selectedRange = range
+      break
+    }
+  }
+  
+  // Generate random time within selected range
+  const hourRange = selectedRange.end - selectedRange.start
+  const randomHourOffset = Math.random() * hourRange
+  const randomHour = Math.floor(selectedRange.start + randomHourOffset)
+  const randomMinutes = Math.floor(Math.random() * 60)
+  const randomSeconds = Math.floor(Math.random() * 60)
+  
+  randomizedDate.setHours(randomHour, randomMinutes, randomSeconds, 0)
+  
+  return randomizedDate
+}
+
+// Helper function to avoid weekends and optionally optimize day of week
+function avoidWeekends(date: Date, emailStep?: number): Date {
+  const dayOfWeek = date.getDay() // 0 = Sunday, 6 = Saturday
+  
+  if (dayOfWeek === 0) {
+    // Sunday - move to Monday
+    date.setDate(date.getDate() + 1)
+  } else if (dayOfWeek === 6) {
+    // Saturday - move to Monday
+    date.setDate(date.getDate() + 2)
+  }
+  
+  // Add small chance (15%) to shift to preferred days for better open rates
+  const optimizeDay = Math.random() < 0.15
+  
+  if (optimizeDay && emailStep) {
+    const currentDay = date.getDay()
+    
+    // Research suggests Tuesday-Thursday are best for open rates
+    // But add some variation to avoid patterns
+    const preferredDays = emailStep === 1 ? [2, 3] : [2, 3, 4] // Tue, Wed, (Thu for follow-ups)
+    
+    if (!preferredDays.includes(currentDay)) {
+      // Randomly pick a preferred day
+      const targetDay = preferredDays[Math.floor(Math.random() * preferredDays.length)]
+      const daysToAdd = (targetDay - currentDay + 7) % 7
+      
+      // Only shift if it's within a reasonable range (0-3 days)
+      if (daysToAdd <= 3) {
+        date.setDate(date.getDate() + daysToAdd)
+      }
+    }
+  }
+  
+  return date
+}
+
 function parseCsvData(csvText: string): any[] {
   const lines = csvText.split('\n').filter(line => line.trim())
   if (lines.length < 2) {
@@ -120,10 +213,10 @@ export async function POST(
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    // Verify campaign ownership
+    // Verify campaign ownership and get campaign status
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
-      .select('id, user_id')
+      .select('id, user_id, status, name')
       .eq('id', campaignId)
       .eq('user_id', userId)
       .single()
@@ -232,12 +325,111 @@ export async function POST(
 
     console.log(`✅ Successfully imported ${insertedCount} contacts for campaign ${campaignId}`)
 
+    // Auto-schedule email sequences if campaign is active
+    let scheduledEmailsCount = 0
+    if (campaign.status === 'Active') {
+      console.log(`🔄 Campaign "${campaign.name}" is active, auto-scheduling email sequences for ${insertedCount} new contacts...`)
+      
+      try {
+        // Get campaign sequences
+        const { data: sequences, error: sequenceError } = await supabase
+          .from('campaign_sequences')
+          .select('*')
+          .eq('campaign_id', campaignId)
+          .order('step_number', { ascending: true })
+
+        if (sequenceError) {
+          console.error('Error fetching campaign sequences:', sequenceError)
+        } else if (sequences && sequences.length > 0) {
+          // Get the newly inserted contacts with their IDs
+          const { data: insertedContacts, error: contactsError } = await supabase
+            .from('contacts')
+            .select('id, email, first_name, created_at, timezone')
+            .eq('campaign_id', campaignId)
+            .in('email', newContacts.map(c => c.email))
+
+          if (contactsError) {
+            console.error('Error fetching inserted contacts:', contactsError)
+          } else if (insertedContacts && insertedContacts.length > 0) {
+            const scheduledEmails = []
+            const now = new Date()
+
+            for (const contact of insertedContacts) {
+              for (const sequence of sequences) {
+                const scheduledDate = new Date(now)
+                
+                // Calculate when this email should be sent based on sequence timing
+                if (sequence.timing_days === 0) {
+                  // First email - schedule for immediate sending (5 minutes from now)
+                  scheduledDate.setMinutes(scheduledDate.getMinutes() + 5)
+                } else {
+                  // Subsequent emails - schedule based on timing from contact creation
+                  scheduledDate.setDate(scheduledDate.getDate() + sequence.timing_days)
+                }
+
+                // Set to randomized business hours (9 AM - 5 PM) in contact's timezone
+                scheduledDate = randomizeWithinBusinessHours(scheduledDate, contact.timezone || 'UTC', sequence.step_number)
+                
+                // Ensure email is not scheduled for weekend - move to next Monday if needed
+                scheduledDate = avoidWeekends(scheduledDate, sequence.step_number)
+
+                const scheduledEmail = {
+                  campaign_id: campaignId,
+                  contact_id: contact.id,
+                  step: sequence.step_number,
+                  subject: sequence.subject || `Email ${sequence.step_number}`,
+                  scheduled_date: scheduledDate.toISOString(),
+                  status: 'pending',
+                  created_at: now.toISOString()
+                }
+
+                scheduledEmails.push(scheduledEmail)
+              }
+            }
+
+            // Insert scheduled emails (only if scheduled_emails table exists)
+            if (scheduledEmails.length > 0) {
+              try {
+                const { error: insertEmailError } = await supabase
+                  .from('scheduled_emails')
+                  .insert(scheduledEmails)
+
+                if (insertEmailError) {
+                  if (insertEmailError.code === 'PGRST205') {
+                    console.log('ℹ️ Scheduled emails table does not exist - email scheduling feature disabled')
+                  } else {
+                    console.error('Error inserting scheduled emails:', insertEmailError)
+                  }
+                } else {
+                  scheduledEmailsCount = scheduledEmails.length
+                  console.log(`✅ Scheduled ${scheduledEmailsCount} emails for ${insertedContacts.length} new contacts`)
+                }
+              } catch (error) {
+                console.log('ℹ️ Email scheduling not available - scheduled_emails table missing')
+              }
+            }
+          }
+        } else {
+          console.log('ℹ️ No email sequences found for campaign - skipping auto-scheduling')
+        }
+      } catch (error) {
+        console.error('Error in auto-scheduling:', error)
+      }
+    } else {
+      console.log(`ℹ️ Campaign "${campaign.name}" is ${campaign.status} - skipping auto-scheduling`)
+    }
+
+    const message = scheduledEmailsCount > 0 
+      ? `Successfully imported ${insertedCount} contacts and scheduled ${scheduledEmailsCount} emails`
+      : `Successfully imported ${insertedCount} contacts`
+
     return NextResponse.json({
       success: true,
-      message: `Successfully imported ${insertedCount} contacts`,
+      message,
       importedCount: insertedCount,
       duplicateCount: contacts.length - newContacts.length,
-      totalProcessed: contacts.length
+      totalProcessed: contacts.length,
+      scheduledEmailsCount
     })
 
   } catch (error: any) {
