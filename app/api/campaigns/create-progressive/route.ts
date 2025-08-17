@@ -92,9 +92,9 @@ export async function POST(request: NextRequest) {
 async function createCampaignAndICPs(userId: string, formData: CampaignFormData) {
   try {
     // Log the keywords being received
-    console.log('🔍 Keywords received in API:', formData.keywords)
-    console.log('🔍 Keywords type:', typeof formData.keywords, 'isArray:', Array.isArray(formData.keywords))
-    
+    console.log('🔍 [API] Keywords received in API:', formData.keywords)
+    console.log('🔍 [API] Keywords type:', typeof formData.keywords, 'isArray:', Array.isArray(formData.keywords))
+    console.log('🔍 [API] Keywords length:', formData.keywords?.length)
     // Create campaign first
     const campaignData = {
       user_id: userId,
@@ -122,7 +122,7 @@ async function createCampaignAndICPs(userId: string, formData: CampaignFormData)
       location: campaignData.location
     })
 
-    let { data: campaign, error: campaignError } = await supabaseServer
+    const { data: campaign, error: campaignError } = await supabaseServer
       .from("campaigns")
       .insert(campaignData)
       .select()
@@ -130,76 +130,24 @@ async function createCampaignAndICPs(userId: string, formData: CampaignFormData)
 
     if (campaignError) {
       console.error('❌ Database error:', campaignError)
-      
-      // If error mentions missing columns, try with basic fields only
-      if (campaignError.message.includes("Could not find") || campaignError.message.includes("column")) {
-        console.log("🔄 Retrying with basic campaign fields only...")
-        const basicCampaignData = {
-          user_id: userId,
-          name: formData.campaignName.trim(),
-          type: "Email",
-          trigger_type: "Manual",
-          status: "Draft"
-        }
-        
-        const { data: basicCampaign, error: basicError } = await supabaseServer
-          .from("campaigns")
-          .insert(basicCampaignData)
-          .select()
-          .single()
-          
-        if (basicError) {
-          console.error('❌ Basic campaign creation failed:', basicError)
-          throw new Error(basicError.message)
-        }
-        
-        console.log("✅ Basic campaign created, now trying to add additional fields...")
-        campaign = basicCampaign
-        
-        // Try to add additional fields one by one
-        const additionalFields = {
-          company_name: formData.companyName.trim(),
-          website: formData.website?.trim() || null,
-          no_website: formData.noWebsite || false,
-          language: formData.language?.trim() || 'English',
-          keywords: formData.keywords || [],
-          main_activity: formData.mainActivity.trim(),
-          location: formData.location?.trim() || null,
-          industry: formData.industry?.trim() || null,
-          product_service: formData.productService?.trim() || null,
-          goals: formData.goals?.trim() || null,
-          target_audience: formData.targetAudience?.trim() || null,
-        }
-        
-        // Try to update with additional fields
-        const { data: updatedCampaign, error: updateError } = await supabaseServer
-          .from("campaigns")
-          .update(additionalFields)
-          .eq("id", campaign.id)
-          .eq("user_id", userId)
-          .select()
-          .single()
-          
-        if (updateError) {
-          console.error('⚠️ Could not add additional fields:', updateError.message)
-          console.log("💡 Please run the database migration to enable all campaign fields:")
-          console.log("   psql [connection-string] -f database-migration-ultra-simple.sql")
-        } else {
-          console.log("✅ Additional fields added successfully!")
-          campaign = updatedCampaign
-        }
-      } else {
-        throw new Error(campaignError.message)
-      }
+      throw new Error(campaignError.message)
     }
     
     // Log what was actually saved
-    console.log('✅ Campaign saved to database:', {
+    console.log('✅ [API] Campaign saved to database:', {
       id: campaign.id,
       keywords: campaign.keywords,
       industry: campaign.industry,
-      location: campaign.location
+      location: campaign.location,
+      campaign_objective: campaign.campaign_objective
     })
+    
+    // Verify keywords were actually saved
+    if (campaign.keywords && campaign.keywords.length > 0) {
+      console.log('🎯 [API] Keywords successfully saved:', campaign.keywords.length, 'keywords')
+    } else {
+      console.warn('⚠️ [API] No keywords were saved to database!')
+    }
 
     // Generate ICPs & Personas
     const icpsAndPersonas = await generateICPsAndPersonas(formData)

@@ -77,6 +77,11 @@ export function TargetTab({
           location: campaign.location,
           scrapping_status: campaign.scrapping_status
         })
+        
+        // Debug: Log if keywords are being populated from campaign creation
+        if (campaign.keywords && campaign.keywords.length > 0) {
+          console.log('🎯 Auto-populating Auto Scraping keywords from campaign creation:', campaign.keywords)
+        }
       }
     } catch (error) {
       console.error('Error fetching scraping configuration:', error)
@@ -90,6 +95,47 @@ export function TargetTab({
   useEffect(() => {
     if (campaignId) {
       fetchScrapingConfig()
+    }
+  }, [campaignId])
+
+  // Listen for campaign creation events to auto-populate keywords
+  useEffect(() => {
+    const handleCampaignCreated = (event: CustomEvent) => {
+      const { campaignId: eventCampaignId, keywords, location, industry } = event.detail
+      
+      // Only handle if this is for the current campaign
+      if (eventCampaignId?.toString() === campaignId?.toString()) {
+        console.log('🎯 Received campaign creation event, auto-populating Target tab:', {
+          keywords,
+          location,
+          industry
+        })
+        
+        // Auto-populate the scraping fields with campaign creation data
+        if (keywords && keywords.length > 0) {
+          setScrappingKeywords(keywords)
+          console.log('✅ Auto-populated scraping keywords:', keywords)
+        }
+        
+        if (location && (Array.isArray(location) ? location.length > 0 : location.trim())) {
+          const locationStr = Array.isArray(location) ? location.join(', ') : location
+          setScrappingLocation(locationStr)
+          console.log('✅ Auto-populated scraping location:', locationStr)
+        }
+        
+        if (industry && industry.trim()) {
+          setScrappingIndustry(industry)
+          console.log('✅ Auto-populated scraping industry:', industry)
+        }
+      }
+    }
+
+    // Add event listener for campaign creation
+    window.addEventListener('campaign-created-with-keywords', handleCampaignCreated as EventListener)
+    
+    // Cleanup listener
+    return () => {
+      window.removeEventListener('campaign-created-with-keywords', handleCampaignCreated as EventListener)
     }
   }, [campaignId])
 

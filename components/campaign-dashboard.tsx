@@ -2077,6 +2077,20 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         // Refresh the parent campaigns list
         window.dispatchEvent(new CustomEvent('campaigns-changed'))
         
+        // Store the keywords and location for immediate population in Target tab
+        if (keywords.length > 0 || locations.length > 0) {
+          console.log('🎯 Storing campaign keywords for auto-population:', keywords)
+          // Dispatch custom event to notify Target tab to refresh with new data
+          window.dispatchEvent(new CustomEvent('campaign-created-with-keywords', { 
+            detail: { 
+              campaignId: result.data.campaign.id,
+              keywords: keywordArray, 
+              location: locationArray,
+              industry: campaignData.formData.industry 
+            } 
+          }))
+        }
+        
         // Navigate to the new campaign or back to list
         if (onBack) {
           onBack()

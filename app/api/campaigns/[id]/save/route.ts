@@ -150,6 +150,10 @@ export async function POST(
       await saveScrapingConfig(campaignId, campaignData.scrapingConfig)
     }
 
+    if (saveType === 'keywords') {
+      await saveCampaignKeywords(campaignId, campaignData.keywords)
+    }
+
     if (saveType === 'all') {
       // Save basic campaign info
       await saveCampaignBasics(campaignId, campaignData)
@@ -680,6 +684,33 @@ async function fetchSmtpAccounts(userId: string) {
     daily_limit: 50, // Default value
     is_active: true // Assume active if it exists
   }))
+}
+
+// Helper function to save campaign keywords
+async function saveCampaignKeywords(campaignId: string, keywords: string[]) {
+  if (!keywords) {
+    console.log('⚠️ saveCampaignKeywords called with null/undefined keywords')
+    return
+  }
+
+  console.log(`💾 [API] Saving keywords for campaign ${campaignId}:`, keywords)
+
+  const updateData = {
+    keywords: keywords,
+    updated_at: new Date().toISOString()
+  }
+
+  const { error: updateError } = await supabaseServer
+    .from("campaigns")
+    .update(updateData)
+    .eq("id", campaignId)
+
+  if (updateError) {
+    console.error("❌ [API] Error saving campaign keywords:", updateError)
+    throw new Error(`Failed to save campaign keywords: ${updateError.message}`)
+  }
+
+  console.log(`✅ [API] Successfully saved ${keywords.length} keywords for campaign ${campaignId}`)
 }
 
 // Helper function to save scraping configuration
