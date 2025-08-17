@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from "next/headers"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { getSupabaseServerClient } from "@/lib/getSupabaseServerClient()"
 
 
 // Helper function to get user ID from session
@@ -19,7 +14,7 @@ async function getUserIdFromSession(): Promise<string | null> {
     }
 
     // Query user_sessions table to get user_id
-    const { data, error } = await supabase
+    const { data, error } = await getSupabaseServerClient()
       .from("user_sessions")
       .select("user_id")
       .eq("session_token", sessionToken)
@@ -54,7 +49,7 @@ export async function GET(
     const { id: campaignId } = await params
 
     // Verify campaign ownership
-    const { data: campaign, error: campaignError } = await supabase
+    const { data: campaign, error: campaignError } = await getSupabaseServerClient()
       .from('campaigns')
       .select('id')
       .eq('id', campaignId)
@@ -71,7 +66,7 @@ export async function GET(
     // Get all sender assignments for this campaign from the existing campaign_senders table
     console.log('📖 Using existing campaign_senders table...')
     
-    const { data: assignmentsData, error: assignmentsError } = await supabase
+    const { data: assignmentsData, error: assignmentsError } = await getSupabaseServerClient()
       .from('campaign_senders')
       .select('*')
       .eq('campaign_id', campaignId)
@@ -137,7 +132,7 @@ export async function POST(
     }
 
     // Verify campaign ownership
-    const { data: campaign, error: campaignError } = await supabase
+    const { data: campaign, error: campaignError } = await getSupabaseServerClient()
       .from('campaigns')
       .select('id')
       .eq('id', campaignId)
@@ -153,7 +148,7 @@ export async function POST(
 
     // Verify all sender accounts belong to verified domains owned by the user
     if (selectedSenderIds.length > 0) {
-      const { data: senderAccounts, error: sendersError } = await supabase
+      const { data: senderAccounts, error: sendersError } = await getSupabaseServerClient()
         .from('sender_accounts')
         .select(`
           id,
@@ -195,7 +190,7 @@ export async function POST(
     console.log('📝 Using existing campaign_senders table...')
     
     // First, remove all existing assignments for this campaign
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await getSupabaseServerClient()
       .from('campaign_senders')
       .delete()
       .eq('campaign_id', campaignId)
@@ -220,7 +215,7 @@ export async function POST(
 
       console.log('📋 Attempting to insert:', newSenderAssignments)
 
-      const { data: insertData, error: insertError } = await supabase
+      const { data: insertData, error: insertError } = await getSupabaseServerClient()
         .from('campaign_senders')
         .insert(newSenderAssignments)
         .select()
@@ -232,7 +227,7 @@ export async function POST(
         console.log('🔄 Trying with email field...')
         
         // Get sender emails from sender_accounts table first
-        const { data: senderAccounts, error: senderError } = await supabase
+        const { data: senderAccounts, error: senderError } = await getSupabaseServerClient()
           .from('sender_accounts')
           .select('id, email')
           .in('id', selectedSenderIds)
@@ -253,7 +248,7 @@ export async function POST(
 
         console.log('📋 Attempting email-based upsert:', emailBasedAssignments)
 
-        const { data: emailInsertData, error: emailInsertError } = await supabase
+        const { data: emailInsertData, error: emailInsertError } = await getSupabaseServerClient()
           .from('campaign_senders')
           .upsert(emailBasedAssignments, { 
             onConflict: 'campaign_id,email',
@@ -318,7 +313,7 @@ export async function DELETE(
     }
 
     // Verify campaign ownership
-    const { data: campaign, error: campaignError } = await supabase
+    const { data: campaign, error: campaignError } = await getSupabaseServerClient()
       .from('campaigns')
       .select('id')
       .eq('id', campaignId)
@@ -333,7 +328,7 @@ export async function DELETE(
     }
 
     // Remove the specific sender assignment
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await getSupabaseServerClient()
       .from('campaign_sender_assignments')
       .delete()
       .eq('campaign_id', campaignId)
