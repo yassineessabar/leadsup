@@ -497,6 +497,22 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     }
   }
 
+  // Replace template variables in email content
+  const replaceTemplateVariables = (text: string, contact: Contact) => {
+    if (!text) return text
+    
+    return text
+      .replace(/\{\{firstName\}\}/g, contact.first_name || '[First Name]')
+      .replace(/\{\{lastName\}\}/g, contact.last_name || '[Last Name]')
+      .replace(/\{\{fullName\}\}/g, `${contact.first_name || '[First Name]'} ${contact.last_name || '[Last Name]'}`)
+      .replace(/\{\{email\}\}/g, contact.email || '[Email]')
+      .replace(/\{\{companyName\}\}/g, contact.company || '[Company Name]')
+      .replace(/\{\{company\}\}/g, contact.company || '[Company]')
+      .replace(/\{\{title\}\}/g, contact.title || '[Title]')
+      .replace(/\{\{jobTitle\}\}/g, contact.title || '[Job Title]')
+      .replace(/\{\{position\}\}/g, contact.title || '[Position]')
+  }
+
   // Generate full email schedule for a contact with consistent sender assignment
   const generateContactSchedule = (contact: Contact) => {
     // Assign one sender for the entire sequence for this contact
@@ -512,10 +528,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     const emailSchedule = campaignSequences.length > 0 
       ? campaignSequences.map((seq, index) => ({
           step: seq.sequenceStep || seq.id || (index + 1),
-          subject: seq.subject || `Email ${seq.sequenceStep || index + 1}`,
+          subject: replaceTemplateVariables(seq.subject || `Email ${seq.sequenceStep || index + 1}`, contact),
           days: seq.timing || (index === 0 ? 0 : index * 3), // Default spacing if no timing
           label: seq.timing === 0 ? 'Immediate' : `${seq.timing || (index * 3)} days`,
-          content: seq.content || `Email content for step ${seq.sequenceStep || index + 1}`
+          content: replaceTemplateVariables(seq.content || `Email content for step ${seq.sequenceStep || index + 1}`, contact)
         }))
       : [
           { 
