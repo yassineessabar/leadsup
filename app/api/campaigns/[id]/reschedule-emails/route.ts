@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase'
+import { getSupabaseServerClient } from '@/lib/supabase'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: campaignId } = await params
-    const supabase = createClient()
+    const supabase = getSupabaseServerClient()
 
     console.log(`🔄 Rescheduling emails for campaign: ${campaignId}`)
 
