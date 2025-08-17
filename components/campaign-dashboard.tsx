@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { useDebouncedAutoSave } from "@/hooks/useDebounce"
 import { useOptimizedPolling } from "@/hooks/useOptimizedPolling"
 
-import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, ExternalLink, Archive, Reply, Forward, Rocket, Square, TrendingUp, Shield, ArrowUp, Brain, ShieldCheck, CheckCircle2 } from "lucide-react"
+import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, AlertCircle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, ExternalLink, Archive, Reply, Forward, Rocket, Square, TrendingUp, Shield, ArrowUp, Brain, ShieldCheck, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -22,6 +22,7 @@ import { format } from "date-fns"
 import AutomationSettings from "@/components/automation-settings"
 import CampaignSenderSelection from "./campaign-sender-selection"
 import { TargetTab } from "./campaign-dashboard-target"
+import { toast } from "sonner"
 
 interface CampaignDashboardProps {
   campaign?: {
@@ -219,6 +220,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [validationLoading, setValidationLoading] = useState(false)
   const [showValidationDialog, setShowValidationDialog] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  
+  // Deliverability popup state
+  const [showDeliverabilityDialog, setShowDeliverabilityDialog] = useState(false)
+  const [lowDeliverabilityAccounts, setLowDeliverabilityAccounts] = useState<any[]>([])
+  
+  // Sender validation popup states
+  const [showNoAccountSelectedDialog, setShowNoAccountSelectedDialog] = useState(false)
+  const [showWarmupInfoDialog, setShowWarmupInfoDialog] = useState(false)
   
   // Define the guided flow steps
   const guidedFlowSteps = [
@@ -748,6 +757,173 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   const updateStepTiming = (stepId: number, timing: number) => {
     setSteps(steps.map((step) => (step.id === stepId ? { ...step, timing } : step)))
+  }
+
+  // Check deliverability of selected sender accounts
+  const checkSelectedAccountsDeliverability = () => {
+    if (!selectedSenderAccounts || selectedSenderAccounts.length === 0) {
+      console.log('🔍 No sender accounts selected for deliverability check')
+      return { hasLowDeliverability: false, lowDeliverabilityAccounts: [] }
+    }
+    
+    // Get all connected accounts (Gmail, Microsoft365, SMTP)
+    const allAccounts = [
+      ...connectedGmailAccounts,
+      ...connectedMicrosoft365Accounts,
+      ...connectedSmtpAccounts
+    ]
+    
+    console.log('🔍 All connected accounts:', allAccounts.map(acc => ({
+      id: acc.id,
+      email: acc.email,
+      health_score: acc.health_score
+    })))
+    
+    // Find selected accounts with their data
+    const selectedAccountsData = allAccounts.filter(account => 
+      selectedSenderAccounts.includes(account.id)
+    )
+    
+    console.log('🔍 Selected accounts data:', selectedAccountsData.map(acc => ({
+      id: acc.id,
+      email: acc.email,
+      health_score: acc.health_score
+    })))
+    
+    // Find accounts with deliverability < 95%
+    const lowDeliverabilityAccounts = selectedAccountsData.filter(account => {
+      const healthScore = account.health_score
+      console.log(`🔍 Checking account ${account.email}: health_score = ${healthScore}`)
+      // Only check accounts that have health_score data
+      return healthScore !== undefined && healthScore !== null && healthScore < 95
+    })
+    
+    console.log('🔍 Low deliverability accounts:', lowDeliverabilityAccounts.map(acc => ({
+      email: acc.email,
+      health_score: acc.health_score
+    })))
+    
+    return {
+      hasLowDeliverability: lowDeliverabilityAccounts.length > 0,
+      lowDeliverabilityAccounts
+    }
+  }
+
+  // Save sender accounts with validation and deliverability check
+  const saveSenderAccounts = async (): Promise<boolean> => {
+    console.log('🔧 saveSenderAccounts called')
+    console.log('🔧 selectedSenderAccounts:', selectedSenderAccounts)
+    console.log('🔧 campaign?.id:', campaign?.id)
+    
+    if (!campaign?.id) return false
+    
+    try {
+      // 1. Check if at least one account is selected
+      if (!selectedSenderAccounts || selectedSenderAccounts.length === 0) {
+        console.log('🚨 No accounts selected, showing dialog')
+        setShowNoAccountSelectedDialog(true)
+        return false // Return false to indicate save was not completed
+      }
+      
+      // 2. Check for critical deliverability (< 50%) - Critical improvement needed
+      const allAccounts = [
+        ...connectedGmailAccounts,
+        ...connectedMicrosoft365Accounts,
+        ...connectedSmtpAccounts
+      ]
+      
+      const selectedAccountsData = allAccounts.filter(account => 
+        selectedSenderAccounts.includes(account.id)
+      )
+      
+      const criticalAccounts = selectedAccountsData.filter(account => {
+        const healthScore = account.health_score
+        return healthScore !== undefined && healthScore !== null && healthScore < 50
+      })
+      
+      console.log('🔧 Critical accounts (< 50%):', criticalAccounts.length)
+      
+      if (criticalAccounts.length > 0) {
+        console.log('🚨 Critical deliverability detected, showing enhancement dialog')
+        // Show deliverability improvement popup for critical accounts
+        setLowDeliverabilityAccounts(criticalAccounts)
+        setShowDeliverabilityDialog(true)
+        return false // Don't save yet, wait for user confirmation
+      }
+      
+      // 3. Check if any selected accounts have health_score < 90% for warm-up info
+      const needsWarmupAccounts = selectedAccountsData.filter(account => {
+        const healthScore = account.health_score
+        console.log(`🔧 Account ${account.email} health score: ${healthScore}`)
+        return healthScore !== undefined && healthScore !== null && healthScore < 90
+      })
+      
+      console.log('🔧 Accounts needing warm-up:', needsWarmupAccounts.length)
+      
+      // Save the sender accounts data first
+      await saveCampaignData('senders')
+      
+      // Show appropriate success message
+      if (needsWarmupAccounts.length > 0) {
+        console.log('🚨 Showing warm-up info dialog')
+        // Show warm-up info dialog for accounts < 90%
+        setShowWarmupInfoDialog(true)
+      } else {
+        console.log('✅ All accounts healthy, showing success toast')
+        // Show regular success message for accounts >= 90%
+        toast.success('Sender accounts saved successfully!', {
+          duration: 3000,
+        })
+      }
+      
+      return true // Return true to indicate save was completed successfully
+    } catch (error) {
+      console.error("❌ Error saving sender accounts:", error)
+      toast.error('Failed to save sender accounts')
+      return false
+    }
+  }
+  
+  // Save sender accounts after deliverability confirmation
+  const proceedWithSenderSave = async () => {
+    try {
+      // Save the sender accounts data
+      await saveCampaignData('senders')
+      
+      // Check if any selected accounts need warm-up (< 90%)
+      const allAccounts = [
+        ...connectedGmailAccounts,
+        ...connectedMicrosoft365Accounts,
+        ...connectedSmtpAccounts
+      ]
+      
+      const selectedAccountsData = allAccounts.filter(account => 
+        selectedSenderAccounts.includes(account.id)
+      )
+      
+      const needsWarmupAccounts = selectedAccountsData.filter(account => {
+        const healthScore = account.health_score
+        return healthScore !== undefined && healthScore !== null && healthScore < 90
+      })
+      
+      // Close the deliverability dialog first
+      setShowDeliverabilityDialog(false)
+      setLowDeliverabilityAccounts([])
+      
+      // Show appropriate message
+      if (needsWarmupAccounts.length > 0) {
+        // Show warm-up info dialog for accounts < 90%
+        setShowWarmupInfoDialog(true)
+      } else {
+        // Show enhanced deliverability message
+        toast.success('Sender accounts saved! We will enhance the warm-up process to improve deliverability for your selected accounts.', {
+          duration: 6000,
+        })
+      }
+    } catch (error) {
+      console.error("❌ Error saving sender accounts:", error)
+      toast.error('Failed to save sender accounts')
+    }
   }
 
   // Comprehensive campaign save function
@@ -2819,9 +2995,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               console.log('🔄 Sender selection changed:', selectedSenders)
               console.log('🔄 Selected sender IDs:', selectedSenders)
               setSelectedSenderAccounts(selectedSenders)
-              // Note: Manual save is now handled by the Save button in CampaignSenderSelection
+              // Note: Manual save is now handled by the Save button in the bottom panel for guided mode
             }}
             initialSelectedSenders={selectedSenderAccounts}
+            isGuidedMode={isGuidedFlow}
           />
         );
 
@@ -4040,11 +4217,17 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     </Button>
                   ) : (
                     <Button
-                      onClick={() => {
+                      onClick={async () => {
                         // For sequence tab, save sequences then handle the confirmation dialog
                         if (guidedFlowSteps[guidedFlowStep]?.tab === 'sequence') {
                           saveSequence() // Save sequences first
                           handleGuidedNext() // This will trigger confirmation dialog
+                        } else if (guidedFlowSteps[guidedFlowStep]?.tab === 'sender') {
+                          // For sender tab, save with validation checks
+                          const saveSuccess = await saveSenderAccounts()
+                          if (saveSuccess) {
+                            handleGuidedNext() // Only proceed if save was successful
+                          }
                         } else {
                           // For other tabs, treat as Save button for draft campaigns
                           saveCampaignData('all')
@@ -4114,6 +4297,53 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         </DialogContent>
       </Dialog>
 
+      {/* Deliverability Improvement Dialog - Sleek Design */}
+      <Dialog open={showDeliverabilityDialog} onOpenChange={setShowDeliverabilityDialog}>
+        <DialogContent className="max-w-sm bg-white rounded-3xl border-0 p-0 overflow-hidden shadow-2xl">
+          <DialogHeader className="text-center p-8 pb-6">
+            <div className="mx-auto w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-6">
+              <Shield className="w-8 h-8 text-gray-600" />
+            </div>
+            <DialogTitle className="text-xl font-medium text-gray-900 mb-2">
+              Enhancement Required
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 text-sm">
+              Some accounts need optimization for better performance.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="px-8 pb-8">
+            <div className="bg-gray-50 rounded-2xl p-4 mb-6">
+              <div className="text-center">
+                <div className="text-2xl font-medium text-gray-900 mb-1">
+                  {lowDeliverabilityAccounts.length} account{lowDeliverabilityAccounts.length !== 1 ? 's' : ''}
+                </div>
+                <div className="text-sm text-gray-500">need enhancement</div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDeliverabilityDialog(false)
+                  setLowDeliverabilityAccounts([])
+                }}
+                className="flex-1 border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl py-3 font-medium"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={proceedWithSenderSave}
+                className="flex-1 bg-gray-900 hover:bg-gray-800 text-white rounded-2xl py-3 border-0 font-medium"
+              >
+                Enhance
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Sequence Confirmation Dialog */}
       <Dialog open={showSequenceConfirmDialog} onOpenChange={setShowSequenceConfirmDialog}>
         <DialogContent className="max-w-md">
@@ -4154,6 +4384,76 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               Continue
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* No Account Selected Dialog - Sleek Design */}
+      <Dialog open={showNoAccountSelectedDialog} onOpenChange={setShowNoAccountSelectedDialog}>
+        <DialogContent className="max-w-sm bg-white rounded-3xl border-0 p-0 overflow-hidden shadow-2xl">
+          <DialogHeader className="text-center p-8 pb-6">
+            <div className="mx-auto w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-6">
+              <Mail className="w-8 h-8 text-gray-600" />
+            </div>
+            <DialogTitle className="text-xl font-medium text-gray-900 mb-2">
+              Select Sender Account
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 text-sm">
+              Choose at least one account to proceed.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="px-8 pb-8">
+            <div className="bg-gray-50 rounded-2xl p-4 mb-6">
+              <div className="text-center">
+                <div className="text-2xl font-medium text-gray-900 mb-1">
+                  0 accounts
+                </div>
+                <div className="text-sm text-gray-500">selected</div>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => setShowNoAccountSelectedDialog(false)}
+              className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-2xl py-3 border-0 font-medium"
+            >
+              Select Account
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Warm-up Info Dialog - Sleek Design */}
+      <Dialog open={showWarmupInfoDialog} onOpenChange={setShowWarmupInfoDialog}>
+        <DialogContent className="max-w-sm bg-white rounded-3xl border-0 p-0 overflow-hidden shadow-2xl">
+          <DialogHeader className="text-center p-8 pb-6">
+            <div className="mx-auto w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-6">
+              <ShieldCheck className="w-8 h-8 text-gray-600" />
+            </div>
+            <DialogTitle className="text-xl font-medium text-gray-900 mb-2">
+              Warm-up Started
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 text-sm">
+              We'll optimize your accounts for better deliverability.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="px-8 pb-8">
+            <div className="bg-gray-50 rounded-2xl p-4 mb-6">
+              <div className="text-center">
+                <div className="text-2xl font-medium text-gray-900 mb-1">
+                  Optimization
+                </div>
+                <div className="text-sm text-gray-500">in progress</div>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => setShowWarmupInfoDialog(false)}
+              className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-2xl py-3 border-0 font-medium"
+            >
+              Got it
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

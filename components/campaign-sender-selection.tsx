@@ -37,12 +37,14 @@ interface CampaignSenderSelectionProps {
   campaignId: string | number
   onSelectionChange: (selectedSenders: string[]) => void
   initialSelectedSenders?: string[]
+  isGuidedMode?: boolean
 }
 
 export default function CampaignSenderSelection({ 
   campaignId, 
   onSelectionChange, 
-  initialSelectedSenders = [] 
+  initialSelectedSenders = [],
+  isGuidedMode = false
 }: CampaignSenderSelectionProps) {
   console.log('🎯 CampaignSenderSelection props:', { campaignId, initialSelectedSenders });
   const [domainsWithSenders, setDomainsWithSenders] = useState<DomainWithSenders[]>([])
@@ -749,27 +751,29 @@ export default function CampaignSenderSelection({
               )}
             </div>
             <div className="flex items-center gap-3">
-              <Button
-                onClick={handleManualSave}
-                disabled={isSaving || !hasUnsavedChanges}
-                className={`border-0 rounded-2xl px-6 py-3 shadow-sm transition-colors ${
-                  hasUnsavedChanges 
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                    : 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                {isSaving ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    {hasUnsavedChanges ? 'Save Selection' : 'Saved'}
-                  </>
-                )}
-              </Button>
+              {!isGuidedMode && (
+                <Button
+                  onClick={handleManualSave}
+                  disabled={isSaving || !hasUnsavedChanges}
+                  className={`border-0 rounded-2xl px-6 py-3 shadow-sm transition-colors ${
+                    hasUnsavedChanges 
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                      : 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      {hasUnsavedChanges ? 'Save Selection' : 'Saved'}
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 onClick={() => {
                   // Navigate to root page with domain tab selected
