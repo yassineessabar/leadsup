@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from "next/headers"
-import { getSupabaseServerClient } from "@/lib/getSupabaseServerClient()"
+import { getSupabaseServerClient } from "@/lib/supabase"
 
 
 // Helper function to get user ID from session
