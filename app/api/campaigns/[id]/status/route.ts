@@ -99,6 +99,9 @@ export async function PUT(
       await triggerCampaignAutomation(campaignId, updatedCampaign.name)
     }
 
+    // Handle scheduled emails based on status changes
+    await handleScheduledEmailsForStatusChange(campaignId, status, existingCampaign.status)
+
     // Return success response with updated campaign data
     return NextResponse.json({
       success: true,
@@ -228,5 +231,67 @@ async function triggerN8nWebhook(campaignId: string) {
     }
   } catch (error) {
     console.error('❌ Error triggering n8n webhook:', error)
+  }
+}
+
+// Handle scheduled emails when campaign status changes
+async function handleScheduledEmailsForStatusChange(campaignId: string, newStatus: string, previousStatus: string) {
+  try {
+    console.log(`📧 Handling scheduled emails for campaign ${campaignId}: ${previousStatus} → ${newStatus}`)
+
+    // If campaign is being paused, mark pending emails as paused
+    if (newStatus === 'Paused' && previousStatus === 'Active') {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('scheduled_emails')
+        .update({ status: 'paused' })
+        .eq('campaign_id', campaignId)
+        .eq('status', 'pending')
+
+      if (error) {
+        console.error('Error pausing scheduled emails:', error)
+      } else {
+        console.log('✅ Paused all pending scheduled emails')
+      }
+    }
+
+    // If campaign is being resumed, reschedule all emails
+    if (newStatus === 'Active' && previousStatus === 'Paused') {
+      console.log('🔄 Campaign resumed - triggering email reschedule')
+      
+      // Call the reschedule endpoint
+      const rescheduleResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/${campaignId}/reschedule-emails`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (rescheduleResponse.ok) {
+        const result = await rescheduleResponse.json()
+        console.log(`✅ Rescheduled ${result.rescheduled_count || 0} emails`)
+      } else {
+        console.error('❌ Failed to reschedule emails:', rescheduleResponse.statusText)
+      }
+    }
+
+    // If campaign is stopped, cancel all pending emails
+    if (newStatus === 'Completed') {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('scheduled_emails')
+        .update({ status: 'cancelled' })
+        .eq('campaign_id', campaignId)
+        .in('status', ['pending', 'paused'])
+
+      if (error) {
+        console.error('Error cancelling scheduled emails:', error)
+      } else {
+        console.log('✅ Cancelled all pending/paused scheduled emails')
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Error handling scheduled emails for status change:', error)
   }
 }

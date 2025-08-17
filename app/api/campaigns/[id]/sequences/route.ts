@@ -190,6 +190,9 @@ export async function POST(
         return NextResponse.json({ success: false, error: insertError.message }, { status: 500 })
       }
 
+      // Trigger email rescheduling after sequence changes
+      await triggerSequenceReschedule(campaignId)
+
       return NextResponse.json({ success: true, data: newSequences })
     }
 
@@ -198,5 +201,28 @@ export async function POST(
   } catch (error) {
     console.error("❌ Error saving sequences:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+  }
+}
+
+// Helper function to trigger email rescheduling after sequence changes
+async function triggerSequenceReschedule(campaignId: string) {
+  try {
+    console.log(`🔄 Triggering email reschedule for campaign ${campaignId} after sequence change`)
+    
+    const rescheduleResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/${campaignId}/sequences/reschedule`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+
+    if (rescheduleResponse.ok) {
+      const result = await rescheduleResponse.json()
+      console.log(`✅ Successfully triggered reschedule: ${result.message}`)
+    } else {
+      console.error('❌ Failed to trigger reschedule:', rescheduleResponse.statusText)
+    }
+  } catch (error) {
+    console.error('❌ Error triggering sequence reschedule:', error)
   }
 }

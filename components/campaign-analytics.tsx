@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { deriveTimezoneFromLocation, getCurrentTimeInTimezone, getBusinessHoursStatus } from "@/lib/timezone-utils"
 // Remove direct import of SendGrid service since it's server-side only
 // import { SendGridAnalyticsService, type SendGridMetrics } from "@/lib/sendgrid-analytics"
@@ -77,6 +78,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [selectedContacts, setSelectedContacts] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [sequenceModalContact, setSequenceModalContact] = useState<Contact | null>(null)
   
   // SendGrid analytics state
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
@@ -354,6 +356,36 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     onStatusUpdate(campaign.id, "Completed")
   }
 
+  const handleRescheduleEmails = async () => {
+    if (!campaign?.id) return
+    
+    try {
+      setIsRefreshing(true)
+      console.log('🔄 Manual reschedule triggered for campaign:', campaign.id)
+      
+      const response = await fetch(`/api/campaigns/${campaign.id}/reschedule-emails`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log(`✅ Successfully rescheduled ${result.rescheduled_count || 0} emails`)
+        
+        // Refresh the contacts data to show updated schedule
+        await fetchCampaignContacts()
+      } else {
+        console.error('❌ Failed to reschedule emails:', response.statusText)
+      }
+    } catch (error) {
+      console.error('❌ Error rescheduling emails:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   // Check if campaign has been started
   const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused'
   
@@ -414,6 +446,60 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       default:
         return "bg-gray-50 text-gray-600 border-gray-200"
     }
+  }
+
+  // Generate full email schedule for a contact
+  const generateContactSchedule = (contact: Contact) => {
+    const emailSchedule = [
+      { step: 1, subject: "Initial Outreach", days: 0, label: 'Immediate' },
+      { step: 2, subject: "Follow-up #1", days: 3, label: '3 days' },
+      { step: 3, subject: "Follow-up #2", days: 7, label: '7 days' },
+      { step: 4, subject: "Value Proposition", days: 14, label: '14 days' },
+      { step: 5, subject: "Final Follow-up", days: 21, label: '21 days' },
+      { step: 6, subject: "Closing Sequence", days: 28, label: '28 days' }
+    ]
+
+    const currentStep = contact.sequence_step || 0
+    const contactDate = contact.created_at ? new Date(contact.created_at) : new Date()
+    
+    return emailSchedule.map(email => {
+      const scheduledDate = new Date(contactDate)
+      scheduledDate.setDate(contactDate.getDate() + email.days)
+      
+      // Add randomized business hours (simulate real scheduling)
+      const randomHour = 9 + Math.floor(Math.random() * 8) // 9 AM - 5 PM
+      const randomMinute = Math.floor(Math.random() * 60)
+      scheduledDate.setHours(randomHour, randomMinute, 0, 0)
+      
+      // Avoid weekends
+      const dayOfWeek = scheduledDate.getDay()
+      if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Sunday -> Monday
+      if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Saturday -> Monday
+      
+      // Determine status based on current progress
+      let status: 'sent' | 'pending' | 'skipped' | 'upcoming'
+      if (email.step < currentStep) {
+        status = 'sent'
+      } else if (email.step === currentStep) {
+        status = contact.status === 'Completed' || contact.status === 'Replied' ? 'sent' : 'pending'
+      } else if (contact.status === 'Completed' || contact.status === 'Replied' || contact.status === 'Unsubscribed') {
+        status = 'skipped'
+      } else {
+        status = 'upcoming'
+      }
+
+      return {
+        ...email,
+        scheduledDate,
+        status,
+        timezone: contact.timezone || 'UTC'
+      }
+    })
+  }
+
+  // Open sequence modal
+  const openSequenceModal = (contact: Contact) => {
+    setSequenceModalContact(contact)
   }
 
   // Filter contacts
@@ -531,6 +617,17 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 >
                   <Square className="h-4 w-4 mr-2" />
                   Stop
+                </Button>
+              )}
+
+              {campaign.status === "Active" && (
+                <Button
+                  variant="outline"
+                  onClick={handleRescheduleEmails}
+                  className="border-blue-300 hover:bg-blue-50 text-blue-600 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reschedule
                 </Button>
               )}
             </div>
@@ -932,106 +1029,44 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                             })()}
                           </td>
                           <td className="p-4">
-                            <div className="space-y-1">
-                              {/* Current Sequence Status */}
-                              {contact.sequence_step !== undefined && contact.sequence_step > 0 && (
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-2 h-2 rounded-full ${
-                                    contact.status === 'Completed' ? 'bg-green-500' :
-                                    contact.status === 'Replied' ? 'bg-blue-500' :
-                                    contact.status.startsWith('Email') ? 'bg-blue-500' :
-                                    'bg-gray-500'
-                                  }`}></div>
-                                  <span className="font-medium text-xs">
-                                    Step {contact.sequence_step}/6
-                                  </span>
-                                </div>
-                              )}
-                              
-                              {/* Email Template Info */}
-                              {contact.email_subject && (
-                                <div className="text-xs text-gray-600 truncate max-w-32">
-                                  📧 {contact.email_subject}
-                                </div>
-                              )}
-                              
-                              {/* Next Action Timeline */}
-                              {contact.nextEmailIn && contact.nextEmailIn !== "Sequence complete" && contact.nextEmailIn !== "None" ? (
-                                <div className="space-y-0.5">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-xs text-blue-600 font-medium">
-                                      Next: {contact.nextEmailIn}
+                            <div className="space-y-2">
+                              {/* Current Status Summary */}
+                              {contact.sequence_step !== undefined && contact.sequence_step > 0 ? (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${
+                                      contact.status === 'Completed' ? 'bg-green-500' :
+                                      contact.status === 'Replied' ? 'bg-blue-500' :
+                                      contact.status.startsWith('Email') ? 'bg-blue-500' :
+                                      'bg-gray-500'
+                                    }`}></div>
+                                    <span className="font-medium text-xs">
+                                      Step {contact.sequence_step}/6
                                     </span>
                                   </div>
-                                  {/* Calculated Next Send Date */}
-                                  {(() => {
-                                    try {
-                                      if (contact.created_at && contact.nextEmailIn !== "Immediate") {
-                                        const contactDate = new Date(contact.created_at)
-                                        const nextDays = parseInt(contact.nextEmailIn.match(/\d+/)?.[0] || '0')
-                                        if (nextDays > 0) {
-                                          const nextDate = new Date(contactDate)
-                                          nextDate.setDate(nextDate.getDate() + nextDays)
-                                          return (
-                                            <div className="text-xs text-gray-500">
-                                              📅 {nextDate.toLocaleDateString('en-US', { 
-                                                month: 'short', 
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                              })}
-                                            </div>
-                                          )
-                                        }
-                                      } else if (contact.nextEmailIn === "Immediate") {
-                                        return (
-                                          <div className="text-xs text-green-600 font-medium">
-                                            📅 Ready to send
-                                          </div>
-                                        )
-                                      }
-                                    } catch {}
-                                    return null
-                                  })()}
+                                  {contact.nextEmailIn && contact.nextEmailIn !== "Sequence complete" && (
+                                    <div className="text-xs text-blue-600">
+                                      Next: {contact.nextEmailIn}
+                                    </div>
+                                  )}
                                 </div>
-                              ) : contact.status === "Completed" ? (
-                                <div className="flex items-center gap-1">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                                  <span className="text-xs text-green-600">Sequence Complete</span>
-                                </div>
-                              ) : contact.status === "Replied" ? (
-                                <div className="flex items-center gap-1">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                                  <span className="text-xs text-blue-600">Replied</span>
-                                </div>
-                              ) : contact.status === "Unsubscribed" ? (
-                                <div className="flex items-center gap-1">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div>
-                                  <span className="text-xs text-gray-600">Unsubscribed</span>
-                                </div>
-                              ) : contact.status === "Bounced" ? (
-                                <div className="flex items-center gap-1">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                                  <span className="text-xs text-red-600">Bounced</span>
-                                </div>
-                              ) : contact.status === "Pending" ? (
+                              ) : (
                                 <div className="flex items-center gap-1">
                                   <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
                                   <span className="text-xs text-yellow-600">Pending Start</span>
                                 </div>
-                              ) : (
-                                <span className="text-xs text-gray-500">No next action</span>
                               )}
                               
-                              {/* Progress Indicator */}
-                              {contact.sequence_step !== undefined && contact.sequence_step > 0 && (
-                                <div className="w-full bg-gray-200 rounded-full h-1">
-                                  <div 
-                                    className="bg-blue-500 h-1 rounded-full transition-all duration-300"
-                                    style={{ width: `${(contact.sequence_step / 6) * 100}%` }}
-                                  ></div>
-                                </div>
-                              )}
+                              {/* View Sequence Button */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-3 text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
+                                onClick={() => openSequenceModal(contact)}
+                              >
+                                <Calendar className="h-3 w-3 mr-1" />
+                                View Sequence
+                              </Button>
                             </div>
                           </td>
                           <td className="p-4">
@@ -1081,6 +1116,170 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           </CardContent>
         </Card>
       </div>
+
+      {/* Sequence Timeline Modal */}
+      <Dialog open={sequenceModalContact !== null} onOpenChange={(open) => !open && setSequenceModalContact(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              Email Sequence Timeline
+            </DialogTitle>
+          </DialogHeader>
+          
+          {sequenceModalContact && (
+            <div className="space-y-6">
+              {/* Contact Header */}
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+                <Avatar className="h-12 w-12">
+                  {sequenceModalContact.image_url ? (
+                    <AvatarImage src={sequenceModalContact.image_url} />
+                  ) : (
+                    <AvatarFallback className="bg-blue-100 text-blue-600 font-medium">
+                      {sequenceModalContact.first_name?.[0]}{sequenceModalContact.last_name?.[0]}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900">
+                    {sequenceModalContact.first_name} {sequenceModalContact.last_name}
+                  </h3>
+                  <p className="text-sm text-gray-600">{sequenceModalContact.email}</p>
+                  <p className="text-xs text-gray-500">{sequenceModalContact.company}</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm font-medium text-gray-700">Progress</div>
+                  <div className="text-lg font-bold text-blue-600">
+                    {sequenceModalContact.sequence_step || 0}/6
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="relative">
+                {/* Timeline line */}
+                <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                
+                <div className="space-y-6">
+                  {generateContactSchedule(sequenceModalContact).map((step, index) => {
+                    const isNext = step.status === 'pending' && !generateContactSchedule(sequenceModalContact).slice(0, index).some(s => s.status === 'pending')
+                    
+                    return (
+                      <div key={step.step} className="relative flex items-start gap-4">
+                        {/* Timeline dot */}
+                        <div className={`relative z-10 w-12 h-12 rounded-full border-4 bg-white flex items-center justify-center ${
+                          step.status === 'sent' ? 'border-green-500' :
+                          step.status === 'pending' ? 'border-blue-500 shadow-lg shadow-blue-200' :
+                          step.status === 'skipped' ? 'border-gray-300' :
+                          'border-gray-200'
+                        }`}>
+                          {step.status === 'sent' ? (
+                            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          ) : (
+                            <span className="text-sm font-semibold text-gray-600">{step.step}</span>
+                          )}
+                        </div>
+                        
+                        {/* Step content */}
+                        <div className={`flex-1 min-w-0 p-4 rounded-lg ${
+                          step.status === 'sent' ? 'bg-green-50 border border-green-200' :
+                          step.status === 'pending' && isNext ? 'bg-blue-50 border border-blue-200' :
+                          step.status === 'skipped' ? 'bg-gray-50 border border-gray-200' :
+                          'bg-gray-50 border border-gray-100'
+                        }`}>
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h4 className="font-semibold text-gray-900">{step.subject}</h4>
+                              <p className="text-sm text-gray-600">Step {step.step} of 6</p>
+                            </div>
+                            
+                            {/* Status badges */}
+                            <div className="flex gap-2">
+                              {step.status === 'sent' && (
+                                <Badge className="bg-green-100 text-green-700 border-green-200">
+                                  ✓ Sent
+                                </Badge>
+                              )}
+                              {step.status === 'pending' && isNext && (
+                                <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+                                  🔄 Up Next
+                                </Badge>
+                              )}
+                              {step.status === 'skipped' && (
+                                <Badge variant="secondary" className="bg-gray-100 text-gray-600">
+                                  ⏭️ Skipped
+                                </Badge>
+                              )}
+                              {step.status === 'upcoming' && (
+                                <Badge variant="outline" className="border-gray-300 text-gray-600">
+                                  ⏳ Upcoming
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Scheduled time */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-gray-500" />
+                              <span className="text-sm font-medium text-gray-700">
+                                {step.scheduledDate.toLocaleDateString('en-US', {
+                                  weekday: 'long',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-gray-500" />
+                              <span className="text-sm text-gray-600">
+                                {step.scheduledDate.toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })} {step.timezone && `(${step.timezone})`}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-lg font-bold text-green-600">
+                      {generateContactSchedule(sequenceModalContact).filter(s => s.status === 'sent').length}
+                    </div>
+                    <div className="text-xs text-gray-600">Sent</div>
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold text-blue-600">
+                      {generateContactSchedule(sequenceModalContact).filter(s => s.status === 'pending').length}
+                    </div>
+                    <div className="text-xs text-gray-600">Pending</div>
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold text-gray-600">
+                      {generateContactSchedule(sequenceModalContact).filter(s => s.status === 'upcoming').length}
+                    </div>
+                    <div className="text-xs text-gray-600">Upcoming</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
