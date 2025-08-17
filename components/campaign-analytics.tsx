@@ -633,13 +633,25 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           // Use sequential numbering (1, 2, 3...) instead of database sequenceStep
           const stepNumber = index + 1
           
+          // Calculate cumulative days from start (not just timing between steps)
+          let cumulativeDays = 0
+          for (let i = 0; i <= index; i++) {
+            if (i === 0) {
+              cumulativeDays = sortedSequences[0].timing || 0 // First step timing
+            } else {
+              cumulativeDays += sortedSequences[i].timing || 1 // Add subsequent timings
+            }
+          }
+          
+          console.log(`📅 Step ${stepNumber} timing: ${timingDays} days interval, ${cumulativeDays} cumulative days (from seq.timing: ${seq.timing})`)
+          
           return {
             step: stepNumber,
             // Store both original and current content
             originalSubject: seq.subject || `Email ${stepNumber}`,
             originalContent: seq.content || `Default email content for step ${stepNumber}. Please add your content in the sequence settings.`,
             subject: replaceTemplateVariables(seq.subject || `Email ${stepNumber}`, contact),
-            days: timingDays,
+            days: cumulativeDays, // Use cumulative days for scheduling
             label: timingDays === 0 ? 'Immediate' : `${timingDays} day${timingDays === 1 ? '' : 's'}`,
             content: replaceTemplateVariables(seq.content || `Default email content for step ${stepNumber}. Please add your content in the sequence settings.`, contact)
           }
