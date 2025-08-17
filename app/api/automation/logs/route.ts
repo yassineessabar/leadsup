@@ -110,58 +110,116 @@ export async function GET(request: NextRequest) {
     if (startDate) statsQuery.gte('created_at', startDate)
     if (endDate) statsQuery.lte('created_at', endDate)
 
-    // Get sender information for campaigns - simplified query first
-    const { data: sendersData, error: sendersError } = await supabaseServer
-      .from('campaign_senders')
+    // Get sender accounts data (basic info only since health_score column doesn't exist)
+    const { data: senderAccountsData, error: accountsError } = await supabaseServer
+      .from('sender_accounts')
       .select(`
         id,
         email,
-        health_score,
-        is_active,
-        is_selected,
-        campaign_id
+        is_active
       `)
+      .neq('email', 'essabar.yassine@gmail.com')
+      .eq('is_active', true)
 
-    if (sendersError) {
-      console.error('Error fetching sender data:', sendersError)
+    if (accountsError) {
+      console.error('Error fetching sender accounts data:', accountsError)
     }
-
-    // Calculate sender statistics  
-    const activeSenders = (sendersData || []).filter(s => s.is_active && s.is_selected)
-    const avgHealthScore = activeSenders.length > 0 
-      ? Math.round(activeSenders.reduce((sum, s) => sum + (s.health_score || 75), 0) / activeSenders.length)
-      : 0
-      
-
-    // Get campaign-specific sender details for each log entry
-    const campaignSenderStats = new Map()
     
-    // Group senders by campaign
-    activeSenders.forEach(sender => {
-      if (!campaignSenderStats.has(sender.campaign_id)) {
-        campaignSenderStats.set(sender.campaign_id, {
-          senderCount: 0,
-          healthScores: [],
-          senders: []
-        })
+    // Get all sender accounts (including duplicates) 
+    const allSenderAccounts = (senderAccountsData || [])
+    
+    // Get unique sender accounts by email for counting
+    const uniqueSenderAccounts = allSenderAccounts.reduce((unique, account) => {
+      const existing = unique.find(a => a.email === account.email)
+      if (!existing) {
+        unique.push(account)
       }
+      return unique
+    }, [] as any[])
+    
+    // Get health scores using ALL sender IDs (the API can handle duplicates)
+    let avgHealthScore = 0
+    let healthScoreValues: number[] = []
+    
+    if (allSenderAccounts.length > 0) {
+      try {
+        // Use ALL sender IDs, not just unique ones
+        const allSenderIds = allSenderAccounts.map(s => s.id)
+        const params = new URLSearchParams()
+        params.set('senderIds', allSenderIds.join(','))
+        
+        console.log('Debug - Calling health API with', allSenderIds.length, 'sender IDs')
+        
+        // Make an internal API call to get health scores
+        const healthResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/sender-accounts/health-score?${params}`, {
+          headers: {
+            'Cookie': request.headers.get('Cookie') || ''
+          }
+        })
+        
+        if (healthResponse.ok) {
+          const healthData = await healthResponse.json()
+          console.log('Debug - Health API response structure:', {
+            success: healthData.success,
+            hasHealthScores: !!healthData.healthScores,
+            healthScoreKeys: healthData.healthScores ? Object.keys(healthData.healthScores) : [],
+            message: healthData.message
+          })
+          
+          if (healthData.success && healthData.healthScores) {
+            // The API returns { success: true, healthScores: { senderId: { score: number, ... }, ... } }
+            const allHealthScores = Object.values(healthData.healthScores)
+              .map((scoreData: any) => scoreData?.score)
+              .filter(score => typeof score === 'number')
+            
+            console.log('Debug - All extracted health scores:', allHealthScores)
+            
+            // Get unique health scores by email to avoid counting duplicates
+            const uniqueHealthScores = new Map()
+            allSenderAccounts.forEach(account => {
+              if (healthData.healthScores[account.id]?.score) {
+                uniqueHealthScores.set(account.email, healthData.healthScores[account.id].score)
+              }
+            })
+            
+            healthScoreValues = Array.from(uniqueHealthScores.values())
+            console.log('Debug - Unique health score values by email:', healthScoreValues)
+            
+            avgHealthScore = healthScoreValues.length > 0 ? 
+              Math.round(healthScoreValues.reduce((sum, score) => sum + score, 0) / healthScoreValues.length) : 0
+            
+            console.log('Debug - Final calculated average:', avgHealthScore)
+          } else {
+            console.log('Debug - API response missing success or healthScores:', {
+              success: healthData.success,
+              hasHealthScores: !!healthData.healthScores,
+              fullResponse: healthData
+            })
+          }
+        } else {
+          console.error('Health score API failed with status:', healthResponse.status)
+          const errorText = await healthResponse.text()
+          console.error('Health score API error response:', errorText)
+        }
+      } catch (error) {
+        console.error('Error fetching health scores:', error)
+      }
+    }
+    
+    const activeSenderAccounts = uniqueSenderAccounts
       
-      const stats = campaignSenderStats.get(sender.campaign_id)
-      stats.senderCount++
-      stats.healthScores.push(sender.health_score || 75)
-      stats.senders.push({
-        email: sender.email,
-        healthScore: sender.health_score || 75,
-        isActive: sender.is_active
-      })
-    })
+    // Debug logging to help troubleshoot
+    console.log('Debug - Active sender accounts:', activeSenderAccounts.length)
+    console.log('Debug - Health score values:', healthScoreValues)
+    console.log('Debug - Calculated avg health score:', avgHealthScore)
+    console.log('Debug - Sender accounts:', activeSenderAccounts.map(s => ({ 
+      id: s.id,
+      email: s.email
+    })))
+      
 
-    // Calculate average health score per campaign
-    campaignSenderStats.forEach((stats, campaignId) => {
-      stats.avgHealthScore = Math.round(
-        stats.healthScores.reduce((sum, score) => sum + score, 0) / stats.healthScores.length
-      )
-    })
+    // For campaign-specific stats, we'll use a simplified approach since we don't have campaign relationships
+    const campaignSenderStats = new Map()
 
     const [sentStats, skippedStats, errorStats, campaignCount, contactCount] = await Promise.all([
       statsQuery.eq('log_type', 'email_sent').eq('status', 'success').then(r => r.count || 0),
@@ -202,8 +260,8 @@ export async function GET(request: NextRequest) {
           errors: errorStats,
           campaigns: campaignCount,
           contacts: contactCount,
-          senders: activeSenders.length,
-          avgHealthScore: avgHealthScore
+          senders: activeSenderAccounts.length,
+          avgHealthScore: healthScoreValues.length > 0 ? avgHealthScore : 0
         },
         campaignSenderStats: Object.fromEntries(campaignSenderStats)
       }

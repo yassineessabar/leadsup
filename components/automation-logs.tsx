@@ -530,7 +530,7 @@ export function AutomationLogs() {
               <div>
                 <p className="text-sm text-gray-600">Avg Health Score</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {stats.avgHealthScore > 0 ? `${stats.avgHealthScore}%` : 'N/A'}
+                  {typeof stats.avgHealthScore === 'number' && stats.avgHealthScore >= 0 ? `${stats.avgHealthScore}%` : 'N/A'}
                 </p>
               </div>
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
