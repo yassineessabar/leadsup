@@ -515,11 +515,24 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     }
   }
 
-  // Replace template variables in email content
+  // Replace template variables in email content and clean up HTML
   const replaceTemplateVariables = (text: string, contact: Contact) => {
     if (!text) return text
     
-    return text
+    // First, clean up any nested HTML spans that might be causing the issue
+    let cleanText = text
+      .replace(/<span[^>]*>/g, '') // Remove opening span tags
+      .replace(/<\/span>/g, '') // Remove closing span tags
+      .replace(/<[^>]*>/g, '') // Remove any other HTML tags
+      .trim()
+    
+    // Debug logging to see what's happening
+    if (text !== cleanText) {
+      console.log('🧹 Cleaned HTML from content:', { original: text.substring(0, 100), cleaned: cleanText.substring(0, 100) })
+    }
+    
+    // Then replace template variables
+    return cleanText
       .replace(/\{\{firstName\}\}/g, contact.first_name || '[First Name]')
       .replace(/\{\{lastName\}\}/g, contact.last_name || '[Last Name]')
       .replace(/\{\{fullName\}\}/g, `${contact.first_name || '[First Name]'} ${contact.last_name || '[Last Name]'}`)
