@@ -129,9 +129,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           setCampaignSequences(result.data)
           setSequencesLastUpdated(Date.now())
           console.log('📧 Loaded campaign sequences:', result.data)
+          console.log('🔍 DETAILED SEQUENCE DATA:')
+          result.data.forEach((seq, index) => {
+            console.log(`  ${index + 1}. ID:${seq.id} | Step:${seq.sequenceStep} | Subject:"${seq.subject}" | Timing:${seq.timing} days | Content:${seq.content?.length || 0} chars`)
+          })
           console.log('⏰ Sequence timings:', result.data.map(seq => ({ step: seq.sequenceStep, timing: seq.timing, id: seq.id })))
           console.log('📝 Sequence subjects:', result.data.map(seq => ({ step: seq.sequenceStep, subject: seq.subject })))
-          console.log('📄 Sequence content lengths:', result.data.map(seq => ({ step: seq.sequenceStep, contentLength: seq.content?.length || 0 })))
           
           // Check for suspiciously large timing values
           const largeTiming = result.data.filter(seq => seq.timing > 30)
