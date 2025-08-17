@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { supabase, supabaseServer } from "@/lib/supabase"
+import { getSupabaseClient, getSupabaseServerClient } from "@/lib/supabase"
 
 async function getUserIdFromSession(): Promise<string | null> {
   try {
@@ -11,7 +11,7 @@ async function getUserIdFromSession(): Promise<string | null> {
       return null
     }
 
-    const { data: session, error } = await supabaseServer
+    const { data: session, error } = await getSupabaseServerClient()
       .from("user_sessions")
       .select("user_id, expires_at")
       .eq("session_token", sessionToken)
@@ -47,7 +47,7 @@ export async function GET(
     const campaignId = (await params).id
 
     // Verify campaign belongs to user
-    const { data: campaign, error: campaignError } = await supabaseServer
+    const { data: campaign, error: campaignError } = await getSupabaseServerClient()
       .from("campaigns")
       .select("id")
       .eq("id", campaignId)
@@ -59,7 +59,7 @@ export async function GET(
     }
 
     // Fetch sequences
-    const { data: sequences, error: sequenceError } = await supabaseServer
+    const { data: sequences, error: sequenceError } = await getSupabaseServerClient()
       .from("campaign_sequences")
       .select("*")
       .eq("campaign_id", campaignId)
@@ -129,7 +129,7 @@ export async function POST(
     const { sequences } = body
 
     // Verify campaign belongs to user
-    const { data: campaign, error: campaignError } = await supabaseServer
+    const { data: campaign, error: campaignError } = await getSupabaseServerClient()
       .from("campaigns")
       .select("id")
       .eq("id", campaignId)
@@ -141,7 +141,7 @@ export async function POST(
     }
 
     // Delete existing sequences
-    const { error: deleteError } = await supabaseServer
+    const { error: deleteError } = await getSupabaseServerClient()
       .from("campaign_sequences")
       .delete()
       .eq("campaign_id", campaignId)
@@ -194,7 +194,7 @@ export async function POST(
 
       console.log('💽 Final data for database insert:', JSON.stringify(sequenceData, null, 2))
 
-      const { data: newSequences, error: insertError } = await supabaseServer
+      const { data: newSequences, error: insertError } = await getSupabaseServerClient()
         .from("campaign_sequences")
         .insert(sequenceData)
         .select()
