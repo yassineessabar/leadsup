@@ -81,6 +81,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [sequenceModalContact, setSequenceModalContact] = useState<Contact | null>(null)
   const [emailPreviewModal, setEmailPreviewModal] = useState<{contact: Contact, step: any} | null>(null)
   const [contactDetailsModal, setContactDetailsModal] = useState<Contact | null>(null)
+  const [campaignSenders, setCampaignSenders] = useState<string[]>([])
+  const [campaignSequences, setCampaignSequences] = useState<any[]>([])
   
   // SendGrid analytics state
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
@@ -89,6 +91,47 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
     end: new Date()
   })
+
+  // Fetch campaign senders
+  const fetchCampaignSenders = async () => {
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/senders`, {
+        credentials: "include"
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        if (result.assignments && Array.isArray(result.assignments)) {
+          // Extract just the email addresses
+          const senderEmails = result.assignments.map((assignment: any) => 
+            assignment.email || assignment.sender_email || 'Unknown sender'
+          )
+          setCampaignSenders(senderEmails)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching campaign senders:', error)
+    }
+  }
+
+  // Fetch campaign sequences
+  const fetchCampaignSequences = async () => {
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/sequences`, {
+        credentials: "include"
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        if (result.data && Array.isArray(result.data)) {
+          setCampaignSequences(result.data)
+          console.log('📧 Loaded campaign sequences:', result.data)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching campaign sequences:', error)
+    }
+  }
 
   // Fetch SendGrid analytics metrics
   const fetchMetrics = async () => {
@@ -321,6 +364,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     if (campaign?.id) {
       fetchCampaignContacts()
       fetchMetrics()
+      fetchCampaignSenders()
+      fetchCampaignSequences()
     }
   }, [campaign?.id, campaign.name])
 
@@ -334,10 +379,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const handleRefresh = async () => {
     setIsRefreshing(true)
     try {
-      // Refresh both contacts and metrics
+      // Refresh contacts, metrics, senders, and sequences
       await Promise.all([
         fetchCampaignContacts(),
-        fetchMetrics()
+        fetchMetrics(),
+        fetchCampaignSenders(),
+        fetchCampaignSequences()
       ])
     } catch (error) {
       console.error('Error refreshing data:', error)
@@ -450,155 +497,42 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     }
   }
 
-  // Generate full email schedule for a contact
+  // Generate full email schedule for a contact with consistent sender assignment
   const generateContactSchedule = (contact: Contact) => {
-    const emailSchedule = [
-      { 
-        step: 1, 
-        subject: "Initial Outreach", 
-        days: 0, 
-        label: 'Immediate',
-        content: `Hi ${contact.first_name},
-
-I hope this email finds you well. I noticed your work at ${contact.company} and was impressed by your role as ${contact.title || 'a professional'}.
-
-I wanted to reach out because I believe our services could help ${contact.company} achieve even better results. We've helped similar companies in your industry increase their efficiency by 40% on average.
-
-Would you be open to a brief 15-minute conversation this week to explore how we could potentially help ${contact.company}?
-
-Best regards,
-[Your name]
-
-P.S. I'd love to learn more about the challenges you're currently facing at ${contact.company}.`
-      },
-      { 
-        step: 2, 
-        subject: "Quick follow-up", 
-        days: 3, 
-        label: '3 days',
-        content: `Hi ${contact.first_name},
-
-I wanted to follow up on my previous email about potentially helping ${contact.company} improve efficiency.
-
-I understand you're probably busy, so I'll keep this brief. Here are three quick wins we've achieved for companies similar to ${contact.company}:
-
-• Reduced operational costs by 25%
-• Streamlined workflows saving 10+ hours per week
-• Improved team productivity across departments
-
-Would a 10-minute call this week work for you to discuss how these could apply to ${contact.company}?
-
-Best,
-[Your name]`
-      },
-      { 
-        step: 3, 
-        subject: "Case study you might find interesting", 
-        days: 7, 
-        label: '7 days',
-        content: `Hi ${contact.first_name},
-
-I thought you might find this interesting - we recently worked with a company very similar to ${contact.company} and helped them achieve remarkable results.
-
-The Challenge: They were struggling with inefficient processes and wanted to scale without adding headcount.
-
-Our Solution: We implemented our streamlined approach, focusing on automation and optimization.
-
-The Results:
-✓ 35% reduction in processing time
-✓ $50K+ annual cost savings
-✓ Team productivity increased by 40%
-
-I'd love to share more details about how this could work for ${contact.company}. Are you available for a brief call this week?
-
-Best regards,
-[Your name]
-
-[Case Study Link]`
-      },
-      { 
-        step: 4, 
-        subject: "Value Proposition for ${contact.company}", 
-        days: 14, 
-        label: '14 days',
-        content: `Hi ${contact.first_name},
-
-I've been thinking about ${contact.company} and the challenges that ${contact.title}s typically face in today's market.
-
-Based on my research of ${contact.company}, I believe we could help you:
-
-🎯 Specific Value for ${contact.company}:
-• Reduce manual workload by 50%
-• Improve accuracy and consistency
-• Free up your team to focus on strategic initiatives
-• Potential ROI of 300% within 6 months
-
-Here's what makes us different:
-- Proven track record with 200+ similar companies
-- Implementation takes less than 30 days
-- Dedicated support throughout the process
-
-Would you be interested in a 15-minute demo tailored specifically for ${contact.company}?
-
-Best,
-[Your name]
-
-P.S. Happy to work around your schedule.`
-      },
-      { 
-        step: 5, 
-        subject: "Final follow-up - worth 5 minutes?", 
-        days: 21, 
-        label: '21 days',
-        content: `Hi ${contact.first_name},
-
-This will be my final email, as I don't want to be a bother.
-
-I've reached out a few times about potentially helping ${contact.company} improve efficiency and reduce costs. I understand priorities change and timing isn't always right.
-
-If there's ever a time when ${contact.company} is looking to:
-• Streamline operations
-• Reduce manual work
-• Improve team productivity
-
-I'd be happy to help. Feel free to reach out anytime.
-
-If now isn't the right time, I completely understand. Wishing you and the ${contact.company} team continued success.
-
-Best regards,
-[Your name]
-
-P.S. If you know someone else at ${contact.company} who might be interested, I'd appreciate an introduction.`
-      },
-      { 
-        step: 6, 
-        subject: "One last resource for ${contact.company}", 
-        days: 28, 
-        label: '28 days',
-        content: `Hi ${contact.first_name},
-
-I hope you don't mind one final email. I wanted to share a valuable resource regardless of whether we work together.
-
-I've put together a comprehensive guide: "The ${contact.title}'s Playbook for Operational Excellence" which includes:
-
-📋 Efficiency audit checklist
-📊 ROI calculation templates  
-🚀 Quick-win implementation strategies
-📈 Performance tracking frameworks
-
-This guide has helped hundreds of professionals like yourself at companies similar to ${contact.company}.
-
-You can download it here: [Download Link]
-
-No strings attached - just our way of providing value to the community.
-
-Best of luck with everything at ${contact.company}!
-
-[Your name]
-
-P.S. The door is always open if you'd like to connect in the future.`
-      }
-    ]
+    // Assign one sender for the entire sequence for this contact
+    // Use contact ID hash to ensure consistency across renders
+    const contactIdString = String(contact.id || '')
+    const contactHash = contactIdString.split('').reduce((hash, char) => {
+      return ((hash << 5) - hash) + char.charCodeAt(0)
+    }, 0)
+    const senderIndex = Math.abs(contactHash) % Math.max(campaignSenders.length, 1)
+    const assignedSender = campaignSenders[senderIndex] || contact.sender_email || 'No sender assigned'
+    
+    // Use actual campaign sequences if available, otherwise fallback to default
+    const emailSchedule = campaignSequences.length > 0 
+      ? campaignSequences.map((seq, index) => ({
+          step: seq.sequenceStep || seq.id || (index + 1),
+          subject: seq.subject || `Email ${seq.sequenceStep || index + 1}`,
+          days: seq.timing || (index === 0 ? 0 : index * 3), // Default spacing if no timing
+          label: seq.timing === 0 ? 'Immediate' : `${seq.timing || (index * 3)} days`,
+          content: seq.content || `Email content for step ${seq.sequenceStep || index + 1}`
+        }))
+      : [
+          { 
+            step: 1, 
+            subject: "Initial Outreach", 
+            days: 0, 
+            label: 'Immediate',
+            content: `Hi ${contact.first_name},\n\nDefault initial outreach content.\n\nBest regards,\n[Your name]`
+          },
+          { 
+            step: 2, 
+            subject: "Follow-up", 
+            days: 3, 
+            label: '3 days',
+            content: `Hi ${contact.first_name},\n\nDefault follow-up content.\n\nBest regards,\n[Your name]`
+          }
+        ]
 
     const currentStep = contact.sequence_step || 0
     const contactDate = contact.created_at ? new Date(contact.created_at) : new Date()
@@ -633,11 +567,11 @@ P.S. The door is always open if you'd like to connect in the future.`
         ...email,
         scheduledDate,
         status,
-        timezone: contact.timezone || 'UTC'
+        timezone: contact.timezone || 'UTC',
+        sender: assignedSender
       }
     })
-  }
-
+  } 
   // Open sequence modal
   const openSequenceModal = (contact: Contact) => {
     setSequenceModalContact(contact)
@@ -1286,6 +1220,16 @@ P.S. The door is always open if you'd like to connect in the future.`
                         {sequenceModalContact.first_name} {sequenceModalContact.last_name}
                       </h3>
                       <p className="text-sm text-gray-600">{sequenceModalContact.email}</p>
+                      {(() => {
+                        const schedule = generateContactSchedule(sequenceModalContact)
+                        const sender = schedule[0]?.sender
+                        return sender && sender !== 'No sender assigned' ? (
+                          <p className="text-xs text-blue-600 mt-1">
+                            <Mail className="w-3 h-3 inline mr-1" />
+                            Sender: {sender}
+                          </p>
+                        ) : null
+                      })()}
                     </div>
                   </div>
                   <div className="text-right">
@@ -1307,7 +1251,7 @@ P.S. The door is always open if you'd like to connect in the future.`
                     const isNext = step.status === 'pending' && !generateContactSchedule(sequenceModalContact).slice(0, index).some(s => s.status === 'pending')
                     
                     return (
-                      <div key={step.step} className="relative flex items-start gap-4">
+                      <div key={`step-${index}-${step.step}`} className="relative flex items-start gap-4">
                         {/* Timeline dot */}
                         <div className={`relative z-10 w-10 h-10 rounded-full border-2 bg-white flex items-center justify-center ${
                           step.status === 'sent' 
@@ -1360,7 +1304,7 @@ P.S. The door is always open if you'd like to connect in the future.`
                             </div>
                           </div>
                           
-                          {/* Scheduled time */}
+                          {/* Scheduled time and Sender */}
                           <div className="space-y-2">
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <Calendar className="w-4 h-4" />
@@ -1381,6 +1325,12 @@ P.S. The door is always open if you'd like to connect in the future.`
                                   minute: '2-digit',
                                   hour12: true
                                 })} {step.timezone && `(${step.timezone})`}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Mail className="w-4 h-4" />
+                              <span className="font-medium">
+                                {step.sender}
                               </span>
                             </div>
                           </div>
