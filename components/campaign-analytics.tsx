@@ -600,8 +600,21 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     
     // Use actual campaign sequences if available, otherwise fallback to default
     console.log('🎯 Generating schedule for contact:', contact.id, 'with', campaignSequences.length, 'sequences')
-    const emailSchedule = campaignSequences.length > 0 
-      ? campaignSequences.map((seq, index) => {
+    
+    // Ensure sequences are properly sorted by step number/order
+    const sortedSequences = campaignSequences.length > 0 
+      ? [...campaignSequences].sort((a, b) => {
+          // Sort by id (which is step_number from database) or sequenceStep as fallback
+          const aStep = a.id || a.sequenceStep || 1
+          const bStep = b.id || b.sequenceStep || 1
+          return aStep - bStep
+        })
+      : []
+    
+    console.log('📋 Sorted sequence order:', sortedSequences.map(seq => ({ id: seq.id, sequenceStep: seq.sequenceStep, subject: seq.subject })))
+    
+    const emailSchedule = sortedSequences.length > 0 
+      ? sortedSequences.map((seq, index) => {
           // Use the actual timing from sequence settings
           const timingDays = seq.timing !== undefined ? seq.timing : (index === 0 ? 0 : 1)
           // Use sequential numbering (1, 2, 3...) instead of database sequenceStep
