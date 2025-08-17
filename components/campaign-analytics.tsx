@@ -678,15 +678,34 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           
           console.log(`📅 Step ${stepNumber} timing: ${timingDays} days interval, ${cumulativeDays} cumulative days (from seq.timing: ${seq.timing})`)
           
+          // Better fallback content that shows sequence info
+          const fallbackContent = seq.content ? seq.content : 
+            `[Email content is empty for "${seq.title || `Email ${stepNumber}`}"]
+
+This email step exists in your sequence but doesn't have content yet.
+
+Sequence Details:
+- Title: ${seq.title || `Email ${stepNumber}`}
+- Sequence: ${seq.sequence || 1}
+- Step: ${seq.sequenceStep || stepNumber}
+- Timing: ${timingDays} day${timingDays === 1 ? '' : 's'} from start
+
+Please add content to this email in the sequence settings.`
+
           return {
             step: stepNumber,
             // Store both original and current content
             originalSubject: seq.subject || `Email ${stepNumber}`,
-            originalContent: seq.content || `Default email content for step ${stepNumber}. Please add your content in the sequence settings.`,
+            originalContent: fallbackContent,
             subject: replaceTemplateVariables(seq.subject || `Email ${stepNumber}`, contact),
             days: cumulativeDays, // Use cumulative days for scheduling
             label: timingDays === 0 ? 'Immediate' : `${timingDays} day${timingDays === 1 ? '' : 's'}`,
-            content: replaceTemplateVariables(seq.content || `Default email content for step ${stepNumber}. Please add your content in the sequence settings.`, contact)
+            content: replaceTemplateVariables(fallbackContent, contact),
+            // Add sequence metadata for debugging
+            sequenceId: seq.id,
+            sequenceNumber: seq.sequence,
+            sequenceStep: seq.sequenceStep,
+            hasContent: !!seq.content
           }
         })
       : [
@@ -772,7 +791,19 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     console.log('🔍 Opening email preview with step:', step)
     console.log('📧 Available campaign sequences:', campaignSequences.length)
     console.log('📝 Step subject:', step.subject)
-    console.log('📄 Step content:', step.content?.substring(0, 100) + '...')
+    console.log('📄 Step content length:', step.content?.length || 0)
+    console.log('📄 Step has content:', step.hasContent)
+    console.log('📄 Step originalContent length:', step.originalContent?.length || 0)
+    console.log('🆔 Sequence metadata:', {
+      sequenceId: step.sequenceId,
+      sequenceNumber: step.sequenceNumber,
+      sequenceStep: step.sequenceStep
+    })
+    if (step.content) {
+      console.log('✅ Content preview:', step.content.substring(0, 200) + '...')
+    } else {
+      console.log('❌ No content found, showing fallback')
+    }
     setEmailPreviewModal({ contact, step })
   }
 

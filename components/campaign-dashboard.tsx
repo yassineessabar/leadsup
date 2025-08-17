@@ -523,7 +523,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         const maxTiming = Math.max(...existingStepsInSequence.map(s => s.timing))
         const maxSequenceStep = Math.max(...existingStepsInSequence.map(s => s.sequenceStep))
         
-        targetTiming = maxTiming + 1
+        // For sequence 1, default to 3 days after the previous email
+        targetTiming = sequenceNumber === 1 ? maxTiming + 3 : maxTiming + 1
         targetSequenceStep = maxSequenceStep + 1
       } else if (sequenceNumber === 2) {
         // If adding to sequence 2 and it doesn't exist, start after sequence 1
@@ -536,7 +537,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       // Legacy behavior - add to the end
       const maxId = steps.length > 0 ? Math.max(...steps.map(s => s.id)) : 0
       targetSequence = steps.length > 0 ? steps[steps.length - 1].sequence : 1
-      targetTiming = steps.length > 0 ? Math.max(...steps.map(s => s.timing)) + 1 : 0
+      // If this is the first email, start at 0, otherwise add 3 days to the last timing
+      if (steps.length === 0) {
+        targetTiming = 0
+      } else {
+        const maxTiming = Math.max(...steps.map(s => s.timing))
+        targetTiming = targetSequence === 1 ? maxTiming + 3 : maxTiming + 1
+      }
       targetSequenceStep = steps.filter(s => s.sequence === targetSequence).length + 1
     }
 
@@ -3485,7 +3492,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                     const prevSteps = steps.filter(s => s.sequence === 1 && s.sequenceStep < activeStep.sequenceStep)
                                     const baseTime = prevSteps.length > 0 ? Math.max(...prevSteps.map(s => s.timing)) : 0
                                     const relativeTiming = activeStep.timing - baseTime
-                                    return relativeTiming.toString()
+                                    // Default to 3 days if timing is 0 (for emails after the first one)
+                                    return relativeTiming === 0 && activeStep.sequenceStep > 1 ? "3" : relativeTiming.toString()
                                   })()}
                                   onValueChange={(value) => {
                                     const newTiming = parseInt(value)
@@ -3498,7 +3506,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="0">📨 Send immediately</SelectItem>
                                     <SelectItem value="3">📅 3 days after</SelectItem>
                                     <SelectItem value="4">📅 4 days after</SelectItem>
                                     <SelectItem value="5">📅 5 days after</SelectItem>
