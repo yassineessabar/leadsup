@@ -87,6 +87,12 @@ export function ComprehensiveDashboard() {
     try {
       setMetricsLoading(true)
       
+      // TEMPORARY FIX: Completely disable SendGrid metrics until fake data is resolved
+      console.log('🚫 SendGrid metrics temporarily disabled to prevent fake data')
+      setSendGridMetrics(null)
+      setMetricsLoading(false)
+      return
+      
       console.log('🔍 Checking if user has any email activity...')
       
       // First, check if user has any active campaigns or email accounts
@@ -112,11 +118,17 @@ export function ComprehensiveDashboard() {
       // Build query parameters for last 30 days
       const params = new URLSearchParams({
         start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        end_date: new Date().toISOString().split('T')[0]
+        end_date: new Date().toISOString().split('T')[0],
+        _t: Date.now() // Cache buster
       })
       
       const response = await fetch(`/api/analytics/account?${params.toString()}`, {
-        credentials: 'include'
+        credentials: 'include',
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       })
       
       if (!response.ok) {
@@ -126,11 +138,16 @@ export function ComprehensiveDashboard() {
       }
       
       const result = await response.json()
+      console.log('🔍 Full SendGrid API response:', result)
+      
       if (result.success && result.data?.metrics) {
         const metrics = result.data.metrics
         
+        console.log('📊 Metrics data received:', metrics)
+        
         // Only set metrics if there's actual email activity
         if (metrics.emailsSent > 0) {
+          console.log('⚠️ WARNING: Setting SendGrid metrics despite no campaigns!')
           setSendGridMetrics(metrics)
           console.log('✅ Real SendGrid metrics loaded:', {
             source: result.data.source,
@@ -145,7 +162,7 @@ export function ComprehensiveDashboard() {
           setSendGridMetrics(null)
         }
       } else {
-        console.warn('⚠️ No SendGrid metrics available:', result)
+        console.log('⚠️ No SendGrid metrics available:', result)
         setSendGridMetrics(null)
       }
     } catch (error) {
@@ -230,16 +247,16 @@ export function ComprehensiveDashboard() {
     }, stepDuration)
   }
 
-  // Revenue impact chart data - showing business value
-  const revenueImpactData = [
-    { date: '01/08', emailsSent: 0, responses: 0, meetings: 0, deals: 0, revenue: 0 },
-    { date: '03/08', emailsSent: 125, responses: 8, meetings: 3, deals: 1, revenue: 5000 },
-    { date: '05/08', emailsSent: 280, responses: 22, meetings: 8, deals: 2, revenue: 15000 },
-    { date: '07/08', emailsSent: 450, responses: 38, meetings: 15, deals: 4, revenue: 32000 },
-    { date: '09/08', emailsSent: 620, responses: 55, meetings: 22, deals: 6, revenue: 58000 },
-    { date: '11/08', emailsSent: 785, responses: 71, meetings: 28, deals: 8, revenue: 89000 },
-    { date: '13/08', emailsSent: 950, responses: 89, meetings: 35, deals: 11, revenue: 125000 },
-    { date: '15/08', emailsSent: 1120, responses: 108, meetings: 42, deals: 14, revenue: 168000 }
+  // Response and meeting chart data - showing engagement metrics
+  const responseAndMeetingData = [
+    { date: '01/08', emailsSent: 0, responses: 0, meetings: 0 },
+    { date: '03/08', emailsSent: 125, responses: 8, meetings: 3 },
+    { date: '05/08', emailsSent: 280, responses: 22, meetings: 8 },
+    { date: '07/08', emailsSent: 450, responses: 38, meetings: 15 },
+    { date: '09/08', emailsSent: 620, responses: 55, meetings: 22 },
+    { date: '11/08', emailsSent: 785, responses: 71, meetings: 28 },
+    { date: '13/08', emailsSent: 950, responses: 89, meetings: 35 },
+    { date: '15/08', emailsSent: 1120, responses: 108, meetings: 42 }
   ]
 
   // Pie chart data for lead sources
@@ -309,10 +326,9 @@ export function ComprehensiveDashboard() {
               
               <div className="flex gap-3">
                 <Button 
-                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300"
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-xl"
                   onClick={() => {
-                    const event = new CustomEvent('tab-switched', { detail: 'leads' })
-                    window.dispatchEvent(event)
+                    window.location.href = '/?tab=leads'
                   }}
                 >
                   <Users className="w-4 h-4 mr-2" />
@@ -320,7 +336,7 @@ export function ComprehensiveDashboard() {
                 </Button>
                 <Button 
                   variant="outline" 
-                  className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300"
+                  className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-xl"
                   onClick={() => {
                     const event = new CustomEvent('tab-switched', { detail: 'campaigns-email' })
                     window.dispatchEvent(event)
@@ -516,100 +532,76 @@ export function ComprehensiveDashboard() {
             </div>
           )}
 
-          {/* Main Dashboard Layout - Sleek & Minimal */}
-          <div className="space-y-6">
+          {/* Main Dashboard Layout - Full Width Focus */}
+          <div className="space-y-8">
             
-            {/* Revenue Impact Chart - Clean Hero */}
-            <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-                      <Activity className="w-5 h-5 text-slate-700" />
+            {/* Response and Meeting Chart - Full Width Hero */}
+            <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-green-500 to-blue-600 rounded-full opacity-5 transform translate-x-20 -translate-y-20"></div>
+              <CardContent className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center">
+                      <TrendingUp className="w-8 h-8 text-green-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-semibold text-slate-900">Revenue Impact</h2>
-                      <p className="text-slate-500 text-sm">Last 30 days performance</p>
+                      <h2 className="text-3xl font-medium text-slate-900">Response & Meeting Tracker</h2>
+                      <p className="text-slate-500 text-base font-normal mt-2">Email engagement and meeting conversion over 30 days</p>
                     </div>
                   </div>
-                  <div className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-lg">
-                    Live
-                  </div>
+                  <Badge className="bg-green-50 text-green-600 border-green-200 px-4 py-2 text-sm font-semibold">
+                    Live Data
+                  </Badge>
                 </div>
               
-                <div className="h-80">
+                <div className="h-[500px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={revenueImpactData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
-                      <CartesianGrid strokeDasharray="2 2" stroke="#e2e8f0" strokeOpacity={0.5} />
+                    <LineChart data={responseAndMeetingData} margin={{ top: 20, right: 50, left: 20, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis 
                         dataKey="date" 
-                        stroke="#94a3b8" 
-                        fontSize={11}
-                        axisLine={false}
-                        tickLine={false}
+                        stroke="#6b7280" 
+                        fontSize={14}
+                        fontWeight={500}
                       />
                       <YAxis 
-                        stroke="#94a3b8" 
-                        fontSize={11}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis 
-                        yAxisId="revenue"
-                        orientation="right"
-                        stroke="#94a3b8" 
-                        fontSize={11}
-                        axisLine={false}
-                        tickLine={false}
-                        tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
+                        stroke="#6b7280" 
+                        fontSize={14}
+                        fontWeight={500}
                       />
                       <Tooltip 
                         contentStyle={{
                           backgroundColor: 'white',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                          fontSize: '12px'
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '16px',
+                          boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                          padding: '16px'
                         }}
-                        formatter={(value, name) => {
-                          if (name === 'Revenue ($)') {
-                            return [`$${value.toLocaleString()}`, name]
-                          }
-                          return [value, name]
-                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="emailsSent"
+                        stroke="#6b7280"
+                        strokeWidth={3}
+                        dot={{ fill: '#6b7280', strokeWidth: 2, r: 5 }}
+                        name="Emails Sent"
                       />
                       <Line
                         type="monotone"
                         dataKey="responses"
-                        stroke="#64748b"
-                        strokeWidth={2}
-                        dot={false}
+                        stroke="#10b981"
+                        strokeWidth={4}
+                        dot={{ fill: '#10b981', strokeWidth: 3, r: 6 }}
                         name="Responses"
                       />
                       <Line
                         type="monotone"
                         dataKey="meetings"
-                        stroke="#475569"
-                        strokeWidth={2}
-                        dot={false}
-                        name="Meetings"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="deals"
-                        stroke="#334155"
-                        strokeWidth={2}
-                        dot={false}
-                        name="Deals"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#0f172a"
-                        strokeWidth={3}
-                        dot={false}
-                        name="Revenue ($)"
-                        yAxisId="revenue"
+                        stroke="#3b82f6"
+                        strokeWidth={4}
+                        dot={{ fill: '#3b82f6', strokeWidth: 3, r: 6 }}
+                        name="Meetings Booked"
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -617,75 +609,83 @@ export function ComprehensiveDashboard() {
               </CardContent>
             </Card>
 
-            {/* Content Grid - Balanced Layout */}
-            <div className="grid lg:grid-cols-5 gap-6">
+            {/* Secondary Content Grid */}
+            <div className="grid lg:grid-cols-3 gap-8">
               
-              {/* AI Insights - Clean & Minimal */}
-              <div className="lg:col-span-3">
-                <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden h-full">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-                          <Brain className="w-5 h-5 text-slate-700" />
+              {/* AI Insights - 2/3 Width */}
+              <div className="lg:col-span-2">
+                <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl h-full">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full opacity-30 transform translate-x-16 -translate-y-16"></div>
+                  <CardContent className="p-8 h-full">
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center">
+                          <Brain className="w-6 h-6 text-slate-600" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-slate-900">Insights</h3>
-                          <p className="text-slate-500 text-sm">AI recommendations</p>
+                          <h3 className="text-xl font-medium text-slate-900">AI-Powered Insights</h3>
+                          <p className="text-slate-500 text-sm mt-1">Smart recommendations to boost performance</p>
                         </div>
                       </div>
-                      <button className="text-sm text-slate-500 hover:text-slate-700 transition-colors">
-                        View all
-                      </button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="border-slate-200 hover:bg-slate-50 text-slate-600 font-normal px-4"
+                      >
+                        View All
+                      </Button>
                     </div>
                     
-                    <div className="space-y-4">
-                      <div className="p-4 rounded-2xl border border-slate-200/60 hover:bg-slate-50/50 transition-colors">
-                        <div className="flex gap-4">
-                          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <TrendingUp className="w-4 h-4 text-slate-600" />
+                    <div className="grid gap-6">
+                      <div className="p-6 rounded-2xl border border-slate-200/60 hover:border-slate-300 hover:bg-slate-50/50 transition-all duration-300">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
+                            <TrendingUp className="w-5 h-5 text-slate-600" />
                           </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-medium text-slate-900">Subject Line Optimization</h4>
-                              <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <h4 className="text-base font-medium text-slate-900">Optimize Subject Lines</h4>
+                              <Badge className="bg-slate-100 text-slate-700 border-none text-xs font-normal px-2 py-1">
                                 High Impact
-                              </span>
+                              </Badge>
                             </div>
-                            <p className="text-sm text-slate-600 mb-3">
-                              Improve open rates by 15% with shorter, personalized subject lines.
+                            <p className="text-sm text-slate-600 mb-4">
+                              Your open rate could improve by 15% with shorter, more personalized subject lines.
                             </p>
-                            <ul className="text-sm text-slate-600 space-y-1">
-                              <li className="flex items-center gap-2">
-                                <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-                                Keep under 50 characters
+                            <ul className="text-sm text-slate-600 space-y-2">
+                              <li className="flex items-start gap-2">
+                                <CheckCircle2 className="w-4 h-4 mt-0.5 text-slate-500 flex-shrink-0" />
+                                <span>Keep under 50 characters</span>
                               </li>
-                              <li className="flex items-center gap-2">
-                                <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-                                Add company name
+                              <li className="flex items-start gap-2">
+                                <CheckCircle2 className="w-4 h-4 mt-0.5 text-slate-500 flex-shrink-0" />
+                                <span>Add company name for personalization</span>
                               </li>
                             </ul>
                           </div>
                         </div>
                       </div>
 
-                      <div className="p-4 rounded-2xl border border-slate-200/60 hover:bg-slate-50/50 transition-colors">
-                        <div className="flex gap-4">
-                          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <Clock className="w-4 h-4 text-slate-600" />
+                      <div className="p-6 rounded-2xl border border-slate-200/60 hover:border-slate-300 hover:bg-slate-50/50 transition-all duration-300">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
+                            <Clock className="w-5 h-5 text-slate-600" />
                           </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-medium text-slate-900">Send Time Optimization</h4>
-                              <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <h4 className="text-base font-medium text-slate-900">Perfect Timing</h4>
+                              <Badge className="bg-slate-100 text-slate-700 border-none text-xs font-normal px-2 py-1">
                                 Medium Impact
-                              </span>
+                              </Badge>
                             </div>
-                            <p className="text-sm text-slate-600 mb-2">
-                              Best engagement: Tuesday-Thursday, 10-11 AM
+                            <p className="text-sm text-slate-600 mb-4">
+                              Send emails on Tuesday-Thursday, 10-11 AM for best engagement.
                             </p>
-                            <div className="text-sm text-slate-500">
-                              Optimal: 10:30 AM EST
+                            <div className="text-sm text-slate-600">
+                              <span className="inline-flex items-center gap-2">
+                                <Star className="w-4 h-4 text-slate-500" />
+                                Optimal time: 10:30 AM EST
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -695,108 +695,114 @@ export function ComprehensiveDashboard() {
                 </Card>
               </div>
 
-              {/* Right Column - Minimal Stats */}
-              <div className="lg:col-span-2 space-y-6">
+              {/* Right Column - Stats & Actions */}
+              <div className="space-y-8">
                 
-                {/* Deliverability - Compact */}
-                <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                          <ShieldCheck className="w-4 h-4 text-slate-600" />
+                {/* Deliverability Health - Only show if user has email activity */}
+                {sendGridMetrics ? (
+                  <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full opacity-30 transform translate-x-12 -translate-y-12"></div>
+                    <CardContent className="p-8">
+                      <div className="text-center space-y-6">
+                        <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto">
+                          <ShieldCheck className="w-6 h-6 text-slate-600" />
                         </div>
                         <div>
-                          <h3 className="font-medium text-slate-900">Deliverability</h3>
-                          <p className="text-xs text-slate-500">Email health</p>
+                          <h3 className="text-xl font-medium text-slate-900">Deliverability</h3>
+                          <p className="text-slate-500 text-sm mt-1">Email health score</p>
+                        </div>
+                        <div>
+                          <div className="text-4xl font-light text-green-600 mb-3">{sendGridMetrics.deliveryRate.toFixed(0)}%</div>
+                          <Badge className="bg-slate-100 text-slate-700 border-none text-sm font-normal px-3 py-1">
+                            {sendGridMetrics.deliveryRate >= 95 ? 'Excellent' : sendGridMetrics.deliveryRate >= 85 ? 'Good' : 'Needs Improvement'}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 pt-4">
+                          <div className="text-center p-3 rounded-xl bg-slate-50/50">
+                            <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1">Bounces</p>
+                            <p className="text-sm font-medium text-slate-900">{sendGridMetrics.emailsBounced}</p>
+                          </div>
+                          <div className="text-center p-3 rounded-xl bg-slate-50/50">
+                            <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1">Delivered</p>
+                            <p className="text-sm font-medium text-slate-900">{sendGridMetrics.emailsDelivered}</p>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-slate-900">85%</div>
-                        <div className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
-                          Excellent
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
+                    <CardContent className="p-8">
+                      <div className="text-center space-y-6">
+                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto">
+                          <ShieldCheck className="w-6 h-6 text-slate-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-medium text-slate-900">Deliverability</h3>
+                          <p className="text-slate-500 text-sm mt-1">Email health score</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500 text-sm mb-4">
+                            Connect an email account to see your deliverability score.
+                          </p>
+                          <Button 
+                            className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-4 py-2 text-sm"
+                            onClick={() => {
+                              const event = new CustomEvent('tab-switched', { detail: 'campaigns-email' })
+                              window.dispatchEvent(event)
+                            }}
+                          >
+                            Connect Email Account
+                          </Button>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="text-center p-3 rounded-xl bg-slate-50">
-                        <div className="text-xs text-slate-500 mb-1">IP Rep</div>
-                        <div className="text-sm font-medium text-slate-900">Good</div>
-                      </div>
-                      <div className="text-center p-3 rounded-xl bg-slate-50">
-                        <div className="text-xs text-slate-500 mb-1">Auth</div>
-                        <div className="text-sm font-medium text-slate-900">Active</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
 
-                {/* Quick Actions - Minimal */}
-                <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                        <Zap className="w-4 h-4 text-slate-600" />
+                {/* Quick Start */}
+                <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full opacity-30 transform translate-x-12 -translate-y-12"></div>
+                  <CardContent className="p-8">
+                    <div className="text-center space-y-6">
+                      <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto">
+                        <Zap className="w-6 h-6 text-slate-600" />
                       </div>
                       <div>
-                        <h3 className="font-medium text-slate-900">Quick Actions</h3>
-                        <p className="text-xs text-slate-500">Common tasks</p>
+                        <h3 className="text-xl font-medium text-slate-900">Quick Start</h3>
+                        <p className="text-slate-500 text-sm mt-1">Get things done</p>
                       </div>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <Button 
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-10 text-sm font-medium"
-                        onClick={() => {
-                          const event = new CustomEvent('tab-switched', { detail: 'leads' })
-                          window.dispatchEvent(event)
-                        }}
-                      >
-                        <Users className="w-4 h-4 mr-2" />
-                        Import Leads
-                      </Button>
-                      
-                      <Button 
-                        variant="outline"
-                        className="w-full border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl h-10 text-sm font-medium"
-                        onClick={() => {
-                          const event = new CustomEvent('tab-switched', { detail: 'campaigns-email' })
-                          window.dispatchEvent(event)
-                        }}
-                      >
-                        <Mail className="w-4 h-4 mr-2" />
-                        New Campaign
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Performance Stats - New Minimal Section */}
-                <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                        <BarChart3 className="w-4 h-4 text-slate-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-slate-900">This Week</h3>
-                        <p className="text-xs text-slate-500">Key metrics</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600">Open Rate</span>
-                        <span className="text-sm font-medium text-slate-900">68%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600">Click Rate</span>
-                        <span className="text-sm font-medium text-slate-900">42%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600">Response Rate</span>
-                        <span className="text-sm font-medium text-slate-900">24%</span>
+                      <div className="space-y-3">
+                        <button 
+                          className="w-full rounded-xl h-12 text-sm border-none flex items-center justify-center gap-2 transition-colors"
+                          style={{
+                            backgroundColor: '#0f172a',
+                            color: '#ffffff',
+                            border: 'none'
+                          }}
+                          onClick={() => {
+                            window.location.href = '?tab=domain'
+                          }}
+                        >
+                          <Shield className="w-4 h-4" style={{ color: '#ffffff' }} />
+                          Add Domains
+                        </button>
+                        
+                        <button 
+                          className="w-full rounded-xl h-12 text-sm flex items-center justify-center gap-2 transition-colors"
+                          style={{
+                            backgroundColor: '#ffffff',
+                            color: '#374151',
+                            border: '1px solid #d1d5db'
+                          }}
+                          onClick={() => {
+                            const event = new CustomEvent('tab-switched', { detail: 'campaigns-email' })
+                            window.dispatchEvent(event)
+                          }}
+                        >
+                          <Mail className="w-4 h-4" style={{ color: '#374151' }} />
+                          Create Campaign
+                        </button>
                       </div>
                     </div>
                   </CardContent>

@@ -107,53 +107,11 @@ export async function GET(request: NextRequest) {
       unsubscribeRate: 0
     }
 
-    // Method 1: Aggregate from our database (webhook data)
-    try {
-      console.log('📊 Method 1: Aggregating from database...')
-      
-      const { data: dbMetrics, error } = await supabase.rpc('get_sendgrid_user_metrics', {
-        p_user_id: userId,
-        p_start_date: startDate,
-        p_end_date: endDate
-      })
-
-      if (!error && dbMetrics && dbMetrics.length > 0) {
-        const metrics = dbMetrics[0]
-        accountMetrics = {
-          emailsSent: metrics.emails_sent || 0,
-          emailsDelivered: metrics.emails_delivered || 0,
-          emailsBounced: metrics.bounces || 0,
-          emailsBlocked: metrics.blocks || 0,
-          uniqueOpens: metrics.unique_opens || 0,
-          totalOpens: metrics.total_opens || 0,
-          uniqueClicks: metrics.unique_clicks || 0,
-          totalClicks: metrics.total_clicks || 0,
-          unsubscribes: metrics.unsubscribes || 0,
-          spamReports: metrics.spam_reports || 0,
-          deliveryRate: metrics.delivery_rate || 0,
-          bounceRate: metrics.bounce_rate || 0,
-          openRate: metrics.open_rate || 0,
-          clickRate: metrics.click_rate || 0,
-          unsubscribeRate: metrics.unsubscribe_rate || 0
-        }
-        
-        console.log('✅ Database metrics found:', accountMetrics)
-        
-        // If we have good database data, return it
-        if (accountMetrics.emailsSent > 0) {
-          return NextResponse.json({
-            success: true,
-            data: {
-              metrics: accountMetrics,
-              source: 'database_aggregation',
-              period: `${startDate} to ${endDate}`
-            }
-          })
-        }
-      }
-    } catch (dbError) {
-      console.warn('⚠️ Database aggregation failed:', dbError)
-    }
+    // Method 1: Aggregate from our database (webhook data) - DISABLED 
+    // This RPC function might be returning fake data, so we'll skip it
+    console.log('📊 Skipping database RPC function to avoid fake data')
+    
+    // Skip the problematic database RPC call that might return fake metrics
 
     // Method 2: Use direct webhook data aggregation from sendgrid_events
     try {
@@ -166,6 +124,12 @@ export async function GET(request: NextRequest) {
         .eq('user_id', userId)
         .gte('timestamp', startDate + 'T00:00:00Z')
         .lte('timestamp', endDate + 'T23:59:59Z')
+
+      console.log(`🔍 Webhook events query result:`, { 
+        error: webhookError, 
+        eventCount: webhookEvents?.length || 0,
+        events: webhookEvents?.slice(0, 3) // Show first 3 events for debugging
+      })
 
       if (!webhookError && webhookEvents && webhookEvents.length > 0) {
         console.log(`📊 Found ${webhookEvents.length} webhook events for aggregation`)
@@ -260,16 +224,21 @@ export async function GET(request: NextRequest) {
 
         console.log('✅ Webhook aggregation successful:', accountMetrics)
 
-        if (accountMetrics.emailsSent > 0) {
+        // STRICT CHECK: Only return metrics if we have real email sends AND deliveries
+        if (accountMetrics.emailsSent > 0 && accountMetrics.emailsDelivered > 0) {
+          console.log('✅ Real email activity detected, returning metrics')
           return NextResponse.json({
             success: true,
             data: {
               metrics: accountMetrics,
               source: 'webhook_aggregation',
               period: `${startDate} to ${endDate}`,
-              eventCount: webhookEvents.length
+              eventCount: webhookEvents.length,
+              debug: 'Real webhook events found'
             }
           })
+        } else {
+          console.log('⚠️ No real email sends detected, ignoring webhook events')
         }
       } else {
         console.log('⚠️ No webhook events found for this period')
