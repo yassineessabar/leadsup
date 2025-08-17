@@ -83,6 +83,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [contactDetailsModal, setContactDetailsModal] = useState<Contact | null>(null)
   const [campaignSenders, setCampaignSenders] = useState<string[]>([])
   const [campaignSequences, setCampaignSequences] = useState<any[]>([])
+  const [sequencesLastUpdated, setSequencesLastUpdated] = useState<number>(Date.now())
+  const [sequencesRefreshing, setSequencesRefreshing] = useState(false)
   
   // SendGrid analytics state
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
@@ -125,12 +127,24 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         const result = await response.json()
         if (result.data && Array.isArray(result.data)) {
           setCampaignSequences(result.data)
+          setSequencesLastUpdated(Date.now())
           console.log('📧 Loaded campaign sequences:', result.data)
           console.log('⏰ Sequence timings:', result.data.map(seq => ({ step: seq.sequenceStep, timing: seq.timing })))
         }
       }
     } catch (error) {
       console.error('Error fetching campaign sequences:', error)
+    }
+  }
+
+  // Function to manually refresh sequences (can be called when sequences are modified)
+  const refreshSequences = async () => {
+    console.log('🔄 Refreshing campaign sequences...')
+    setSequencesRefreshing(true)
+    try {
+      await fetchCampaignSequences()
+    } finally {
+      setSequencesRefreshing(false)
     }
   }
 
@@ -297,7 +311,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             next_scheduled = "Now"
           } else if (status.startsWith("Email ")) {
             const currentStep = parseInt(status.split(" ")[1]) || 1
-            if (currentStep < 6) {
+            if (currentStep < (campaignSequences.length || 6)) {
               const emailSchedule = [
                 { day: 0, label: 'Immediate' },
                 { day: 3, label: '3 days' },
@@ -376,6 +390,9 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       fetchMetrics()
     }
   }, [dateRange])
+
+  // Note: Automatic refresh disabled to prevent React DOM errors
+  // Users can manually refresh sequences using the refresh button
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
@@ -530,17 +547,24 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       ? campaignSequences.map((seq, index) => {
           // Use the actual timing from sequence settings
           const timingDays = seq.timing !== undefined ? seq.timing : (index === 0 ? 0 : 1)
+          const stepNumber = seq.sequenceStep || seq.id || (index + 1)
+          
           return {
-            step: seq.sequenceStep || seq.id || (index + 1),
-            subject: replaceTemplateVariables(seq.subject || `Email ${seq.sequenceStep || index + 1}`, contact),
+            step: stepNumber,
+            // Store both original and current content
+            originalSubject: seq.subject || `Email ${stepNumber}`,
+            originalContent: seq.content || `Email content for step ${stepNumber}`,
+            subject: replaceTemplateVariables(seq.subject || `Email ${stepNumber}`, contact),
             days: timingDays,
             label: timingDays === 0 ? 'Immediate' : `${timingDays} day${timingDays === 1 ? '' : 's'}`,
-            content: replaceTemplateVariables(seq.content || `Email content for step ${seq.sequenceStep || index + 1}`, contact)
+            content: replaceTemplateVariables(seq.content || `Email content for step ${stepNumber}`, contact)
           }
         })
       : [
           { 
             step: 1, 
+            originalSubject: "Initial Outreach",
+            originalContent: "Hi {{firstName}},\n\nDefault initial outreach content.\n\nBest regards,\n[Your name]",
             subject: "Initial Outreach", 
             days: 0, 
             label: 'Immediate',
@@ -548,6 +572,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           },
           { 
             step: 2, 
+            originalSubject: "Follow-up",
+            originalContent: "Hi {{firstName}},\n\nDefault follow-up content.\n\nBest regards,\n[Your name]",
             subject: "Follow-up", 
             days: 3, 
             label: '3 days',
@@ -584,8 +610,16 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         status = 'upcoming'
       }
 
+      // For sent emails, preserve original content (don't update with new sequence settings)
+      const finalEmail = { ...email }
+      if (status === 'sent') {
+        // Use original template without variable replacement for sent emails
+        finalEmail.subject = email.originalSubject || `Email ${email.step} (Sent)`
+        finalEmail.content = email.originalContent || `[Original email content for step ${email.step} - already sent]`
+      }
+      
       return {
-        ...email,
+        ...finalEmail,
         scheduledDate,
         status,
         timezone: contact.timezone || 'UTC',
@@ -1135,7 +1169,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                                       'bg-gray-500'
                                     }`}></div>
                                     <span className="font-medium text-xs">
-                                      Step {contact.sequence_step}/6
+                                      Step {contact.sequence_step}/{campaignSequences.length || 0}
                                     </span>
                                   </div>
                                   {contact.nextEmailIn && contact.nextEmailIn !== "Sequence complete" && (
@@ -1215,10 +1249,22 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       <Dialog open={sequenceModalContact !== null} onOpenChange={(open) => !open && setSequenceModalContact(null)}>
         <DialogContent className="max-w-3xl h-[90vh] max-h-[90vh] overflow-hidden bg-white flex flex-col">
           <DialogHeader className="pb-4 border-b border-gray-200 flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-              <Calendar className="w-5 h-5 text-gray-600" />
-              Email Sequence Timeline
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                <Calendar className="w-5 h-5 text-gray-600" />
+                Email Sequence Timeline
+              </DialogTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshSequences}
+                disabled={sequencesRefreshing}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${sequencesRefreshing ? 'animate-spin' : ''}`} />
+                {sequencesRefreshing ? 'Refreshing...' : 'Refresh Sequences'}
+              </Button>
+            </div>
           </DialogHeader>
           
           {sequenceModalContact && (
@@ -1256,10 +1302,21 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                   <div className="text-right">
                     <div className="text-sm text-gray-500">Progress</div>
                     <div className="text-lg font-semibold text-gray-900">
-                      {sequenceModalContact.sequence_step || 0} of 6
+                      {(() => {
+                        const schedule = generateContactSchedule(sequenceModalContact)
+                        const completedSteps = schedule.filter(step => step.status === 'sent').length
+                        const currentStep = completedSteps + 1 // Next step to be sent
+                        return `Step ${currentStep} of ${schedule.length}`
+                      })()}
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Last Updated Info */}
+              <div className="text-xs text-gray-500 text-center py-2 border-t border-gray-100">
+                Sequences last updated: {new Date(sequencesLastUpdated).toLocaleTimeString()}
+                {sequencesRefreshing && <span className="ml-2 text-blue-600">• Refreshing...</span>}
               </div>
 
               {/* Timeline */}
@@ -1272,7 +1329,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                     const isNext = step.status === 'pending' && !generateContactSchedule(sequenceModalContact).slice(0, index).some(s => s.status === 'pending')
                     
                     return (
-                      <div key={`step-${index}-${step.step}`} className="relative flex items-start gap-4">
+                      <div key={`timeline-${step.step}-${index}`} className="relative flex items-start gap-4">
                         {/* Timeline dot */}
                         <div className={`relative z-10 w-10 h-10 rounded-full border-2 bg-white flex items-center justify-center ${
                           step.status === 'sent' 
@@ -1305,7 +1362,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
                               <h4 className="font-semibold text-gray-900">{step.subject}</h4>
-                              <p className="text-sm text-gray-500">Step {step.step} of 6</p>
+                              <p className="text-sm text-gray-500">Step {step.step} of {campaignSequences.length}</p>
                             </div>
                             
                             {/* Status badges */}
@@ -1502,7 +1559,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                       })}</span>
                       <span>🌍 {emailPreviewModal.step.timezone}</span>
                     </div>
-                    <span>Step {emailPreviewModal.step.step} of 6</span>
+                    <span>Step {emailPreviewModal.step.step} of {campaignSequences.length}</span>
                   </div>
                 </div>
               </div>
