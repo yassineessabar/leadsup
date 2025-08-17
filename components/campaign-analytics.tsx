@@ -597,6 +597,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     const currentStep = contact.sequence_step || 0
     
     // Use actual campaign sequences if available, otherwise fallback to default
+    console.log('🎯 Generating schedule for contact:', contact.id, 'with', campaignSequences.length, 'sequences')
     const emailSchedule = campaignSequences.length > 0 
       ? campaignSequences.map((seq, index) => {
           // Use the actual timing from sequence settings
@@ -690,6 +691,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
 
   // Open email content preview modal
   const openEmailPreview = (contact: Contact, step: any) => {
+    console.log('🔍 Opening email preview with step:', step)
+    console.log('📧 Available campaign sequences:', campaignSequences.length)
+    console.log('📝 Step subject:', step.subject)
+    console.log('📄 Step content:', step.content?.substring(0, 100) + '...')
     setEmailPreviewModal({ contact, step })
   }
 
