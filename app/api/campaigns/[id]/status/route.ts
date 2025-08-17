@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { supabase, supabaseServer } from "@/lib/supabase"
+import { getSupabaseServerClient } from "@/lib/supabase"
 
 async function getUserIdFromSession(): Promise<string | null> {
   try {
@@ -11,7 +11,7 @@ async function getUserIdFromSession(): Promise<string | null> {
       return null
     }
 
-    const { data: session, error } = await supabaseServer
+    const { data: session, error } = await getSupabaseServerClient()
       .from("user_sessions")
       .select("user_id, expires_at")
       .eq("session_token", sessionToken)
@@ -60,7 +60,7 @@ export async function PUT(
     console.log(`🔄 Updating campaign ${campaignId} status to: ${status}`)
 
     // First verify the campaign belongs to the user
-    const { data: existingCampaign, error: verifyError } = await supabaseServer
+    const { data: existingCampaign, error: verifyError } = await getSupabaseServerClient()
       .from("campaigns")
       .select("id, name, status")
       .eq("id", campaignId)
@@ -72,7 +72,7 @@ export async function PUT(
     }
 
     // Update the campaign status
-    const { data: updatedCampaign, error: updateError } = await supabaseServer
+    const { data: updatedCampaign, error: updateError } = await getSupabaseServerClient()
       .from("campaigns")
       .update({ 
         status: status,
@@ -143,24 +143,22 @@ async function triggerCampaignAutomation(campaignId: string, campaignName: strin
 async function initializeCampaignSequences(campaignId: string) {
   try {
     // Get all contacts for this campaign
-    const { data: contacts } = await supabaseServer
+    const { data: contacts } = await getSupabaseServerClient()
       .from('contacts')
-      .select('id, email, firstName, lastName')
+      .select('id, email, first_name, last_name')
       .eq('campaign_id', campaignId)
-      .eq('status', 'active')
 
     if (!contacts || contacts.length === 0) {
-      console.log('No active contacts found for campaign')
+      console.log('No contacts found for campaign')
       return
     }
 
     // Get first sequence step for this campaign
-    const { data: firstSequence } = await supabaseServer
+    const { data: firstSequence } = await getSupabaseServerClient()
       .from('campaign_sequences')
       .select('id, timing_days')
       .eq('campaign_id', campaignId)
-      .eq('sequence_number', 1)
-      .eq('sequence_step', 1)
+      .eq('step_number', 1)
       .single()
 
     if (!firstSequence) {
@@ -186,17 +184,21 @@ async function initializeCampaignSequences(campaignId: string) {
       }
     })
 
-    // Insert contact sequences
-    const { error: insertError } = await supabaseServer
-      .from('contact_sequences')
-      .insert(contactSequences)
+    // Insert contact sequences (only if table exists)
+    try {
+      const { error: insertError } = await getSupabaseServerClient()
+        .from('contact_sequences')
+        .insert(contactSequences)
 
-    if (insertError) {
-      console.error('Error initializing contact sequences:', insertError)
-      throw insertError
+      if (insertError) {
+        console.error('Error initializing contact sequences:', insertError)
+        throw insertError
+      }
+      
+      console.log(`✅ Initialized sequences for ${contacts.length} contacts`)
+    } catch (error) {
+      console.log('ℹ️ Contact sequences table not available - skipping initialization')
     }
-
-    console.log(`✅ Initialized sequences for ${contacts.length} contacts`)
   } catch (error) {
     console.error('Error in initializeCampaignSequences:', error)
     throw error
@@ -239,55 +241,122 @@ async function handleScheduledEmailsForStatusChange(campaignId: string, newStatu
   try {
     console.log(`📧 Handling scheduled emails for campaign ${campaignId}: ${previousStatus} → ${newStatus}`)
 
-    // If campaign is being paused, mark pending emails as paused
+    // If campaign is being paused, mark pending emails as paused and update contact statuses
     if (newStatus === 'Paused' && previousStatus === 'Active') {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('scheduled_emails')
-        .update({ status: 'paused' })
-        .eq('campaign_id', campaignId)
-        .eq('status', 'pending')
+      try {
+        // Pause scheduled emails
+        const { error } = await getSupabaseServerClient()
+          .from('scheduled_emails')
+          .update({ status: 'paused' })
+          .eq('campaign_id', campaignId)
+          .eq('status', 'pending')
 
-      if (error) {
-        console.error('Error pausing scheduled emails:', error)
-      } else {
-        console.log('✅ Paused all pending scheduled emails')
-      }
-    }
-
-    // If campaign is being resumed, reschedule all emails
-    if (newStatus === 'Active' && previousStatus === 'Paused') {
-      console.log('🔄 Campaign resumed - triggering email reschedule')
-      
-      // Call the reschedule endpoint
-      const rescheduleResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/${campaignId}/reschedule-emails`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+        if (error && error.code !== 'PGRST205') {
+          console.error('Error pausing scheduled emails:', error)
+        } else if (!error) {
+          console.log('✅ Paused all pending scheduled emails')
         }
-      })
+      } catch (error) {
+        console.log('ℹ️ Scheduled emails table not found - skipping pause operation')
+      }
 
-      if (rescheduleResponse.ok) {
-        const result = await rescheduleResponse.json()
-        console.log(`✅ Rescheduled ${result.rescheduled_count || 0} emails`)
-      } else {
-        console.error('❌ Failed to reschedule emails:', rescheduleResponse.statusText)
+      // Update contact statuses to show they are paused (except completed/replied contacts)
+      try {
+        const { data: pausedContacts, error: contactsError } = await getSupabaseServerClient()
+          .from('contacts')
+          .update({ 
+            email_status: 'Paused',
+            updated_at: new Date().toISOString()
+          })
+          .eq('campaign_id', campaignId)
+          .not('email_status', 'in', '(Completed,Replied,Unsubscribed,Bounced)')
+          .select('id, email, first_name, last_name')
+
+        if (contactsError) {
+          console.error('Error updating contact statuses to paused:', contactsError)
+        } else {
+          console.log(`✅ Updated ${pausedContacts?.length || 0} contacts to Paused status`)
+        }
+      } catch (error) {
+        console.error('Error updating contact statuses:', error)
       }
     }
 
-    // If campaign is stopped, cancel all pending emails
-    if (newStatus === 'Completed') {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('scheduled_emails')
-        .update({ status: 'cancelled' })
-        .eq('campaign_id', campaignId)
-        .in('status', ['pending', 'paused'])
+    // If campaign is being resumed, reschedule upcoming emails with updated timing and restore contact statuses
+    if (newStatus === 'Active' && previousStatus === 'Paused') {
+      console.log('🔄 Campaign resumed - rescheduling upcoming emails with updated timing')
+      
+      try {
+        // First, mark paused emails back to pending
+        const { error: unpauseError } = await getSupabaseServerClient()
+          .from('scheduled_emails')
+          .update({ status: 'pending' })
+          .eq('campaign_id', campaignId)
+          .eq('status', 'paused')
 
-      if (error) {
-        console.error('Error cancelling scheduled emails:', error)
-      } else {
-        console.log('✅ Cancelled all pending/paused scheduled emails')
+        if (unpauseError && unpauseError.code !== 'PGRST205') {
+          console.error('Error unpausing scheduled emails:', unpauseError)
+        } else if (!unpauseError) {
+          console.log('✅ Unpaused scheduled emails')
+        }
+
+        // Then reschedule all upcoming emails (not sent ones)
+        const rescheduleResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/${campaignId}/reschedule-emails`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+
+        if (rescheduleResponse.ok) {
+          const result = await rescheduleResponse.json()
+          console.log(`✅ Rescheduled ${result.rescheduled_count || 0} upcoming emails with updated timing`)
+        } else {
+          const errorText = await rescheduleResponse.text()
+          console.error('❌ Failed to reschedule emails:', rescheduleResponse.status, errorText)
+        }
+      } catch (error) {
+        console.log('ℹ️ Email rescheduling not available - scheduled_emails table missing')
+      }
+
+      // Restore contact statuses from Paused back to their active state
+      try {
+        const { data: resumedContacts, error: contactsError } = await getSupabaseServerClient()
+          .from('contacts')
+          .update({ 
+            email_status: 'Valid', // Resume to Valid status for active contacts
+            updated_at: new Date().toISOString()
+          })
+          .eq('campaign_id', campaignId)
+          .eq('email_status', 'Paused')
+          .select('id, email, first_name, last_name')
+
+        if (contactsError) {
+          console.error('Error restoring contact statuses from paused:', contactsError)
+        } else {
+          console.log(`✅ Restored ${resumedContacts?.length || 0} contacts from Paused to Valid status`)
+        }
+      } catch (error) {
+        console.error('Error restoring contact statuses:', error)
+      }
+    }
+
+    // If campaign is completed, cancel all pending/paused emails
+    if (newStatus === 'Completed') {
+      try {
+        const { error } = await getSupabaseServerClient()
+          .from('scheduled_emails')
+          .update({ status: 'cancelled' })
+          .eq('campaign_id', campaignId)
+          .in('status', ['pending', 'paused'])
+
+        if (error && error.code !== 'PGRST205') {
+          console.error('Error cancelling scheduled emails:', error)
+        } else if (!error) {
+          console.log('✅ Cancelled all pending/paused scheduled emails')
+        }
+      } catch (error) {
+        console.log('ℹ️ Scheduled emails table not found - skipping cancel operation')
       }
     }
 

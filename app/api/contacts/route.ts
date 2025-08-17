@@ -48,7 +48,7 @@ async function fetchAllContactsForDemo(request: Request) {
     // Build query without user filter for demo (no campaigns join for now)
     let query = supabase
       .from('contacts')
-      .select('id, first_name, last_name, email, title, company, location, industry, linkedin, image_url, campaign_id, created_at')
+      .select('id, first_name, last_name, email, email_status, title, company, location, industry, linkedin, image_url, campaign_id, created_at')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -139,7 +139,7 @@ export async function GET(request: Request) {
     // Build query with user filter (no campaigns join for now)
     let query = supabase
       .from('contacts')
-      .select('id, first_name, last_name, email, title, company, location, industry, linkedin, image_url, campaign_id, created_at')
+      .select('id, first_name, last_name, email, email_status, title, company, location, industry, linkedin, image_url, campaign_id, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)

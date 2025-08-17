@@ -55,7 +55,8 @@ interface Contact {
   industry: string
   linkedin: string
   image_url?: string
-  status: "Pending" | "Email 1" | "Email 2" | "Email 3" | "Email 4" | "Email 5" | "Email 6" | "Completed" | "Replied" | "Unsubscribed" | "Bounced"
+  status: "Pending" | "Email 1" | "Email 2" | "Email 3" | "Email 4" | "Email 5" | "Email 6" | "Completed" | "Replied" | "Unsubscribed" | "Bounced" | "Paused"
+  email_status?: string // Database field for email status (Valid, Paused, etc.)
   campaign_name: string
   timezone?: string
   next_scheduled?: string
@@ -242,7 +243,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             // Use actual sequence_step from contact data to match timeline logic
             const actualSequenceStep = contact.sequence_step || 0
             
-            if (actualSequenceStep === 0) {
+            // Check if campaign or contact is paused first
+            if (campaign.status === 'Paused' || contact.email_status === 'Paused') {
+              status = "Paused"
+            } else if (actualSequenceStep === 0) {
               status = "Pending"
             } else if (contact.status && ["Completed", "Replied", "Unsubscribed", "Bounced"].includes(contact.status)) {
               // Use the actual status from database if it's a final state
@@ -295,6 +299,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               nextEmailIn = nextEmailData.relative
             } else {
               nextEmailIn = "Sequence complete"
+            }
+            
+            // Override next email timing if paused
+            if (campaign.status === 'Paused' || contact.email_status === 'Paused') {
+              nextEmailIn = "Paused"
             }
           }
           
@@ -503,6 +512,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         return "bg-gray-50 text-gray-600 border-gray-200"
       case "Bounced":
         return "bg-red-50 text-red-700 border-red-200"
+      case "Paused":
+        return "bg-yellow-50 text-yellow-700 border-yellow-200"
       default:
         return "bg-gray-50 text-gray-600 border-gray-200"
     }
@@ -545,6 +556,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     if (contact.status === 'Completed' || contact.status === 'Replied' || 
         contact.status === 'Unsubscribed' || contact.status === 'Bounced') {
       return null
+    }
+    
+    // If campaign is paused or contact is paused, show paused status
+    if (campaign.status === 'Paused' || contact.email_status === 'Paused') {
+      return { relative: 'Paused', date: null }
     }
     
     // If pending (step 0), next email is immediate
@@ -1355,16 +1371,18 @@ Please add content to this email in the sequence settings.`
                                 </div>
                               )}
                               
-                              {/* View Sequence Button */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-3 text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
-                                onClick={() => openSequenceModal(contact)}
-                              >
-                                <Calendar className="h-3 w-3 mr-1" />
-                                View Sequence
-                              </Button>
+                              {/* View Sequence Button - Hide when campaign is paused */}
+                              {campaign.status !== 'Paused' && contact.email_status !== 'Paused' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-3 text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
+                                  onClick={() => openSequenceModal(contact)}
+                                >
+                                  <Calendar className="h-3 w-3 mr-1" />
+                                  View Sequence
+                                </Button>
+                              )}
                             </div>
                           </td>
                           <td className="p-4">
@@ -1855,18 +1873,21 @@ Please add content to this email in the sequence settings.`
 
               {/* Action Buttons */}
               <div className="flex gap-3 pt-4 border-t border-gray-100">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => {
-                    setContactDetailsModal(null)
-                    openSequenceModal(contactDetailsModal)
-                  }}
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  View Sequence
-                </Button>
+                {/* Hide View Sequence button when campaign is paused */}
+                {campaign.status !== 'Paused' && contactDetailsModal.email_status !== 'Paused' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      setContactDetailsModal(null)
+                      openSequenceModal(contactDetailsModal)
+                    }}
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    View Sequence
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"

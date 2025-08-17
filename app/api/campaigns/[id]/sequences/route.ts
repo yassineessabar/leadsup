@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { getSupabaseClient, getSupabaseServerClient } from "@/lib/supabase"
+import { getSupabaseServerClient } from "@/lib/supabase"
 
 async function getUserIdFromSession(): Promise<string | null> {
   try {
