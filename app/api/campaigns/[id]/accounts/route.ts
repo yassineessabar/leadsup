@@ -98,7 +98,38 @@ async function fetchGmailAccounts(userId: string, campaignId?: string) {
     return []
   }
 
-  return data || []
+  // Enrich with health scores from sender_accounts table
+  const enrichedData = []
+  for (const account of data || []) {
+    let enrichedAccount = { ...account }
+    
+    // Try to fetch health score from sender_accounts table
+    try {
+      const { data: senderAccount } = await supabaseServer
+        .from("sender_accounts")
+        .select("health_score, warmup_status")
+        .eq("email", account.email)
+        .eq("user_id", userId)
+        .single()
+      
+      if (senderAccount) {
+        enrichedAccount.health_score = senderAccount.health_score || 75
+        enrichedAccount.warmup_status = senderAccount.warmup_status || 'inactive'
+      } else {
+        // If no sender_account record, use defaults
+        enrichedAccount.health_score = 75
+        enrichedAccount.warmup_status = 'inactive'
+      }
+    } catch (err) {
+      console.log(`No sender_account record found for ${account.email}, using defaults`)
+      enrichedAccount.health_score = 75
+      enrichedAccount.warmup_status = 'inactive'
+    }
+    
+    enrichedData.push(enrichedAccount)
+  }
+
+  return enrichedData
 }
 
 // Helper function to fetch Microsoft 365 accounts
@@ -113,12 +144,41 @@ async function fetchMicrosoft365Accounts(userId: string) {
     return []
   }
 
-  return (data || []).map(account => ({
-    ...account,
-    health_score: 85,
-    daily_limit: 50,
-    is_active: true
-  }))
+  // Enrich with health scores from sender_accounts table
+  const enrichedData = []
+  for (const account of data || []) {
+    let enrichedAccount = { 
+      ...account,
+      daily_limit: 50,
+      is_active: true
+    }
+    
+    // Try to fetch health score from sender_accounts table
+    try {
+      const { data: senderAccount } = await supabaseServer
+        .from("sender_accounts")
+        .select("health_score, warmup_status")
+        .eq("email", account.email)
+        .eq("user_id", userId)
+        .single()
+      
+      if (senderAccount) {
+        enrichedAccount.health_score = senderAccount.health_score || 85
+        enrichedAccount.warmup_status = senderAccount.warmup_status || 'inactive'
+      } else {
+        enrichedAccount.health_score = 85
+        enrichedAccount.warmup_status = 'inactive'
+      }
+    } catch (err) {
+      console.log(`No sender_account record found for ${account.email}, using defaults`)
+      enrichedAccount.health_score = 85
+      enrichedAccount.warmup_status = 'inactive'
+    }
+    
+    enrichedData.push(enrichedAccount)
+  }
+
+  return enrichedData
 }
 
 // Helper function to fetch SMTP accounts
@@ -133,10 +193,39 @@ async function fetchSmtpAccounts(userId: string) {
     return []
   }
 
-  return (data || []).map(account => ({
-    ...account,
-    health_score: 75,
-    daily_limit: 50,
-    is_active: true
-  }))
+  // Enrich with health scores from sender_accounts table
+  const enrichedData = []
+  for (const account of data || []) {
+    let enrichedAccount = { 
+      ...account,
+      daily_limit: 50,
+      is_active: true
+    }
+    
+    // Try to fetch health score from sender_accounts table
+    try {
+      const { data: senderAccount } = await supabaseServer
+        .from("sender_accounts")
+        .select("health_score, warmup_status")
+        .eq("email", account.email)
+        .eq("user_id", userId)
+        .single()
+      
+      if (senderAccount) {
+        enrichedAccount.health_score = senderAccount.health_score || 75
+        enrichedAccount.warmup_status = senderAccount.warmup_status || 'inactive'
+      } else {
+        enrichedAccount.health_score = 75
+        enrichedAccount.warmup_status = 'inactive'
+      }
+    } catch (err) {
+      console.log(`No sender_account record found for ${account.email}, using defaults`)
+      enrichedAccount.health_score = 75
+      enrichedAccount.warmup_status = 'inactive'
+    }
+    
+    enrichedData.push(enrichedAccount)
+  }
+
+  return enrichedData
 }
