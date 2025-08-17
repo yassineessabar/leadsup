@@ -55,15 +55,41 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   useEffect(() => {
     if (campaign?.status === 'Draft') {
       setIsGuidedFlow(true)
-      // Set the initial tab based on the current active tab or start from target
-      const currentStepIndex = guidedFlowSteps.findIndex(step => step.tab === activeTab)
-      setGuidedFlowStep(currentStepIndex >= 0 ? currentStepIndex : 0)
-      // If we're starting fresh, go to the target tab
-      if (currentStepIndex < 0) {
-        setActiveTab('target')
+      
+      // Check if we have saved state to restore
+      const savedTab = campaign?.id ? localStorage.getItem(`campaign-${campaign.id}-last-tab`) : null
+      const savedStep = campaign?.id ? localStorage.getItem(`campaign-${campaign.id}-guided-step`) : null
+      
+      if (savedTab && savedStep) {
+        // Restore from saved state
+        const stepIndex = parseInt(savedStep)
+        if (stepIndex >= 0 && stepIndex < guidedFlowSteps.length) {
+          setGuidedFlowStep(stepIndex)
+          setActiveTab(savedTab)
+        } else {
+          // Fallback to current tab logic
+          const currentStepIndex = guidedFlowSteps.findIndex(step => step.tab === activeTab)
+          setGuidedFlowStep(currentStepIndex >= 0 ? currentStepIndex : 0)
+          if (currentStepIndex < 0) {
+            setActiveTab('target')
+          }
+        }
+      } else {
+        // Set the initial tab based on the current active tab or start from target
+        const currentStepIndex = guidedFlowSteps.findIndex(step => step.tab === activeTab)
+        setGuidedFlowStep(currentStepIndex >= 0 ? currentStepIndex : 0)
+        // If we're starting fresh, go to the target tab
+        if (currentStepIndex < 0) {
+          setActiveTab('target')
+        }
       }
     } else {
       setIsGuidedFlow(false)
+      // Clear saved state when campaign is no longer draft
+      if (campaign?.id) {
+        localStorage.removeItem(`campaign-${campaign.id}-last-tab`)
+        localStorage.removeItem(`campaign-${campaign.id}-guided-step`)
+      }
     }
   }, [campaign?.status, activeTab])
   
@@ -72,8 +98,84 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     if (campaign?.id) {
       console.log('🔄 Component mounted, loading sequences for campaign:', campaign.id)
       loadSequences()
+      // Also validate requirements when component mounts
+      validateCampaignRequirements()
     }
   }, [campaign?.id])
+  
+  // Validation functions
+  const validateCampaignRequirements = async () => {
+    if (!campaign?.id) return
+    
+    setValidationLoading(true)
+    
+    try {
+      // Check if campaign has contacts or auto-scraping is active
+      const contactsResponse = await fetch(`/api/campaigns/${campaign.id}/leads?limit=1`, {
+        credentials: 'include'
+      })
+      const contactsResult = await contactsResponse.json()
+      const hasContactsImported = contactsResult.success && contactsResult.data?.total > 0
+      
+      // Check if auto-scraping is configured and active
+      const campaignResponse = await fetch(`/api/campaigns/${campaign.id}/save`, {
+        credentials: 'include'
+      })
+      const campaignResult = await campaignResponse.json()
+      const hasActiveScraping = campaignResult.success && 
+        campaignResult.data?.campaign?.scrapping_status === 'Active'
+      
+      // Check if domains are set up
+      const domainsResponse = await fetch('/api/domains', {
+        credentials: 'include'
+      })
+      const domainsResult = await domainsResponse.json()
+      const hasDomainsSetup = domainsResult.success && 
+        domainsResult.data && domainsResult.data.length > 0
+      
+      setHasContacts(hasContactsImported)
+      setHasAutoScraping(hasActiveScraping)
+      setHasDomains(hasDomainsSetup)
+      
+      console.log('📋 Validation results:', {
+        hasContacts: hasContactsImported,
+        hasAutoScraping: hasActiveScraping,
+        hasDomains: hasDomainsSetup
+      })
+      
+    } catch (error) {
+      console.error('❌ Error validating requirements:', error)
+    } finally {
+      setValidationLoading(false)
+    }
+  }
+  
+  const checkProgressionRequirements = (currentStep: number, nextStep?: number): { canProceed: boolean; errors: string[] } => {
+    const errors: string[] = []
+    
+    // Target tab requirements (step 0) - need contacts or auto-scraping to proceed to sequence
+    if (currentStep === 0) {
+      if (!hasContacts && !hasAutoScraping) {
+        errors.push('You must either import contacts or set up auto-scraping to proceed')
+      }
+    }
+    
+    // Sender tab requirements (step 2) - need sender accounts which require domains
+    if (currentStep === 2) {
+      if (!selectedSenderAccounts || selectedSenderAccounts.length === 0) {
+        if (!hasDomains) {
+          errors.push('You must set up at least one domain before proceeding')
+        } else {
+          errors.push('You must select at least one sender account before proceeding')
+        }
+      }
+    }
+    
+    return {
+      canProceed: errors.length === 0,
+      errors
+    }
+  }
   
   // Track if settings have been saved
   const [hasSettingsSaved, setHasSettingsSaved] = useState(false)
@@ -107,6 +209,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   // Guided flow state for draft campaigns
   const [isGuidedFlow, setIsGuidedFlow] = useState(false)
   const [guidedFlowStep, setGuidedFlowStep] = useState(0)
+  const [showSequenceConfirmDialog, setShowSequenceConfirmDialog] = useState(false)
+  const [pendingNextStep, setPendingNextStep] = useState<number | null>(null)
+  
+  // Validation state for progression requirements
+  const [hasContacts, setHasContacts] = useState(false)
+  const [hasAutoScraping, setHasAutoScraping] = useState(false)
+  const [hasDomains, setHasDomains] = useState(false)
+  const [validationLoading, setValidationLoading] = useState(false)
+  const [showValidationDialog, setShowValidationDialog] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
   
   // Define the guided flow steps
   const guidedFlowSteps = [
@@ -121,11 +233,39 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [testModalLoading, setTestModalLoading] = useState(false)
 
   // Guided flow navigation functions
-  const handleGuidedNext = () => {
+  const handleGuidedNext = async () => {
+    // Refresh validation before proceeding
+    await validateCampaignRequirements()
+    
+    // Calculate the next step
+    const nextStep = guidedFlowStep < guidedFlowSteps.length - 1 ? guidedFlowStep + 1 : guidedFlowStep
+    
+    // If we're on the sequence tab, show confirmation dialog FIRST (before validation)
+    if (guidedFlowSteps[guidedFlowStep]?.tab === 'sequence' && guidedFlowStep < guidedFlowSteps.length - 1) {
+      setPendingNextStep(nextStep)
+      setShowSequenceConfirmDialog(true)
+      return
+    }
+    
+    // For non-sequence tabs, check progression requirements
+    const validation = checkProgressionRequirements(guidedFlowStep, nextStep)
+    
+    if (!validation.canProceed) {
+      setValidationErrors(validation.errors)
+      setShowValidationDialog(true)
+      return
+    }
+    
+    // Proceed normally for non-sequence tabs
     if (guidedFlowStep < guidedFlowSteps.length - 1) {
-      const nextStep = guidedFlowStep + 1
       setGuidedFlowStep(nextStep)
       setActiveTab(guidedFlowSteps[nextStep].tab)
+      
+      // Save the current progress to localStorage for state persistence
+      if (campaign?.id) {
+        localStorage.setItem(`campaign-${campaign.id}-last-tab`, guidedFlowSteps[nextStep].tab)
+        localStorage.setItem(`campaign-${campaign.id}-guided-step`, nextStep.toString())
+      }
     }
   }
 
@@ -134,6 +274,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const prevStep = guidedFlowStep - 1
       setGuidedFlowStep(prevStep)
       setActiveTab(guidedFlowSteps[prevStep].tab)
+      
+      // Save the current progress to localStorage for state persistence
+      if (campaign?.id) {
+        localStorage.setItem(`campaign-${campaign.id}-last-tab`, guidedFlowSteps[prevStep].tab)
+        localStorage.setItem(`campaign-${campaign.id}-guided-step`, prevStep.toString())
+      }
     }
   }
 
@@ -1023,6 +1169,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       console.log('🔄 Loading sender data...')
       loadConnectedAccounts()
       loadSelectedSenders()
+    }
+    
+    // Re-validate requirements when tab changes
+    if (isGuidedFlow && campaign?.id) {
+      validateCampaignRequirements()
     }
   }
   
@@ -2776,15 +2927,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 <h1 className="text-4xl font-light text-gray-900 tracking-tight">Email Sequence</h1>
                 <p className="text-gray-500 mt-2 font-light">Configure your email sequence steps and timing</p>
               </div>
-              <div className="flex items-center">
-                <Button 
-                  onClick={saveAll} 
-                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Save All Campaign Data
-                </Button>
-              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -3847,6 +3989,33 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="text-sm text-gray-500">
                     {guidedFlowSteps[guidedFlowStep]?.description}
                   </div>
+                  
+                  {/* Requirements indicators */}
+                  <div className="flex items-center justify-center gap-4 mt-3">
+                    {/* Contacts/Auto-scraping indicator */}
+                    <div className="flex items-center gap-1.5">
+                      {hasContacts || hasAutoScraping ? (
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-gray-400" />
+                      )}
+                      <span className={`text-xs ${hasContacts || hasAutoScraping ? 'text-green-600' : 'text-gray-400'}`}>
+                        Contacts/Scraping
+                      </span>
+                    </div>
+                    
+                    {/* Domains indicator */}
+                    <div className="flex items-center gap-1.5">
+                      {hasDomains ? (
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-gray-400" />
+                      )}
+                      <span className={`text-xs ${hasDomains ? 'text-green-600' : 'text-gray-400'}`}>
+                        Domains
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Navigation buttons */}
@@ -3871,11 +4040,37 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     </Button>
                   ) : (
                     <Button
-                      onClick={handleGuidedNext}
-                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6"
+                      onClick={() => {
+                        // For sequence tab, save sequences then handle the confirmation dialog
+                        if (guidedFlowSteps[guidedFlowStep]?.tab === 'sequence') {
+                          saveSequence() // Save sequences first
+                          handleGuidedNext() // This will trigger confirmation dialog
+                        } else {
+                          // For other tabs, treat as Save button for draft campaigns
+                          saveCampaignData('all')
+                          handleGuidedNext() // This will trigger validation
+                        }
+                      }}
+                      disabled={validationLoading}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 disabled:opacity-50"
                     >
-                      Next
-                      <ChevronRight className="w-4 h-4 ml-1" />
+                      {validationLoading ? (
+                        <>
+                          <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Checking...
+                        </>
+                      ) : guidedFlowSteps[guidedFlowStep]?.tab === 'sequence' ? (
+                        <>
+                          <Check className="w-4 h-4 mr-2" />
+                          Save & Next
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4 mr-2" />
+                          Save
+                        </>
+                      )}
                     </Button>
                   )}
                 </div>
@@ -3884,6 +4079,83 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           </div>
         )}
       </div>
+
+      {/* Validation Requirements Dialog */}
+      <Dialog open={showValidationDialog} onOpenChange={setShowValidationDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+              Requirements Not Met
+            </DialogTitle>
+            <DialogDescription>
+              Please complete the following requirements before proceeding:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 my-4">
+            {validationErrors.map((error, index) => (
+              <div key={index} className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <XCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <span className="text-sm text-amber-800">{error}</span>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setShowValidationDialog(false)
+                setValidationErrors([])
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              I Understand
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sequence Confirmation Dialog */}
+      <Dialog open={showSequenceConfirmDialog} onOpenChange={setShowSequenceConfirmDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Sequence Progress</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to move to the next step? Make sure you've saved your sequence changes.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowSequenceConfirmDialog(false)
+                setPendingNextStep(null)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setShowSequenceConfirmDialog(false)
+                if (pendingNextStep !== null) {
+                  // Proceed directly without validation - sequence confirmation allows progression
+                  setGuidedFlowStep(pendingNextStep)
+                  setActiveTab(guidedFlowSteps[pendingNextStep].tab)
+                  
+                  // Save the progress to localStorage
+                  if (campaign?.id) {
+                    localStorage.setItem(`campaign-${campaign.id}-last-tab`, guidedFlowSteps[pendingNextStep].tab)
+                    localStorage.setItem(`campaign-${campaign.id}-guided-step`, pendingNextStep.toString())
+                  }
+                  setPendingNextStep(null)
+                }
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

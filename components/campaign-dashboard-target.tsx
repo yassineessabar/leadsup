@@ -36,6 +36,7 @@ export function TargetTab({
   const [isStartingScraping, setIsStartingScraping] = useState(false)
   const [isLoadingConfig, setIsLoadingConfig] = useState(true)
   const [showScrapingConfirmation, setShowScrapingConfirmation] = useState(false)
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
 
   // Fetch saved scraping configuration
   const fetchScrapingConfig = async () => {
@@ -509,15 +510,27 @@ export function TargetTab({
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Daily Limit</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Daily Limit
+                        <span className="text-xs text-gray-500 ml-1">(Free plan: up to 100/day)</span>
+                      </label>
                       <Input
                         type="number"
                         placeholder="100"
                         value={scrappingDailyLimit}
-                        onChange={(e) => setScrappingDailyLimit(parseInt(e.target.value) || 100)}
+                        onChange={(e) => {
+                          const newLimit = parseInt(e.target.value) || 100
+                          if (newLimit > 100) {
+                            // Show upgrade dialog for premium feature
+                            setShowUpgradeDialog(true)
+                            // Reset to 100 for free tier
+                            setScrappingDailyLimit(100)
+                          } else {
+                            setScrappingDailyLimit(newLimit)
+                          }
+                        }}
                         disabled={isScrappingActive || isLoadingConfig}
                         min="1"
-                        max="500"
                       />
                     </div>
                   </div>
@@ -626,6 +639,87 @@ export function TargetTab({
               </Button>
             </div>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upgrade Dialog */}
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent className="max-w-lg bg-white rounded-3xl border border-gray-100/50 p-0 overflow-hidden">
+          <DialogHeader className="text-center p-8 pb-4">
+            <div className="mx-auto w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
+              <Zap className="w-8 h-8 text-blue-600" />
+            </div>
+            <DialogTitle className="text-3xl font-light text-gray-900 tracking-tight mb-3">
+              Upgrade to Pro
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 font-light text-base leading-relaxed">
+              Unlock higher daily scraping limits and premium features to supercharge your outreach campaigns.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="px-8 pb-8">
+            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-1">Free Plan</h4>
+                  <p className="text-sm text-gray-500">Up to 100 contacts/day</p>
+                </div>
+                <div className="text-right">
+                  <h4 className="font-medium text-blue-600 mb-1">Pro Plan</h4>
+                  <p className="text-sm text-blue-600">Up to 1,000+ contacts/day</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-4 mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Check className="w-4 h-4 text-blue-600" />
+                </div>
+                <span className="text-gray-700 font-light">Higher daily scraping limits</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Check className="w-4 h-4 text-blue-600" />
+                </div>
+                <span className="text-gray-700 font-light">Advanced targeting options</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Check className="w-4 h-4 text-blue-600" />
+                </div>
+                <span className="text-gray-700 font-light">Priority customer support</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowUpgradeDialog(false)}
+                className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl py-3 font-medium transition-all duration-300"
+              >
+                Maybe Later
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowUpgradeDialog(false)
+                  // Navigate to upgrade tab using the same pattern as the main app
+                  if (typeof window !== 'undefined') {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set("tab", "upgrade")
+                    window.history.pushState({}, "", url.toString())
+                    
+                    // Dispatch tab-switched event to notify the app
+                    window.dispatchEvent(new CustomEvent('tab-switched', { detail: 'upgrade' }))
+                  }
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-3 border-0 font-medium transition-all duration-300"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                Upgrade Now
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
