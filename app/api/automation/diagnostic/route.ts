@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
     // Check contacts - use basic fields first
     const { data: contacts, error: contactsError } = await supabaseServer
       .from('contacts')
-      .select('id, campaign_id, email')
-      .limit(10)
+      .select('*')
+      .limit(5)
 
     // Check sender accounts
     const { data: senderAccounts, error: sendersError } = await supabaseServer

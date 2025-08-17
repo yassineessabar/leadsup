@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { deriveTimezoneFromLocation, getCurrentTimeInTimezone, getBusinessHoursStatus } from "@/lib/timezone-utils"
 // Remove direct import of SendGrid service since it's server-side only
 // import { SendGridAnalyticsService, type SendGridMetrics } from "@/lib/sendgrid-analytics"
 
@@ -57,6 +58,10 @@ interface Contact {
   campaign_name: string
   timezone?: string
   next_scheduled?: string
+  sequence_step?: number
+  email_subject?: string
+  nextEmailIn?: string
+  created_at?: string
 }
 
 interface CampaignAnalyticsProps {
@@ -194,41 +199,65 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           const status = sequenceProgressMap[contact.id] || "Pending"
           const createdAt = new Date(contact.created_at)
           
-          // Generate timezone based on location or use a default
-          let timezone = contact.timezone || ''
-          if (!timezone && contact.location) {
-            // Simple timezone mapping based on common locations
-            const locationLower = contact.location.toLowerCase()
-            if (locationLower.includes('new york') || locationLower.includes('ny')) timezone = 'EST'
-            else if (locationLower.includes('california') || locationLower.includes('ca') || locationLower.includes('san francisco') || locationLower.includes('los angeles')) timezone = 'PST'
-            else if (locationLower.includes('chicago') || locationLower.includes('il')) timezone = 'CST'
-            else if (locationLower.includes('london') || locationLower.includes('uk')) timezone = 'GMT'
-            else if (locationLower.includes('paris') || locationLower.includes('france')) timezone = 'CET'
-            else if (locationLower.includes('tokyo') || locationLower.includes('japan')) timezone = 'JST'
-            else if (locationLower.includes('sydney') || locationLower.includes('australia')) timezone = 'AEDT'
-            else timezone = 'UTC'
-          } else if (!timezone) {
-            timezone = 'UTC'
-          }
+          // Generate timezone based on location using the new timezone utils
+          let timezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'UTC'
           
-          // Calculate next scheduled time based on sequence timing
-          let next_scheduled = ''
-          const emailSchedule = [
-            { day: 0, label: 'Immediate' },  // Email 1 - immediate
-            { day: 3, label: '3 days' },     // Email 2 - 3 days later
-            { day: 7, label: '7 days' },     // Email 3 - 7 days later  
-            { day: 14, label: '14 days' },   // Email 4 - 14 days later
-            { day: 21, label: '21 days' },   // Email 5 - 21 days later
-            { day: 28, label: '28 days' }    // Email 6 - 28 days later
-          ]
+          // Calculate sequence step and email template info
+          let sequence_step = 0
+          let email_subject = ''
+          let nextEmailIn = ''
           
           if (status === "Pending") {
-            // Next email is immediate
+            sequence_step = 0
+            email_subject = "Initial Outreach"
+            nextEmailIn = "Immediate"
+          } else if (status.startsWith("Email ")) {
+            sequence_step = parseInt(status.split(" ")[1]) || 1
+            
+            // Mock email subjects based on sequence step
+            const emailSubjects = [
+              "Initial Outreach",
+              "Follow-up #1",
+              "Follow-up #2", 
+              "Value Proposition",
+              "Final Follow-up",
+              "Closing Sequence"
+            ]
+            email_subject = emailSubjects[sequence_step - 1] || "Email"
+            
+            // Calculate next email timing
+            const emailSchedule = [
+              { day: 0, label: 'Immediate' },  // Email 1 - immediate
+              { day: 3, label: '3 days' },     // Email 2 - 3 days later
+              { day: 7, label: '7 days' },     // Email 3 - 7 days later  
+              { day: 14, label: '14 days' },   // Email 4 - 14 days later
+              { day: 21, label: '21 days' },   // Email 5 - 21 days later
+              { day: 28, label: '28 days' }    // Email 6 - 28 days later
+            ]
+            
+            if (sequence_step < 6) {
+              const nextSchedule = emailSchedule[sequence_step]
+              nextEmailIn = nextSchedule ? nextSchedule.label : "Sequence complete"
+            } else {
+              nextEmailIn = "Sequence complete"
+            }
+          }
+          
+          // Calculate next scheduled time for the old format (fallback)
+          let next_scheduled = ''
+          if (status === "Pending") {
             next_scheduled = "Now"
           } else if (status.startsWith("Email ")) {
             const currentStep = parseInt(status.split(" ")[1]) || 1
             if (currentStep < 6) {
-              // Calculate next email time
+              const emailSchedule = [
+                { day: 0, label: 'Immediate' },
+                { day: 3, label: '3 days' },
+                { day: 7, label: '7 days' },
+                { day: 14, label: '14 days' },
+                { day: 21, label: '21 days' },
+                { day: 28, label: '28 days' }
+              ]
               const nextSchedule = emailSchedule[currentStep]
               if (nextSchedule) {
                 const nextDate = new Date(createdAt)
@@ -263,7 +292,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             status,
             campaign_name: contact.campaign_name || campaign.name,
             timezone,
-            next_scheduled
+            next_scheduled,
+            sequence_step,
+            email_subject,
+            nextEmailIn,
+            created_at: contact.created_at
           }
         })
         
@@ -766,7 +799,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Company</th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Timezone</th>
-                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Next Scheduled</th>
+                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Next Email</th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -848,10 +881,158 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                             <p className="text-sm text-gray-500">{contact.location || '-'}</p>
                           </td>
                           <td className="p-4">
-                            <p className="text-sm text-gray-500">{contact.timezone || '-'}</p>
+                            {(() => {
+                              const timezone = contact.timezone || deriveTimezoneFromLocation(contact.location)
+                              
+                              if (timezone) {
+                                const status = getBusinessHoursStatus(timezone)
+                                return (
+                                  <div className="space-y-1">
+                                    {/* Primary Timezone */}
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-gray-900 text-xs">
+                                        {timezone}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        {status.currentTime}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Business Hours Status */}
+                                    <div className="flex items-center gap-1">
+                                      <div className={`w-1.5 h-1.5 rounded-full ${
+                                        status.isBusinessHours ? 'bg-green-500' : 'bg-red-500'
+                                      }`}></div>
+                                      <span className={`text-xs ${
+                                        status.isBusinessHours ? 'text-green-600' : 'text-red-600'
+                                      }`}>
+                                        {status.text}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Show if timezone was derived */}
+                                    {!contact.timezone && (
+                                      <div className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                                        🌍 Derived from location
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              } else {
+                                return (
+                                  <div className="space-y-1">
+                                    <span className="text-xs text-gray-500">No timezone</span>
+                                    <div className="flex items-center gap-1">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                                      <span className="text-xs text-gray-500">Using UTC default</span>
+                                    </div>
+                                  </div>
+                                )
+                              }
+                            })()}
                           </td>
                           <td className="p-4">
-                            <p className="text-sm text-gray-500">{contact.next_scheduled || '-'}</p>
+                            <div className="space-y-1">
+                              {/* Current Sequence Status */}
+                              {contact.sequence_step !== undefined && contact.sequence_step > 0 && (
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    contact.status === 'Completed' ? 'bg-green-500' :
+                                    contact.status === 'Replied' ? 'bg-blue-500' :
+                                    contact.status.startsWith('Email') ? 'bg-blue-500' :
+                                    'bg-gray-500'
+                                  }`}></div>
+                                  <span className="font-medium text-xs">
+                                    Step {contact.sequence_step}/6
+                                  </span>
+                                </div>
+                              )}
+                              
+                              {/* Email Template Info */}
+                              {contact.email_subject && (
+                                <div className="text-xs text-gray-600 truncate max-w-32">
+                                  📧 {contact.email_subject}
+                                </div>
+                              )}
+                              
+                              {/* Next Action Timeline */}
+                              {contact.nextEmailIn && contact.nextEmailIn !== "Sequence complete" && contact.nextEmailIn !== "None" ? (
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs text-blue-600 font-medium">
+                                      Next: {contact.nextEmailIn}
+                                    </span>
+                                  </div>
+                                  {/* Calculated Next Send Date */}
+                                  {(() => {
+                                    try {
+                                      if (contact.created_at && contact.nextEmailIn !== "Immediate") {
+                                        const contactDate = new Date(contact.created_at)
+                                        const nextDays = parseInt(contact.nextEmailIn.match(/\d+/)?.[0] || '0')
+                                        if (nextDays > 0) {
+                                          const nextDate = new Date(contactDate)
+                                          nextDate.setDate(nextDate.getDate() + nextDays)
+                                          return (
+                                            <div className="text-xs text-gray-500">
+                                              📅 {nextDate.toLocaleDateString('en-US', { 
+                                                month: 'short', 
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                              })}
+                                            </div>
+                                          )
+                                        }
+                                      } else if (contact.nextEmailIn === "Immediate") {
+                                        return (
+                                          <div className="text-xs text-green-600 font-medium">
+                                            📅 Ready to send
+                                          </div>
+                                        )
+                                      }
+                                    } catch {}
+                                    return null
+                                  })()}
+                                </div>
+                              ) : contact.status === "Completed" ? (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                                  <span className="text-xs text-green-600">Sequence Complete</span>
+                                </div>
+                              ) : contact.status === "Replied" ? (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                  <span className="text-xs text-blue-600">Replied</span>
+                                </div>
+                              ) : contact.status === "Unsubscribed" ? (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div>
+                                  <span className="text-xs text-gray-600">Unsubscribed</span>
+                                </div>
+                              ) : contact.status === "Bounced" ? (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                                  <span className="text-xs text-red-600">Bounced</span>
+                                </div>
+                              ) : contact.status === "Pending" ? (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
+                                  <span className="text-xs text-yellow-600">Pending Start</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-500">No next action</span>
+                              )}
+                              
+                              {/* Progress Indicator */}
+                              {contact.sequence_step !== undefined && contact.sequence_step > 0 && (
+                                <div className="w-full bg-gray-200 rounded-full h-1">
+                                  <div 
+                                    className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+                                    style={{ width: `${(contact.sequence_step / 6) * 100}%` }}
+                                  ></div>
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td className="p-4">
                             <div className="flex items-center gap-2">

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase"
 import { v4 as uuidv4 } from 'uuid'
+import { deriveTimezoneFromLocation } from "@/lib/timezone-utils"
 
 interface AutomationConfig {
   runId: string
@@ -525,7 +526,13 @@ async function getEligibleContacts(campaignId: string): Promise<ContactWithTimez
   // For now, consider all contacts eligible since next_sequence_at column doesn't exist
   const eligibleContacts = data || []
   
-  return eligibleContacts as ContactWithTimezone[]
+  // Add derived timezone from location for each contact
+  const contactsWithTimezones = eligibleContacts.map(contact => ({
+    ...contact,
+    timezone: contact.timezone || deriveTimezoneFromLocation(contact.location)
+  }))
+  
+  return contactsWithTimezones as ContactWithTimezone[]
 }
 
 async function getHealthySenders(campaignId: string, forceUnhealthySenders: boolean = false, runId: string = 'unknown') {

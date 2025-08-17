@@ -45,6 +45,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/hooks/use-toast"
+import { deriveTimezoneFromLocation, getCurrentTimeInTimezone, getBusinessHoursStatus } from "@/lib/timezone-utils"
 
 interface CampaignSenderInfo {
   senderCount: number
@@ -812,84 +813,64 @@ export function AutomationLogs() {
                         ) : '-'}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {log.timezone || log.contact?.timezone ? (
-                          <div className="space-y-1">
-                            {/* Primary Timezone */}
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-900 text-xs">
-                                {log.timezone || log.contact?.timezone}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {(() => {
-                                  const tz = log.timezone || log.contact?.timezone
-                                  try {
-                                    const now = new Date()
-                                    const timeInTz = new Intl.DateTimeFormat('en-US', {
-                                      timeZone: tz,
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      hour12: true
-                                    }).format(now)
-                                    return timeInTz
-                                  } catch {
-                                    return 'Unknown'
-                                  }
-                                })()}
-                              </span>
-                            </div>
-                            
-                            {/* Business Hours Status */}
-                            <div className="flex items-center gap-1">
-                              {(() => {
-                                const tz = log.timezone || log.contact?.timezone
-                                try {
-                                  const now = new Date()
-                                  const hour = parseInt(new Intl.DateTimeFormat('en-US', {
-                                    timeZone: tz,
-                                    hour: 'numeric',
-                                    hour12: false
-                                  }).format(now))
-                                  const isBusinessHours = hour >= 8 && hour < 17
-                                  
-                                  return (
-                                    <>
-                                      <div className={`w-1.5 h-1.5 rounded-full ${
-                                        isBusinessHours ? 'bg-green-500' : 'bg-red-500'
-                                      }`}></div>
-                                      <span className={`text-xs ${
-                                        isBusinessHours ? 'text-green-600' : 'text-red-600'
-                                      }`}>
-                                        {isBusinessHours ? 'Business hours' : 'Outside hours'}
-                                      </span>
-                                    </>
-                                  )
-                                } catch {
-                                  return (
-                                    <>
-                                      <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
-                                      <span className="text-xs text-gray-500">Unknown status</span>
-                                    </>
-                                  )
-                                }
-                              })()}
-                            </div>
-                            
-                            {/* Skip Reason if Outside Hours */}
-                            {log.skip_reason === 'outside_hours' && (
-                              <div className="text-xs bg-yellow-50 text-yellow-700 px-1.5 py-0.5 rounded">
-                                Skipped: Outside business hours
+                        {(() => {
+                          // Get timezone from log, contact, or derive from location
+                          const timezone = log.timezone || log.contact?.timezone || 
+                            (log.contact && deriveTimezoneFromLocation(log.details?.contact?.location || log.contact?.location))
+                          
+                          if (timezone) {
+                            const status = getBusinessHoursStatus(timezone)
+                            return (
+                              <div className="space-y-1">
+                                {/* Primary Timezone */}
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-gray-900 text-xs">
+                                    {timezone}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {status.currentTime}
+                                  </span>
+                                </div>
+                                
+                                {/* Business Hours Status */}
+                                <div className="flex items-center gap-1">
+                                  <div className={`w-1.5 h-1.5 rounded-full ${
+                                    status.isBusinessHours ? 'bg-green-500' : 'bg-red-500'
+                                  }`}></div>
+                                  <span className={`text-xs ${
+                                    status.isBusinessHours ? 'text-green-600' : 'text-red-600'
+                                  }`}>
+                                    {status.text}
+                                  </span>
+                                </div>
+                                
+                                {/* Skip Reason if Outside Hours */}
+                                {log.skip_reason === 'outside_hours' && (
+                                  <div className="text-xs bg-yellow-50 text-yellow-700 px-1.5 py-0.5 rounded">
+                                    Skipped: Outside business hours
+                                  </div>
+                                )}
+                                
+                                {/* Show if timezone was derived */}
+                                {!log.timezone && !log.contact?.timezone && (
+                                  <div className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                                    🌍 Derived from location
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="space-y-1">
-                            <span className="text-xs text-gray-500">No timezone</span>
-                            <div className="flex items-center gap-1">
-                              <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
-                              <span className="text-xs text-gray-500">Using UTC default</span>
-                            </div>
-                          </div>
-                        )}
+                            )
+                          } else {
+                            return (
+                              <div className="space-y-1">
+                                <span className="text-xs text-gray-500">No timezone</span>
+                                <div className="flex items-center gap-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                                  <span className="text-xs text-gray-500">Using UTC default</span>
+                                </div>
+                              </div>
+                            )
+                          }
+                        })()}
                       </TableCell>
                       <TableCell className="text-sm">
                         <div className="space-y-1">
