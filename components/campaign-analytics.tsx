@@ -129,9 +129,15 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           setCampaignSequences(result.data)
           setSequencesLastUpdated(Date.now())
           console.log('📧 Loaded campaign sequences:', result.data)
-          console.log('⏰ Sequence timings:', result.data.map(seq => ({ step: seq.sequenceStep, timing: seq.timing })))
+          console.log('⏰ Sequence timings:', result.data.map(seq => ({ step: seq.sequenceStep, timing: seq.timing, id: seq.id })))
           console.log('📝 Sequence subjects:', result.data.map(seq => ({ step: seq.sequenceStep, subject: seq.subject })))
           console.log('📄 Sequence content lengths:', result.data.map(seq => ({ step: seq.sequenceStep, contentLength: seq.content?.length || 0 })))
+          
+          // Check for suspiciously large timing values
+          const largeTiming = result.data.filter(seq => seq.timing > 30)
+          if (largeTiming.length > 0) {
+            console.warn('⚠️ Found sequences with unusually large timing values:', largeTiming.map(seq => ({ step: seq.sequenceStep, timing: seq.timing, subject: seq.subject })))
+          }
         }
       }
     } catch (error) {
@@ -628,18 +634,36 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     
     const emailSchedule = sortedSequences.length > 0 
       ? sortedSequences.map((seq, index) => {
-          // Use the actual timing from sequence settings
-          const timingDays = seq.timing !== undefined ? seq.timing : (index === 0 ? 0 : 1)
+          // Use the actual timing from sequence settings with safety cap
+          let rawTiming = seq.timing !== undefined ? seq.timing : (index === 0 ? 0 : 1)
+          
+          // Safety check: if timing is unreasonably large, use reasonable defaults
+          let timingDays = rawTiming
+          if (rawTiming > 30) {
+            console.warn(`⚠️ Step ${index + 1} has corrupted timing (${rawTiming} days), using default progression`)
+            // Use a reasonable default progression: 0, 3, 7, 14, 21, 28 days
+            const defaultTimings = [0, 3, 7, 14, 21, 28]
+            timingDays = defaultTimings[index] || (index * 7) // Default to weekly intervals after predefined
+          }
           // Use sequential numbering (1, 2, 3...) instead of database sequenceStep
           const stepNumber = index + 1
           
           // Calculate cumulative days from start (not just timing between steps)
+          // Use corrected timing values for all calculations
           let cumulativeDays = 0
           for (let i = 0; i <= index; i++) {
+            let stepTiming = sortedSequences[i].timing !== undefined ? sortedSequences[i].timing : (i === 0 ? 0 : 1)
+            
+            // Apply same safety check to cumulative calculation
+            if (stepTiming > 30) {
+              const defaultTimings = [0, 3, 7, 14, 21, 28]
+              stepTiming = defaultTimings[i] || (i * 7)
+            }
+            
             if (i === 0) {
-              cumulativeDays = sortedSequences[0].timing || 0 // First step timing
+              cumulativeDays = stepTiming // First step timing
             } else {
-              cumulativeDays += sortedSequences[i].timing || 1 // Add subsequent timings
+              cumulativeDays += stepTiming // Add subsequent timings
             }
           }
           
