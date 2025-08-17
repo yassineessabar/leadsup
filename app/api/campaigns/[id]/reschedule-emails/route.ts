@@ -75,7 +75,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         // Only schedule future emails (current step + 1 onwards)
         if (email.step <= currentStep) continue
 
-        const scheduledDate = new Date(now)
+        let scheduledDate = new Date(now)
         
         // If this is the next email, schedule it immediately or with minimal delay
         if (email.step === currentStep + 1) {

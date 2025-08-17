@@ -555,12 +555,16 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     const senderIndex = Math.abs(contactHash) % Math.max(campaignSenders.length, 1)
     const assignedSender = campaignSenders[senderIndex] || contact.sender_email || 'No sender assigned'
     
+    // Track current step to preserve scheduled times for past emails
+    const currentStep = contact.sequence_step || 0
+    
     // Use actual campaign sequences if available, otherwise fallback to default
     const emailSchedule = campaignSequences.length > 0 
       ? campaignSequences.map((seq, index) => {
           // Use the actual timing from sequence settings
           const timingDays = seq.timing !== undefined ? seq.timing : (index === 0 ? 0 : 1)
-          const stepNumber = seq.sequenceStep || seq.id || (index + 1)
+          // Use sequential numbering (1, 2, 3...) instead of database sequenceStep
+          const stepNumber = index + 1
           
           return {
             step: stepNumber,
@@ -594,17 +598,18 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           }
         ]
 
-    const currentStep = contact.sequence_step || 0
     const contactDate = contact.created_at ? new Date(contact.created_at) : new Date()
     
     return emailSchedule.map(email => {
       const scheduledDate = new Date(contactDate)
       scheduledDate.setDate(contactDate.getDate() + email.days)
       
-      // Add randomized business hours (simulate real scheduling)
-      const randomHour = 9 + Math.floor(Math.random() * 8) // 9 AM - 5 PM
-      const randomMinute = Math.floor(Math.random() * 60)
-      scheduledDate.setHours(randomHour, randomMinute, 0, 0)
+      // Add consistent business hours based on contact and step (not random)
+      // Use contact ID and step to generate consistent but varied times
+      const seedValue = (contactHash + email.step) % 1000
+      const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM (consistent for this contact+step)
+      const consistentMinute = (seedValue * 7) % 60 // Consistent minute based on seed
+      scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
       
       // Avoid weekends
       const dayOfWeek = scheduledDate.getDay()
