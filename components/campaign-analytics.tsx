@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, RefreshCw, Pause, Play, Square, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, Mail, Clock, BarChart3 } from "lucide-react"
+import { ArrowLeft, RefreshCw, Pause, Play, Square, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -79,6 +79,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [sequenceModalContact, setSequenceModalContact] = useState<Contact | null>(null)
+  const [emailPreviewModal, setEmailPreviewModal] = useState<{contact: Contact, step: any} | null>(null)
+  const [contactDetailsModal, setContactDetailsModal] = useState<Contact | null>(null)
   
   // SendGrid analytics state
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
@@ -451,12 +453,151 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Generate full email schedule for a contact
   const generateContactSchedule = (contact: Contact) => {
     const emailSchedule = [
-      { step: 1, subject: "Initial Outreach", days: 0, label: 'Immediate' },
-      { step: 2, subject: "Follow-up #1", days: 3, label: '3 days' },
-      { step: 3, subject: "Follow-up #2", days: 7, label: '7 days' },
-      { step: 4, subject: "Value Proposition", days: 14, label: '14 days' },
-      { step: 5, subject: "Final Follow-up", days: 21, label: '21 days' },
-      { step: 6, subject: "Closing Sequence", days: 28, label: '28 days' }
+      { 
+        step: 1, 
+        subject: "Initial Outreach", 
+        days: 0, 
+        label: 'Immediate',
+        content: `Hi ${contact.first_name},
+
+I hope this email finds you well. I noticed your work at ${contact.company} and was impressed by your role as ${contact.title || 'a professional'}.
+
+I wanted to reach out because I believe our services could help ${contact.company} achieve even better results. We've helped similar companies in your industry increase their efficiency by 40% on average.
+
+Would you be open to a brief 15-minute conversation this week to explore how we could potentially help ${contact.company}?
+
+Best regards,
+[Your name]
+
+P.S. I'd love to learn more about the challenges you're currently facing at ${contact.company}.`
+      },
+      { 
+        step: 2, 
+        subject: "Quick follow-up", 
+        days: 3, 
+        label: '3 days',
+        content: `Hi ${contact.first_name},
+
+I wanted to follow up on my previous email about potentially helping ${contact.company} improve efficiency.
+
+I understand you're probably busy, so I'll keep this brief. Here are three quick wins we've achieved for companies similar to ${contact.company}:
+
+• Reduced operational costs by 25%
+• Streamlined workflows saving 10+ hours per week
+• Improved team productivity across departments
+
+Would a 10-minute call this week work for you to discuss how these could apply to ${contact.company}?
+
+Best,
+[Your name]`
+      },
+      { 
+        step: 3, 
+        subject: "Case study you might find interesting", 
+        days: 7, 
+        label: '7 days',
+        content: `Hi ${contact.first_name},
+
+I thought you might find this interesting - we recently worked with a company very similar to ${contact.company} and helped them achieve remarkable results.
+
+The Challenge: They were struggling with inefficient processes and wanted to scale without adding headcount.
+
+Our Solution: We implemented our streamlined approach, focusing on automation and optimization.
+
+The Results:
+✓ 35% reduction in processing time
+✓ $50K+ annual cost savings
+✓ Team productivity increased by 40%
+
+I'd love to share more details about how this could work for ${contact.company}. Are you available for a brief call this week?
+
+Best regards,
+[Your name]
+
+[Case Study Link]`
+      },
+      { 
+        step: 4, 
+        subject: "Value Proposition for ${contact.company}", 
+        days: 14, 
+        label: '14 days',
+        content: `Hi ${contact.first_name},
+
+I've been thinking about ${contact.company} and the challenges that ${contact.title}s typically face in today's market.
+
+Based on my research of ${contact.company}, I believe we could help you:
+
+🎯 Specific Value for ${contact.company}:
+• Reduce manual workload by 50%
+• Improve accuracy and consistency
+• Free up your team to focus on strategic initiatives
+• Potential ROI of 300% within 6 months
+
+Here's what makes us different:
+- Proven track record with 200+ similar companies
+- Implementation takes less than 30 days
+- Dedicated support throughout the process
+
+Would you be interested in a 15-minute demo tailored specifically for ${contact.company}?
+
+Best,
+[Your name]
+
+P.S. Happy to work around your schedule.`
+      },
+      { 
+        step: 5, 
+        subject: "Final follow-up - worth 5 minutes?", 
+        days: 21, 
+        label: '21 days',
+        content: `Hi ${contact.first_name},
+
+This will be my final email, as I don't want to be a bother.
+
+I've reached out a few times about potentially helping ${contact.company} improve efficiency and reduce costs. I understand priorities change and timing isn't always right.
+
+If there's ever a time when ${contact.company} is looking to:
+• Streamline operations
+• Reduce manual work
+• Improve team productivity
+
+I'd be happy to help. Feel free to reach out anytime.
+
+If now isn't the right time, I completely understand. Wishing you and the ${contact.company} team continued success.
+
+Best regards,
+[Your name]
+
+P.S. If you know someone else at ${contact.company} who might be interested, I'd appreciate an introduction.`
+      },
+      { 
+        step: 6, 
+        subject: "One last resource for ${contact.company}", 
+        days: 28, 
+        label: '28 days',
+        content: `Hi ${contact.first_name},
+
+I hope you don't mind one final email. I wanted to share a valuable resource regardless of whether we work together.
+
+I've put together a comprehensive guide: "The ${contact.title}'s Playbook for Operational Excellence" which includes:
+
+📋 Efficiency audit checklist
+📊 ROI calculation templates  
+🚀 Quick-win implementation strategies
+📈 Performance tracking frameworks
+
+This guide has helped hundreds of professionals like yourself at companies similar to ${contact.company}.
+
+You can download it here: [Download Link]
+
+No strings attached - just our way of providing value to the community.
+
+Best of luck with everything at ${contact.company}!
+
+[Your name]
+
+P.S. The door is always open if you'd like to connect in the future.`
+      }
     ]
 
     const currentStep = contact.sequence_step || 0
@@ -500,6 +641,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Open sequence modal
   const openSequenceModal = (contact: Contact) => {
     setSequenceModalContact(contact)
+  }
+
+  // Open email content preview modal
+  const openEmailPreview = (contact: Contact, step: any) => {
+    setEmailPreviewModal({ contact, step })
   }
 
   // Filter contacts
@@ -892,8 +1038,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                         />
                       </th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
-                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Company</th>
+                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[200px]">Status</th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Timezone</th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Next Email</th>
@@ -963,16 +1108,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                               </div>
                             </div>
                           </td>
-                          <td className="p-4">
-                            <Badge variant="outline" className={`${getContactStatusBadgeColor(contact.status)} text-xs border rounded-full px-2 py-1`}>
+                          <td className="p-4 min-w-[200px]">
+                            <Badge variant="outline" className={`${getContactStatusBadgeColor(contact.status)} text-xs border rounded-full px-3 py-1 whitespace-nowrap inline-block`}>
                               {contact.status}
                             </Badge>
-                          </td>
-                          <td className="p-4">
-                            <p className="font-medium text-gray-900">{contact.company || '-'}</p>
-                            {contact.title && (
-                              <p className="text-sm text-gray-500">{contact.title}</p>
-                            )}
                           </td>
                           <td className="p-4">
                             <p className="text-sm text-gray-500">{contact.location || '-'}</p>
@@ -1088,7 +1227,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="rounded-xl border-gray-200">
-                                  <DropdownMenuItem onClick={() => console.log('View:', contact.id)}>
+                                  <DropdownMenuItem onClick={() => setContactDetailsModal(contact)}>
                                     View Details
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => console.log('Remove:', contact.id)} className="text-red-600">
@@ -1119,38 +1258,41 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
 
       {/* Sequence Timeline Modal */}
       <Dialog open={sequenceModalContact !== null} onOpenChange={(open) => !open && setSequenceModalContact(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-blue-600" />
+        <DialogContent className="max-w-3xl h-[90vh] max-h-[90vh] overflow-hidden bg-white flex flex-col">
+          <DialogHeader className="pb-4 border-b border-gray-200 flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <Calendar className="w-5 h-5 text-gray-600" />
               Email Sequence Timeline
             </DialogTitle>
           </DialogHeader>
           
           {sequenceModalContact && (
-            <div className="space-y-6">
+            <div className="space-y-8 overflow-y-auto pr-2 pb-4 flex-1 mt-6">
               {/* Contact Header */}
-              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
-                <Avatar className="h-12 w-12">
-                  {sequenceModalContact.image_url ? (
-                    <AvatarImage src={sequenceModalContact.image_url} />
-                  ) : (
-                    <AvatarFallback className="bg-blue-100 text-blue-600 font-medium">
-                      {sequenceModalContact.first_name?.[0]}{sequenceModalContact.last_name?.[0]}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">
-                    {sequenceModalContact.first_name} {sequenceModalContact.last_name}
-                  </h3>
-                  <p className="text-sm text-gray-600">{sequenceModalContact.email}</p>
-                  <p className="text-xs text-gray-500">{sequenceModalContact.company}</p>
-                </div>
-                <div className="text-center">
-                  <div className="text-sm font-medium text-gray-700">Progress</div>
-                  <div className="text-lg font-bold text-blue-600">
-                    {sequenceModalContact.sequence_step || 0}/6
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      {sequenceModalContact.image_url ? (
+                        <AvatarImage src={sequenceModalContact.image_url} />
+                      ) : (
+                        <AvatarFallback className="bg-gray-200 text-gray-600 font-medium">
+                          {sequenceModalContact.first_name?.[0]}{sequenceModalContact.last_name?.[0]}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">
+                        {sequenceModalContact.first_name} {sequenceModalContact.last_name}
+                      </h3>
+                      <p className="text-sm text-gray-600">{sequenceModalContact.email}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-gray-500">Progress</div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {sequenceModalContact.sequence_step || 0} of 6
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1158,7 +1300,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               {/* Timeline */}
               <div className="relative">
                 {/* Timeline line */}
-                <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                <div className="absolute left-5 top-0 bottom-0 w-px bg-gray-200"></div>
                 
                 <div className="space-y-6">
                   {generateContactSchedule(sequenceModalContact).map((step, index) => {
@@ -1167,77 +1309,73 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                     return (
                       <div key={step.step} className="relative flex items-start gap-4">
                         {/* Timeline dot */}
-                        <div className={`relative z-10 w-12 h-12 rounded-full border-4 bg-white flex items-center justify-center ${
-                          step.status === 'sent' ? 'border-green-500' :
-                          step.status === 'pending' ? 'border-blue-500 shadow-lg shadow-blue-200' :
-                          step.status === 'skipped' ? 'border-gray-300' :
-                          'border-gray-200'
+                        <div className={`relative z-10 w-10 h-10 rounded-full border-2 bg-white flex items-center justify-center ${
+                          step.status === 'sent' 
+                            ? 'border-green-500 bg-green-50' :
+                          step.status === 'pending' 
+                            ? 'border-gray-900 bg-gray-50' :
+                          step.status === 'skipped' 
+                            ? 'border-gray-300 bg-white' :
+                          'border-gray-300 bg-white'
                         }`}>
                           {step.status === 'sent' ? (
-                            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </div>
+                            <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
                           ) : (
                             <span className="text-sm font-semibold text-gray-600">{step.step}</span>
                           )}
                         </div>
                         
                         {/* Step content */}
-                        <div className={`flex-1 min-w-0 p-4 rounded-lg ${
-                          step.status === 'sent' ? 'bg-green-50 border border-green-200' :
-                          step.status === 'pending' && isNext ? 'bg-blue-50 border border-blue-200' :
-                          step.status === 'skipped' ? 'bg-gray-50 border border-gray-200' :
-                          'bg-gray-50 border border-gray-100'
+                        <div className={`flex-1 min-w-0 p-4 rounded-lg border ${
+                          step.status === 'sent' 
+                            ? 'bg-white border-gray-200' :
+                          step.status === 'pending' && isNext 
+                            ? 'bg-gray-50 border-gray-900' :
+                          step.status === 'skipped' 
+                            ? 'bg-white border-gray-200 opacity-60' :
+                          'bg-white border-gray-200'
                         }`}>
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
                               <h4 className="font-semibold text-gray-900">{step.subject}</h4>
-                              <p className="text-sm text-gray-600">Step {step.step} of 6</p>
+                              <p className="text-sm text-gray-500">Step {step.step} of 6</p>
                             </div>
                             
                             {/* Status badges */}
-                            <div className="flex gap-2">
+                            <div>
                               {step.status === 'sent' && (
-                                <Badge className="bg-green-100 text-green-700 border-green-200">
-                                  ✓ Sent
-                                </Badge>
+                                <span className="text-sm font-medium text-green-600">Sent</span>
                               )}
                               {step.status === 'pending' && isNext && (
-                                <Badge className="bg-blue-100 text-blue-700 border-blue-200">
-                                  🔄 Up Next
-                                </Badge>
+                                <span className="text-sm font-medium text-gray-900">Up Next</span>
                               )}
                               {step.status === 'skipped' && (
-                                <Badge variant="secondary" className="bg-gray-100 text-gray-600">
-                                  ⏭️ Skipped
-                                </Badge>
+                                <span className="text-sm font-medium text-gray-400">Skipped</span>
                               )}
                               {step.status === 'upcoming' && (
-                                <Badge variant="outline" className="border-gray-300 text-gray-600">
-                                  ⏳ Upcoming
-                                </Badge>
+                                <span className="text-sm font-medium text-gray-500">Upcoming</span>
                               )}
                             </div>
                           </div>
                           
                           {/* Scheduled time */}
                           <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm font-medium text-gray-700">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Calendar className="w-4 h-4" />
+                              <span>
                                 {step.scheduledDate.toLocaleDateString('en-US', {
-                                  weekday: 'long',
-                                  month: 'long',
+                                  weekday: 'short',
+                                  month: 'short',
                                   day: 'numeric',
                                   year: 'numeric'
                                 })}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm text-gray-600">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Clock className="w-4 h-4" />
+                              <span>
                                 {step.scheduledDate.toLocaleTimeString('en-US', {
                                   hour: 'numeric',
                                   minute: '2-digit',
@@ -1245,6 +1383,19 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                                 })} {step.timezone && `(${step.timezone})`}
                               </span>
                             </div>
+                          </div>
+
+                          {/* Email Content Preview Button */}
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-0"
+                              onClick={() => openEmailPreview(sequenceModalContact, step)}
+                            >
+                              <Eye className="w-4 h-4 mr-1.5" />
+                              Preview Email
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -1254,27 +1405,278 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               </div>
 
               {/* Summary */}
-              <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <div className="text-lg font-bold text-green-600">
+                    <div className="text-xl font-semibold text-gray-900">
                       {generateContactSchedule(sequenceModalContact).filter(s => s.status === 'sent').length}
                     </div>
-                    <div className="text-xs text-gray-600">Sent</div>
+                    <div className="text-sm text-gray-500">Sent</div>
                   </div>
                   <div>
-                    <div className="text-lg font-bold text-blue-600">
+                    <div className="text-xl font-semibold text-gray-900">
                       {generateContactSchedule(sequenceModalContact).filter(s => s.status === 'pending').length}
                     </div>
-                    <div className="text-xs text-gray-600">Pending</div>
+                    <div className="text-sm text-gray-500">Pending</div>
                   </div>
                   <div>
-                    <div className="text-lg font-bold text-gray-600">
+                    <div className="text-xl font-semibold text-gray-900">
                       {generateContactSchedule(sequenceModalContact).filter(s => s.status === 'upcoming').length}
                     </div>
-                    <div className="text-xs text-gray-600">Upcoming</div>
+                    <div className="text-sm text-gray-500">Upcoming</div>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Content Preview Modal */}
+      <Dialog open={emailPreviewModal !== null} onOpenChange={(open) => !open && setEmailPreviewModal(null)}>
+        <DialogContent className="max-w-4xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="pb-4 flex-shrink-0 border-b border-gray-200/60">
+            <DialogTitle className="flex items-center gap-3 text-lg font-semibold">
+              <Mail className="w-5 h-5 text-blue-600" />
+              Email Preview - Step {emailPreviewModal?.step?.step}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {emailPreviewModal && (
+            <div className="space-y-6 overflow-y-auto pr-2 pb-4 flex-1 mt-4">
+              {/* Contact & Campaign Info */}
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    {emailPreviewModal.contact.image_url ? (
+                      <AvatarImage src={emailPreviewModal.contact.image_url} />
+                    ) : (
+                      <AvatarFallback className="bg-blue-100 text-blue-600 font-medium">
+                        {emailPreviewModal.contact.first_name?.[0]}{emailPreviewModal.contact.last_name?.[0]}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">
+                      {emailPreviewModal.contact.first_name} {emailPreviewModal.contact.last_name}
+                    </h3>
+                    <p className="text-sm text-gray-600">{emailPreviewModal.contact.email}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-gray-700">{emailPreviewModal.contact.title}</div>
+                  <div className="text-sm text-gray-600">{emailPreviewModal.contact.company}</div>
+                </div>
+              </div>
+
+              {/* Email Preview Card */}
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col max-h-[calc(90vh-200px)]">
+                {/* Email Header */}
+                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Mail className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-700">From: [Your Email]</div>
+                        <div className="text-sm text-gray-600">To: {emailPreviewModal.contact.email}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge className={`${
+                        emailPreviewModal.step.status === 'sent' ? 'bg-green-100 text-green-700 border-green-200' :
+                        emailPreviewModal.step.status === 'pending' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                        emailPreviewModal.step.status === 'skipped' ? 'bg-gray-100 text-gray-600 border-gray-200' :
+                        'bg-yellow-100 text-yellow-700 border-yellow-200'
+                      }`}>
+                        {emailPreviewModal.step.status === 'sent' ? '✓ Sent' :
+                         emailPreviewModal.step.status === 'pending' ? '🔄 Pending' :
+                         emailPreviewModal.step.status === 'skipped' ? '⏭️ Skipped' :
+                         '⏳ Upcoming'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subject Line */}
+                <div className="px-6 py-4 bg-white border-b border-gray-100 flex-shrink-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Subject</span>
+                  </div>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {emailPreviewModal.step.subject}
+                  </div>
+                </div>
+
+                {/* Email Content - Scrollable */}
+                <div className="px-6 py-6 bg-white overflow-y-auto flex-1">
+                  <div className="prose prose-sm max-w-none">
+                    <div className="text-gray-800 leading-relaxed whitespace-pre-wrap font-sans">
+                      {emailPreviewModal.step.content}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email Footer */}
+                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center gap-4">
+                      <span>📅 Scheduled: {emailPreviewModal.step.scheduledDate.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      })}</span>
+                      <span>🌍 {emailPreviewModal.step.timezone}</span>
+                    </div>
+                    <span>Step {emailPreviewModal.step.step} of 6</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Personalization Info */}
+              <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <Users className="w-4 h-4 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-green-900 mb-1">Smart Personalization</h4>
+                    <p className="text-sm text-green-700 leading-relaxed">
+                      This email is automatically personalized with <strong>{emailPreviewModal.contact.first_name}'s</strong> details including their name, company (<strong>{emailPreviewModal.contact.company}</strong>), and role (<strong>{emailPreviewModal.contact.title}</strong>). The content adapts to create a natural, personalized conversation.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Clock className="w-4 h-4" />
+                  <span>Sending in {emailPreviewModal.step.timezone || 'UTC'} timezone</span>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                    onClick={() => setEmailPreviewModal(null)}
+                  >
+                    Close Preview
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Contact Details Modal */}
+      <Dialog open={contactDetailsModal !== null} onOpenChange={(open) => !open && setContactDetailsModal(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader className="pb-4 border-b border-gray-200">
+            <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <User className="w-5 h-5 text-gray-600" />
+              Contact Details
+            </DialogTitle>
+          </DialogHeader>
+          
+          {contactDetailsModal && (
+            <div className="space-y-6 py-4">
+              {/* Contact Header */}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                    {contactDetailsModal.image_url ? (
+                      <AvatarImage src={contactDetailsModal.image_url} />
+                    ) : (
+                      <AvatarFallback className="bg-gray-200 text-gray-600 font-medium text-lg">
+                        {contactDetailsModal.first_name?.[0]}{contactDetailsModal.last_name?.[0]}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      {contactDetailsModal.first_name} {contactDetailsModal.last_name}
+                    </h3>
+                    <p className="text-gray-600">{contactDetailsModal.email}</p>
+                    {contactDetailsModal.phone && (
+                      <p className="text-sm text-gray-500 mt-1">{contactDetailsModal.phone}</p>
+                    )}
+                  </div>
+                </div>
+                <Badge variant="outline" className={`${getContactStatusBadgeColor(contactDetailsModal.status)} text-xs border rounded-full px-3 py-1`}>
+                  {contactDetailsModal.status}
+                </Badge>
+              </div>
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-4 py-4 border-t border-gray-100">
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Company</p>
+                  <p className="font-medium text-gray-900">{contactDetailsModal.company || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Title</p>
+                  <p className="font-medium text-gray-900">{contactDetailsModal.title || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Location</p>
+                  <p className="font-medium text-gray-900">{contactDetailsModal.location || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Timezone</p>
+                  <p className="font-medium text-gray-900">{contactDetailsModal.timezone || deriveTimezoneFromLocation(contactDetailsModal.location) || 'UTC'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Sequence Step</p>
+                  <p className="font-medium text-gray-900">{contactDetailsModal.sequence_step || 0} of 6</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Sender</p>
+                  <p className="font-medium text-gray-900">{contactDetailsModal.sender_email || '-'}</p>
+                </div>
+              </div>
+
+              {/* LinkedIn Link */}
+              {contactDetailsModal.linkedin && (
+                <div className="pt-4 border-t border-gray-100">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full border-blue-200 text-blue-600 hover:bg-blue-50"
+                    onClick={() => window.open(contactDetailsModal.linkedin, '_blank')}
+                  >
+                    <Linkedin className="w-4 h-4 mr-2" />
+                    View LinkedIn Profile
+                  </Button>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-gray-100">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => {
+                    setContactDetailsModal(null)
+                    openSequenceModal(contactDetailsModal)
+                  }}
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  View Sequence
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-gray-600"
+                  onClick={() => setContactDetailsModal(null)}
+                >
+                  Close
+                </Button>
               </div>
             </div>
           )}
