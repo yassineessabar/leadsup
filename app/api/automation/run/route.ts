@@ -5,7 +5,8 @@ import { v4 as uuidv4 } from 'uuid'
 interface AutomationConfig {
   runId: string
   testMode?: boolean
-  campaignId?: number
+  campaignId?: string
+  forceUnhealthySenders?: boolean
 }
 
 interface ContactWithTimezone {
@@ -17,7 +18,7 @@ interface ContactWithTimezone {
   timezone?: string
   last_contacted_at?: string | null
   sequence_step?: number
-  campaign_id: number
+  campaign_id: string
   tags?: string[]
 }
 
@@ -27,15 +28,15 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now()
   
   try {
-    const { testMode = false, campaignId } = await request.json() as AutomationConfig
+    const { testMode = false, campaignId, forceUnhealthySenders = false } = await request.json() as AutomationConfig
     
     // Log automation run start
     await logEvent({
       runId,
       logType: 'run_start',
       status: 'success',
-      message: `Automation run started ${testMode ? '(TEST MODE)' : ''}`,
-      details: { testMode, campaignId }
+      message: `Automation run started ${testMode ? '(TEST MODE)' : ''}${forceUnhealthySenders ? ' - FORCE UNHEALTHY SENDERS' : ''}`,
+      details: { testMode, campaignId, forceUnhealthySenders }
     })
 
     // Step 0: Active Check
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     // Process each active campaign
     for (const campaign of activeCampaigns) {
-      const campaignStats = await processCampaign(campaign, runId, testMode)
+      const campaignStats = await processCampaign(campaign, runId, testMode, forceUnhealthySenders)
       totalStats.processed += campaignStats.processed
       totalStats.sent += campaignStats.sent
       totalStats.skipped += campaignStats.skipped
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function processCampaign(campaign: any, runId: string, testMode: boolean) {
+async function processCampaign(campaign: any, runId: string, testMode: boolean, forceUnhealthySenders: boolean = false) {
   const stats = {
     processed: 0,
     sent: 0,
@@ -200,7 +201,7 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
     }
 
     // Step 3: Sender Account Analysis
-    const senders = await getHealthySenders(campaign.id)
+    const senders = await getHealthySenders(campaign.id, forceUnhealthySenders, runId)
     const senderDetails = await getSenderDetails(senders)
     
     await logEvent({
@@ -208,15 +209,24 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
       campaignId: campaign.id,
       logType: 'sender_analysis',
       status: senders.length > 0 ? 'success' : 'failed',
-      message: `📧 Account Senders: ${senders.length} healthy sender(s) available`,
+      message: forceUnhealthySenders 
+        ? `📧 Account Senders: ${senders.length} sender(s) available (INCLUDING UNHEALTHY - FORCED)`
+        : `📧 Account Senders: ${senders.length} healthy sender(s) available`,
       details: {
         totalSenders: senders.length,
+        forceUnhealthySenders,
+        debugInfo: {
+          campaignId: campaign.id,
+          campaignSendersFound: senders.length,
+          senderEmails: senders.map(s => s.email)
+        },
         senderAccounts: senderDetails.map(s => ({
           email: s.email,
           healthScore: s.healthScore || 'N/A',
           isActive: s.is_active,
           isSelected: s.is_selected,
-          status: s.healthScore >= 70 ? 'Healthy' : 'Needs Attention'
+          status: s.healthScore >= 70 ? 'Healthy' : 'Needs Attention',
+          forcedIncluded: forceUnhealthySenders && s.healthScore < 70
         }))
       }
     })
@@ -308,21 +318,25 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
           runId,
           campaignId: campaign.id,
           contactId: contact.id,
-          senderId: sender.id,
+          senderId: sender.sender_account_id || null,
           logType: 'email_sent',
           status: 'success',
           message: `✅ [TEST] Email would be sent to ${contact.email} (Step ${sequenceStep})`,
           emailSubject: template.subject,
           sequenceStep,
+          timezone: contact.timezone,
           details: {
             testMode: true,
             sender: sender.email,
             template: template.subject,
+            nextEmailIn: `${template.timing_days || 3} days`,
+            campaignSenderId: sender.campaign_sender_id,
             contact: {
               email: contact.email,
               name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim(),
               currentStep: contact.sequence_step || 0,
-              newStep: sequenceStep
+              newStep: sequenceStep,
+              timezone: contact.timezone
             }
           }
         })
@@ -354,24 +368,33 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
         })
 
         if (emailSent.success) {
+          const isSimulation = emailSent.simulation || emailSent.messageId?.startsWith('simulated_') || emailSent.messageId?.startsWith('placeholder_')
+          
           await logEvent({
             runId,
             campaignId: campaign.id,
             contactId: contact.id,
-            senderId: sender.id,
+            senderId: sender.sender_account_id || null,
             logType: 'email_sent',
             status: 'success',
-            message: `✅ Email sent to ${contact.email} (Step ${sequenceStep})`,
+            message: isSimulation 
+              ? `🧪 [SIMULATED] Email simulated for ${contact.email} (Step ${sequenceStep}) - No actual email sent`
+              : `✅ Email sent to ${contact.email} (Step ${sequenceStep})`,
             emailSubject: template.subject,
             sequenceStep,
+            timezone: contact.timezone,
             details: {
               messageId: emailSent.messageId,
               sender: sender.email,
+              nextEmailIn: `${template.timing_days || 3} days`,
+              simulation: isSimulation,
+              campaignSenderId: sender.campaign_sender_id,
               contact: {
                 email: contact.email,
                 name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim(),
                 currentStep: contact.sequence_step || 0,
-                newStep: sequenceStep
+                newStep: sequenceStep,
+                timezone: contact.timezone
               }
             }
           })
@@ -401,11 +424,14 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
             runId,
             campaignId: campaign.id,
             contactId: contact.id,
-            senderId: sender.id,
+            senderId: sender.sender_account_id || null,
             logType: 'email_failed',
             status: 'failed',
             message: `❌ Failed to send email to ${contact.email}`,
-            details: { error: emailSent.error }
+            details: { 
+              error: emailSent.error,
+              campaignSenderId: sender.campaign_sender_id
+            }
           })
           
           stats.errors++
@@ -446,7 +472,7 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
 }
 
 // Helper functions
-async function getActiveCampaigns(campaignId?: number) {
+async function getActiveCampaigns(campaignId?: string) {
   let query = supabaseServer
     .from('campaigns')
     .select(`
@@ -469,7 +495,7 @@ async function getActiveCampaigns(campaignId?: number) {
   return data || []
 }
 
-async function getAllContacts(campaignId: number) {
+async function getAllContacts(campaignId: string) {
   const { data, error } = await supabaseServer
     .from('contacts')
     .select('*')
@@ -483,7 +509,7 @@ async function getAllContacts(campaignId: number) {
   return data || []
 }
 
-async function getEligibleContacts(campaignId: number): Promise<ContactWithTimezone[]> {
+async function getEligibleContacts(campaignId: string): Promise<ContactWithTimezone[]> {
   const { data, error } = await supabaseServer
     .from('contacts')
     .select('*')
@@ -502,8 +528,9 @@ async function getEligibleContacts(campaignId: number): Promise<ContactWithTimez
   return eligibleContacts as ContactWithTimezone[]
 }
 
-async function getHealthySenders(campaignId: number) {
-  const { data, error } = await supabaseServer
+async function getHealthySenders(campaignId: string, forceUnhealthySenders: boolean = false, runId: string = 'unknown') {
+  // Get campaign senders first
+  const { data: campaignSenders, error } = await supabaseServer
     .from('campaign_senders')
     .select('*')
     .eq('campaign_id', campaignId)
@@ -511,13 +538,100 @@ async function getHealthySenders(campaignId: number) {
     .eq('is_active', true)
   
   if (error) {
-    console.error('Error fetching senders:', error)
+    console.error('Error fetching campaign senders:', error)
     return []
   }
   
-  // For now, return all selected and active senders
-  // TODO: Add health score filtering when sender_accounts relationship is available
-  return data || []
+  if (!campaignSenders || campaignSenders.length === 0) {
+    console.log(`No active senders found for campaign ${campaignId}`)
+    return []
+  }
+  
+  // Get corresponding sender accounts by email
+  const senderEmails = campaignSenders.map(s => s.email)
+  const { data: senderAccounts, error: senderAccountsError } = await supabaseServer
+    .from('sender_accounts')
+    .select('id, email, is_active')
+    .in('email', senderEmails)
+    
+  // Get real health scores for sender accounts
+  let healthScores: Record<string, any> = {}
+  try {
+    if (senderAccounts && senderAccounts.length > 0) {
+      const senderIds = senderAccounts.map(sa => sa.id)
+      const healthResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/sender-accounts/health-score?senderIds=${senderIds.join(',')}`, {
+        headers: {
+          'Cookie': 'internal-api-call=true' // Internal API call
+        }
+      })
+      
+      if (healthResponse.ok) {
+        const healthData = await healthResponse.json()
+        if (healthData.success && healthData.healthScores) {
+          healthScores = healthData.healthScores
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching health scores:', error)
+  }
+
+  // Debug log this critical step
+  await logEvent({
+    runId,
+    campaignId,
+    logType: 'debug',
+    status: 'success',
+    message: `🔍 DEBUG: Mapping campaign senders to accounts with health scores`,
+    details: {
+      campaignSendersEmails: senderEmails,
+      senderAccountsFound: senderAccounts?.length || 0,
+      senderAccountsEmails: senderAccounts?.map(sa => sa.email) || [],
+      senderAccountsError: senderAccountsError?.message,
+      healthScoresFetched: Object.keys(healthScores).length,
+      healthScoreData: Object.entries(healthScores).map(([id, data]) => ({
+        senderId: id,
+        score: data?.score || 'unknown',
+        email: senderAccounts?.find(sa => sa.id === id)?.email
+      }))
+    }
+  })
+
+  // Map campaign senders to their corresponding sender accounts with real health scores
+  const allSenders = campaignSenders
+    .map(campaignSender => {
+      const senderAccount = senderAccounts?.find(sa => sa.email === campaignSender.email)
+      if (senderAccount) {
+        // Get real health score or default to low score (40) to be conservative
+        const healthData = healthScores[senderAccount.id]
+        const healthScore = healthData?.score || 40 // Conservative default for unknown health
+        
+        return {
+          ...campaignSender,
+          sender_account_id: senderAccount.id,
+          campaign_sender_id: campaignSender.id,
+          health_score: healthScore
+        }
+      }
+      return null
+    })
+    .filter(Boolean)
+  
+  // Filter based on health scores unless forced
+  const validSenders = forceUnhealthySenders 
+    ? allSenders // Include all senders regardless of health
+    : allSenders.filter(sender => (sender.health_score || 0) >= 70) // Only healthy senders
+  
+  const unhealthyCount = allSenders.length - validSenders.length
+  
+  console.log(`DEBUG: Campaign senders:`, campaignSenders?.length || 0, campaignSenders?.map(cs => cs.email))
+  console.log(`DEBUG: Sender accounts found:`, senderAccounts?.length || 0, senderAccounts?.map(sa => sa.email))
+  console.log(`DEBUG: Health scores fetched:`, Object.keys(healthScores).length, Object.entries(healthScores).map(([id, data]) => ({ id, score: data?.score })))
+  console.log(`DEBUG: All mapped senders:`, allSenders.length, allSenders.map(s => ({ email: s.email, health_score: s.health_score, isHealthy: s.health_score >= 70 })))
+  console.log(`DEBUG: Filtering - forceUnhealthySenders: ${forceUnhealthySenders}, threshold: 70`)
+  console.log(`Found ${validSenders.length} ${forceUnhealthySenders ? 'total' : 'healthy'} senders for campaign ${campaignId}${unhealthyCount > 0 ? ` (${unhealthyCount} unhealthy ${forceUnhealthySenders ? 'included' : 'excluded'})` : ''}`)
+  
+  return validSenders
 }
 
 async function getSenderDetails(senders: any[]) {
@@ -528,7 +642,7 @@ async function getSenderDetails(senders: any[]) {
   }))
 }
 
-async function getDailyCaps(campaignId: number) {
+async function getDailyCaps(campaignId: string) {
   const { data } = await supabaseServer
     .from('campaign_settings')
     .select('daily_contacts_limit, daily_sequence_limit')
@@ -541,7 +655,7 @@ async function getDailyCaps(campaignId: number) {
   }
 }
 
-async function getSentToday(campaignId: number) {
+async function getSentToday(campaignId: string) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   
@@ -618,7 +732,7 @@ function parseTime(timeStr: string): number {
   return hour24
 }
 
-async function getEmailTemplate(campaignId: number, sequenceStep: number) {
+async function getEmailTemplate(campaignId: string, sequenceStep: number) {
   const { data, error } = await supabaseServer
     .from('campaign_sequences')
     .select('*')
@@ -635,24 +749,68 @@ async function getEmailTemplate(campaignId: number, sequenceStep: number) {
 }
 
 async function sendEmail({ from, to, template, campaign }: any) {
-  // This would integrate with your email sending service
-  // For now, we'll simulate the send
+  // Check if we should actually send emails or just simulate
+  const SIMULATION_MODE = process.env.EMAIL_SIMULATION_MODE !== 'false'
   
   try {
-    // TODO: Integrate with SendGrid/other email service
-    // const result = await sendGridClient.send({
-    //   from: from.email,
-    //   to: to.email,
-    //   subject: personalizeTemplate(template.subject, to),
-    //   html: personalizeTemplate(template.content, to)
-    // })
+    if (SIMULATION_MODE) {
+      // Simulate email sending for testing/development
+      console.log(`🧪 SIMULATED EMAIL SEND:`)
+      console.log(`   From: ${from.email}`)
+      console.log(`   To: ${to.email}`)
+      console.log(`   Subject: ${template.subject}`)
+      console.log(`   Campaign: ${campaign.name}`)
+      
+      return {
+        success: true,
+        messageId: `simulated_${Date.now()}_${to.id}`,
+        simulation: true
+      }
+    }
     
-    // Simulate success for testing
+    // SendGrid integration for real email sending
+    if (process.env.SENDGRID_API_KEY) {
+      const sgMail = require('@sendgrid/mail')
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+      
+      // Personalize the template content
+      const personalizedSubject = template.subject?.replace(/\{\{companyName\}\}/g, to.company || 'your company') || 'Email from LeadsUp'
+      const personalizedContent = template.content?.replace(/\{\{companyName\}\}/g, to.company || 'your company')
+        .replace(/\{\{firstName\}\}/g, to.first_name || 'there')
+        .replace(/\{\{lastName\}\}/g, to.last_name || '') || 'Hello from LeadsUp!'
+      
+      const msg = {
+        to: to.email,
+        from: from.email,
+        subject: personalizedSubject,
+        html: personalizedContent,
+        text: personalizedContent.replace(/<[^>]*>/g, '') // Strip HTML for text version
+      }
+      
+      console.log(`📧 SENDING REAL EMAIL:`)
+      console.log(`   From: ${from.email}`)
+      console.log(`   To: ${to.email}`)
+      console.log(`   Subject: ${personalizedSubject}`)
+      
+      const result = await sgMail.send(msg)
+      
+      return {
+        success: true,
+        messageId: result[0]?.headers?.['x-message-id'] || `sg_${Date.now()}_${to.id}`,
+        simulation: false
+      }
+    }
+    
+    // Fallback: return simulation if no email service is configured
+    console.log(`⚠️  No email service configured. Set SENDGRID_API_KEY to enable real email sending.`)
     return {
       success: true,
-      messageId: `msg_${Date.now()}_${to.id}`
+      messageId: `placeholder_${Date.now()}_${to.id}`,
+      simulation: true
     }
+    
   } catch (error) {
+    console.error('❌ Email sending error:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to send email'
@@ -732,5 +890,10 @@ async function logEvent(logData: any) {
   
   if (error) {
     console.error('Error logging event:', error)
+    console.error('Failed log data:', {
+      senderId: logData.senderId,
+      logType: logData.logType,
+      message: logData.message
+    })
   }
 }

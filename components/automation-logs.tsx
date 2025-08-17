@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -76,6 +77,7 @@ interface AutomationLog {
     email: string; 
     first_name: string; 
     last_name: string;
+    timezone?: string;
   }
   sender?: { email: string }
   campaignSenderInfo?: CampaignSenderInfo | null
@@ -98,6 +100,8 @@ export function AutomationLogs() {
   const [refreshing, setRefreshing] = useState(false)
   const [testMode, setTestMode] = useState(false)
   const [runningTest, setRunningTest] = useState(false)
+  const [isLiveMode, setIsLiveMode] = useState(true) // Toggle for Test/Live mode
+  const [includeUnhealthy, setIncludeUnhealthy] = useState(false) // Toggle for including unhealthy senders
   const [clearingLogs, setClearingLogs] = useState(false)
   const [resettingSequences, setResettingSequences] = useState(false)
   
@@ -165,37 +169,41 @@ export function AutomationLogs() {
       const response = await fetch('/api/automation/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ testMode: true })
+        body: JSON.stringify({ 
+          testMode: !isLiveMode,
+          forceUnhealthySenders: includeUnhealthy
+        })
       })
 
       const data = await response.json()
 
       if (data.success) {
         toast({
-          title: "Test Run Complete",
-          description: `Processed: ${data.stats.processed}, Sent: ${data.stats.sent}, Skipped: ${data.stats.skipped}`,
+          title: "Automation Run Complete",
+          description: `${isLiveMode ? 'Real emails sent' : 'Test mode - simulated'}${includeUnhealthy ? ' (including unhealthy senders)' : ''} - Processed: ${data.stats.processed}, Sent: ${data.stats.sent}, Skipped: ${data.stats.skipped}`,
         })
         
-        // Refresh logs to show test results
+        // Refresh logs to show automation results
         setTimeout(() => fetchLogs(), 1000)
       } else {
         toast({
-          title: "Test Failed",
-          description: data.error || "Failed to run automation test",
+          title: "Automation Failed",
+          description: data.error || "Failed to run automation",
           variant: "destructive"
         })
       }
     } catch (error) {
-      console.error("Error running test:", error)
+      console.error("Error running automation:", error)
       toast({
-        title: "Test Failed",
-        description: "Failed to run automation test",
+        title: "Automation Failed", 
+        description: "Failed to run automation",
         variant: "destructive"
       })
     } finally {
       setRunningTest(false)
     }
   }
+
 
   const clearAllLogs = async () => {
     // Confirmation dialog
@@ -332,14 +340,14 @@ export function AutomationLogs() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-light text-gray-900">Automation Logs</h2>
-          <p className="text-sm text-gray-600 mt-1">Monitor email automation activity and performance</p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <Button
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-light text-gray-900">Automation Logs</h2>
+            <p className="text-sm text-gray-600 mt-1">Monitor email automation activity and performance</p>
+          </div>
+          
+            <Button
             variant="outline"
             size="sm"
             onClick={() => {
@@ -398,20 +406,75 @@ export function AutomationLogs() {
             size="sm"
             onClick={runAutomationTest}
             disabled={runningTest}
-            className="rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50"
+            className={`rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50 ${
+              includeUnhealthy ? 'border-orange-200 text-orange-600 hover:bg-orange-50' : ''
+            }`}
           >
             {runningTest ? (
               <>
                 <Brain className="w-4 h-4 mr-2 animate-pulse" />
-                Running Test...
+                Running...
               </>
             ) : (
               <>
                 <Play className="w-4 h-4 mr-2" />
-                Run Test
+                {includeUnhealthy ? 'Run All Accounts' : 'Run Now'}
               </>
             )}
           </Button>
+        </div>
+        
+        {/* Control Toggles Row */}
+        <div className="flex items-center justify-between bg-gray-50/50 rounded-xl p-4 border border-gray-100">
+          <div className="flex items-center gap-6">
+            {/* Test/Live Mode Toggle */}
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-medium ${!isLiveMode ? 'text-blue-600' : 'text-gray-500'}`}>
+                TEST
+              </span>
+              <Switch
+                checked={isLiveMode}
+                onCheckedChange={setIsLiveMode}
+                className="data-[state=checked]:bg-green-600"
+              />
+              <span className={`text-xs font-medium ${isLiveMode ? 'text-green-600' : 'text-gray-500'}`}>
+                LIVE
+              </span>
+              <div className={`text-xs px-2 py-1 rounded-full font-medium ${
+                isLiveMode 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-blue-100 text-blue-700'
+              }`}>
+                {isLiveMode ? '🟢 Real' : '🔵 Test'}
+              </div>
+            </div>
+
+            {/* Include Unhealthy Senders Toggle */}
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-medium ${!includeUnhealthy ? 'text-gray-500' : 'text-orange-600'}`}>
+                Healthy
+              </span>
+              <Switch
+                checked={includeUnhealthy}
+                onCheckedChange={setIncludeUnhealthy}
+                className="data-[state=checked]:bg-orange-600"
+              />
+              <span className={`text-xs font-medium ${includeUnhealthy ? 'text-orange-600' : 'text-gray-500'}`}>
+                All
+              </span>
+              <div className={`text-xs px-2 py-1 rounded-full font-medium ${
+                includeUnhealthy 
+                  ? 'bg-orange-100 text-orange-700' 
+                  : 'bg-gray-100 text-gray-700'
+              }`}>
+                {includeUnhealthy ? '⚠️ All' : '✅ Healthy'}
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-xs text-gray-500">
+            Mode: {isLiveMode ? 'Live' : 'Test'} • Accounts: {includeUnhealthy ? 'All (including unhealthy)' : 'Healthy only'}
+          </div>
         </div>
       </div>
 
@@ -658,26 +721,78 @@ export function AutomationLogs() {
                         {log.campaign?.name || '-'}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {log.campaignSenderInfo ? (
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <div className="font-medium">
-                                {log.campaignSenderInfo.senderCount} sender{log.campaignSenderInfo.senderCount !== 1 ? 's' : ''}
+                        {log.details?.sender || log.campaignSenderInfo ? (
+                          <div className="space-y-1">
+                            {/* Current Sender Used */}
+                            {log.details?.sender && (
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-gray-900 text-xs">
+                                    {log.details.sender}
+                                  </span>
+                                  {log.details?.messageId && (
+                                    <span className="text-xs text-gray-400">
+                                      ID: {log.details.messageId.slice(-8)}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                log.campaignSenderInfo.avgHealthScore >= 80 ? 'bg-green-100 text-green-700' : 
-                                log.campaignSenderInfo.avgHealthScore >= 60 ? 'bg-yellow-100 text-yellow-700' : 
-                                'bg-red-100 text-red-700'
-                              }`}>
-                                {log.campaignSenderInfo.avgHealthScore}% health
+                            )}
+                            
+                            {/* Sender Pool Info */}
+                            {log.campaignSenderInfo && (
+                              <div className="text-xs">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-gray-600">
+                                    Pool: {log.campaignSenderInfo.senderCount} account{log.campaignSenderInfo.senderCount !== 1 ? 's' : ''}
+                                  </span>
+                                  <div className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                    log.campaignSenderInfo.avgHealthScore >= 80 ? 'bg-green-100 text-green-700' : 
+                                    log.campaignSenderInfo.avgHealthScore >= 60 ? 'bg-yellow-100 text-yellow-700' : 
+                                    'bg-red-100 text-red-700'
+                                  }`}>
+                                    {log.campaignSenderInfo.avgHealthScore}%
+                                  </div>
+                                </div>
+                                
+                                {/* Active Senders with Individual Health Scores */}
+                                <div className="space-y-0.5">
+                                  {log.campaignSenderInfo.senders.slice(0, 3).map((sender, idx) => (
+                                    <div key={idx} className="flex items-center justify-between">
+                                      <div className="flex items-center gap-1">
+                                        <div className={`w-1.5 h-1.5 rounded-full ${
+                                          sender.isActive ? 'bg-green-400' : 'bg-gray-300'
+                                        }`}></div>
+                                        <span className="text-xs text-gray-600 truncate max-w-20">
+                                          {sender.email.split('@')[0]}
+                                        </span>
+                                      </div>
+                                      {sender.healthScore !== 'N/A' && (
+                                        <span className={`text-xs px-1 rounded ${
+                                          sender.healthScore >= 80 ? 'bg-green-50 text-green-600' :
+                                          sender.healthScore >= 60 ? 'bg-yellow-50 text-yellow-600' :
+                                          'bg-red-50 text-red-600'
+                                        }`}>
+                                          {sender.healthScore}%
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                  {log.campaignSenderInfo.senders.length > 3 && (
+                                    <div className="text-xs text-gray-400 text-center">
+                                      +{log.campaignSenderInfo.senders.length - 3} more accounts
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            <div className="text-gray-500 text-xs mt-1">
-                              {log.campaignSenderInfo.senders.slice(0, 2).map(s => s.email).join(', ')}
-                              {log.campaignSenderInfo.senders.length > 2 && ` +${log.campaignSenderInfo.senders.length - 2} more`}
-                            </div>
+                            )}
                           </div>
-                        ) : '-'}
+                        ) : (
+                          <div className="text-xs text-gray-500">
+                            No sender info
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm">
                         {log.contact ? (
@@ -697,10 +812,185 @@ export function AutomationLogs() {
                         ) : '-'}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {log.timezone || '-'}
+                        {log.timezone || log.contact?.timezone ? (
+                          <div className="space-y-1">
+                            {/* Primary Timezone */}
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900 text-xs">
+                                {log.timezone || log.contact?.timezone}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {(() => {
+                                  const tz = log.timezone || log.contact?.timezone
+                                  try {
+                                    const now = new Date()
+                                    const timeInTz = new Intl.DateTimeFormat('en-US', {
+                                      timeZone: tz,
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    }).format(now)
+                                    return timeInTz
+                                  } catch {
+                                    return 'Unknown'
+                                  }
+                                })()}
+                              </span>
+                            </div>
+                            
+                            {/* Business Hours Status */}
+                            <div className="flex items-center gap-1">
+                              {(() => {
+                                const tz = log.timezone || log.contact?.timezone
+                                try {
+                                  const now = new Date()
+                                  const hour = parseInt(new Intl.DateTimeFormat('en-US', {
+                                    timeZone: tz,
+                                    hour: 'numeric',
+                                    hour12: false
+                                  }).format(now))
+                                  const isBusinessHours = hour >= 8 && hour < 17
+                                  
+                                  return (
+                                    <>
+                                      <div className={`w-1.5 h-1.5 rounded-full ${
+                                        isBusinessHours ? 'bg-green-500' : 'bg-red-500'
+                                      }`}></div>
+                                      <span className={`text-xs ${
+                                        isBusinessHours ? 'text-green-600' : 'text-red-600'
+                                      }`}>
+                                        {isBusinessHours ? 'Business hours' : 'Outside hours'}
+                                      </span>
+                                    </>
+                                  )
+                                } catch {
+                                  return (
+                                    <>
+                                      <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                                      <span className="text-xs text-gray-500">Unknown status</span>
+                                    </>
+                                  )
+                                }
+                              })()}
+                            </div>
+                            
+                            {/* Skip Reason if Outside Hours */}
+                            {log.skip_reason === 'outside_hours' && (
+                              <div className="text-xs bg-yellow-50 text-yellow-700 px-1.5 py-0.5 rounded">
+                                Skipped: Outside business hours
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <span className="text-xs text-gray-500">No timezone</span>
+                            <div className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                              <span className="text-xs text-gray-500">Using UTC default</span>
+                            </div>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm">
-                        -
+                        <div className="space-y-1">
+                          {/* Current Sequence Status */}
+                          {log.sequence_step && (
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${
+                                log.log_type === 'email_sent' ? 'bg-green-500' :
+                                log.log_type === 'email_skipped' ? 'bg-yellow-500' :
+                                'bg-blue-500'
+                              }`}></div>
+                              <span className="font-medium text-xs">
+                                Step {log.sequence_step}/6
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Email Template Info */}
+                          {log.email_subject && (
+                            <div className="text-xs text-gray-600 truncate max-w-32">
+                              📧 {log.email_subject}
+                            </div>
+                          )}
+                          
+                          {/* Next Action Timeline */}
+                          {log.details?.nextEmailIn ? (
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs text-blue-600 font-medium">
+                                  Next: {log.details.nextEmailIn}
+                                </span>
+                              </div>
+                              {/* Calculated Next Send Date */}
+                              {(() => {
+                                try {
+                                  const logDate = new Date(log.created_at)
+                                  const nextDays = parseInt(log.details.nextEmailIn.match(/\d+/)?.[0] || '0')
+                                  if (nextDays > 0) {
+                                    const nextDate = new Date(logDate)
+                                    nextDate.setDate(nextDate.getDate() + nextDays)
+                                    return (
+                                      <div className="text-xs text-gray-500">
+                                        📅 {nextDate.toLocaleDateString('en-US', { 
+                                          month: 'short', 
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })}
+                                      </div>
+                                    )
+                                  }
+                                } catch {}
+                                return null
+                              })()}
+                            </div>
+                          ) : log.log_type === 'email_sent' && !log.details?.testMode ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                              <span className="text-xs text-green-600">Delivered</span>
+                            </div>
+                          ) : log.log_type === 'email_skipped' ? (
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
+                                <span className="text-xs text-yellow-600">Skipped</span>
+                              </div>
+                              {log.skip_reason && (
+                                <div className="text-xs bg-yellow-50 text-yellow-700 px-1.5 py-0.5 rounded">
+                                  {log.skip_reason.replace(/_/g, ' ')}
+                                </div>
+                              )}
+                            </div>
+                          ) : log.details?.testMode ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                              <span className="text-xs text-blue-600">Test Mode</span>
+                            </div>
+                          ) : log.details?.simulation || log.message?.includes('[SIMULATED]') ? (
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+                                <span className="text-xs text-orange-600">Simulated</span>
+                              </div>
+                              <div className="text-xs bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded">
+                                No actual email sent
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-500">No next action</span>
+                          )}
+                          
+                          {/* Progress Indicator */}
+                          {log.sequence_step && (
+                            <div className="w-full bg-gray-200 rounded-full h-1">
+                              <div 
+                                className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+                                style={{ width: `${(log.sequence_step / 6) * 100}%` }}
+                              ></div>
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="max-w-xs">
