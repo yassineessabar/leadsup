@@ -209,7 +209,7 @@ async function triggerSequenceReschedule(campaignId: string) {
   try {
     console.log(`🔄 Triggering email reschedule for campaign ${campaignId} after sequence change`)
     
-    const rescheduleResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/${campaignId}/sequences/reschedule`, {
+    const rescheduleResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/campaigns/${campaignId}/reschedule-emails`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
