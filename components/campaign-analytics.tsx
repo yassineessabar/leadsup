@@ -90,6 +90,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Health score state
   const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { score: number; breakdown: any; lastUpdated: string }>>({})
   const [healthScoresLoading, setHealthScoresLoading] = useState(false)
+  const [senderEmailMap, setSenderEmailMap] = useState<Record<string, string>>({})
   
   // SendGrid analytics state
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
@@ -179,9 +180,52 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         const sendersResult = await sendersResponse.json()
         const senderAssignments = sendersResult.assignments || []
         
+        console.log('📋 Raw sender assignments from API:', senderAssignments)
+        console.log('📋 Full senders API response:', sendersResult)
+        
         if (senderAssignments.length > 0) {
-          // Extract sender IDs from assignments
-          const senderIds = senderAssignments.map((assignment: any) => assignment.sender_id).filter(Boolean)
+          // Check what fields are available and extract sender IDs from assignments
+          console.log('🔍 First assignment structure:', senderAssignments[0])
+          
+          // Try to get sender_id first, but if that doesn't exist, get emails and look up sender accounts
+          let senderIds = senderAssignments.map((assignment: any) => assignment.sender_id).filter(Boolean)
+          
+          if (senderIds.length === 0) {
+            // Fall back to using email addresses directly in health score API
+            const senderEmails = senderAssignments.map((assignment: any) => assignment.email).filter(Boolean)
+            console.log('📧 Found sender emails instead of IDs:', senderEmails)
+            
+            if (senderEmails.length > 0) {
+              // Pass emails directly to health score API for resolution
+              console.log('🔍 Fetching health scores using emails:', senderEmails)
+              
+              const healthResponse = await fetch(`/api/sender-accounts/health-score?emails=${senderEmails.join(',')}&campaignId=${campaign.id}`, {
+                credentials: "include"
+              })
+              
+              if (healthResponse.ok) {
+                const healthResult = await healthResponse.json()
+                if (healthResult.success) {
+                  setSenderHealthScores(healthResult.healthScores || {})
+                  console.log('✅ Loaded health scores from emails:', healthResult.healthScores)
+                  
+                  // Create email mapping for display
+                  const emailMapping: Record<string, string> = {}
+                  senderEmails.forEach(email => {
+                    // For email-based lookups, we'll use the email directly
+                    emailMapping[email] = email
+                  })
+                  setSenderEmailMap(emailMapping)
+                  
+                  return // Exit early since we got the health scores
+                }
+              } else {
+                console.error('Failed to fetch health scores using emails:', healthResponse.statusText)
+              }
+            }
+          }
+          
+          console.log('📋 Final sender IDs for health scores:', senderIds)
           
           if (senderIds.length > 0) {
             console.log('🔍 Fetching health scores for sender IDs:', senderIds)
@@ -196,11 +240,27 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               if (healthResult.success) {
                 setSenderHealthScores(healthResult.healthScores || {})
                 console.log('✅ Loaded health scores:', healthResult.healthScores)
+                
+                // Create email mapping for display from sender assignments
+                const emailMapping: Record<string, string> = {}
+                senderAssignments.forEach((assignment: any) => {
+                  if (assignment.sender_id && assignment.email) {
+                    emailMapping[assignment.sender_id] = assignment.email
+                  } else if (assignment.email) {
+                    emailMapping[assignment.email] = assignment.email
+                  }
+                })
+                setSenderEmailMap(emailMapping)
               }
             } else {
               console.error('Failed to fetch health scores:', healthResponse.statusText)
             }
+          } else {
+            console.log('⚠️ No sender IDs found in assignments - cannot fetch health scores')
           }
+        } else {
+          console.log('⚠️ No sender assignments found for campaign')
+          console.log('📋 Senders response:', sendersResult)
         }
       }
     } catch (error) {
@@ -1136,6 +1196,8 @@ Please add content to this email in the sequence settings.`
               <div className="space-y-4">
                 {Object.entries(senderHealthScores).map(([senderId, healthData]) => {
                   const score = healthData.score
+                  const email = senderEmailMap[senderId] || senderId // Fallback to senderId if no email mapping
+                  
                   const getScoreColor = (score: number) => {
                     if (score >= 80) return 'text-green-600 bg-green-50'
                     if (score >= 60) return 'text-yellow-600 bg-yellow-50'
@@ -1155,7 +1217,7 @@ Please add content to this email in the sequence settings.`
                           <Mail className="w-5 h-5" />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">Sender Account {senderId.slice(0, 8)}...</p>
+                          <p className="font-medium text-gray-900">{email}</p>
                           <p className="text-sm text-gray-500">{getScoreStatus(score)}</p>
                         </div>
                       </div>

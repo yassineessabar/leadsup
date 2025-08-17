@@ -177,30 +177,37 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const senderIds = searchParams.get('senderIds')?.split(',').filter(id => id.trim()) || []
+    const emails = searchParams.get('emails')?.split(',').filter(email => email.trim()) || []
     const campaignId = searchParams.get('campaignId')
 
-    // If no sender IDs provided, return empty result
-    if (senderIds.length === 0) {
+    // If no sender IDs or emails provided, return empty result
+    if (senderIds.length === 0 && emails.length === 0) {
       return NextResponse.json({
         success: true,
         healthScores: {},
-        message: 'No sender IDs provided'
+        message: 'No sender IDs or emails provided'
       })
     }
 
-    console.log('🔍 Health score calculation for senders:', senderIds)
+    console.log('🔍 Health score calculation for senders:', senderIds.length > 0 ? senderIds : emails)
 
     // Get sender accounts for the user - try different query approaches
     let senderAccounts: any[] = []
     let sendersError: any = null
 
-    // Query with only existing columns
+    // Query with only existing columns - support both IDs and emails
     try {
-      const result = await supabaseServer
+      let query = supabaseServer
         .from('sender_accounts')
         .select('id, email, created_at, user_id')
-        .in('id', senderIds)
-        .eq('user_id', userId)
+
+      if (senderIds.length > 0) {
+        query = query.in('id', senderIds)
+      } else if (emails.length > 0) {
+        query = query.in('email', emails)
+      }
+
+      const result = await query.eq('user_id', userId)
       
       senderAccounts = result.data || []
       sendersError = result.error
@@ -211,10 +218,17 @@ export async function GET(request: NextRequest) {
       
       // Fallback: Query without user_id filter if the column doesn't exist
       try {
-        const result = await supabaseServer
+        let query = supabaseServer
           .from('sender_accounts')
           .select('id, email, created_at')
-          .in('id', senderIds)
+
+        if (senderIds.length > 0) {
+          query = query.in('id', senderIds)
+        } else if (emails.length > 0) {
+          query = query.in('email', emails)
+        }
+
+        const result = await query
         
         senderAccounts = result.data || []
         sendersError = result.error
@@ -229,6 +243,7 @@ export async function GET(request: NextRequest) {
     if (sendersError) {
       console.error('Error fetching sender accounts:', sendersError)
       console.error('Sender IDs provided:', senderIds)
+      console.error('Emails provided:', emails)
       console.error('User ID:', userId)
       return NextResponse.json({ 
         success: false, 
@@ -243,7 +258,9 @@ export async function GET(request: NextRequest) {
     console.log('🔄 Using real SendGrid webhook data for health calculation...')
     
     try {
-      const healthScores = await calculateHealthScoresFromRealData(userId, senderIds)
+      // Use the found sender accounts to get their IDs
+      const actualSenderIds = senderAccounts.map(account => account.id).filter(Boolean)
+      const healthScores = await calculateHealthScoresFromRealData(userId, actualSenderIds)
       
       if (Object.keys(healthScores).length === 0) {
         console.log('⚠️ No health scores calculated from real data, falling back to simulated data')
