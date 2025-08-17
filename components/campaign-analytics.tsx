@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, RefreshCw, Pause, Play, Square, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight } from "lucide-react"
+import { ArrowLeft, RefreshCw, Pause, Play, Square, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -87,6 +87,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [sequencesLastUpdated, setSequencesLastUpdated] = useState<number>(Date.now())
   const [sequencesRefreshing, setSequencesRefreshing] = useState(false)
   
+  // Health score state
+  const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { score: number; breakdown: any; lastUpdated: string }>>({})
+  const [healthScoresLoading, setHealthScoresLoading] = useState(false)
+  
   // SendGrid analytics state
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
   const [metricsLoading, setMetricsLoading] = useState(true)
@@ -157,6 +161,52 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       await fetchCampaignSequences()
     } finally {
       setSequencesRefreshing(false)
+    }
+  }
+
+  // Fetch health scores for campaign sender accounts
+  const fetchSenderHealthScores = async () => {
+    if (!campaign?.id) return
+    
+    setHealthScoresLoading(true)
+    try {
+      // First get the campaign senders
+      const sendersResponse = await fetch(`/api/campaigns/${campaign.id}/senders`, {
+        credentials: "include"
+      })
+      
+      if (sendersResponse.ok) {
+        const sendersResult = await sendersResponse.json()
+        const senderAssignments = sendersResult.assignments || []
+        
+        if (senderAssignments.length > 0) {
+          // Extract sender IDs from assignments
+          const senderIds = senderAssignments.map((assignment: any) => assignment.sender_id).filter(Boolean)
+          
+          if (senderIds.length > 0) {
+            console.log('🔍 Fetching health scores for sender IDs:', senderIds)
+            
+            // Fetch health scores
+            const healthResponse = await fetch(`/api/sender-accounts/health-score?senderIds=${senderIds.join(',')}&campaignId=${campaign.id}`, {
+              credentials: "include"
+            })
+            
+            if (healthResponse.ok) {
+              const healthResult = await healthResponse.json()
+              if (healthResult.success) {
+                setSenderHealthScores(healthResult.healthScores || {})
+                console.log('✅ Loaded health scores:', healthResult.healthScores)
+              }
+            } else {
+              console.error('Failed to fetch health scores:', healthResponse.statusText)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sender health scores:', error)
+    } finally {
+      setHealthScoresLoading(false)
     }
   }
 
@@ -383,6 +433,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       fetchMetrics()
       fetchCampaignSenders()
       fetchCampaignSequences()
+      fetchSenderHealthScores()
     }
   }, [campaign?.id, campaign.name])
 
@@ -1062,6 +1113,73 @@ Please add content to this email in the sequence settings.`
             </CardContent>
           </Card>
         </div>
+
+        {/* Health Score Section */}
+        <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
+          <CardContent className="p-8">
+            <div className="flex items-center space-x-4 mb-8">
+              <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center">
+                <Heart className="w-6 h-6 text-orange-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-medium text-gray-900">Sender Health Scores</h2>
+                <p className="text-gray-500 text-sm mt-1">Account health and deliverability metrics</p>
+              </div>
+            </div>
+            
+            {healthScoresLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin h-6 w-6 border-2 border-orange-600 border-t-transparent rounded-full"></div>
+                <span className="ml-2 text-gray-600">Loading health scores...</span>
+              </div>
+            ) : Object.keys(senderHealthScores).length > 0 ? (
+              <div className="space-y-4">
+                {Object.entries(senderHealthScores).map(([senderId, healthData]) => {
+                  const score = healthData.score
+                  const getScoreColor = (score: number) => {
+                    if (score >= 80) return 'text-green-600 bg-green-50'
+                    if (score >= 60) return 'text-yellow-600 bg-yellow-50'
+                    return 'text-red-600 bg-red-50'
+                  }
+                  
+                  const getScoreStatus = (score: number) => {
+                    if (score >= 80) return 'Excellent'
+                    if (score >= 60) return 'Good'
+                    return 'Needs Attention'
+                  }
+                  
+                  return (
+                    <div key={senderId} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getScoreColor(score)}`}>
+                          <Mail className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">Sender Account {senderId.slice(0, 8)}...</p>
+                          <p className="text-sm text-gray-500">{getScoreStatus(score)}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(score)}`}>
+                          {score}/100
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Updated {new Date(healthData.lastUpdated).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Heart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">No health score data available</p>
+                <p className="text-sm text-gray-400 mt-1">Health scores will appear once sender accounts are configured</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Progress Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
