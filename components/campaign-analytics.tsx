@@ -227,28 +227,19 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             const daysSinceCreated = Math.floor((Date.now() - new Date(contact.created_at).getTime()) / (1000 * 60 * 60 * 24))
             
             let status: Contact["status"]
-            if (daysSinceCreated === 0) {
+            
+            // Use actual sequence_step from contact data to match timeline logic
+            const actualSequenceStep = contact.sequence_step || 0
+            
+            if (actualSequenceStep === 0) {
               status = "Pending"
-            } else if (daysSinceCreated <= 1) {
-              status = "Email 1"
-            } else if (daysSinceCreated <= 4) {
-              status = "Email 2" 
-            } else if (daysSinceCreated <= 7) {
-              status = "Email 3"
-            } else if (daysSinceCreated <= 11) {
-              status = "Email 4"
-            } else if (daysSinceCreated <= 15) {
-              status = "Email 5"
-            } else if (daysSinceCreated <= 20) {
-              status = "Email 6"
+            } else if (contact.status && ["Completed", "Replied", "Unsubscribed", "Bounced"].includes(contact.status)) {
+              // Use the actual status from database if it's a final state
+              status = contact.status as Contact["status"]
+            } else if (actualSequenceStep <= (campaignSequences.length || 6)) {
+              status = `Email ${actualSequenceStep}` as Contact["status"]
             } else {
-              const finalStates = ["Completed", "Replied", "Unsubscribed", "Bounced"]
-              const weights = [0.4, 0.3, 0.2, 0.1]
-              const rand = Math.random()
-              if (rand < weights[0]) status = "Completed"
-              else if (rand < weights[0] + weights[1]) status = "Replied"
-              else if (rand < weights[0] + weights[1] + weights[2]) status = "Unsubscribed"
-              else status = "Bounced"
+              status = "Completed"
             }
             
             sequenceProgressMap[contact.id] = status
@@ -287,19 +278,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             ]
             email_subject = emailSubjects[sequence_step - 1] || "Email"
             
-            // Calculate next email timing
-            const emailSchedule = [
-              { day: 0, label: 'Immediate' },  // Email 1 - immediate
-              { day: 3, label: '3 days' },     // Email 2 - 3 days later
-              { day: 7, label: '7 days' },     // Email 3 - 7 days later  
-              { day: 14, label: '14 days' },   // Email 4 - 14 days later
-              { day: 21, label: '21 days' },   // Email 5 - 21 days later
-              { day: 28, label: '28 days' }    // Email 6 - 28 days later
-            ]
-            
-            if (sequence_step < 6) {
-              const nextSchedule = emailSchedule[sequence_step]
-              nextEmailIn = nextSchedule ? nextSchedule.label : "Sequence complete"
+            // Calculate next email timing using consistent logic
+            const nextEmailData = calculateNextEmailDate(contact)
+            if (nextEmailData) {
+              nextEmailIn = nextEmailData.relative
             } else {
               nextEmailIn = "Sequence complete"
             }
@@ -542,6 +524,62 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       .replace(/\{\{title\}\}/g, contact.title || '[Title]')
       .replace(/\{\{jobTitle\}\}/g, contact.title || '[Job Title]')
       .replace(/\{\{position\}\}/g, contact.title || '[Position]')
+  }
+
+  // Helper function to calculate next email date consistently
+  const calculateNextEmailDate = (contact: Contact) => {
+    const currentStep = contact.sequence_step || 0
+    
+    // If sequence is complete, no next email
+    if (contact.status === 'Completed' || contact.status === 'Replied' || 
+        contact.status === 'Unsubscribed' || contact.status === 'Bounced') {
+      return null
+    }
+    
+    // If pending (step 0), next email is immediate
+    if (currentStep === 0) {
+      return { relative: 'Immediate', date: new Date() }
+    }
+    
+    // Use actual campaign sequences if available
+    if (campaignSequences.length > 0) {
+      const nextStepIndex = currentStep // Array is 0-indexed, but step is 1-indexed
+      if (nextStepIndex >= campaignSequences.length) {
+        return null // Sequence complete
+      }
+      
+      const nextSequence = campaignSequences[nextStepIndex]
+      const timingDays = nextSequence?.timing !== undefined ? nextSequence.timing : (nextStepIndex === 0 ? 0 : 1)
+      
+      // Calculate actual scheduled date like in generateContactSchedule
+      const contactDate = contact.created_at ? new Date(contact.created_at) : new Date()
+      const scheduledDate = new Date(contactDate)
+      scheduledDate.setDate(contactDate.getDate() + timingDays)
+      
+      // Add consistent business hours (same logic as generateContactSchedule)
+      const contactIdString = String(contact.id || '')
+      const contactHash = contactIdString.split('').reduce((hash, char) => {
+        return ((hash << 5) - hash) + char.charCodeAt(0)
+      }, 0)
+      const seedValue = (contactHash + (currentStep + 1)) % 1000
+      const consistentHour = 9 + (seedValue % 8)
+      const consistentMinute = (seedValue * 7) % 60
+      scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+      
+      // Avoid weekends
+      const dayOfWeek = scheduledDate.getDay()
+      if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1)
+      if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2)
+      
+      return {
+        relative: timingDays === 0 ? 'Immediate' : `${timingDays} day${timingDays === 1 ? '' : 's'}`,
+        date: scheduledDate
+      }
+    }
+    
+    // Fallback to simple relative timing if no sequences loaded yet
+    const simpleTiming = currentStep === 1 ? 3 : currentStep * 3
+    return { relative: `${simpleTiming} days`, date: null }
   }
 
   // Generate full email schedule for a contact with consistent sender assignment
