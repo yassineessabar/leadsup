@@ -155,7 +155,7 @@ export default function Home() {
 
     const checkIfNewUser = async () => {
       try {
-        console.log('🔍 Checking if user is new...')
+        console.log('🔍 Checking if user is new...', { userId: user.id, isAuthenticated })
         
         // Check if we've already shown the welcome popup for this user
         const hasSeenWelcome = localStorage.getItem(`welcome_shown_${user.id}`)
@@ -216,7 +216,14 @@ export default function Home() {
             console.log('👤 User has campaigns, not showing welcome popup')
           }
         } else {
-          console.error('❌ Failed to fetch campaigns:', response.status)
+          const errorText = await response.text()
+          console.error('❌ Failed to fetch campaigns:', response.status, response.statusText)
+          console.error('❌ Error details:', errorText)
+          
+          // If it's a 401, the user's session might be expired
+          if (response.status === 401) {
+            console.log('🔄 Session expired, user may need to re-authenticate')
+          }
         }
       } catch (error) {
         console.error('💥 Error checking user campaigns:', error)
