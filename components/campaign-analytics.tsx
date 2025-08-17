@@ -126,6 +126,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         if (result.data && Array.isArray(result.data)) {
           setCampaignSequences(result.data)
           console.log('📧 Loaded campaign sequences:', result.data)
+          console.log('⏰ Sequence timings:', result.data.map(seq => ({ step: seq.sequenceStep, timing: seq.timing })))
         }
       }
     } catch (error) {
@@ -526,13 +527,17 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     
     // Use actual campaign sequences if available, otherwise fallback to default
     const emailSchedule = campaignSequences.length > 0 
-      ? campaignSequences.map((seq, index) => ({
-          step: seq.sequenceStep || seq.id || (index + 1),
-          subject: replaceTemplateVariables(seq.subject || `Email ${seq.sequenceStep || index + 1}`, contact),
-          days: seq.timing || (index === 0 ? 0 : index * 3), // Default spacing if no timing
-          label: seq.timing === 0 ? 'Immediate' : `${seq.timing || (index * 3)} days`,
-          content: replaceTemplateVariables(seq.content || `Email content for step ${seq.sequenceStep || index + 1}`, contact)
-        }))
+      ? campaignSequences.map((seq, index) => {
+          // Use the actual timing from sequence settings
+          const timingDays = seq.timing !== undefined ? seq.timing : (index === 0 ? 0 : 1)
+          return {
+            step: seq.sequenceStep || seq.id || (index + 1),
+            subject: replaceTemplateVariables(seq.subject || `Email ${seq.sequenceStep || index + 1}`, contact),
+            days: timingDays,
+            label: timingDays === 0 ? 'Immediate' : `${timingDays} day${timingDays === 1 ? '' : 's'}`,
+            content: replaceTemplateVariables(seq.content || `Email content for step ${seq.sequenceStep || index + 1}`, contact)
+          }
+        })
       : [
           { 
             step: 1, 
