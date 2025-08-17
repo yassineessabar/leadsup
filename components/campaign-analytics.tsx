@@ -607,29 +607,16 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     // Use actual campaign sequences if available, otherwise fallback to default
     console.log('🎯 Generating schedule for contact:', contact.id, 'with', campaignSequences.length, 'sequences')
     
-    // Ensure sequences are properly sorted by step number/order
-    const sortedSequences = campaignSequences.length > 0 
-      ? [...campaignSequences].sort((a, b) => {
-          // Primary sort: by step_number (id field from API)
-          // Secondary sort: by sequenceStep as fallback
-          // Tertiary sort: by original database _stepNumber if available
-          const aStep = a.id || a._stepNumber || a.sequenceStep || 1
-          const bStep = b.id || b._stepNumber || b.sequenceStep || 1
-          return aStep - bStep
-        })
-      : []
+    // Use sequences in the exact order they come from the API (which should match sequence settings)
+    // The API already sorts by step_number, so we don't need additional sorting
+    const sortedSequences = campaignSequences.length > 0 ? [...campaignSequences] : []
     
-    console.log('📋 Original sequence order:', campaignSequences.map(seq => ({ 
+    console.log('📋 Timeline sequence order (should match settings):', sortedSequences.map((seq, index) => ({ 
+      position: index + 1,
       id: seq.id, 
       sequenceStep: seq.sequenceStep, 
-      _stepNumber: seq._stepNumber,
-      subject: seq.subject?.substring(0, 30) + '...' 
-    })))
-    console.log('📋 Sorted sequence order:', sortedSequences.map(seq => ({ 
-      id: seq.id, 
-      sequenceStep: seq.sequenceStep, 
-      _stepNumber: seq._stepNumber,
-      subject: seq.subject?.substring(0, 30) + '...'
+      subject: seq.subject?.substring(0, 40) + '...',
+      timing: seq.timing
     })))
     
     const emailSchedule = sortedSequences.length > 0 
