@@ -19,7 +19,77 @@ import InboxTab from "@/components/inbox-tab"
 import { IntegrationsTab } from "@/components/integrations-tab"
 import { DomainTab } from "@/components/domain-tab"
 import { TemplatesTab } from "@/components/templates-tab"
+import { CampaignAnalytics } from "@/components/campaign-analytics"
 // import { SupportChatbot } from "@/components/support-chatbot"
+
+// Wrapper component to fetch campaign data and render analytics
+function CampaignAnalyticsWrapper({ campaignId, onBack }: { campaignId: string | null, onBack: () => void }) {
+  const [campaign, setCampaign] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchCampaign = async () => {
+      console.log('📊 CampaignAnalyticsWrapper received campaignId:', campaignId)
+      
+      if (!campaignId) {
+        console.error('❌ No campaign ID provided to analytics wrapper')
+        setError("No campaign ID provided")
+        setLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/campaigns/${campaignId}/save`, {
+          credentials: 'include'
+        })
+        const result = await response.json()
+        
+        if (response.ok && result.success && result.data?.campaign) {
+          setCampaign(result.data.campaign)
+        } else {
+          setError("Failed to load campaign data")
+        }
+      } catch (err) {
+        console.error("Error fetching campaign:", err)
+        setError("Failed to load campaign")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCampaign()
+  }, [campaignId])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-gray-600 font-medium">Loading Campaign Analytics...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !campaign) {
+    return (
+      <div className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 font-medium mb-4">{error || "Campaign not found"}</p>
+          <button
+            onClick={onBack}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+          >
+            Back to Campaigns
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return <CampaignAnalytics campaign={campaign} onBack={onBack} />
+}
 
 export default function Home() {
   const { user, loading, isAuthenticated } = useAuth()
@@ -181,6 +251,11 @@ export default function Home() {
         return <IntegrationsTab />
       case "domain":
         return <DomainTab />
+      case "analytics":
+        const campaignId = searchParams.get("campaign")
+        console.log('📊 Analytics tab - campaignId from URL:', campaignId)
+        console.log('📊 Current URL search params:', Array.from(searchParams.entries()))
+        return <CampaignAnalyticsWrapper campaignId={campaignId} onBack={() => handleTabChange("campaigns-email")} />
       case "billing":
         return <BillingSubscriptionPage />
       case "settings":

@@ -239,7 +239,28 @@ export default function CampaignSenderSelection({
             setRenderKey(prev => prev + 1)
           }, 100)
         } else {
-          console.log('ℹ️ No saved selections found or no matches')
+          console.log('ℹ️ No saved selections found - auto-selecting all available senders')
+          
+          // Auto-select all available senders by default
+          const allSenderIds = domainsWithSenders
+            .flatMap(domain => domain.senders)
+            .map(sender => sender.id)
+          
+          if (allSenderIds.length > 0) {
+            const allSelectedSet = new Set(allSenderIds)
+            console.log('🎯 Auto-selecting all senders:', Array.from(allSelectedSet))
+            
+            setSelectedSenders(allSelectedSet)
+            setLastSavedSelection(new Set()) // No previous saved selection
+            setHasUnsavedChanges(true) // Mark as having changes since we auto-selected
+            onSelectionChange(allSenderIds)
+            console.log('✅ Auto-selected all available senders')
+            
+            // Force a re-render to ensure checkboxes reflect the auto-selection
+            setTimeout(() => {
+              setRenderKey(prev => prev + 1)
+            }, 100)
+          }
         }
       }
     } catch (error) {
@@ -739,26 +760,20 @@ export default function CampaignSenderSelection({
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-light text-gray-900 mb-2">Campaign Senders</h1>
-              <p className="text-gray-600 text-lg">
-                Select which sender accounts will be used for this campaign
+              <h1 className="text-2xl font-medium text-gray-900 mb-2">Sender Accounts</h1>
+              <p className="text-gray-500 text-sm">
+                Select which accounts will send emails for this campaign
               </p>
-              {hasUnsavedChanges && (
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                  <span className="text-orange-600 text-sm font-medium">You have unsaved changes</span>
-                </div>
-              )}
             </div>
             <div className="flex items-center gap-3">
               {!isGuidedMode && (
                 <Button
                   onClick={handleManualSave}
                   disabled={isSaving || !hasUnsavedChanges}
-                  className={`border-0 rounded-2xl px-6 py-3 shadow-sm transition-colors ${
+                  className={`border-0 rounded-2xl px-5 py-2.5 font-medium transition-colors ${
                     hasUnsavedChanges 
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                      : 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                      ? 'bg-gray-900 hover:bg-gray-800 text-white' 
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}
                 >
                   {isSaving ? (
@@ -769,7 +784,7 @@ export default function CampaignSenderSelection({
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      {hasUnsavedChanges ? 'Save Selection' : 'Saved'}
+                      {hasUnsavedChanges ? 'Save' : 'Saved'}
                     </>
                   )}
                 </Button>
@@ -780,10 +795,10 @@ export default function CampaignSenderSelection({
                   console.log('🔄 Navigating to /?tab=domain to add new domain...')
                   window.location.href = '/?tab=domain'
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3 shadow-sm"
+                className="bg-gray-900 hover:bg-gray-800 text-white border-0 rounded-2xl px-5 py-2.5 font-medium"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add New Domain
+                Add Domain
               </Button>
             </div>
           </div>
@@ -799,8 +814,8 @@ export default function CampaignSenderSelection({
             const someSelected = selectedInDomain > 0 && !allSelected
 
             return (
-              <div key={domain.id} className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden shadow-sm">
-                <div className="p-8">
+              <div key={domain.id} className="bg-white border-0 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden shadow-sm">
+                <div className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <button
@@ -813,17 +828,17 @@ export default function CampaignSenderSelection({
                           <ChevronRight className="h-5 w-5 text-gray-400" />
                         )}
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center">
-                            <Globe className="h-6 w-6 text-green-600" />
+                          <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center">
+                            <Globe className="h-5 w-5 text-gray-600" />
                           </div>
                           <div>
-                            <h3 className="text-xl font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                            <h3 className="text-lg font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
                               {domain.domain}
                             </h3>
                             <p className="text-gray-500 mt-1">
                               {domain.senders.length} sender account{domain.senders.length !== 1 ? 's' : ''}
                               {selectedInDomain > 0 && (
-                                <span className="ml-2 text-blue-600 font-medium">
+                                <span className="ml-2 text-gray-700 font-medium">
                                   • {selectedInDomain} selected
                                 </span>
                               )}
@@ -833,24 +848,24 @@ export default function CampaignSenderSelection({
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                      <Badge className="bg-green-50 text-green-700 border-green-200 px-3 py-1 rounded-xl font-medium">
-                        ✓ Verified
+                    <div className="flex items-center gap-3">
+                      <Badge className="bg-gray-100 text-gray-600 border-0 px-3 py-1 rounded-xl text-xs font-medium">
+                        Verified
                       </Badge>
                       
                       {domain.senders.length > 0 && (
-                        <div className="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-2">
+                        <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-1.5">
                           <Checkbox
                             checked={allSelected}
                             onCheckedChange={(checked) => handleDomainToggle(domain, checked === true)}
-                            className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
+                            className="data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900 rounded-md"
                             ref={el => {
                               if (el && someSelected) {
                                 el.setAttribute('data-indeterminate', 'true')
                               }
                             }}
                           />
-                          <label className="text-sm text-gray-700 cursor-pointer font-medium">
+                          <label className="text-xs text-gray-600 cursor-pointer font-medium">
                             Select All
                           </label>
                         </div>
@@ -919,19 +934,19 @@ export default function CampaignSenderSelection({
                                       console.log(`🎯 Element state - checkbox should be: ${checked ? 'CHECKED' : 'UNCHECKED'}`);
                                       handleSenderToggle(sender.id, checked === true);
                                     }}
-                                    className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 data-[state=checked]:text-white rounded-md"
+                                    className="data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900 data-[state=checked]:text-white rounded-md"
                                     aria-label={`Select sender ${sender.email}`}
                                     data-testid={`sender-checkbox-${sender.id}`}
                                     data-selected={isSelected}
                                     style={{
-                                      backgroundColor: isSelected ? '#2563eb' : 'transparent',
-                                      borderColor: isSelected ? '#2563eb' : '#d1d5db'
+                                      backgroundColor: isSelected ? '#111827' : 'transparent',
+                                      borderColor: isSelected ? '#111827' : '#d1d5db'
                                     }}
                                   />
                                   
                                   <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
-                                      <User className="h-6 w-6 text-blue-600" />
+                                    <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center">
+                                      <User className="h-6 w-6 text-gray-600" />
                                     </div>
                                     <div>
                                       <div className="flex items-center gap-3">
@@ -972,9 +987,10 @@ export default function CampaignSenderSelection({
                                       e.stopPropagation()
                                       handleTestClick(sender)
                                     }}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-xl px-4 py-2"
+                                    variant="outline"
+                                    className="border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl px-3 py-1.5 text-xs font-medium"
                                   >
-                                    Test Email
+                                    Test
                                   </Button>
                                 </div>
                               </div>

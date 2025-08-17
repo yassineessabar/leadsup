@@ -106,7 +106,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   
   // Validation functions
   const validateCampaignRequirements = async () => {
-    if (!campaign?.id) return
+    if (!campaign?.id) return { hasContacts: false, hasAutoScraping: false, hasDomains: false }
     
     setValidationLoading(true)
     
@@ -134,6 +134,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const hasDomainsSetup = domainsResult.success && 
         domainsResult.data && domainsResult.data.length > 0
       
+      // Update state
       setHasContacts(hasContactsImported)
       setHasAutoScraping(hasActiveScraping)
       setHasDomains(hasDomainsSetup)
@@ -144,8 +145,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         hasDomains: hasDomainsSetup
       })
       
+      // Return fresh values for immediate use
+      return {
+        hasContacts: hasContactsImported,
+        hasAutoScraping: hasActiveScraping,
+        hasDomains: hasDomainsSetup
+      }
+      
     } catch (error) {
       console.error('❌ Error validating requirements:', error)
+      return { hasContacts: false, hasAutoScraping: false, hasDomains: false }
     } finally {
       setValidationLoading(false)
     }
@@ -165,6 +174,38 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     if (currentStep === 2) {
       if (!selectedSenderAccounts || selectedSenderAccounts.length === 0) {
         if (!hasDomains) {
+          errors.push('You must set up at least one domain before proceeding')
+        } else {
+          errors.push('You must select at least one sender account before proceeding')
+        }
+      }
+    }
+    
+    return {
+      canProceed: errors.length === 0,
+      errors
+    }
+  }
+
+  const checkProgressionRequirementsWithFreshData = (currentStep: number, nextStep?: number, freshValidation?: any): { canProceed: boolean; errors: string[] } => {
+    const errors: string[] = []
+    
+    // Use fresh validation data if provided, otherwise fall back to state
+    const currentHasContacts = freshValidation?.hasContacts ?? hasContacts
+    const currentHasAutoScraping = freshValidation?.hasAutoScraping ?? hasAutoScraping
+    const currentHasDomains = freshValidation?.hasDomains ?? hasDomains
+    
+    // Target tab requirements (step 0) - need contacts or auto-scraping to proceed to sequence
+    if (currentStep === 0) {
+      if (!currentHasContacts && !currentHasAutoScraping) {
+        errors.push('You must either import contacts or set up auto-scraping to proceed')
+      }
+    }
+    
+    // Sender tab requirements (step 2) - need sender accounts which require domains
+    if (currentStep === 2) {
+      if (!selectedSenderAccounts || selectedSenderAccounts.length === 0) {
+        if (!currentHasDomains) {
           errors.push('You must set up at least one domain before proceeding')
         } else {
           errors.push('You must select at least one sender account before proceeding')
@@ -203,7 +244,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [showTestModal, setShowTestModal] = useState(false)
   const [showCodeView, setShowCodeView] = useState(false)
-  const [showLaunchValidationModal, setShowLaunchValidationModal] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showAdvancedPopup, setShowAdvancedPopup] = useState(false)
 
@@ -236,15 +276,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     { tab: 'sender', title: 'Select Sender Accounts', description: 'Choose which email accounts to send from' },
     { tab: 'settings', title: 'Configure Settings', description: 'Set sending schedule and campaign preferences' }
   ]
-  const [launchValidationErrors, setLaunchValidationErrors] = useState([])
   const editorRef = useRef<HTMLDivElement>(null)
   const [testModalAccountId, setTestModalAccountId] = useState(null)
   const [testModalLoading, setTestModalLoading] = useState(false)
 
   // Guided flow navigation functions
   const handleGuidedNext = async () => {
-    // Refresh validation before proceeding
-    await validateCampaignRequirements()
+    // Refresh validation before proceeding and get fresh values
+    const freshValidation = await validateCampaignRequirements()
     
     // Calculate the next step
     const nextStep = guidedFlowStep < guidedFlowSteps.length - 1 ? guidedFlowStep + 1 : guidedFlowStep
@@ -256,8 +295,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       return
     }
     
-    // For non-sequence tabs, check progression requirements
-    const validation = checkProgressionRequirements(guidedFlowStep, nextStep)
+    // For non-sequence tabs, check progression requirements using fresh validation data
+    const validation = checkProgressionRequirementsWithFreshData(guidedFlowStep, nextStep, freshValidation)
     
     if (!validation.canProceed) {
       setValidationErrors(validation.errors)
@@ -294,34 +333,18 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   const handleLaunchCampaign = async () => {
     try {
-      // Validate campaign is ready to launch
-      const errors = []
-      
-      // Check if we have contacts
-      if (!contacts || contacts.length === 0) {
-        errors.push('Add at least one contact to your campaign')
-      }
-      
-      // Check if we have sequences
-      if (!steps || steps.length === 0) {
-        errors.push('Create at least one email sequence')
-      }
-      
-      // Check if we have sender accounts
-      if (!selectedSenderAccounts || selectedSenderAccounts.length === 0) {
-        errors.push('Select at least one sender account')
-      }
-      
-      if (errors.length > 0) {
-        setLaunchValidationErrors(errors)
-        setShowLaunchValidationModal(true)
-        return
-      }
-
-      // Launch the campaign
-      if (onStatusUpdate) {
+      // Launch the campaign - validation happens at step level
+      if (onStatusUpdate && campaign?.id) {
+        console.log('🚀 Launching campaign:', campaign.id)
         onStatusUpdate(campaign.id, 'Active')
         setIsGuidedFlow(false)
+        
+        // Redirect to analytics page for this campaign
+        const redirectUrl = `/?tab=analytics&campaign=${campaign.id}`
+        console.log('🔄 Redirecting to:', redirectUrl)
+        window.location.href = redirectUrl
+      } else {
+        console.error('❌ Cannot launch campaign - missing campaign ID or onStatusUpdate')
       }
       
     } catch (error) {
@@ -4100,38 +4123,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           </DialogContent>
         </Dialog>
 
-        {/* Launch Validation Modal */}
-        <Dialog open={showLaunchValidationModal} onOpenChange={setShowLaunchValidationModal}>
-          <DialogContent className="max-w-md rounded-3xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-orange-600">
-                <AlertTriangle className="h-5 w-5" />
-                Campaign Not Ready
-              </DialogTitle>
-              <DialogDescription>
-                Please complete the following requirements before launching your campaign:
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3">
-              {launchValidationErrors.map((error, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 bg-orange-50 rounded-2xl">
-                  <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center mt-0.5">
-                    <span className="text-orange-600 text-xs font-bold">!</span>
-                  </div>
-                  <span className="text-orange-800 text-sm">{error}</span>
-                </div>
-              ))}
-            </div>
-            <DialogFooter>
-              <Button 
-                onClick={() => setShowLaunchValidationModal(false)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl"
-              >
-                Continue Setup
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Advanced Campaign Popup */}
         <AddCampaignPopup 
