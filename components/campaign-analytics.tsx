@@ -130,6 +130,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           setSequencesLastUpdated(Date.now())
           console.log('📧 Loaded campaign sequences:', result.data)
           console.log('⏰ Sequence timings:', result.data.map(seq => ({ step: seq.sequenceStep, timing: seq.timing })))
+          console.log('📝 Sequence subjects:', result.data.map(seq => ({ step: seq.sequenceStep, subject: seq.subject })))
+          console.log('📄 Sequence content lengths:', result.data.map(seq => ({ step: seq.sequenceStep, contentLength: seq.content?.length || 0 })))
         }
       }
     } catch (error) {
@@ -609,11 +611,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             step: stepNumber,
             // Store both original and current content
             originalSubject: seq.subject || `Email ${stepNumber}`,
-            originalContent: seq.content || `Email content for step ${stepNumber}`,
+            originalContent: seq.content || `Default email content for step ${stepNumber}. Please add your content in the sequence settings.`,
             subject: replaceTemplateVariables(seq.subject || `Email ${stepNumber}`, contact),
             days: timingDays,
             label: timingDays === 0 ? 'Immediate' : `${timingDays} day${timingDays === 1 ? '' : 's'}`,
-            content: replaceTemplateVariables(seq.content || `Email content for step ${stepNumber}`, contact)
+            content: replaceTemplateVariables(seq.content || `Default email content for step ${stepNumber}. Please add your content in the sequence settings.`, contact)
           }
         })
       : [
@@ -687,6 +689,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Open sequence modal
   const openSequenceModal = (contact: Contact) => {
     setSequenceModalContact(contact)
+    // Refresh sequences when modal opens to ensure we have latest data
+    if (campaignSequences.length === 0) {
+      console.log('🔄 No sequences loaded, fetching...')
+      fetchCampaignSequences()
+    }
   }
 
   // Open email content preview modal
