@@ -87,13 +87,32 @@ export function ComprehensiveDashboard() {
     try {
       setMetricsLoading(true)
       
-      console.log('🔍 Fetching account-level SendGrid metrics...')
+      console.log('🔍 Checking if user has any email activity...')
+      
+      // First, check if user has any active campaigns or email accounts
+      const campaignsResponse = await fetch('/api/campaigns', {
+        credentials: 'include'
+      })
+      
+      if (!campaignsResponse.ok) {
+        console.warn("Failed to fetch campaigns for metrics validation")
+        setSendGridMetrics(null)
+        return
+      }
+      
+      const campaignsData = await campaignsResponse.json()
+      const hasActiveCampaigns = campaignsData.success && campaignsData.data && campaignsData.data.length > 0
+      
+      if (!hasActiveCampaigns) {
+        console.log('⚠️ No campaigns found - skipping SendGrid metrics fetch')
+        setSendGridMetrics(null)
+        return
+      }
       
       // Build query parameters for last 30 days
       const params = new URLSearchParams({
         start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        end_date: new Date().toISOString().split('T')[0],
-        user_id: 'd155d4c2-2f06-45b7-9c90-905e3648e8df' // This should come from your auth system
+        end_date: new Date().toISOString().split('T')[0]
       })
       
       const response = await fetch(`/api/analytics/account?${params.toString()}`, {
@@ -102,27 +121,36 @@ export function ComprehensiveDashboard() {
       
       if (!response.ok) {
         console.warn("Failed to fetch account metrics:", response.statusText)
+        setSendGridMetrics(null)
         return
       }
       
       const result = await response.json()
       if (result.success && result.data?.metrics) {
         const metrics = result.data.metrics
-        setSendGridMetrics(metrics)
         
-        console.log('✅ Account-level SendGrid metrics loaded:', {
-          source: result.data.source,
-          period: result.data.period,
-          emailsSent: metrics.emailsSent,
-          openRate: metrics.openRate,
-          clickRate: metrics.clickRate,
-          deliveryRate: metrics.deliveryRate
-        })
+        // Only set metrics if there's actual email activity
+        if (metrics.emailsSent > 0) {
+          setSendGridMetrics(metrics)
+          console.log('✅ Real SendGrid metrics loaded:', {
+            source: result.data.source,
+            period: result.data.period,
+            emailsSent: metrics.emailsSent,
+            openRate: metrics.openRate,
+            clickRate: metrics.clickRate,
+            deliveryRate: metrics.deliveryRate
+          })
+        } else {
+          console.log('⚠️ No email activity found - showing no metrics')
+          setSendGridMetrics(null)
+        }
       } else {
         console.warn('⚠️ No SendGrid metrics available:', result)
+        setSendGridMetrics(null)
       }
     } catch (error) {
       console.error('Error fetching SendGrid metrics:', error)
+      setSendGridMetrics(null)
     } finally {
       setMetricsLoading(false)
     }
@@ -222,12 +250,12 @@ export function ComprehensiveDashboard() {
     { name: 'Referrals', value: 10, color: '#e5e7eb' }
   ]
 
-  // Performance metrics with real SendGrid data
-  const performanceMetrics = [
+  // Performance metrics with real SendGrid data - only show if we have actual email activity
+  const performanceMetrics = sendGridMetrics ? [
     { 
       title: 'Open Rate', 
-      value: metricsLoading ? '...' : `${(sendGridMetrics?.openRate || 0).toFixed(1)}%`, 
-      change: sendGridMetrics?.uniqueOpens ? `${sendGridMetrics.uniqueOpens} unique` : 'No data', 
+      value: `${sendGridMetrics.openRate.toFixed(1)}%`, 
+      change: `${sendGridMetrics.uniqueOpens} unique opens`, 
       trend: 'up',
       icon: Eye,
       color: 'blue',
@@ -236,8 +264,8 @@ export function ComprehensiveDashboard() {
     },
     { 
       title: 'Click Rate', 
-      value: metricsLoading ? '...' : `${(sendGridMetrics?.clickRate || 0).toFixed(1)}%`, 
-      change: sendGridMetrics?.uniqueClicks ? `${sendGridMetrics.uniqueClicks} unique` : 'No data', 
+      value: `${sendGridMetrics.clickRate.toFixed(1)}%`, 
+      change: `${sendGridMetrics.uniqueClicks} unique clicks`, 
       trend: 'up',
       icon: MousePointer,
       color: 'emerald',
@@ -246,9 +274,9 @@ export function ComprehensiveDashboard() {
     },
     { 
       title: 'Delivery Rate', 
-      value: metricsLoading ? '...' : `${(sendGridMetrics?.deliveryRate || 0).toFixed(1)}%`, 
-      change: sendGridMetrics?.emailsBounced ? `${sendGridMetrics.emailsBounced} bounced` : 'No bounces', 
-      trend: sendGridMetrics && sendGridMetrics.deliveryRate > 95 ? 'up' : 'down',
+      value: `${sendGridMetrics.deliveryRate.toFixed(1)}%`, 
+      change: sendGridMetrics.emailsBounced > 0 ? `${sendGridMetrics.emailsBounced} bounced` : 'No bounces', 
+      trend: sendGridMetrics.deliveryRate > 95 ? 'up' : 'down',
       icon: Target,
       color: 'orange',
       bgColor: 'bg-orange-50',
@@ -256,15 +284,15 @@ export function ComprehensiveDashboard() {
     },
     { 
       title: 'Emails Sent', 
-      value: metricsLoading ? '...' : `${(sendGridMetrics?.emailsSent || 0).toLocaleString()}`, 
-      change: sendGridMetrics?.emailsDelivered ? `${sendGridMetrics.emailsDelivered} delivered` : 'No data', 
+      value: sendGridMetrics.emailsSent.toLocaleString(), 
+      change: `${sendGridMetrics.emailsDelivered} delivered`, 
       trend: 'up',
       icon: Mail,
       color: 'violet',
       bgColor: 'bg-violet-50',
       iconColor: 'text-violet-600'
     }
-  ]
+  ] : []
 
   return (
     <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
@@ -416,35 +444,77 @@ export function ComprehensiveDashboard() {
             </Card>
           </div>
 
-          {/* Performance Metrics Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {performanceMetrics.map((metric, index) => {
-              const Icon = metric.icon
-              return (
-                <Card 
-                  key={metric.title}
-                  className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden"
-                >
-                  <CardContent className="p-5">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className={`w-10 h-10 ${metric.bgColor} rounded-2xl flex items-center justify-center`}>
-                        <Icon className={`w-5 h-5 ${metric.iconColor}`} />
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">{metric.title}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-end justify-between">
-                      <p className="text-xl font-light text-gray-900">{metric.value}</p>
-                      <span className="text-xs text-gray-400 font-medium">
-                        {metric.change}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
+          {/* Email Performance Metrics - Only show if user has email activity */}
+          {sendGridMetrics ? (
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <Mail className="w-4 h-4 text-slate-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Email Performance</h3>
+                  <p className="text-slate-500 text-sm">SendGrid analytics from real campaigns</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {performanceMetrics.map((metric, index) => {
+                  const Icon = metric.icon
+                  return (
+                    <Card 
+                      key={metric.title}
+                      className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden"
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                            <Icon className="w-4 h-4 text-slate-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-slate-600">{metric.title}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-end justify-between">
+                          <p className="text-xl font-semibold text-slate-900">{metric.value}</p>
+                          <span className="text-xs text-slate-500">
+                            {metric.change}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+          ) : metricsLoading ? (
+            <div className="mb-8">
+              <div className="flex items-center justify-center py-8">
+                <div className="text-slate-500">Loading email metrics...</div>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-8">
+              <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden">
+                <CardContent className="p-6 text-center">
+                  <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Mail className="w-6 h-6 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-slate-900 mb-2">No Email Activity Yet</h3>
+                  <p className="text-slate-500 text-sm mb-4">
+                    Email performance metrics will appear here once you start sending campaigns.
+                  </p>
+                  <Button 
+                    className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-4 py-2 text-sm"
+                    onClick={() => {
+                      const event = new CustomEvent('tab-switched', { detail: 'campaigns-email' })
+                      window.dispatchEvent(event)
+                    }}
+                  >
+                    Create Your First Campaign
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Main Dashboard Layout - Sleek & Minimal */}
           <div className="space-y-6">

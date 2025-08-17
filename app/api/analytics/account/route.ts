@@ -1,23 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
-import { sendGridAPI } from '@/lib/sendgrid-api'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+async function getUserIdFromSession(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get("session")?.value
+
+    if (!sessionToken) {
+      return null
+    }
+
+    const { data: session, error } = await supabase
+      .from("user_sessions")
+      .select("user_id, expires_at")
+      .eq("session_token", sessionToken)
+      .single()
+    
+    if (error || !session) {
+      return null
+    }
+    
+    // Check if session is expired
+    if (new Date(session.expires_at) < new Date()) {
+      return null
+    }
+
+    return session.user_id
+  } catch (err) {
+    return null
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
+    const userId = await getUserIdFromSession()
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('start_date')
     const endDate = searchParams.get('end_date')
-    const userId = searchParams.get('user_id') || 'd155d4c2-2f06-45b7-9c90-905e3648e8df' // Default user
 
     console.log('🔍 Fetching account-level SendGrid analytics...')
     console.log(`📅 Date range: ${startDate} to ${endDate}`)
+    console.log(`👤 User ID: ${userId}`)
 
-    // Strategy: Get account-level metrics through multiple sources
+    // First, verify the user has actual campaigns and email accounts
+    const { data: userCampaigns, error: campaignsError } = await supabase
+      .from('campaigns')
+      .select('id')
+      .eq('user_id', userId)
+
+    if (campaignsError || !userCampaigns || userCampaigns.length === 0) {
+      console.log('⚠️ No campaigns found for user - returning empty metrics')
+      return NextResponse.json({
+        success: true,
+        data: {
+          metrics: {
+            emailsSent: 0,
+            emailsDelivered: 0,
+            emailsBounced: 0,
+            emailsBlocked: 0,
+            uniqueOpens: 0,
+            totalOpens: 0,
+            uniqueClicks: 0,
+            totalClicks: 0,
+            unsubscribes: 0,
+            spamReports: 0,
+            deliveryRate: 0,
+            bounceRate: 0,
+            openRate: 0,
+            clickRate: 0,
+            unsubscribeRate: 0
+          },
+          source: 'no_campaigns',
+          period: `${startDate} to ${endDate}`,
+          message: 'No campaigns found for this user'
+        }
+      })
+    }
+
+    // Strategy: Only get real metrics from webhook events or database
     let accountMetrics = {
       emailsSent: 0,
       emailsDelivered: 0,
@@ -207,137 +278,19 @@ export async function GET(request: NextRequest) {
       console.warn('⚠️ Webhook aggregation failed:', webhookAggError)
     }
 
-    // Method 3: Try legacy SendGrid API (fallback)
-    try {
-      console.log('📡 Method 3: Trying legacy SendGrid API...')
-      
-      // Skip the problematic 'account-level' sync that causes 404 errors
-      console.log('⚠️ Skipping account-level sync to avoid 404 errors')
-      
-      // Try to get global stats instead (if available)
-      const yesterday = new Date()
-      yesterday.setDate(yesterday.getDate() - 1)
-      const globalStartDate = yesterday.toISOString().split('T')[0]
-      
-      const globalStats = await sendGridAPI.getGlobalStats(globalStartDate)
-      
-      if (globalStats && globalStats.length > 0) {
-        const stats = globalStats[0]
-        const rates = sendGridAPI.calculateRates(stats)
-        
-        accountMetrics = {
-          emailsSent: rates.emailsSent,
-          emailsDelivered: rates.emailsDelivered,
-          emailsBounced: rates.bounces,
-          emailsBlocked: rates.blocks,
-          uniqueOpens: rates.uniqueOpens,
-          totalOpens: rates.totalOpens,
-          uniqueClicks: rates.uniqueClicks,
-          totalClicks: rates.totalClicks,
-          unsubscribes: rates.unsubscribes,
-          spamReports: rates.spamReports,
-          deliveryRate: rates.deliveryRate,
-          bounceRate: rates.bounceRate,
-          openRate: rates.openRate,
-          clickRate: rates.clickRate,
-          unsubscribeRate: rates.unsubscribeRate
-        }
-        
-        console.log('✅ Account-level metrics (same as campaign sync):', accountMetrics)
-        
-        return NextResponse.json({
-          success: true,
-          data: {
-            metrics: accountMetrics,
-            source: 'sendgrid_sync_logic',
-            period: 'Recent activity (same as campaign sync)',
-            raw_stats: syncResult.stats
-          }
-        })
-      }
-    } catch (apiError) {
-      console.warn('⚠️ SendGrid API failed:', apiError)
-    }
+    // Skip problematic SendGrid API fallbacks that return fake data
+    console.log('⚠️ Skipping SendGrid API fallbacks to ensure data accuracy')
 
-    // Method 3: Get recent campaign aggregation as fallback
-    try {
-      console.log('📊 Method 3: Aggregating recent campaigns...')
-      
-      const { data: campaigns } = await supabase
-        .from('campaigns')
-        .select('id')
-        .eq('user_id', userId)
-        .limit(10)
-
-      if (campaigns && campaigns.length > 0) {
-        const campaignIds = campaigns.map(c => c.id)
-        
-        const { data: aggregated } = await supabase
-          .from('campaign_metrics')
-          .select('*')
-          .in('campaign_id', campaignIds)
-          .gte('date', startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-
-        if (aggregated && aggregated.length > 0) {
-          // Sum up all campaign metrics
-          const totals = aggregated.reduce((acc, curr) => ({
-            emails_sent: (acc.emails_sent || 0) + (curr.emails_sent || 0),
-            emails_delivered: (acc.emails_delivered || 0) + (curr.emails_delivered || 0),
-            bounces: (acc.bounces || 0) + (curr.bounces || 0),
-            blocks: (acc.blocks || 0) + (curr.blocks || 0),
-            unique_opens: (acc.unique_opens || 0) + (curr.unique_opens || 0),
-            total_opens: (acc.total_opens || 0) + (curr.total_opens || 0),
-            unique_clicks: (acc.unique_clicks || 0) + (curr.unique_clicks || 0),
-            total_clicks: (acc.total_clicks || 0) + (curr.total_clicks || 0),
-            unsubscribes: (acc.unsubscribes || 0) + (curr.unsubscribes || 0),
-            spam_reports: (acc.spam_reports || 0) + (curr.spam_reports || 0)
-          }), {})
-
-          accountMetrics = {
-            emailsSent: totals.emails_sent || 0,
-            emailsDelivered: totals.emails_delivered || 0,
-            emailsBounced: totals.bounces || 0,
-            emailsBlocked: totals.blocks || 0,
-            uniqueOpens: totals.unique_opens || 0,
-            totalOpens: totals.total_opens || 0,
-            uniqueClicks: totals.unique_clicks || 0,
-            totalClicks: totals.total_clicks || 0,
-            unsubscribes: totals.unsubscribes || 0,
-            spamReports: totals.spam_reports || 0,
-            deliveryRate: totals.emails_sent > 0 ? Math.round((totals.emails_delivered / totals.emails_sent) * 100) : 0,
-            bounceRate: totals.emails_sent > 0 ? Math.round((totals.bounces / totals.emails_sent) * 100) : 0,
-            openRate: totals.emails_delivered > 0 ? Math.round((totals.unique_opens / totals.emails_delivered) * 100) : 0,
-            clickRate: totals.emails_delivered > 0 ? Math.round((totals.unique_clicks / totals.emails_delivered) * 100) : 0,
-            unsubscribeRate: totals.emails_delivered > 0 ? Math.round((totals.unsubscribes / totals.emails_delivered) * 100) : 0
-          }
-          
-          console.log('✅ Campaign aggregation metrics:', accountMetrics)
-          
-          return NextResponse.json({
-            success: true,
-            data: {
-              metrics: accountMetrics,
-              source: 'campaign_aggregation',
-              period: `${startDate} to ${endDate}`,
-              campaigns_count: campaigns.length
-            }
-          })
-        }
-      }
-    } catch (campaignError) {
-      console.warn('⚠️ Campaign aggregation failed:', campaignError)
-    }
-
-    // If all methods fail, return empty metrics
-    console.log('⚠️ All methods failed, returning empty metrics')
+    // If no webhook data found, return empty metrics (no fake fallbacks)
+    console.log('⚠️ No real email activity found, returning empty metrics')
     
     return NextResponse.json({
       success: true,
       data: {
         metrics: accountMetrics,
-        source: 'no_data',
+        source: 'no_email_activity',
         period: `${startDate} to ${endDate}`,
-        message: 'No analytics data available for this period'
+        message: 'No email activity found for this period'
       }
     })
 
