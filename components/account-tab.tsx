@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useRef } from "react" // Import useRe
 import { useRouter } from "next/navigation"
 import { useCompanyLogo } from "@/hooks/useCompanyLogo"
 import { useSubscription } from "@/hooks/use-subscription"
-import { Save, Edit3, X, Globe, User, Mail, Phone, Building, MapPin, Clock, Eye, Crown, ArrowLeft, Info } from "lucide-react"
+import { Save, Edit3, X, Globe, User, Mail, Phone, Building, MapPin, Clock, Eye, Crown, ArrowLeft, Info, FileText } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AutomationLogs } from "./automation-logs"
 import type { UserProfile } from "@/types/db"
 
 interface AccountTabProps {
@@ -29,6 +31,7 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
   const { logoUrl, updateLogo } = useCompanyLogo()
   const { userInfo, hasActiveSubscription } = useSubscription()
   const [isEditing, setIsEditing] = useState(false)
+  const [activeTab, setActiveTab] = useState("profile")
   const [profileData, setProfileData] = useState<UserProfile>({
     id: "1", // Mock ID
     first_name: "",
@@ -173,7 +176,7 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-4">
@@ -187,13 +190,28 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
           <div className="h-6 w-px bg-gray-300" />
           <div>
             <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Account</h1>
-            <p className="text-gray-600">Manage your profile information and preferences</p>
+            <p className="text-gray-600">Manage your profile information and automation logs</p>
           </div>
         </div>
       </div>
 
-      {/* Account Settings */}
-      <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden shadow-sm">
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="bg-gray-100 p-1 rounded-2xl">
+          <TabsTrigger value="profile" className="rounded-xl">
+            <User className="w-4 h-4 mr-2" />
+            Profile
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="rounded-xl">
+            <FileText className="w-4 h-4 mr-2" />
+            Automation Logs
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Profile Tab */}
+        <TabsContent value="profile" className="space-y-0">
+          {/* Account Settings */}
+          <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden shadow-sm">
 
         {/* Profile Section */}
         <div className="space-y-0">
@@ -371,6 +389,13 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
           </div>
         </div>
       </div>
+        </TabsContent>
+
+        {/* Logs Tab */}
+        <TabsContent value="logs" className="space-y-0">
+          <AutomationLogs />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
