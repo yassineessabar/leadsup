@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         campaign:campaigns(name),
-        contact:contacts(email, first_name, last_name, current_sequence_step)
+        contact:contacts(email, first_name, last_name)
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)

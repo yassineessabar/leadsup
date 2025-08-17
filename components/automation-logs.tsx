@@ -75,8 +75,7 @@ interface AutomationLog {
   contact?: { 
     email: string; 
     first_name: string; 
-    last_name: string; 
-    current_sequence_step?: number;
+    last_name: string;
   }
   sender?: { email: string }
   campaignSenderInfo?: CampaignSenderInfo | null
@@ -689,9 +688,9 @@ export function AutomationLogs() {
                             <div className="text-gray-500 text-xs">
                               {log.contact.email}
                             </div>
-                            {log.contact.current_sequence_step && (
+                            {log.sequence_step && (
                               <div className="text-blue-600 text-xs mt-1">
-                                Step {log.contact.current_sequence_step}
+                                Step {log.sequence_step}
                               </div>
                             )}
                           </div>

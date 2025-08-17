@@ -55,6 +55,8 @@ interface Contact {
   image_url?: string
   status: "Pending" | "Email 1" | "Email 2" | "Email 3" | "Email 4" | "Email 5" | "Email 6" | "Completed" | "Replied" | "Unsubscribed" | "Bounced"
   campaign_name: string
+  timezone?: string
+  next_scheduled?: string
 }
 
 interface CampaignAnalyticsProps {
@@ -188,20 +190,82 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           console.log('Using fallback sequence progress logic')
         }
 
-        const mappedContacts = contactsResult.contacts.map((contact: any) => ({
-          id: contact.id,
-          first_name: contact.first_name || '',
-          last_name: contact.last_name || '',
-          email: contact.email || contact.email_address || '',
-          title: contact.title || contact.job_title || '',
-          company: contact.company || contact.company_name || '',
-          location: contact.location || '',
-          industry: contact.industry || '',
-          linkedin: contact.linkedin || '',
-          image_url: contact.image_url || undefined,
-          status: sequenceProgressMap[contact.id] || "Pending",
-          campaign_name: contact.campaign_name || campaign.name
-        }))
+        const mappedContacts = contactsResult.contacts.map((contact: any) => {
+          const status = sequenceProgressMap[contact.id] || "Pending"
+          const createdAt = new Date(contact.created_at)
+          
+          // Generate timezone based on location or use a default
+          let timezone = contact.timezone || ''
+          if (!timezone && contact.location) {
+            // Simple timezone mapping based on common locations
+            const locationLower = contact.location.toLowerCase()
+            if (locationLower.includes('new york') || locationLower.includes('ny')) timezone = 'EST'
+            else if (locationLower.includes('california') || locationLower.includes('ca') || locationLower.includes('san francisco') || locationLower.includes('los angeles')) timezone = 'PST'
+            else if (locationLower.includes('chicago') || locationLower.includes('il')) timezone = 'CST'
+            else if (locationLower.includes('london') || locationLower.includes('uk')) timezone = 'GMT'
+            else if (locationLower.includes('paris') || locationLower.includes('france')) timezone = 'CET'
+            else if (locationLower.includes('tokyo') || locationLower.includes('japan')) timezone = 'JST'
+            else if (locationLower.includes('sydney') || locationLower.includes('australia')) timezone = 'AEDT'
+            else timezone = 'UTC'
+          } else if (!timezone) {
+            timezone = 'UTC'
+          }
+          
+          // Calculate next scheduled time based on sequence timing
+          let next_scheduled = ''
+          const emailSchedule = [
+            { day: 0, label: 'Immediate' },  // Email 1 - immediate
+            { day: 3, label: '3 days' },     // Email 2 - 3 days later
+            { day: 7, label: '7 days' },     // Email 3 - 7 days later  
+            { day: 14, label: '14 days' },   // Email 4 - 14 days later
+            { day: 21, label: '21 days' },   // Email 5 - 21 days later
+            { day: 28, label: '28 days' }    // Email 6 - 28 days later
+          ]
+          
+          if (status === "Pending") {
+            // Next email is immediate
+            next_scheduled = "Now"
+          } else if (status.startsWith("Email ")) {
+            const currentStep = parseInt(status.split(" ")[1]) || 1
+            if (currentStep < 6) {
+              // Calculate next email time
+              const nextSchedule = emailSchedule[currentStep]
+              if (nextSchedule) {
+                const nextDate = new Date(createdAt)
+                nextDate.setDate(nextDate.getDate() + nextSchedule.day)
+                next_scheduled = nextDate.toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              } else {
+                next_scheduled = "Sequence complete"
+              }
+            } else {
+              next_scheduled = "Sequence complete"
+            }
+          } else if (["Completed", "Replied", "Unsubscribed", "Bounced"].includes(status)) {
+            next_scheduled = "None"
+          }
+          
+          return {
+            id: contact.id,
+            first_name: contact.first_name || '',
+            last_name: contact.last_name || '',
+            email: contact.email || contact.email_address || '',
+            title: contact.title || contact.job_title || '',
+            company: contact.company || contact.company_name || '',
+            location: contact.location || '',
+            industry: contact.industry || '',
+            linkedin: contact.linkedin || '',
+            image_url: contact.image_url || undefined,
+            status,
+            campaign_name: contact.campaign_name || campaign.name,
+            timezone,
+            next_scheduled
+          }
+        })
         
         setContacts(mappedContacts)
       } else {
@@ -701,6 +765,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Company</th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
+                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Timezone</th>
+                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Next Scheduled</th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -724,11 +790,13 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                           <td className="p-4"><div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div></td>
                           <td className="p-4"><div className="h-3 bg-gray-200 rounded w-20 animate-pulse"></div></td>
                           <td className="p-4"><div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div></td>
+                          <td className="p-4"><div className="h-3 bg-gray-200 rounded w-12 animate-pulse"></div></td>
+                          <td className="p-4"><div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div></td>
                         </tr>
                       ))
                     ) : filteredContacts.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-12 text-center text-gray-500">
+                        <td colSpan={8} className="p-12 text-center text-gray-500">
                           <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                           <p className="text-lg font-medium text-gray-900 mb-2">No contacts found</p>
                           <p className="text-sm text-gray-500">Try adjusting your search or filters</p>
@@ -778,6 +846,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                           </td>
                           <td className="p-4">
                             <p className="text-sm text-gray-500">{contact.location || '-'}</p>
+                          </td>
+                          <td className="p-4">
+                            <p className="text-sm text-gray-500">{contact.timezone || '-'}</p>
+                          </td>
+                          <td className="p-4">
+                            <p className="text-sm text-gray-500">{contact.next_scheduled || '-'}</p>
                           </td>
                           <td className="p-4">
                             <div className="flex items-center gap-2">

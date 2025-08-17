@@ -16,7 +16,7 @@ interface ContactWithTimezone {
   company: string
   timezone?: string
   last_contacted_at?: string | null
-  current_sequence_step?: number
+  sequence_step?: number
   campaign_id: number
   tags?: string[]
 }
@@ -165,9 +165,9 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
     const allContacts = await getAllContacts(campaign.id)
     const contacts = await getEligibleContacts(campaign.id)
     
-    // Analyze contact types
-    const newContacts = contacts.filter(c => !c.current_sequence_step || c.current_sequence_step === 0)
-    const inSequenceContacts = contacts.filter(c => c.current_sequence_step && c.current_sequence_step > 0)
+    // Analyze contact types - use tags or default logic since sequence_step column doesn't exist
+    const newContacts = contacts.filter(c => !c.last_contacted_at)
+    const inSequenceContacts = contacts.filter(c => c.last_contacted_at)
     
     await logEvent({
       runId,
@@ -181,8 +181,8 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
         newContacts: newContacts.length,
         inSequenceContacts: inSequenceContacts.length,
         contactBreakdown: {
-          new: newContacts.map(c => ({ id: c.id, email: c.email, step: c.current_sequence_step || 0 })),
-          inSequence: inSequenceContacts.map(c => ({ id: c.id, email: c.email, step: c.current_sequence_step }))
+          new: newContacts.map(c => ({ id: c.id, email: c.email, step: 0 })),
+          inSequence: inSequenceContacts.map(c => ({ id: c.id, email: c.email, step: c.sequence_step || 1 }))
         }
       }
     })
@@ -278,7 +278,7 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
 
       // Check if contact is new or in-sequence
       const isNewContact = !contact.last_contacted_at
-      const sequenceStep = isNewContact ? 1 : (contact.current_sequence_step + 1)
+      const sequenceStep = isNewContact ? 1 : (contact.sequence_step ? contact.sequence_step + 1 : 1)
       
       // Get email template for this sequence step
       const template = await getEmailTemplate(campaign.id, sequenceStep)
@@ -321,7 +321,7 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
             contact: {
               email: contact.email,
               name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim(),
-              currentStep: contact.current_sequence_step || 0,
+              currentStep: contact.sequence_step || 0,
               newStep: sequenceStep
             }
           }
@@ -334,10 +334,10 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
           contactId: contact.id,
           logType: 'contact_status_update',
           status: 'success',
-          message: `📝 Status Updated: ${contact.email} moved from step ${contact.current_sequence_step || 0} to step ${sequenceStep}`,
+          message: `📝 Status Updated: ${contact.email} moved from step ${contact.sequence_step || 0} to step ${sequenceStep}`,
           details: {
             contactEmail: contact.email,
-            previousStep: contact.current_sequence_step || 0,
+            previousStep: contact.sequence_step || 0,
             newStep: sequenceStep,
             nextEmailIn: `${template.timing_days || 3} days`,
             testMode: true
@@ -370,7 +370,7 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
               contact: {
                 email: contact.email,
                 name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim(),
-                currentStep: contact.current_sequence_step || 0,
+                currentStep: contact.sequence_step || 0,
                 newStep: sequenceStep
               }
             }
@@ -386,10 +386,10 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean) 
             contactId: contact.id,
             logType: 'contact_status_update',
             status: 'success',
-            message: `📝 Status Updated: ${contact.email} moved from step ${contact.current_sequence_step || 0} to step ${sequenceStep}`,
+            message: `📝 Status Updated: ${contact.email} moved from step ${contact.sequence_step || 0} to step ${sequenceStep}`,
             details: {
               contactEmail: contact.email,
-              previousStep: contact.current_sequence_step || 0,
+              previousStep: contact.sequence_step || 0,
               newStep: sequenceStep,
               nextEmailIn: `${template.timing_days || 3} days`
             }
@@ -686,8 +686,8 @@ async function updateContactStatus(contactId: number, sequenceStep: number, timi
       updateData.tags = updatedTags
     }
     
-    if ('current_sequence_step' in contact) {
-      updateData.current_sequence_step = sequenceStep
+    if ('sequence_step' in contact) {
+      updateData.sequence_step = sequenceStep
     }
     
     if ('last_contacted_at' in contact) {
