@@ -1156,24 +1156,24 @@ Please add content to this email in the sequence settings.`
 
         {/* Health Score Section */}
         <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
-          <CardContent className="p-8">
-            <div className="flex items-center space-x-4 mb-8">
-              <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center">
-                <Heart className="w-6 h-6 text-orange-600" />
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
+                <Heart className="w-5 h-5 text-orange-600" />
               </div>
               <div className="flex-1">
-                <h2 className="text-xl font-medium text-gray-900">Sender Health Scores</h2>
-                <p className="text-gray-500 text-sm mt-1">Account health and deliverability metrics</p>
+                <h3 className="text-lg font-medium text-gray-900">Sender Health Scores</h3>
+                <p className="text-gray-500 text-xs mt-0.5">Account health metrics</p>
               </div>
             </div>
             
             {healthScoresLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin h-6 w-6 border-2 border-orange-600 border-t-transparent rounded-full"></div>
-                <span className="ml-2 text-gray-600">Loading health scores...</span>
+              <div className="flex items-center justify-center py-6">
+                <div className="animate-spin h-5 w-5 border-2 border-orange-600 border-t-transparent rounded-full"></div>
+                <span className="ml-2 text-sm text-gray-600">Loading...</span>
               </div>
             ) : Object.keys(senderHealthScores).length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {Object.entries(senderHealthScores).map(([emailOrId, healthData]) => {
                   const score = healthData.score
                   const email = emailOrId // Now the API returns email addresses as keys
@@ -1191,33 +1191,28 @@ Please add content to this email in the sequence settings.`
                   }
                   
                   return (
-                    <div key={emailOrId} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getScoreColor(score)}`}>
-                          <Mail className="w-5 h-5" />
+                    <div key={emailOrId} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getScoreColor(score)}`}>
+                          <Mail className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{email}</p>
-                          <p className="text-sm text-gray-500">{getScoreStatus(score)}</p>
+                          <p className="text-sm font-medium text-gray-900">{email}</p>
+                          <p className="text-xs text-gray-500">{getScoreStatus(score)}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(score)}`}>
-                          {score}/100
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Updated {new Date(healthData.lastUpdated).toLocaleDateString()}
-                        </p>
+                      <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getScoreColor(score)}`}>
+                        {score}/100
                       </div>
                     </div>
                   )
                 })}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <Heart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No health score data available</p>
-                <p className="text-sm text-gray-400 mt-1">Health scores will appear once sender accounts are configured</p>
+              <div className="text-center py-6">
+                <Heart className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm text-gray-500">No health score data available</p>
+                <p className="text-xs text-gray-400 mt-1">Configure sender accounts to see scores</p>
               </div>
             )}
           </CardContent>
