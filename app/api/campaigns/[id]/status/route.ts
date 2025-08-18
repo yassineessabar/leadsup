@@ -49,11 +49,11 @@ export async function PUT(
     const { status } = body
 
     // Validate status
-    const validStatuses = ["Draft", "Active", "Paused", "Completed"]
+    const validStatuses = ["Draft", "Active", "Paused", "Completed", "Warming"]
     if (!status || !validStatuses.includes(status)) {
       return NextResponse.json({ 
         success: false, 
-        error: "Invalid status. Must be one of: Draft, Active, Paused, Completed" 
+        error: "Invalid status. Must be one of: Draft, Active, Paused, Completed, Warming" 
       }, { status: 400 })
     }
 
