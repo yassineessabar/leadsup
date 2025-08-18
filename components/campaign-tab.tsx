@@ -65,7 +65,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     campaign: null, 
     isMultiple: false 
   })
-  const [isUpdatingCampaignStatus, setIsUpdatingCampaignStatus] = useState(false)
 
   const triggerOptions = [
     { value: "New Client", label: "New Client", icon: UserPlus, description: "Trigger when a new client signs up" },
@@ -225,11 +224,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
   // Check for campaign ID and subtab in URL params to auto-open campaign dashboard
   useEffect(() => {
-    // Don't auto-navigate if we're currently updating a campaign status
-    if (isUpdatingCampaignStatus) {
-      return
-    }
-    
     const campaignId = searchParams.get('campaignId')
     const subtab = searchParams.get('subtab')
     
@@ -240,7 +234,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         setCurrentView("dashboard")
       }
     }
-  }, [searchParams, campaigns, isUpdatingCampaignStatus])
+  }, [searchParams, campaigns])
 
   // Check for autoOpen parameter to trigger popup for new users
   useEffect(() => {
@@ -443,8 +437,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   }
 
   const handleCampaignStatusChange = async (campaignId: string | number, currentStatus: string, campaignName: string) => {
-    setIsUpdatingCampaignStatus(true)
-    
     // Determine the new status based on current status
     const newStatus = currentStatus === "Active" ? "Paused" : "Active"
     const action = newStatus === "Active" ? "activate" : "pause"
@@ -477,8 +469,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           description: `"${campaignName}" has been ${action}d successfully`,
         })
 
-        // Don't automatically redirect when activating campaigns
-        // Users should stay on their current view
+        // If campaign is being activated, open it in contact tab
+        if (action === "activate" && updatedCampaign) {
+          setSelectedCampaign({
+            ...updatedCampaign,
+            status: newStatus as "Draft" | "Active" | "Paused" | "Completed"
+          })
+          setCurrentView("dashboard")
+        }
       } else {
         toast({
           title: "Error",
@@ -493,8 +491,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         description: `Failed to ${action} campaign`,
         variant: "destructive"
       })
-    } finally {
-      setIsUpdatingCampaignStatus(false)
     }
   }
 
@@ -1086,7 +1082,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           variant="outline"
                           className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl"
                           onClick={(e) => {
-                            e.preventDefault()
                             e.stopPropagation()
                             handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
                           }}
@@ -1106,7 +1101,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         <Button
                           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-0 font-medium transition-all duration-300 rounded-2xl"
                           onClick={(e) => {
-                            e.preventDefault()
                             e.stopPropagation()
                             handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
                           }}
@@ -1117,7 +1111,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         <Button
                           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-0 font-medium transition-all duration-300 rounded-2xl"
                           onClick={(e) => {
-                            e.preventDefault()
                             e.stopPropagation()
                             handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
                           }}
@@ -1131,7 +1124,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           variant="outline"
                           className="border-red-300 hover:bg-red-50 text-red-600 font-medium transition-all duration-300 rounded-2xl px-4"
                           onClick={(e) => {
-                            e.preventDefault()
                             e.stopPropagation()
                             handleCampaignStatusChange(campaign.id, 'Active', campaign.name)
                           }}
