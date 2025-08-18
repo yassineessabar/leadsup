@@ -577,9 +577,9 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     const newStatus = campaign.status === "Active" ? "Paused" : "Active"
     console.log('🎯 Changing status to:', newStatus)
     
-    // Special handling for resuming from Warming status
-    if (campaign.status === "Warming" && newStatus === "Active") {
-      // Check if health scores are still low (below 90%)
+    // Special handling for resuming (from Warming or Paused status)
+    if ((campaign.status === "Warming" || campaign.status === "Paused") && newStatus === "Active") {
+      // Check if health scores are low (below 90%)
       const lowScoreSenders = Object.entries(senderHealthScores)
         .filter(([_, healthData]) => healthData.score < 90)
         .map(([email, healthData]) => ({ email, score: healthData.score }))
