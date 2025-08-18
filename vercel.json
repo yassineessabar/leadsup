@@ -24,6 +24,10 @@
     {
       "path": "/api/warming/execute", 
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/automation/process-scheduled",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
