@@ -69,6 +69,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   const [lowHealthSenders, setLowHealthSenders] = useState<Array<{ email: string; score: number }>>([])
   const [pendingResumeStatus, setPendingResumeStatus] = useState<string | null>(null)
   const [pendingResumeCampaign, setPendingResumeCampaign] = useState<{ id: string | number; name: string } | null>(null)
+  const [warmupDecisionLoading, setWarmupDecisionLoading] = useState(false)
 
   const triggerOptions = [
     { value: "New Client", label: "New Client", icon: UserPlus, description: "Trigger when a new client signs up" },
@@ -441,23 +442,29 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   }
 
   const handleWarmupDecision = async (shouldContinueWarmup: boolean) => {
-    setShowWarmupWarning(false)
+    if (warmupDecisionLoading) return // Prevent multiple clicks
     
-    if (shouldContinueWarmup) {
-      // Continue warmup - change status to Warming
-      if (pendingResumeCampaign) {
-        await proceedWithStatusChange(pendingResumeCampaign.id, "Warming", pendingResumeCampaign.name)
+    setWarmupDecisionLoading(true)
+    
+    try {
+      if (shouldContinueWarmup) {
+        // Continue warmup - change status to Warming
+        if (pendingResumeCampaign) {
+          await proceedWithStatusChange(pendingResumeCampaign.id, "Warming", pendingResumeCampaign.name)
+        }
+      } else {
+        // Resume anyway - proceed with original activation
+        if (pendingResumeCampaign && pendingResumeStatus) {
+          await proceedWithStatusChange(pendingResumeCampaign.id, pendingResumeStatus, pendingResumeCampaign.name)
+        }
       }
-    } else {
-      // Resume anyway - proceed with original activation
-      if (pendingResumeCampaign && pendingResumeStatus) {
-        await proceedWithStatusChange(pendingResumeCampaign.id, pendingResumeStatus, pendingResumeCampaign.name)
-      }
+    } finally {
+      // Reset states regardless of success or failure
+      setWarmupDecisionLoading(false)
+      setShowWarmupWarning(false)
+      setPendingResumeStatus(null)
+      setPendingResumeCampaign(null)
     }
-    
-    // Reset pending state
-    setPendingResumeStatus(null)
-    setPendingResumeCampaign(null)
   }
 
   const proceedWithStatusChange = async (campaignId: string | number, newStatus: string, campaignName: string) => {
@@ -505,6 +512,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       })
     }
   }
+
 
   const handleCampaignStatusChange = async (campaignId: string | number, currentStatus: string, campaignName: string) => {
     // Determine the new status based on current status
@@ -1177,18 +1185,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         </Button>
                       )}
                       
-                      {campaign.status === 'Active' && (
-                        <Button
-                          variant="outline"
-                          className="border-red-300 hover:bg-red-50 text-red-600 font-medium transition-all duration-300 rounded-2xl px-4"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleCampaignStatusChange(campaign.id, 'Active', campaign.name)
-                          }}
-                        >
-                          Stop
-                        </Button>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1369,16 +1365,34 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               <Button
                 variant="outline"
                 onClick={() => handleWarmupDecision(false)}
+                disabled={warmupDecisionLoading}
                 className="flex-1"
               >
-                Resume Anyway
+                {warmupDecisionLoading ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                    Processing...
+                  </>
+                ) : (
+                  'Resume Anyway'
+                )}
               </Button>
               <Button
                 onClick={() => handleWarmupDecision(true)}
-                className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white"
+                disabled={warmupDecisionLoading}
+                className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Flame className="w-4 h-4 mr-1.5" />
-                Continue Warmup
+                {warmupDecisionLoading ? (
+                  <>
+                    <div className="w-4 h-4 mr-1.5 border-2 border-white border-t-orange-200 rounded-full animate-spin"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Flame className="w-4 h-4 mr-1.5" />
+                    Continue Warmup
+                  </>
+                )}
               </Button>
             </div>
           </DialogContent>

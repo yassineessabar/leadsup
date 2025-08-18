@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, RefreshCw, Pause, Play, Square, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit } from "lucide-react"
+import { ArrowLeft, RefreshCw, Pause, Play, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -105,6 +105,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // SendGrid analytics state
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
   const [metricsLoading, setMetricsLoading] = useState(true)
+  const [warmupDecisionLoading, setWarmupDecisionLoading] = useState(false)
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
     end: new Date()
@@ -596,34 +597,34 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     onStatusUpdate(campaign.id, newStatus)
   }
 
-  const handleStop = () => {
-    console.log('🛑 handleStop called')
-    if (!onStatusUpdate) {
-      console.log('❌ No onStatusUpdate function provided for stop!')
-      return
-    }
-    console.log('🎯 Stopping campaign, setting status to Completed')
-    onStatusUpdate(campaign.id, "Completed")
-  }
 
   const handleWarmupDecision = (shouldContinueWarmup: boolean) => {
+    if (warmupDecisionLoading) return // Prevent multiple clicks
+    
+    setWarmupDecisionLoading(true)
     setShowWarmupWarning(false)
     
-    if (shouldContinueWarmup) {
-      // Continue warmup - change status to Warming
-      console.log('🔥 Continuing warmup for campaign:', campaign.id)
-      if (onStatusUpdate) {
-        onStatusUpdate(campaign.id, 'Warming')
+    try {
+      if (shouldContinueWarmup) {
+        // Continue warmup - change status to Warming
+        console.log('🔥 Continuing warmup for campaign:', campaign.id)
+        if (onStatusUpdate) {
+          onStatusUpdate(campaign.id, 'Warming')
+        }
+      } else {
+        // User chose to ignore warning and resume to Active anyway
+        console.log('⚠️ Resuming campaign to Active despite low health scores')
+        if (onStatusUpdate && pendingResumeStatus) {
+          onStatusUpdate(campaign.id, pendingResumeStatus)
+        }
       }
-    } else {
-      // User chose to ignore warning and resume to Active anyway
-      console.log('⚠️ Resuming campaign to Active despite low health scores')
-      if (onStatusUpdate && pendingResumeStatus) {
-        onStatusUpdate(campaign.id, pendingResumeStatus)
-      }
+    } finally {
+      // Reset states
+      setTimeout(() => {
+        setWarmupDecisionLoading(false)
+        setPendingResumeStatus(null)
+      }, 500) // Small delay to show loading state
     }
-    
-    setPendingResumeStatus(null)
   }
 
 
@@ -1130,22 +1131,6 @@ Please add content to this email in the sequence settings.`
                 </Button>
               )}
               
-              {campaign.status === "Active" && (
-                <Button
-                  variant="outline"
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleStop()
-                    return false
-                  }}
-                  className="border-red-300 hover:bg-red-50 text-red-600 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
-                >
-                  <Square className="h-4 w-4 mr-2" />
-                  Stop
-                </Button>
-              )}
 
             </div>
           </div>
@@ -2363,7 +2348,15 @@ Please add content to this email in the sequence settings.`
             
             <div className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
               <p><span className="font-semibold">Continue Warmup:</span> Keep warming to improve health scores before going active.</p>
-              <p className="mt-1"><span className="font-semibold">Resume Anyway:</span> Go active now despite low health scores.</p>
+              <p className="mt-1">
+                <span className="font-semibold">
+                  {pendingResumeStatus === "Completed" ? "Stop Anyway:" : "Resume Anyway:"}
+                </span>{" "}
+                {pendingResumeStatus === "Completed" 
+                  ? "Stop the campaign now despite health scores." 
+                  : "Go active now despite low health scores."
+                }
+              </p>
             </div>
           </div>
           
@@ -2375,9 +2368,17 @@ Please add content to this email in the sequence settings.`
                 e.stopPropagation()
                 handleWarmupDecision(false)
               }}
+              disabled={warmupDecisionLoading}
               className="flex-1 h-10 rounded-xl text-sm"
             >
-              Resume Anyway
+              {warmupDecisionLoading ? (
+                <>
+                  <div className="w-4 h-4 mr-2 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                  Processing...
+                </>
+              ) : (
+                pendingResumeStatus === "Completed" ? "Stop Anyway" : "Resume Anyway"
+              )}
             </Button>
             <Button
               onClick={(e) => {
@@ -2385,10 +2386,20 @@ Please add content to this email in the sequence settings.`
                 e.stopPropagation()
                 handleWarmupDecision(true)
               }}
-              className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium"
+              disabled={warmupDecisionLoading}
+              className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Flame className="w-4 h-4 mr-1.5" />
-              Continue Warmup
+              {warmupDecisionLoading ? (
+                <>
+                  <div className="w-4 h-4 mr-1.5 border-2 border-white border-t-orange-200 rounded-full animate-spin"></div>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Flame className="w-4 h-4 mr-1.5" />
+                  Continue Warmup
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>
