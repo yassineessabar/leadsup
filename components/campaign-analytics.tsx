@@ -123,6 +123,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           const senderEmails = result.assignments.map((assignment: any) => 
             assignment.email || assignment.sender_email || 'Unknown sender'
           )
+          console.log(`📧 SEQUENCE DEBUGGING: Campaign ${campaign.id} selected senders:`, senderEmails)
+          console.log(`🎯 SEQUENCE: ${senderEmails.length} senders will be used for contact assignment`)
           setCampaignSenders(senderEmails)
         }
       }
@@ -806,6 +808,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     }, 0)
     const senderIndex = Math.abs(contactHash) % Math.max(campaignSenders.length, 1)
     const assignedSender = campaignSenders[senderIndex] || contact.sender_email || 'No sender assigned'
+    
+    console.log(`🎯 SEQUENCE ASSIGNMENT: Contact ${contact.email} assigned to sender:`, assignedSender)
+    console.log(`📧 Available campaign senders for assignment:`, campaignSenders)
+    console.log(`🔢 Sender index: ${senderIndex} (from ${campaignSenders.length} total selected senders)`)
     
     // Track current step to preserve scheduled times for past emails
     const currentStep = contact.sequence_step || 0
