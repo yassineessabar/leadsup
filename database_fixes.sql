@@ -13,7 +13,11 @@ ADD COLUMN IF NOT EXISTS sender_email VARCHAR(255);
 CREATE INDEX IF NOT EXISTS idx_campaign_metrics_sender_email ON campaign_metrics(sender_email);
 CREATE INDEX IF NOT EXISTS idx_email_tracking_sender_email ON email_tracking(sender_email);
 
--- 4. Create the missing function get_sendgrid_campaign_metrics_by_senders
+-- 4. Drop existing function if it exists and create the missing function
+DROP FUNCTION IF EXISTS get_sendgrid_campaign_metrics_by_senders(TEXT, TEXT, TEXT[], DATE, DATE);
+DROP FUNCTION IF EXISTS get_sendgrid_campaign_metrics_by_senders(UUID, UUID, TEXT[], DATE, DATE);
+
+-- Create the missing function get_sendgrid_campaign_metrics_by_senders
 CREATE OR REPLACE FUNCTION get_sendgrid_campaign_metrics_by_senders(
   p_campaign_id TEXT,
   p_user_id TEXT,
