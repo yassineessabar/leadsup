@@ -258,9 +258,24 @@ export async function GET(request: NextRequest) {
     console.log('🔄 Using real SendGrid webhook data for health calculation...')
     
     try {
+      // Create mapping from sender ID to email for transforming response keys
+      const idToEmailMap: Record<string, string> = {}
+      senderAccounts.forEach(account => {
+        if (account.id && account.email) {
+          idToEmailMap[account.id] = account.email
+        }
+      })
+      
       // Use the found sender accounts to get their IDs
       const actualSenderIds = senderAccounts.map(account => account.id).filter(Boolean)
-      const healthScores = await calculateHealthScoresFromRealData(userId, actualSenderIds)
+      const healthScoresById = await calculateHealthScoresFromRealData(userId, actualSenderIds)
+      
+      // Transform the response to use email addresses as keys instead of IDs
+      const healthScores: Record<string, any> = {}
+      Object.entries(healthScoresById).forEach(([senderId, scoreData]) => {
+        const email = idToEmailMap[senderId] || senderId
+        healthScores[email] = scoreData
+      })
       
       if (Object.keys(healthScores).length === 0) {
         console.log('⚠️ No health scores calculated from real data, falling back to simulated data')
@@ -399,7 +414,8 @@ async function calculateFallbackHealthScores(senderAccounts: any[], userId: stri
 
       const { score, breakdown } = calculateHealthScore(baseStats)
       
-      healthScores[sender.id] = {
+      // Use email as the key instead of sender ID for better display
+      healthScores[sender.email] = {
         score,
         breakdown,
         lastUpdated: new Date().toISOString()
@@ -415,9 +431,9 @@ async function calculateFallbackHealthScores(senderAccounts: any[], userId: stri
         .eq('id', sender.id)
 
     } catch (error) {
-      console.error(`Error calculating fallback health score for sender ${sender.id}:`, error)
+      console.error(`Error calculating fallback health score for sender ${sender.email}:`, error)
       // Use existing score or default
-      healthScores[sender.id] = {
+      healthScores[sender.email] = {
         score: 75,
         breakdown: {
           warmupScore: 50,

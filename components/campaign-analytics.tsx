@@ -90,7 +90,6 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Health score state
   const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { score: number; breakdown: any; lastUpdated: string }>>({})
   const [healthScoresLoading, setHealthScoresLoading] = useState(false)
-  const [senderEmailMap, setSenderEmailMap] = useState<Record<string, string>>({})
   
   // SendGrid analytics state
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
@@ -209,14 +208,6 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                   setSenderHealthScores(healthResult.healthScores || {})
                   console.log('✅ Loaded health scores from emails:', healthResult.healthScores)
                   
-                  // Create email mapping for display
-                  const emailMapping: Record<string, string> = {}
-                  senderEmails.forEach(email => {
-                    // For email-based lookups, we'll use the email directly
-                    emailMapping[email] = email
-                  })
-                  setSenderEmailMap(emailMapping)
-                  
                   return // Exit early since we got the health scores
                 }
               } else {
@@ -240,17 +231,6 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               if (healthResult.success) {
                 setSenderHealthScores(healthResult.healthScores || {})
                 console.log('✅ Loaded health scores:', healthResult.healthScores)
-                
-                // Create email mapping for display from sender assignments
-                const emailMapping: Record<string, string> = {}
-                senderAssignments.forEach((assignment: any) => {
-                  if (assignment.sender_id && assignment.email) {
-                    emailMapping[assignment.sender_id] = assignment.email
-                  } else if (assignment.email) {
-                    emailMapping[assignment.email] = assignment.email
-                  }
-                })
-                setSenderEmailMap(emailMapping)
               }
             } else {
               console.error('Failed to fetch health scores:', healthResponse.statusText)
@@ -1194,9 +1174,9 @@ Please add content to this email in the sequence settings.`
               </div>
             ) : Object.keys(senderHealthScores).length > 0 ? (
               <div className="space-y-4">
-                {Object.entries(senderHealthScores).map(([senderId, healthData]) => {
+                {Object.entries(senderHealthScores).map(([emailOrId, healthData]) => {
                   const score = healthData.score
-                  const email = senderEmailMap[senderId] || senderId // Fallback to senderId if no email mapping
+                  const email = emailOrId // Now the API returns email addresses as keys
                   
                   const getScoreColor = (score: number) => {
                     if (score >= 80) return 'text-green-600 bg-green-50'
@@ -1211,7 +1191,7 @@ Please add content to this email in the sequence settings.`
                   }
                   
                   return (
-                    <div key={senderId} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                    <div key={emailOrId} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
                       <div className="flex items-center space-x-3">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getScoreColor(score)}`}>
                           <Mail className="w-5 h-5" />
