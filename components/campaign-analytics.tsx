@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, RefreshCw, Pause, Play, Square, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame } from "lucide-react"
+import { ArrowLeft, RefreshCw, Pause, Play, Square, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -1256,9 +1256,11 @@ Please add content to this email in the sequence settings.`
           </Card>
         </div>
 
-        {/* Health Score Section - Compact */}
-        <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
-          <CardContent className="p-6">
+        {/* Health Score and Daily Limit Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Health Score Section - Compact */}
+          <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
+            <CardContent className="p-6">
             {healthScoresLoading ? (
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -1367,6 +1369,82 @@ Please add content to this email in the sequence settings.`
             )}
           </CardContent>
         </Card>
+
+          {/* Daily Limit Section */}
+          <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
+            <CardContent className="p-6">
+              {(() => {
+                // Calculate total daily limit based on selected senders
+                const selectedSenderCount = Object.keys(senderHealthScores).length
+                const dailyLimitPerSender = 50
+                const totalDailyLimit = selectedSenderCount * dailyLimitPerSender
+                
+                return (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                          <Zap className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900">Daily Limit</h3>
+                          <p className="text-xs text-gray-500">{selectedSenderCount} selected sender{selectedSenderCount > 1 ? 's' : ''} • {dailyLimitPerSender} emails each</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-50 text-blue-700">
+                          {totalDailyLimit} emails/day
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.location.href = `/campaign/${campaign.id}/settings?section=senders`}
+                          className="flex items-center gap-2 h-8 px-3 text-xs"
+                        >
+                          <Settings className="w-3 h-3" />
+                          Manage
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {selectedSenderCount > 0 && (
+                      <div className="mt-6 p-4 bg-blue-50/50 rounded-xl">
+                        <div className="flex items-start space-x-3">
+                          <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                            <svg className="w-3 h-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-blue-900 font-medium mb-2">Want to increase your daily limit?</p>
+                            <p className="text-xs text-blue-700">
+                              We recommend 50 emails per account per day for optimal deliverability. 
+                              To send more emails, add new domains or sender accounts in the campaign settings.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {selectedSenderCount === 0 && (
+                      <div className="mt-6 text-center py-4">
+                        <p className="text-sm text-gray-500 mb-3">No sender accounts selected</p>
+                        <Button
+                          variant="outline"
+                          onClick={() => window.location.href = `/campaign/${campaign.id}/settings?section=senders`}
+                          className="flex items-center gap-2"
+                        >
+                          <Settings className="w-4 h-4" />
+                          Add Sender Accounts
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Progress Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
