@@ -4367,81 +4367,67 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       {/* Warmup Warning Dialog */}
       <Dialog open={showWarmupWarning} onOpenChange={setShowWarmupWarning}>
-        <DialogContent className="max-w-md bg-white rounded-3xl border-0 p-0 overflow-hidden shadow-2xl">
-          <DialogHeader className="text-center p-8 pb-6 bg-gradient-to-br from-orange-50 to-amber-50">
-            <div className="mx-auto mb-4">
-              <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                <Flame className="w-10 h-10 text-white" />
+        <DialogContent className="sm:max-w-[425px] rounded-3xl border border-gray-100 p-0 overflow-hidden">
+          <div className="p-6 pb-0">
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl flex items-center justify-center">
+                <Flame className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-semibold text-gray-900">
+                  Health Score Alert
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-500">
+                  Some senders need warming up
+                </DialogDescription>
               </div>
             </div>
-            <DialogTitle className="text-2xl font-bold text-gray-900">
-              Sender Health Below Optimal
-            </DialogTitle>
-            <DialogDescription className="text-gray-600 mt-3 text-base leading-relaxed">
-              We detected some sender accounts with health scores below 90%. 
-              We recommend warming up these accounts first for better deliverability.
-            </DialogDescription>
-          </DialogHeader>
+          </div>
           
-          <div className="p-6 space-y-4">
-            <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
-              <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                <AlertTriangle className="w-4 h-4 text-orange-600 mr-2" />
-                Accounts Needing Warmup
-              </h4>
-              <div className="space-y-2">
+          <div className="px-6 pb-4">
+            <div className="bg-orange-50/50 rounded-xl p-3 mb-3">
+              <p className="text-xs font-medium text-orange-900 mb-2">Accounts Below 90% Health</p>
+              <div className="space-y-1.5">
                 {lowHealthSenders.map((sender, index) => {
                   const getScoreColor = (score: number) => {
-                    if (score >= 80) return 'text-green-600 bg-green-50'
-                    if (score >= 60) return 'text-yellow-600 bg-yellow-50'
-                    return 'text-red-600 bg-red-50'
+                    if (score >= 80) return 'text-green-700 bg-green-100'
+                    if (score >= 60) return 'text-yellow-700 bg-yellow-100'
+                    return 'text-red-700 bg-red-100'
                   }
                   
                   return (
                     <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg">
-                      <div className="flex items-center space-x-2">
-                        <Mail className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-700">{sender.email}</span>
-                      </div>
-                      <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getScoreColor(sender.score)}`}>
+                      <span className="text-sm text-gray-700 truncate flex-1 mr-2">{sender.email}</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getScoreColor(sender.score)}`}>
                         {sender.score}%
-                      </div>
+                      </span>
                     </div>
                   )
                 })}
               </div>
             </div>
             
-            <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
-              <p className="text-sm text-blue-900">
-                <strong>Warmup Mode:</strong> The campaign will gradually increase sending volume 
-                over 2-4 weeks to build sender reputation and reach the 90% health score target.
-              </p>
+            <div className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
+              <p><span className="font-semibold">Warmup Mode:</span> Gradually increases sending volume over 2-4 weeks to improve deliverability.</p>
             </div>
           </div>
           
-          <DialogFooter className="bg-gray-50 px-8 py-6">
-            <div className="flex gap-3 w-full">
-              <Button
-                variant="outline"
-                onClick={() => handleWarmupDecision(false)}
-                className="flex-1 rounded-2xl border-gray-300 hover:bg-gray-100"
-              >
-                <X className="w-4 h-4 mr-2" />
-                Ignore & Launch
-              </Button>
-              <Button
-                onClick={() => handleWarmupDecision(true)}
-                className="flex-1 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 shadow-lg"
-              >
-                <Flame className="w-4 h-4 mr-2" />
-                Start Warmup
-                <Badge variant="secondary" className="ml-2 bg-white/20 text-white border-0">
-                  Recommended
-                </Badge>
-              </Button>
-            </div>
-          </DialogFooter>
+          <div className="flex gap-2 p-6 pt-3 border-t border-gray-100">
+            <Button
+              variant="outline"
+              onClick={() => handleWarmupDecision(false)}
+              className="flex-1 h-10 rounded-xl text-sm"
+            >
+              Skip Warmup
+            </Button>
+            <Button
+              onClick={() => handleWarmupDecision(true)}
+              className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium"
+            >
+              <Flame className="w-4 h-4 mr-1.5" />
+              Start Warmup
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
