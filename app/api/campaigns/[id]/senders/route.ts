@@ -85,7 +85,7 @@ export async function GET(
     const assignments = assignmentsData || []
     console.log(`📋 Found ${assignments.length} assignments for campaign ${campaignId}:`, assignments)
     console.log('📧 Assignment emails:', assignments.map(a => a.email).filter(Boolean))
-    console.log('🆔 Assignment sender_ids:', assignments.map(a => a.sender_id).filter(Boolean))
+    console.log('👤 Assignment user_ids:', assignments.map(a => a.user_id).filter(Boolean))
 
     return NextResponse.json({
       success: true,
@@ -212,67 +212,54 @@ export async function POST(
     if (selectedSenderIds.length > 0) {
       console.log('📝 Inserting new sender assignments...')
       
-      // Use a minimal structure first to test what works
-      const newSenderAssignments = selectedSenderIds.map(senderId => ({
+      // Since campaign_senders table doesn't have sender_id column, we need to get the sender details first
+      const { data: senderAccounts, error: senderError } = await getSupabaseServerClient()
+        .from('sender_accounts')
+        .select('id, email, display_name')
+        .in('id', selectedSenderIds)
+
+      if (senderError || !senderAccounts) {
+        console.error('❌ Error fetching sender accounts:', senderError)
+        return NextResponse.json(
+          { success: false, error: 'Failed to fetch sender account details' },
+          { status: 500 }
+        )
+      }
+
+      // Create assignments using email field (which exists in campaign_senders table)
+      const emailBasedAssignments = senderAccounts.map(sender => ({
         campaign_id: campaignId,
-        sender_id: senderId,
+        user_id: userId, // Required field
+        email: sender.email, // Required field
+        name: sender.display_name || sender.email.split('@')[0],
+        sender_type: 'email',
+        is_selected: true,
+        is_active: true,
+        // Note: access_token and expires_at are required but we don't have them from sender_accounts
+        // This suggests the table design needs to be aligned with the use case
+        access_token: 'placeholder', // Temporary placeholder
+        expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year from now
       }))
 
-      console.log('📋 Attempting to insert:', newSenderAssignments)
+      console.log('📋 Attempting email-based insert:', emailBasedAssignments)
 
       const { data: insertData, error: insertError } = await getSupabaseServerClient()
         .from('campaign_senders')
-        .insert(newSenderAssignments)
+        .upsert(emailBasedAssignments, { 
+          onConflict: 'campaign_id,email',
+          ignoreDuplicates: false 
+        })
         .select()
 
       if (insertError) {
-        console.error('❌ Error inserting campaign senders (attempt 1):', insertError)
-        
-        // Try with email field instead (common in existing tables)
-        console.log('🔄 Trying with email field...')
-        
-        // Get sender emails from sender_accounts table first
-        const { data: senderAccounts, error: senderError } = await getSupabaseServerClient()
-          .from('sender_accounts')
-          .select('id, email')
-          .in('id', selectedSenderIds)
-
-        if (senderError || !senderAccounts) {
-          console.error('❌ Error fetching sender accounts:', senderError)
-          return NextResponse.json(
-            { success: false, error: 'Failed to fetch sender account details' },
-            { status: 500 }
-          )
-        }
-
-        // Try inserting with email field using upsert to handle duplicates
-        const emailBasedAssignments = senderAccounts.map(sender => ({
-          campaign_id: campaignId,
-          email: sender.email,
-        }))
-
-        console.log('📋 Attempting email-based upsert:', emailBasedAssignments)
-
-        const { data: emailInsertData, error: emailInsertError } = await getSupabaseServerClient()
-          .from('campaign_senders')
-          .upsert(emailBasedAssignments, { 
-            onConflict: 'campaign_id,email',
-            ignoreDuplicates: false 
-          })
-          .select()
-
-        if (emailInsertError) {
-          console.error('❌ Error with email-based insert:', emailInsertError)
-          return NextResponse.json(
-            { success: false, error: `Failed to assign senders: ${emailInsertError.message}` },
-            { status: 500 }
-          )
-        }
-
-        console.log('✅ Email-based insert successful:', emailInsertData)
-      } else {
-        console.log('✅ Sender ID-based insert successful:', insertData)
+        console.error('❌ Error with email-based insert:', insertError)
+        return NextResponse.json(
+          { success: false, error: `Failed to assign senders: ${insertError.message}` },
+          { status: 500 }
+        )
       }
+
+      console.log('✅ Email-based insert successful:', insertData)
     }
 
     const successResponse = {

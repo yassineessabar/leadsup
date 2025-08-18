@@ -1011,90 +1011,91 @@ export default function CampaignSenderSelection({
         {/* Test Email Modal */}
         {showTestModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl border border-gray-100/50">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-medium text-gray-900">
-                  Send Test Email
-                </h3>
-                <button
-                  onClick={() => setShowTestModal(false)}
-                  className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-2xl flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <span className="text-xl">×</span>
-                </button>
+            <div className="bg-white rounded-3xl p-0 max-w-md w-full shadow-2xl border border-gray-100 overflow-hidden">
+              {/* Header */}
+              <div className="p-6 pb-0">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                    <Mail className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Send Test Email
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Test your campaign email
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowTestModal(false)}
+                    className="ml-auto w-8 h-8 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <span className="text-lg">×</span>
+                  </button>
+                </div>
               </div>
 
-              {testModalSender && (
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <Mail className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        From: {testModalSender.email}
+              {/* Content */}
+              <div className="px-6 pb-4">
+                {testModalSender && (
+                  <div className="bg-blue-50/50 rounded-xl p-4 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Mail className="h-4 w-4 text-blue-600" />
                       </div>
-                      <div className="text-sm text-gray-600">
-                        {testModalSender.display_name || 'Sender Account'}
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {testModalSender.email}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {testModalSender.display_name || 'Sender Account'}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-900 mb-3">
-                  Send test email to:
-                </label>
-                <input
-                  type="email"
-                  value={testModalEmail}
-                  onChange={(e) => setTestModalEmail(e.target.value)}
-                  placeholder="Enter email address"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                />
-              </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Send test email to:
+                  </label>
+                  <input
+                    type="email"
+                    value={testModalEmail}
+                    onChange={(e) => setTestModalEmail(e.target.value)}
+                    placeholder="Enter email address"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm"
+                  />
+                </div>
 
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 mb-8">
-                <div className="text-sm text-blue-900 font-medium mb-3 flex items-center gap-2">
-                  <span className="text-lg">📧</span>
-                  What will be sent:
-                </div>
-                <div className="text-sm text-blue-800 mb-4 leading-relaxed">
-                  This will send your <strong>actual campaign sequence</strong> (first email) with test variables:
-                  <br/>• firstName: John • lastName: Doe • company: Acme Corp
-                </div>
-                <div className="text-sm text-blue-900 font-medium mb-2 flex items-center gap-2">
-                  <span className="text-lg">💡</span>
-                  Test Instructions:
-                </div>
-                <div className="text-sm text-blue-800 leading-relaxed">
-                  1. Click "Send Test Email" below<br/>
-                  2. Check your email and reply to the test message<br/>
-                  3. Your reply should appear in both "Sent" and "Inbox" folders in LeadsUp
+                <div className="bg-amber-50/50 rounded-xl p-3 mb-4">
+                  <p className="text-xs text-amber-800">
+                    Sends your first campaign email with test variables (John Doe, Acme Corp)
+                  </p>
                 </div>
               </div>
 
-              <div className="flex gap-4">
+              {/* Footer */}
+              <div className="flex gap-3 p-6 pt-3 border-t border-gray-100">
                 <Button
                   onClick={() => setShowTestModal(false)}
                   variant="outline"
-                  className="flex-1 rounded-2xl py-3 border-gray-200 hover:bg-gray-50"
+                  className="flex-1 rounded-xl text-sm"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={sendTestEmail}
                   disabled={testModalLoading}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl py-3"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm"
                 >
                   {testModalLoading ? (
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                       Sending...
                     </div>
                   ) : (
-                    'Send Test Email'
+                    'Send Test'
                   )}
                 </Button>
               </div>

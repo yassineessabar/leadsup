@@ -3854,11 +3854,24 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
             {/* Preview Modal */}
             <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Email Preview</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
+              <DialogContent className="sm:max-w-[500px] rounded-3xl border border-gray-100 p-0 overflow-hidden">
+                <div className="p-6 pb-0">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                      <Mail className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-lg font-semibold text-gray-900">
+                        Email Preview
+                      </DialogTitle>
+                      <p className="text-sm text-gray-500">
+                        Preview and test your email
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="px-6 pb-4">
                   {(() => {
                     const activeStep = steps.find(s => s.id === activeStepId)
                     if (!activeStep) return null
@@ -3879,34 +3892,34 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     
                     return (
                       <div className="space-y-4">
-                        <div className="border border-gray-300 rounded-lg overflow-hidden">
-                          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                            <div className="text-sm">
-                              <span className="text-gray-600">Subject:</span>{' '}
-                              <span className="font-medium">{previewSubject || 'No subject'}</span>
-                            </div>
+                        {/* Email Preview */}
+                        <div className="bg-gray-50/50 rounded-xl p-4">
+                          <div className="mb-3">
+                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Subject</span>
+                            <p className="text-sm font-medium text-gray-900 mt-1">{previewSubject || 'No subject'}</p>
                           </div>
-                          <div className="p-4 bg-white">
-                            <div className="whitespace-pre-wrap text-sm text-gray-900">
+                          <div className="border-t border-gray-200 pt-3">
+                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Content</span>
+                            <div className="whitespace-pre-wrap text-sm text-gray-900 mt-1 max-h-32 overflow-y-auto">
                               {previewContent || 'No content'}
                             </div>
                           </div>
                         </div>
                         
                         {/* Test Email Section */}
-                        <div className="border-t border-gray-200 pt-4">
-                          <h4 className="text-sm font-medium text-gray-700 mb-3">Send Test Email</h4>
+                        <div className="bg-blue-50/50 rounded-xl p-4">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <Send className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm font-semibold text-blue-900">Send Test Email</span>
+                          </div>
                           <div className="space-y-3">
                             <div>
-                              <label className="block text-sm text-gray-600 mb-1">
-                                Test Email Address
-                              </label>
                               <Input
                                 type="email"
                                 value={testModalEmail}
                                 onChange={(e) => setTestModalEmail(e.target.value)}
                                 placeholder="test@example.com"
-                                className="w-full"
+                                className="w-full text-sm"
                               />
                             </div>
                             <div className="flex justify-end">
@@ -3914,8 +3927,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                 onClick={sendTestEmailGeneric}
                                 disabled={testModalLoading || !testModalEmail.trim()}
                                 size="sm"
+                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
                               >
-                                <Send className="w-4 h-4 mr-2" />
+                                <Send className="w-3 h-3 mr-1.5" />
                                 {testModalLoading ? 'Sending...' : 'Send Test'}
                               </Button>
                             </div>
