@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, RefreshCw, Pause, Play, Square, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap } from "lucide-react"
+import { ArrowLeft, RefreshCw, Pause, Play, Square, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -1034,6 +1034,16 @@ Please add content to this email in the sequence settings.`
                   <Badge variant="outline" className={`${getCampaignStatusBadgeColor(campaign.status)} border rounded-full px-3 py-1`}>
                     {campaign.status}
                   </Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      window.location.href = `/?tab=campaigns-email&campaignId=${campaign.id}`
+                    }}
+                    className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl px-2 py-1.5"
+                  >
+                    <Edit className="h-3 w-3" />
+                  </Button>
                 </div>
                 <div className="flex items-center gap-6 text-sm text-gray-500 font-light">
                   <span className="flex items-center gap-1.5">
