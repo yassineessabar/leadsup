@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, RefreshCw, Pause, Play, Square, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart } from "lucide-react"
+import { ArrowLeft, RefreshCw, Pause, Play, Square, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { deriveTimezoneFromLocation, getCurrentTimeInTimezone, getBusinessHoursStatus } from "@/lib/timezone-utils"
 // Remove direct import of SendGrid service since it's server-side only
 // import { SendGridAnalyticsService, type SendGridMetrics } from "@/lib/sendgrid-analytics"
@@ -55,7 +55,7 @@ interface Contact {
   industry: string
   linkedin: string
   image_url?: string
-  status: "Pending" | "Email 1" | "Email 2" | "Email 3" | "Email 4" | "Email 5" | "Email 6" | "Completed" | "Replied" | "Unsubscribed" | "Bounced" | "Paused"
+  status: "Pending" | "Email 1" | "Email 2" | "Email 3" | "Email 4" | "Email 5" | "Email 6" | "Completed" | "Replied" | "Unsubscribed" | "Bounced" | "Paused" | "Warming Up"
   email_status?: string // Database field for email status (Valid, Paused, etc.)
   campaign_name: string
   timezone?: string
@@ -91,6 +91,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { score: number; breakdown: any; lastUpdated: string }>>({})
   const [healthScoresLoading, setHealthScoresLoading] = useState(false)
   const [healthScoresExpanded, setHealthScoresExpanded] = useState(false)
+  
+  // Warmup warning state
+  const [showWarmupWarning, setShowWarmupWarning] = useState(false)
+  const [lowHealthSenders, setLowHealthSenders] = useState<Array<{email: string, score: number}>>([])
+  const [pendingResumeStatus, setPendingResumeStatus] = useState<string | null>(null)
   
   // SendGrid analytics state
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
@@ -337,6 +342,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             // Check if campaign or contact is paused first
             if (campaign.status === 'Paused' || contact.email_status === 'Paused') {
               status = "Paused"
+            } else if (campaign.status === 'Warming') {
+              status = "Warming Up"
             } else if (actualSequenceStep === 0) {
               status = "Pending"
             } else if (contact.status && ["Completed", "Replied", "Unsubscribed", "Bounced"].includes(contact.status)) {
@@ -509,12 +516,46 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     if (!onStatusUpdate) return
     
     const newStatus = campaign.status === "Active" ? "Paused" : "Active"
+    
+    // Special handling for resuming from Warming status
+    if (campaign.status === "Warming" && newStatus === "Active") {
+      // Check if health scores are still low (below 90%)
+      const lowScoreSenders = Object.entries(senderHealthScores)
+        .filter(([_, healthData]) => healthData.score < 90)
+        .map(([email, healthData]) => ({ email, score: healthData.score }))
+      
+      if (lowScoreSenders.length > 0) {
+        // Show warmup warning popup
+        setLowHealthSenders(lowScoreSenders)
+        setPendingResumeStatus(newStatus)
+        setShowWarmupWarning(true)
+        return // Don't resume yet
+      }
+    }
+    
     onStatusUpdate(campaign.id, newStatus)
   }
 
   const handleStop = () => {
     if (!onStatusUpdate) return
     onStatusUpdate(campaign.id, "Completed")
+  }
+
+  const handleWarmupDecision = (shouldContinueWarmup: boolean) => {
+    setShowWarmupWarning(false)
+    
+    if (!onStatusUpdate || !pendingResumeStatus) return
+    
+    if (shouldContinueWarmup) {
+      // Keep warming - don't change status, stay in Warming
+      console.log('🔥 Continuing warmup for campaign:', campaign.id)
+    } else {
+      // User chose to ignore warning and resume to Active anyway
+      console.log('⚠️ Resuming campaign to Active despite low health scores')
+      onStatusUpdate(campaign.id, pendingResumeStatus)
+    }
+    
+    setPendingResumeStatus(null)
   }
 
   const handleRescheduleEmails = async () => {
@@ -606,6 +647,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         return "bg-red-50 text-red-700 border-red-200"
       case "Paused":
         return "bg-yellow-50 text-yellow-700 border-yellow-200"
+      case "Warming Up":
+        return "bg-orange-50 text-orange-700 border-orange-200"
       default:
         return "bg-gray-50 text-gray-600 border-gray-200"
     }
@@ -1229,7 +1272,15 @@ Please add content to this email in the sequence settings.`
                                   <div className={`w-6 h-6 rounded flex items-center justify-center ${getScoreColor(score)}`}>
                                     <Mail className="w-3 h-3" />
                                   </div>
-                                  <p className="text-sm text-gray-700">{email}</p>
+                                  <div className="flex flex-col">
+                                    <p className="text-sm text-gray-700">{email}</p>
+                                    {campaign.status === 'Warming' && (
+                                      <div className="flex items-center space-x-1 mt-0.5">
+                                        <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></div>
+                                        <span className="text-xs text-orange-600 font-medium">Warming</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getScoreColor(score)}`}>
                                   {score}/100
@@ -1567,8 +1618,8 @@ Please add content to this email in the sequence settings.`
                                 </div>
                               )}
                               
-                              {/* View Sequence Button - Hide when campaign is paused */}
-                              {campaign.status !== 'Paused' && contact.email_status !== 'Paused' && (
+                              {/* View Sequence Button - Hide when campaign is paused or warming */}
+                              {campaign.status !== 'Paused' && campaign.status !== 'Warming' && contact.email_status !== 'Paused' && (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -2069,8 +2120,8 @@ Please add content to this email in the sequence settings.`
 
               {/* Action Buttons */}
               <div className="flex gap-3 pt-4 border-t border-gray-100">
-                {/* Hide View Sequence button when campaign is paused */}
-                {campaign.status !== 'Paused' && contactDetailsModal.email_status !== 'Paused' && (
+                {/* Hide View Sequence button when campaign is paused or warming */}
+                {campaign.status !== 'Paused' && campaign.status !== 'Warming' && contactDetailsModal.email_status !== 'Paused' && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -2095,6 +2146,73 @@ Please add content to this email in the sequence settings.`
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Warmup Warning Dialog */}
+      <Dialog open={showWarmupWarning} onOpenChange={setShowWarmupWarning}>
+        <DialogContent className="sm:max-w-[425px] rounded-3xl border border-gray-100 p-0 overflow-hidden">
+          <div className="p-6 pb-0">
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl flex items-center justify-center">
+                <Flame className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-semibold text-gray-900">
+                  Health Score Alert
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-500">
+                  Some senders still need warming up
+                </DialogDescription>
+              </div>
+            </div>
+          </div>
+          
+          <div className="px-6 pb-4">
+            <div className="bg-orange-50/50 rounded-xl p-3 mb-3">
+              <p className="text-xs font-medium text-orange-900 mb-2">Accounts Still Below 90% Health</p>
+              <div className="space-y-1.5">
+                {lowHealthSenders.map((sender, index) => {
+                  const getScoreColor = (score: number) => {
+                    if (score >= 80) return 'text-green-700 bg-green-100'
+                    if (score >= 60) return 'text-yellow-700 bg-yellow-100'
+                    return 'text-red-700 bg-red-100'
+                  }
+                  
+                  return (
+                    <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg">
+                      <span className="text-sm text-gray-700 truncate flex-1 mr-2">{sender.email}</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getScoreColor(sender.score)}`}>
+                        {sender.score}%
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            
+            <div className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
+              <p><span className="font-semibold">Continue Warmup:</span> Keep warming to improve health scores before going active.</p>
+              <p className="mt-1"><span className="font-semibold">Resume Anyway:</span> Go active now despite low health scores.</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-2 p-6 pt-3 border-t border-gray-100">
+            <Button
+              variant="outline"
+              onClick={() => handleWarmupDecision(false)}
+              className="flex-1 h-10 rounded-xl text-sm"
+            >
+              Resume Anyway
+            </Button>
+            <Button
+              onClick={() => handleWarmupDecision(true)}
+              className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium"
+            >
+              <Flame className="w-4 h-4 mr-1.5" />
+              Continue Warmup
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

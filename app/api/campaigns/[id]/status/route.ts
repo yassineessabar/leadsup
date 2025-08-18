@@ -94,9 +94,9 @@ export async function PUT(
 
     console.log(`✅ Campaign "${existingCampaign.name}" status updated: ${existingCampaign.status} → ${status}`)
 
-    // If campaign is being launched (set to Active), trigger n8n automation setup
-    if (status === 'Active' && existingCampaign.status !== 'Active') {
-      await triggerCampaignAutomation(campaignId, updatedCampaign.name)
+    // If campaign is being launched (set to Active or Warming), trigger n8n automation setup
+    if ((status === 'Active' || status === 'Warming') && existingCampaign.status !== 'Active' && existingCampaign.status !== 'Warming') {
+      await triggerCampaignAutomation(campaignId, updatedCampaign.name, status === 'Warming')
     }
 
     // Handle scheduled emails based on status changes
@@ -122,25 +122,30 @@ export async function PUT(
 }
 
 // Helper function to trigger n8n automation when campaign is launched
-async function triggerCampaignAutomation(campaignId: string, campaignName: string) {
+async function triggerCampaignAutomation(campaignId: string, campaignName: string, isWarmup: boolean = false) {
   try {
-    console.log(`🚀 Triggering n8n automation for campaign: ${campaignName}`)
+    if (isWarmup) {
+      console.log(`🔥 Triggering warmup automation for campaign: ${campaignName}`)
+    } else {
+      console.log(`🚀 Triggering n8n automation for campaign: ${campaignName}`)
+    }
     
     // Initialize contacts for this campaign with their sequence schedules
-    await initializeCampaignSequences(campaignId)
+    // For warmup mode, this might initialize with different timing/volume limits
+    await initializeCampaignSequences(campaignId, isWarmup)
     
     // Optional: Trigger immediate processing (if you want instant start)
     // You can uncomment this to trigger n8n immediately instead of waiting for the cron
     // await triggerN8nWebhook(campaignId)
     
-    console.log(`✅ Campaign automation initialized for: ${campaignName}`)
+    console.log(`✅ Campaign automation ${isWarmup ? 'warmup' : ''} initialized for: ${campaignName}`)
   } catch (error) {
     console.error('❌ Error triggering campaign automation:', error)
   }
 }
 
 // Helper function to initialize contact sequences when campaign launches
-async function initializeCampaignSequences(campaignId: string) {
+async function initializeCampaignSequences(campaignId: string, isWarmup: boolean = false) {
   try {
     // Get all contacts for this campaign
     const { data: contacts } = await getSupabaseServerClient()
@@ -280,6 +285,11 @@ async function handleScheduledEmailsForStatusChange(campaignId: string, newStatu
       } catch (error) {
         console.error('Error updating contact statuses:', error)
       }
+    }
+
+    // If campaign is transitioning from Warming to Active, log the transition
+    if (newStatus === 'Active' && previousStatus === 'Warming') {
+      console.log('✅ Campaign warmup completed - transitioning to Active status')
     }
 
     // If campaign is being resumed, reschedule upcoming emails with updated timing and restore contact statuses
