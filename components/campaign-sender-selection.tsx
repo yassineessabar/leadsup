@@ -772,8 +772,8 @@ export default function CampaignSenderSelection({
                   disabled={isSaving || !hasUnsavedChanges}
                   className={`border-0 rounded-2xl px-5 py-2.5 font-medium transition-colors ${
                     hasUnsavedChanges 
-                      ? 'bg-gray-900 hover:bg-gray-800 text-white' 
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                      : 'bg-blue-100 text-blue-400 cursor-not-allowed'
                   }`}
                 >
                   {isSaving ? (
@@ -795,7 +795,7 @@ export default function CampaignSenderSelection({
                   console.log('🔄 Navigating to /?tab=domain to add new domain...')
                   window.location.href = '/?tab=domain'
                 }}
-                className="bg-gray-900 hover:bg-gray-800 text-white border-0 rounded-2xl px-5 py-2.5 font-medium"
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-5 py-2.5 font-medium"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Domain
