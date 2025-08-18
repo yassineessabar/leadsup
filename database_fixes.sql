@@ -15,8 +15,8 @@ CREATE INDEX IF NOT EXISTS idx_email_tracking_sender_email ON email_tracking(sen
 
 -- 4. Create the missing function get_sendgrid_campaign_metrics_by_senders
 CREATE OR REPLACE FUNCTION get_sendgrid_campaign_metrics_by_senders(
-  p_campaign_id UUID,
-  p_user_id UUID,
+  p_campaign_id TEXT,
+  p_user_id TEXT,
   p_sender_emails TEXT[],
   p_start_date DATE DEFAULT NULL,
   p_end_date DATE DEFAULT NULL
@@ -77,8 +77,8 @@ BEGIN
       ELSE 0 
     END as unsubscribe_rate
   FROM campaign_metrics cm
-  WHERE cm.campaign_id = p_campaign_id
-    AND cm.user_id = p_user_id
+  WHERE cm.campaign_id::TEXT = p_campaign_id
+    AND cm.user_id::TEXT = p_user_id
     AND (p_sender_emails IS NULL OR cm.sender_email = ANY(p_sender_emails))
     AND (p_start_date IS NULL OR cm.date >= p_start_date)
     AND (p_end_date IS NULL OR cm.date <= p_end_date);
