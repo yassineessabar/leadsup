@@ -193,6 +193,19 @@ export async function GET(request: NextRequest) {
           // Update contact's sequence progress
           await updateContactSequenceProgress(contact.id, currentStep)
           
+          // Log email tracking for account logs
+          await logEmailTracking({
+            contactId: contact.id,
+            contactEmail: contact.email,
+            campaignId: contact.campaign_id,
+            sequenceId: sequence.id,
+            sequenceStep: currentStep,
+            messageId: sendResult.messageId,
+            senderEmail: senders[0].email,
+            status: 'sent',
+            testMode: testMode || sendResult.simulation
+          })
+          
           sentCount++
           results.push({
             contactId: contact.id,
@@ -206,6 +219,20 @@ export async function GET(request: NextRequest) {
           
           console.log(`✅ ${testMode ? '[TEST] ' : ''}Email sent: ${senders[0].email} → ${contact.email} (Step ${currentStep})`)
         } else {
+          // Log failed email attempt
+          await logEmailTracking({
+            contactId: contact.id,
+            contactEmail: contact.email,
+            campaignId: contact.campaign_id,
+            sequenceId: sequence.id,
+            sequenceStep: currentStep,
+            messageId: null,
+            senderEmail: senders[0].email,
+            status: 'failed',
+            errorMessage: sendResult.error,
+            testMode: testMode
+          })
+          
           errorCount++
           results.push({
             contactId: contact.id,
@@ -363,5 +390,54 @@ async function updateContactSequenceProgress(contactId: number, sequenceStep: nu
     }
   } catch (error) {
     console.error('Error in updateContactSequenceProgress:', error)
+  }
+}
+
+async function logEmailTracking({
+  contactId,
+  contactEmail,
+  campaignId,
+  sequenceId,
+  sequenceStep,
+  messageId,
+  senderEmail,
+  status,
+  errorMessage = null,
+  testMode = false
+}: {
+  contactId: number
+  contactEmail: string
+  campaignId: string
+  sequenceId: string
+  sequenceStep: number
+  messageId: string | null
+  senderEmail: string
+  status: 'sent' | 'failed' | 'bounced' | 'delivered'
+  errorMessage?: string | null
+  testMode?: boolean
+}) {
+  try {
+    const logEntry = {
+      campaign_id: campaignId,
+      contact_id: contactId.toString(),
+      sequence_id: sequenceId,
+      status: status,
+      sent_at: new Date().toISOString(),
+      message_id: messageId,
+      sender_type: testMode ? 'simulation' : 'sendgrid',
+      error_message: errorMessage
+    }
+    
+    const { error } = await supabase
+      .from('email_tracking')
+      .insert(logEntry)
+    
+    if (error) {
+      console.error('❌ Error logging email tracking:', error)
+    } else {
+      console.log(`📋 Logged email tracking: ${status} - ${contactEmail} (Step ${sequenceStep})`)
+    }
+  } catch (error) {
+    console.error('❌ Error in logEmailTracking:', error)
   }
 }
