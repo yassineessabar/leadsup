@@ -90,10 +90,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Health score state
   const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { score: number; breakdown: any; lastUpdated: string }>>({})
   const [healthScoresLoading, setHealthScoresLoading] = useState(false)
-  const [healthScoresExpanded, setHealthScoresExpanded] = useState(false)
+  const [healthScoresExpanded, setHealthScoresExpanded] = useState(true)
   
   // Warmup warning state
   const [showWarmupWarning, setShowWarmupWarning] = useState(false)
+  const [showWarmupStatus, setShowWarmupStatus] = useState(false)
   const [lowHealthSenders, setLowHealthSenders] = useState<Array<{email: string, score: number}>>([])
   const [pendingResumeStatus, setPendingResumeStatus] = useState<string | null>(null)
   
@@ -598,49 +599,23 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const handleWarmupDecision = (shouldContinueWarmup: boolean) => {
     setShowWarmupWarning(false)
     
-    if (!onStatusUpdate || !pendingResumeStatus) return
-    
     if (shouldContinueWarmup) {
-      // Keep warming - don't change status, stay in Warming
+      // Continue warmup - change status to Warming
       console.log('🔥 Continuing warmup for campaign:', campaign.id)
+      if (onStatusUpdate) {
+        onStatusUpdate(campaign.id, 'Warming')
+      }
     } else {
       // User chose to ignore warning and resume to Active anyway
       console.log('⚠️ Resuming campaign to Active despite low health scores')
-      onStatusUpdate(campaign.id, pendingResumeStatus)
+      if (onStatusUpdate && pendingResumeStatus) {
+        onStatusUpdate(campaign.id, pendingResumeStatus)
+      }
     }
     
     setPendingResumeStatus(null)
   }
 
-  const handleRescheduleEmails = async () => {
-    if (!campaign?.id) return
-    
-    try {
-      setIsRefreshing(true)
-      console.log('🔄 Manual reschedule triggered for campaign:', campaign.id)
-      
-      const response = await fetch(`/api/campaigns/${campaign.id}/reschedule-emails`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        console.log(`✅ Successfully rescheduled ${result.rescheduled_count || 0} emails`)
-        
-        // Refresh the contacts data to show updated schedule
-        await fetchCampaignContacts()
-      } else {
-        console.error('❌ Failed to reschedule emails:', response.statusText)
-      }
-    } catch (error) {
-      console.error('❌ Error rescheduling emails:', error)
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
 
   // Check if campaign has been started
   const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused'
@@ -1134,16 +1109,6 @@ Please add content to this email in the sequence settings.`
                 </Button>
               )}
 
-              {campaign.status === "Active" && (
-                <Button
-                  variant="outline"
-                  onClick={handleRescheduleEmails}
-                  className="border-blue-300 hover:bg-blue-50 text-blue-600 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Reschedule
-                </Button>
-              )}
             </div>
           </div>
         </div>
@@ -1304,15 +1269,31 @@ Please add content to this email in the sequence settings.`
                             <p className="text-xs text-gray-500">{scores.length} selected sender{scores.length > 1 ? 's' : ''} • {getScoreStatus(avgScore)}</p>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-2 flex-wrap">
                           <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getScoreColor(avgScore)}`}>
                             Avg: {avgScore}/100
                           </div>
+                          {avgScore < 90 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (campaign.status === 'Warming') {
+                                  setShowWarmupStatus(true)
+                                } else {
+                                  setShowWarmupWarning(true)
+                                }
+                              }}
+                              className="px-2 py-1 text-xs font-medium text-amber-600 border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-300 whitespace-nowrap rounded-full animate-pulse"
+                            >
+                              Warm Up
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setHealthScoresExpanded(!healthScoresExpanded)}
-                            className="p-1 h-8 w-8"
+                            className="p-1 h-8 w-8 flex-shrink-0"
                           >
                             <ChevronDown className={`w-4 h-4 transition-transform ${healthScoresExpanded ? 'rotate-180' : ''}`} />
                           </Button>
@@ -1398,8 +1379,15 @@ Please add content to this email in the sequence settings.`
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => window.location.href = `/campaign/${campaign.id}/settings?section=senders`}
-                          className="flex items-center gap-2 h-8 px-3 text-xs"
+                          onClick={() => {
+                            // Navigate to campaign sender management
+                            const url = new URL(window.location.origin)
+                            url.searchParams.set('tab', 'campaigns-email')
+                            url.searchParams.set('campaignId', campaign.id.toString())
+                            url.searchParams.set('subtab', 'sender')
+                            window.location.href = url.toString()
+                          }}
+                          className="flex items-center gap-2 h-8 px-3 text-xs rounded-full"
                         >
                           <Settings className="w-3 h-3" />
                           Manage
@@ -1431,7 +1419,14 @@ Please add content to this email in the sequence settings.`
                         <p className="text-sm text-gray-500 mb-3">No sender accounts selected</p>
                         <Button
                           variant="outline"
-                          onClick={() => window.location.href = `/campaign/${campaign.id}/settings?section=senders`}
+                          onClick={() => {
+                            // Navigate to campaign sender management
+                            const url = new URL(window.location.origin)
+                            url.searchParams.set('tab', 'campaigns-email')
+                            url.searchParams.set('campaignId', campaign.id.toString())
+                            url.searchParams.set('subtab', 'sender')
+                            window.location.href = url.toString()
+                          }}
                           className="flex items-center gap-2"
                         >
                           <Settings className="w-4 h-4" />
@@ -1446,84 +1441,6 @@ Please add content to this email in the sequence settings.`
           </Card>
         </div>
 
-        {/* Progress Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
-            <CardContent className="p-8">
-              <div className="flex items-center space-x-4 mb-8">
-                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-indigo-600" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-medium text-gray-900">Campaign Progress</h2>
-                  <p className="text-gray-500 text-sm mt-1">Email delivery status</p>
-                </div>
-              </div>
-              <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between text-sm mb-3">
-                    <span className="text-gray-600 font-medium">Progress</span>
-                    <span className="font-semibold text-gray-900">{progressPercentage}%</span>
-                  </div>
-                  <Progress value={progressPercentage} className="h-3 bg-gray-100" />
-                </div>
-                <div className="grid grid-cols-2 gap-4 pt-4">
-                  <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                    <p className="text-2xl font-light text-gray-900">
-                      {hasBeenStarted ? totalSent : '—'}
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {hasBeenStarted ? 'Sent' : 'Not started'}
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                    <p className="text-2xl font-light text-gray-900">
-                      {hasBeenStarted && totalPlanned > 0 ? (totalPlanned - totalSent) : 
-                       hasBeenStarted ? '0' : '—'}
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {hasBeenStarted ? 'Remaining' : 'No contacts'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
-            <CardContent className="p-8">
-              <div className="flex items-center space-x-4 mb-8">
-                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-emerald-600" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-medium text-gray-900">Status Distribution</h2>
-                  <p className="text-gray-500 text-sm mt-1">Contact sequence status</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                {uniqueStatuses.slice(0, 5).map(status => {
-                  const count = statusCounts[status] || 0
-                  const percentage = contacts.length > 0 ? Math.round((count / contacts.length) * 100) : 0
-                  return (
-                    <div key={status} className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600 font-medium">{status}</span>
-                      <div className="flex items-center gap-3">
-                        <div className="w-24 bg-gray-100 rounded-full h-2">
-                          <div 
-                            className="bg-gray-400 h-2 rounded-full transition-all duration-500"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-semibold text-gray-900 w-12 text-right">{count}</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Contacts Table */}
         <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
@@ -1814,6 +1731,85 @@ Please add content to this email in the sequence settings.`
             </div>
           </CardContent>
         </Card>
+
+        {/* Progress Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
+            <CardContent className="p-8">
+              <div className="flex items-center space-x-4 mb-8">
+                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-indigo-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-medium text-gray-900">Campaign Progress</h2>
+                  <p className="text-gray-500 text-sm mt-1">Email delivery status</p>
+                </div>
+              </div>
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between text-sm mb-3">
+                    <span className="text-gray-600 font-medium">Progress</span>
+                    <span className="font-semibold text-gray-900">{progressPercentage}%</span>
+                  </div>
+                  <Progress value={progressPercentage} className="h-3 bg-gray-100" />
+                </div>
+                <div className="grid grid-cols-2 gap-4 pt-4">
+                  <div className="text-center p-4 bg-gray-50 rounded-2xl">
+                    <p className="text-2xl font-light text-gray-900">
+                      {hasBeenStarted ? totalSent : '—'}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {hasBeenStarted ? 'Sent' : 'Not started'}
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-2xl">
+                    <p className="text-2xl font-light text-gray-900">
+                      {hasBeenStarted && totalPlanned > 0 ? (totalPlanned - totalSent) : 
+                       hasBeenStarted ? '0' : '—'}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {hasBeenStarted ? 'Remaining' : 'No contacts'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
+            <CardContent className="p-8">
+              <div className="flex items-center space-x-4 mb-8">
+                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
+                  <BarChart3 className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-medium text-gray-900">Status Distribution</h2>
+                  <p className="text-gray-500 text-sm mt-1">Contact sequence status</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                {uniqueStatuses.slice(0, 5).map(status => {
+                  const count = statusCounts[status] || 0
+                  const percentage = contacts.length > 0 ? Math.round((count / contacts.length) * 100) : 0
+                  return (
+                    <div key={status} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600 font-medium">{status}</span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-24 bg-gray-100 rounded-full h-2">
+                          <div 
+                            className="bg-gray-400 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900 w-12 text-right">{count}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Sequence Timeline Modal */}
@@ -2347,6 +2343,86 @@ Please add content to this email in the sequence settings.`
             >
               <Flame className="w-4 h-4 mr-1.5" />
               Continue Warmup
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Warmup Status Dialog */}
+      <Dialog open={showWarmupStatus} onOpenChange={setShowWarmupStatus}>
+        <DialogContent className="sm:max-w-[425px] rounded-3xl border border-gray-100 p-0 overflow-hidden">
+          <div className="p-6 pb-0">
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl flex items-center justify-center">
+                <Flame className="w-6 h-6 text-orange-600 animate-pulse" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-semibold text-gray-900">
+                  Warmup in Progress
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-500">
+                  Your campaign is currently warming up
+                </DialogDescription>
+              </div>
+            </div>
+          </div>
+          
+          <div className="px-6 pb-4">
+            <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 mb-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-semibold text-orange-900">Warming Status</span>
+              </div>
+              <p className="text-sm text-orange-800">
+                Campaign is actively warming up to improve sender health scores. This helps establish sender reputation and improves deliverability.
+              </p>
+            </div>
+
+            <div className="bg-amber-50/50 rounded-xl p-3 mb-3">
+              <p className="text-xs font-medium text-amber-900 mb-2">Current Health Scores</p>
+              <div className="space-y-1.5">
+                {Object.entries(senderHealthScores).map(([email, healthData]) => {
+                  const getScoreColor = (score: number) => {
+                    if (score >= 90) return 'text-green-700 bg-green-100'
+                    if (score >= 80) return 'text-yellow-700 bg-yellow-100'
+                    return 'text-orange-700 bg-orange-100'
+                  }
+                  
+                  return (
+                    <div key={email} className="flex items-center justify-between p-2 bg-white rounded-lg">
+                      <span className="text-sm text-gray-700 truncate flex-1 mr-2">{email}</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getScoreColor(healthData.score)}`}>
+                        {healthData.score}%
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            
+            <div className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
+              <p><span className="font-semibold">Warmup Progress:</span> Gradually increasing send volume to build sender reputation.</p>
+              <p className="mt-1"><span className="font-semibold">Timeline:</span> Typically takes 2-4 weeks to reach optimal health scores.</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-2 p-6 pt-3 border-t border-gray-100">
+            <Button
+              variant="outline"
+              onClick={() => setShowWarmupStatus(false)}
+              className="flex-1 h-10 rounded-xl text-sm"
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                setShowWarmupStatus(false)
+                setShowWarmupWarning(true)
+              }}
+              className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium"
+            >
+              <Settings className="w-4 h-4 mr-1.5" />
+              Warmup Settings
             </Button>
           </div>
         </DialogContent>

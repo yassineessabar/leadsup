@@ -1015,7 +1015,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           : 'bg-gray-50 text-gray-700 border border-gray-200'
                       }`}>
                         {campaign.status === 'Warming' && (
-                          <Flame className="w-4 h-4 mr-1.5 text-green-600 animate-pulse" />
+                          <Flame className="w-4 h-4 mr-1.5 text-orange-700 animate-pulse" />
                         )}
                         {campaign.status === 'Active' && (
                           <Play className="w-4 h-4 mr-1.5" />
@@ -1094,7 +1094,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           className="flex-1 border-orange-300 hover:bg-orange-50 text-orange-700 font-medium transition-all duration-300 rounded-2xl"
                           disabled
                         >
-                          <Flame className="w-4 h-4 mr-2 animate-pulse" />
+                          <Flame className="w-4 h-4 mr-2 text-orange-700 animate-pulse" />
                           Warming Up...
                         </Button>
                       ) : campaign.status === 'Paused' ? (
