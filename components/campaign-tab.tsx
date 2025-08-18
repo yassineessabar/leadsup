@@ -511,37 +511,40 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     const newStatus = currentStatus === "Active" ? "Paused" : "Active"
     const action = newStatus === "Active" ? "activate" : "pause"
     
-    // Check health scores when resuming from Paused status
+    // Always show warmup popup when resuming from Paused status
     if (currentStatus === "Paused" && newStatus === "Active") {
       try {
-        console.log('🔍 Checking health scores before resuming campaign...')
+        console.log('🔍 Fetching health scores for warmup popup...')
         const healthResponse = await fetch(`/api/sender-accounts/health-score?campaignId=${campaignId}`, {
           credentials: "include"
         })
         
+        let allSenders = []
         if (healthResponse.ok) {
           const healthResult = await healthResponse.json()
           if (healthResult.success && healthResult.data) {
             const healthScores = healthResult.data
-            const lowScoreSenders = Object.entries(healthScores)
-              .filter(([_, healthData]: [string, any]) => healthData.score < 90)
+            allSenders = Object.entries(healthScores)
               .map(([email, healthData]: [string, any]) => ({ email, score: healthData.score }))
-            
-            if (lowScoreSenders.length > 0) {
-              console.log('⚠️ Found senders with health scores < 90%:', lowScoreSenders)
-              // Show warmup warning popup
-              setLowHealthSenders(lowScoreSenders)
-              setPendingResumeStatus(newStatus)
-              setPendingResumeCampaign({ id: campaignId, name: campaignName })
-              setShowWarmupWarning(true)
-              return // Don't proceed with activation yet
-            }
           }
-        } else {
-          console.warn('Could not fetch health scores, proceeding with activation')
         }
+        
+        // Show warmup popup regardless of health scores
+        console.log('📋 Showing warmup popup with senders:', allSenders)
+        setLowHealthSenders(allSenders)
+        setPendingResumeStatus(newStatus)
+        setPendingResumeCampaign({ id: campaignId, name: campaignName })
+        setShowWarmupWarning(true)
+        return // Don't proceed with activation yet
+        
       } catch (error) {
-        console.warn('Error checking health scores, proceeding with activation:', error)
+        console.warn('Error fetching health scores, showing warmup popup anyway:', error)
+        // Show popup even if health score fetch fails
+        setLowHealthSenders([])
+        setPendingResumeStatus(newStatus)
+        setPendingResumeCampaign({ id: campaignId, name: campaignName })
+        setShowWarmupWarning(true)
+        return
       }
     }
     
@@ -1326,31 +1329,35 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
             <DialogHeader className="pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-100 to-amber-100 flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-orange-600" />
+                  <Flame className="w-5 h-5 text-orange-600" />
                 </div>
                 <div>
                   <DialogTitle className="text-lg font-semibold text-gray-900">
-                    Low Sender Health Scores Detected
+                    Campaign Warmup Recommended
                   </DialogTitle>
                   <DialogDescription className="text-sm text-gray-600 mt-1">
-                    Some sender accounts have health scores below 90%
+                    Choose how to proceed with resuming your campaign
                   </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
             
             <div className="space-y-4">
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <h4 className="font-medium text-orange-900 mb-2">Affected Senders:</h4>
-                <div className="space-y-2">
-                  {lowHealthSenders.map((sender, index) => (
-                    <div key={index} className="flex justify-between items-center text-sm">
-                      <span className="text-orange-800">{sender.email}</span>
-                      <span className="font-semibold text-orange-900">{sender.score}%</span>
-                    </div>
-                  ))}
+              {lowHealthSenders.length > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <h4 className="font-medium text-orange-900 mb-2">Sender Health Scores:</h4>
+                  <div className="space-y-2">
+                    {lowHealthSenders.map((sender, index) => (
+                      <div key={index} className="flex justify-between items-center text-sm">
+                        <span className="text-orange-800">{sender.email}</span>
+                        <span className={`font-semibold ${sender.score < 90 ? 'text-orange-900' : 'text-green-700'}`}>
+                          {sender.score}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
                 <p><span className="font-semibold">Continue Warmup:</span> Keep warming to improve health scores before going active.</p>
