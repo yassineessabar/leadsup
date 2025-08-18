@@ -568,9 +568,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   }
 
   const handleStatusChange = () => {
-    if (!onStatusUpdate) return
+    console.log('🔄 handleStatusChange called, current status:', campaign.status)
+    if (!onStatusUpdate) {
+      console.log('❌ No onStatusUpdate function provided!')
+      return
+    }
     
     const newStatus = campaign.status === "Active" ? "Paused" : "Active"
+    console.log('🎯 Changing status to:', newStatus)
     
     // Special handling for resuming from Warming status
     if (campaign.status === "Warming" && newStatus === "Active") {
@@ -592,7 +597,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   }
 
   const handleStop = () => {
-    if (!onStatusUpdate) return
+    console.log('🛑 handleStop called')
+    if (!onStatusUpdate) {
+      console.log('❌ No onStatusUpdate function provided for stop!')
+      return
+    }
+    console.log('🎯 Stopping campaign, setting status to Completed')
     onStatusUpdate(campaign.id, "Completed")
   }
 
@@ -1092,7 +1102,13 @@ Please add content to this email in the sequence settings.`
               {campaign.status === "Active" ? (
                 <Button
                   variant="outline"
-                  onClick={handleStatusChange}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleStatusChange()
+                    return false
+                  }}
                   className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                 >
                   <Pause className="h-4 w-4 mr-2" />
@@ -1100,7 +1116,13 @@ Please add content to this email in the sequence settings.`
                 </Button>
               ) : campaign.status !== "Completed" && (
                 <Button
-                  onClick={handleStatusChange}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleStatusChange()
+                    return false
+                  }}
                   className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                 >
                   <Play className="h-4 w-4 mr-2" />
@@ -1111,7 +1133,13 @@ Please add content to this email in the sequence settings.`
               {campaign.status === "Active" && (
                 <Button
                   variant="outline"
-                  onClick={handleStop}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleStop()
+                    return false
+                  }}
                   className="border-red-300 hover:bg-red-50 text-red-600 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                 >
                   <Square className="h-4 w-4 mr-2" />
@@ -2342,13 +2370,21 @@ Please add content to this email in the sequence settings.`
           <div className="flex gap-2 p-6 pt-3 border-t border-gray-100">
             <Button
               variant="outline"
-              onClick={() => handleWarmupDecision(false)}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleWarmupDecision(false)
+              }}
               className="flex-1 h-10 rounded-xl text-sm"
             >
               Resume Anyway
             </Button>
             <Button
-              onClick={() => handleWarmupDecision(true)}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleWarmupDecision(true)
+              }}
               className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium"
             >
               <Flame className="w-4 h-4 mr-1.5" />

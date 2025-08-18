@@ -88,7 +88,43 @@ function CampaignAnalyticsWrapper({ campaignId, onBack }: { campaignId: string |
     )
   }
 
-  return <CampaignAnalytics campaign={campaign} onBack={onBack} />
+  const handleStatusUpdate = async (campaignId: string | number, newStatus: string) => {
+    console.log('📊 CampaignAnalyticsWrapper handleStatusUpdate called:', { campaignId, newStatus })
+    try {
+      const requestBody = JSON.stringify({ status: newStatus })
+      console.log('📊 Sending request body:', requestBody)
+      
+      const response = await fetch(`/api/campaigns/${campaignId}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: requestBody,
+      })
+
+      console.log('📊 Response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('📊 API error response:', errorText)
+        throw new Error(`API error: ${response.status} ${errorText}`)
+      }
+
+      const result = await response.json()
+      console.log('📊 Status update API response:', result)
+      if (result.success) {
+        setCampaign(prev => prev ? { ...prev, status: newStatus } : prev)
+        console.log('✅ Campaign status updated locally')
+      } else {
+        console.error('📊 API returned success=false:', result)
+      }
+    } catch (error) {
+      console.error('Error updating campaign status:', error)
+    }
+  }
+
+  return <CampaignAnalytics campaign={campaign} onBack={onBack} onStatusUpdate={handleStatusUpdate} />
 }
 
 export default function Home() {

@@ -45,8 +45,16 @@ export async function PUT(
     }
 
     const campaignId = (await params).id
-    const body = await request.json()
-    const { status } = body
+    
+    let body
+    try {
+      body = await request.json()
+    } catch (error) {
+      console.error('❌ Error parsing request body:', error)
+      return NextResponse.json({ success: false, error: "Invalid JSON in request body" }, { status: 400 })
+    }
+    
+    const { status } = body || {}
 
     // Validate status
     const validStatuses = ["Draft", "Active", "Paused", "Completed", "Warming"]
