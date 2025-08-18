@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   
   try {
     const { searchParams } = new URL(request.url)
-    const testMode = searchParams.get('testMode') === 'true'
+    const testMode = searchParams.get('testMode') === 'true' || process.env.EMAIL_SIMULATION_MODE === 'true'
     const lookAheadMinutes = parseInt(searchParams.get('lookAhead') || '15') // Default 15 minutes lookahead
     
     console.log(`🕐 Processing scheduled emails - Test Mode: ${testMode}`)
