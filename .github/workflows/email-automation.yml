@@ -1,0 +1,110 @@
+name: Email Automation Processor
+
+on:
+  schedule:
+    # Run every hour to respect individual email timing
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allow manual trigger for testing
+
+jobs:
+  process-scheduled-emails:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Process Scheduled Campaign Emails
+        run: |
+          echo "🕐 Processing scheduled emails at $(date)"
+          
+          # Call the automation endpoint
+          response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -X GET \
+            -H "Content-Type: application/json" \
+            "${{ secrets.APP_URL }}/api/automation/process-scheduled?lookAhead=60")
+          
+          # Extract HTTP status and body
+          http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          body=$(echo $response | sed -e 's/HTTPSTATUS:.*//g')
+          
+          # Log response
+          echo "📊 HTTP Status: $http_code"
+          echo "📧 Response: $body"
+          
+          # Check if successful
+          if [ $http_code -eq 200 ]; then
+            echo "✅ Email processing completed successfully"
+            
+            # Parse and log key metrics (if jq is available)
+            if command -v jq &> /dev/null; then
+              sent=$(echo "$body" | jq -r '.sent // 0')
+              processed=$(echo "$body" | jq -r '.processed // 0')
+              errors=$(echo "$body" | jq -r '.errors // 0')
+              skipped=$(echo "$body" | jq -r '.skipped // 0')
+              
+              echo "📈 Summary: $sent sent, $skipped skipped, $errors errors (total: $processed)"
+              
+              # Set job outputs for monitoring
+              echo "sent=$sent" >> $GITHUB_OUTPUT
+              echo "processed=$processed" >> $GITHUB_OUTPUT
+              echo "errors=$errors" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "❌ Email processing failed with status $http_code"
+            echo "Response: $body"
+            exit 1
+          fi
+
+  process-warmup-scheduler:
+    runs-on: ubuntu-latest
+    # Run warming scheduler once per day at 9 AM UTC
+    if: github.event.schedule == '0 9 * * *' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Process Warmup Scheduler
+        run: |
+          echo "🌡️  Processing warmup scheduler at $(date)"
+          
+          response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -X GET \
+            -H "Content-Type: application/json" \
+            "${{ secrets.APP_URL }}/api/warming/scheduler")
+          
+          http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          body=$(echo $response | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "📊 HTTP Status: $http_code"
+          echo "🌡️  Response: $body"
+          
+          if [ $http_code -eq 200 ]; then
+            echo "✅ Warmup scheduling completed successfully"
+          else
+            echo "❌ Warmup scheduling failed with status $http_code"
+            exit 1
+          fi
+
+  process-warmup-execution:
+    runs-on: ubuntu-latest
+    # Run warming execution once per day at 6 PM UTC  
+    if: github.event.schedule == '0 18 * * *' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Process Warmup Execution
+        run: |
+          echo "📤 Processing warmup execution at $(date)"
+          
+          response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -X GET \
+            -H "Content-Type: application/json" \
+            "${{ secrets.APP_URL }}/api/warming/execute")
+          
+          http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          body=$(echo $response | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "📊 HTTP Status: $http_code"
+          echo "📤 Response: $body"
+          
+          if [ $http_code -eq 200 ]; then
+            echo "✅ Warmup execution completed successfully"
+          else
+            echo "❌ Warmup execution failed with status $http_code"
+            exit 1
+          fi
