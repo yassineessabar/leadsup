@@ -535,79 +535,81 @@ export function ComprehensiveDashboard() {
           {/* Main Dashboard Layout - Full Width Focus */}
           <div className="space-y-8">
             
-            {/* Response and Meeting Chart - Full Width Hero */}
-            <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-green-500 to-blue-600 rounded-full opacity-5 transform translate-x-20 -translate-y-20"></div>
-              <CardContent className="p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center">
-                      <TrendingUp className="w-8 h-8 text-green-600" />
+            {/* Response and Meeting Chart - Only show if user has email activity */}
+            {sendGridMetrics && (
+              <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-green-500 to-blue-600 rounded-full opacity-5 transform translate-x-20 -translate-y-20"></div>
+                <CardContent className="p-8">
+                  <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center">
+                        <TrendingUp className="w-8 h-8 text-green-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-3xl font-medium text-slate-900">Response & Meeting Tracker</h2>
+                        <p className="text-slate-500 text-base font-normal mt-2">Email engagement and meeting conversion over 30 days</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-3xl font-medium text-slate-900">Response & Meeting Tracker</h2>
-                      <p className="text-slate-500 text-base font-normal mt-2">Email engagement and meeting conversion over 30 days</p>
-                    </div>
+                    <Badge className="bg-green-50 text-green-600 border-green-200 px-4 py-2 text-sm font-semibold">
+                      Live Data
+                    </Badge>
                   </div>
-                  <Badge className="bg-green-50 text-green-600 border-green-200 px-4 py-2 text-sm font-semibold">
-                    Live Data
-                  </Badge>
-                </div>
-              
-                <div className="h-[500px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={responseAndMeetingData} margin={{ top: 20, right: 50, left: 20, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis 
-                        dataKey="date" 
-                        stroke="#6b7280" 
-                        fontSize={14}
-                        fontWeight={500}
-                      />
-                      <YAxis 
-                        stroke="#6b7280" 
-                        fontSize={14}
-                        fontWeight={500}
-                      />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: 'white',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '16px',
-                          boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
-                          padding: '16px'
-                        }}
-                      />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="emailsSent"
-                        stroke="#6b7280"
-                        strokeWidth={3}
-                        dot={{ fill: '#6b7280', strokeWidth: 2, r: 5 }}
-                        name="Emails Sent"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="responses"
-                        stroke="#10b981"
-                        strokeWidth={4}
-                        dot={{ fill: '#10b981', strokeWidth: 3, r: 6 }}
-                        name="Responses"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="meetings"
-                        stroke="#3b82f6"
-                        strokeWidth={4}
-                        dot={{ fill: '#3b82f6', strokeWidth: 3, r: 6 }}
-                        name="Meetings Booked"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+                
+                  <div className="h-[500px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={responseAndMeetingData} margin={{ top: 20, right: 50, left: 20, bottom: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="#6b7280" 
+                          fontSize={14}
+                          fontWeight={500}
+                        />
+                        <YAxis 
+                          stroke="#6b7280" 
+                          fontSize={14}
+                          fontWeight={500}
+                        />
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '16px',
+                            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                            padding: '16px'
+                          }}
+                        />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="emailsSent"
+                          stroke="#6b7280"
+                          strokeWidth={3}
+                          dot={{ fill: '#6b7280', strokeWidth: 2, r: 5 }}
+                          name="Emails Sent"
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="responses"
+                          stroke="#10b981"
+                          strokeWidth={4}
+                          dot={{ fill: '#10b981', strokeWidth: 3, r: 6 }}
+                          name="Responses"
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="meetings"
+                          stroke="#3b82f6"
+                          strokeWidth={4}
+                          dot={{ fill: '#3b82f6', strokeWidth: 3, r: 6 }}
+                          name="Meetings Booked"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Secondary Content Grid */}
             <div className="grid lg:grid-cols-3 gap-8">
