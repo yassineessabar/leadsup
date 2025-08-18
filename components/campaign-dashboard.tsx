@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { useDebouncedAutoSave } from "@/hooks/useDebounce"
 import { useOptimizedPolling } from "@/hooks/useOptimizedPolling"
 
-import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, AlertCircle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, ExternalLink, Archive, Reply, Forward, Rocket, Square, TrendingUp, Shield, ArrowUp, Brain, ShieldCheck, CheckCircle2 } from "lucide-react"
+import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, AlertCircle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, ExternalLink, Archive, Reply, Forward, Rocket, Square, TrendingUp, Shield, ArrowUp, Brain, ShieldCheck, CheckCircle2, Flame } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -333,24 +333,98 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   const handleLaunchCampaign = async () => {
     try {
-      // Launch the campaign - validation happens at step level
-      if (onStatusUpdate && campaign?.id) {
-        console.log('🚀 Launching campaign:', campaign.id)
-        onStatusUpdate(campaign.id, 'Active')
-        setIsGuidedFlow(false)
+      // Check sender health scores before launching
+      if (campaign?.id) {
+        setWarmupCheckLoading(true)
         
-        // Redirect to analytics page for this campaign
-        const redirectUrl = `/?tab=analytics&campaign=${campaign.id}`
-        console.log('🔄 Redirecting to:', redirectUrl)
-        window.location.href = redirectUrl
+        // Get campaign senders
+        const sendersResponse = await fetch(`/api/campaigns/${campaign.id}/senders`, {
+          credentials: "include"
+        })
+        
+        if (sendersResponse.ok) {
+          const sendersResult = await sendersResponse.json()
+          const senderAssignments = sendersResult.assignments || []
+          
+          if (senderAssignments.length > 0) {
+            // Get sender emails
+            const senderEmails = senderAssignments.map((assignment: any) => assignment.email).filter(Boolean)
+            
+            if (senderEmails.length > 0) {
+              // Fetch health scores
+              const healthResponse = await fetch(`/api/sender-accounts/health-score?emails=${senderEmails.join(',')}&campaignId=${campaign.id}`, {
+                credentials: "include"
+              })
+              
+              if (healthResponse.ok) {
+                const healthResult = await healthResponse.json()
+                const healthScores = healthResult.healthScores || {}
+                
+                // Check for low health scores (below 90%)
+                const lowScoreSenders: Array<{email: string, score: number}> = []
+                Object.entries(healthScores).forEach(([email, data]: [string, any]) => {
+                  if (data.score < 90) {
+                    lowScoreSenders.push({ email, score: data.score })
+                  }
+                })
+                
+                setWarmupCheckLoading(false)
+                
+                if (lowScoreSenders.length > 0) {
+                  // Show warmup warning popup
+                  setLowHealthSenders(lowScoreSenders)
+                  setShowWarmupWarning(true)
+                  return // Don't launch yet
+                }
+              }
+            }
+          }
+        }
+        
+        setWarmupCheckLoading(false)
+        
+        // If all health scores are good, launch the campaign
+        if (onStatusUpdate) {
+          console.log('🚀 Launching campaign:', campaign.id)
+          onStatusUpdate(campaign.id, 'Active')
+          setIsGuidedFlow(false)
+          
+          // Redirect to analytics page for this campaign
+          const redirectUrl = `/?tab=analytics&campaign=${campaign.id}`
+          console.log('🔄 Redirecting to:', redirectUrl)
+          window.location.href = redirectUrl
+        }
       } else {
-        console.error('❌ Cannot launch campaign - missing campaign ID or onStatusUpdate')
+        console.error('❌ Cannot launch campaign - missing campaign ID')
       }
       
     } catch (error) {
       console.error('Error launching campaign:', error)
+      setWarmupCheckLoading(false)
     }
   }
+  const handleWarmupDecision = async (shouldWarmup: boolean) => {
+    setShowWarmupWarning(false)
+    
+    if (shouldWarmup && campaign?.id && onStatusUpdate) {
+      // Set campaign status to "Warming"
+      console.log('🔥 Starting warmup for campaign:', campaign.id)
+      onStatusUpdate(campaign.id, 'Warming')
+      
+      // Redirect to campaigns page to see warming status
+      window.location.href = '/?tab=campaigns'
+    } else if (!shouldWarmup && campaign?.id && onStatusUpdate) {
+      // User chose to ignore warning and launch anyway
+      console.log('⚠️ Launching campaign despite low health scores')
+      onStatusUpdate(campaign.id, 'Active')
+      setIsGuidedFlow(false)
+      
+      // Redirect to analytics page
+      const redirectUrl = `/?tab=analytics&campaign=${campaign.id}`
+      window.location.href = redirectUrl
+    }
+  }
+
   const [testModalEmail, setTestModalEmail] = useState("")
   const [testEmail, setTestEmail] = useState("contact@leadsupbase.com")
   const [testPhone, setTestPhone] = useState("+1 (555) 123-4567")
@@ -374,6 +448,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     company: ''
   })
   const [importLoading, setImportLoading] = useState(false)
+
+  // Warmup warning state
+  const [showWarmupWarning, setShowWarmupWarning] = useState(false)
+  const [lowHealthSenders, setLowHealthSenders] = useState<Array<{email: string, score: number}>>([])
+  const [warmupCheckLoading, setWarmupCheckLoading] = useState(false)
 
   // Target tab dummy state for backwards compatibility
   const targetStatus = 'idle'
@@ -4285,6 +4364,86 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           </div>
         )}
       </div>
+
+      {/* Warmup Warning Dialog */}
+      <Dialog open={showWarmupWarning} onOpenChange={setShowWarmupWarning}>
+        <DialogContent className="max-w-md bg-white rounded-3xl border-0 p-0 overflow-hidden shadow-2xl">
+          <DialogHeader className="text-center p-8 pb-6 bg-gradient-to-br from-orange-50 to-amber-50">
+            <div className="mx-auto mb-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                <Flame className="w-10 h-10 text-white" />
+              </div>
+            </div>
+            <DialogTitle className="text-2xl font-bold text-gray-900">
+              Sender Health Below Optimal
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 mt-3 text-base leading-relaxed">
+              We detected some sender accounts with health scores below 90%. 
+              We recommend warming up these accounts first for better deliverability.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="p-6 space-y-4">
+            <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
+              <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                <AlertTriangle className="w-4 h-4 text-orange-600 mr-2" />
+                Accounts Needing Warmup
+              </h4>
+              <div className="space-y-2">
+                {lowHealthSenders.map((sender, index) => {
+                  const getScoreColor = (score: number) => {
+                    if (score >= 80) return 'text-green-600 bg-green-50'
+                    if (score >= 60) return 'text-yellow-600 bg-yellow-50'
+                    return 'text-red-600 bg-red-50'
+                  }
+                  
+                  return (
+                    <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-700">{sender.email}</span>
+                      </div>
+                      <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getScoreColor(sender.score)}`}>
+                        {sender.score}%
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            
+            <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
+              <p className="text-sm text-blue-900">
+                <strong>Warmup Mode:</strong> The campaign will gradually increase sending volume 
+                over 2-4 weeks to build sender reputation and reach the 90% health score target.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter className="bg-gray-50 px-8 py-6">
+            <div className="flex gap-3 w-full">
+              <Button
+                variant="outline"
+                onClick={() => handleWarmupDecision(false)}
+                className="flex-1 rounded-2xl border-gray-300 hover:bg-gray-100"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Ignore & Launch
+              </Button>
+              <Button
+                onClick={() => handleWarmupDecision(true)}
+                className="flex-1 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 shadow-lg"
+              >
+                <Flame className="w-4 h-4 mr-2" />
+                Start Warmup
+                <Badge variant="secondary" className="ml-2 bg-white/20 text-white border-0">
+                  Recommended
+                </Badge>
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Validation Requirements Dialog */}
       <Dialog open={showValidationDialog} onOpenChange={setShowValidationDialog}>

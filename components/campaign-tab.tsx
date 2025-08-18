@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { Search, Plus, MoreHorizontal, Play, Mail, MessageSquare, Users, MousePointer, UserPlus, Trash2, Eye, UserCheck, Send, Reply, TrendingUp, TrendingDown, UserX, ChevronDown, ChevronRight, RefreshCw } from "lucide-react"
+import { Search, Plus, MoreHorizontal, Play, Mail, MessageSquare, Users, MousePointer, UserPlus, Trash2, Eye, UserCheck, Send, Reply, TrendingUp, TrendingDown, UserX, ChevronDown, ChevronRight, RefreshCw, Flame, Pause } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -21,7 +21,7 @@ interface Campaign {
   name: string
   type: "Email"
   trigger: "New Client"
-  status: "Draft" | "Active" | "Paused" | "Completed"
+  status: "Draft" | "Active" | "Paused" | "Completed" | "Warming"
   sent: number | null
   outreachStrategy?: "email" | "linkedin" | "email-linkedin"
   totalPlanned?: number // Total number of contacts/emails planned to be sent
@@ -603,7 +603,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
   const getCampaignProgress = (campaign: Campaign) => {
     // Check if campaign has been started
-    const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused'
+    const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused' || campaign.status === 'Warming'
     
     // For new/draft campaigns, show zero progress
     if (!hasBeenStarted) {
@@ -901,7 +901,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               const progress = getCampaignProgress(campaign)
               
               // Only show real metrics for campaigns that have been started AND have real campaign data
-              const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused'
+              const hasBeenStarted = campaign.status === 'Active' || campaign.status === 'Completed' || campaign.status === 'Paused' || campaign.status === 'Warming'
               
               // ULTRA STRICT: Only show metrics if campaign has contacts AND real activity
               const hasContacts = campaign.totalPlanned && campaign.totalPlanned > 0
@@ -1006,12 +1006,23 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                       <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${
                         campaign.status === 'Active' 
                           ? 'bg-green-50 text-green-700 border border-green-200' 
+                          : campaign.status === 'Warming'
+                          ? 'bg-gradient-to-r from-orange-50 to-amber-50 text-orange-700 border border-orange-200'
                           : campaign.status === 'Paused'
                           ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
                           : campaign.status === 'Completed'
                           ? 'bg-gray-50 text-gray-700 border border-gray-200'
                           : 'bg-gray-50 text-gray-700 border border-gray-200'
                       }`}>
+                        {campaign.status === 'Warming' && (
+                          <Flame className="w-4 h-4 mr-1.5 text-green-600 animate-pulse" />
+                        )}
+                        {campaign.status === 'Active' && (
+                          <Play className="w-4 h-4 mr-1.5" />
+                        )}
+                        {campaign.status === 'Paused' && (
+                          <Pause className="w-4 h-4 mr-1.5" />
+                        )}
                         {campaign.status || 'Draft'}
                       </span>
                     </div>
@@ -1076,6 +1087,15 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           }}
                         >
                           Pause
+                        </Button>
+                      ) : campaign.status === 'Warming' ? (
+                        <Button
+                          variant="outline"
+                          className="flex-1 border-orange-300 hover:bg-orange-50 text-orange-700 font-medium transition-all duration-300 rounded-2xl"
+                          disabled
+                        >
+                          <Flame className="w-4 h-4 mr-2 animate-pulse" />
+                          Warming Up...
                         </Button>
                       ) : campaign.status === 'Paused' ? (
                         <Button
