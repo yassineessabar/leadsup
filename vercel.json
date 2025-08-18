@@ -8,20 +8,12 @@
     },
     "app/api/automation/run/route.ts": {
       "maxDuration": 300
-    }
-  },
-  "crons": [
-    {
-      "path": "/api/warming/scheduler",
-      "schedule": "0 9 * * *"
     },
-    {
-      "path": "/api/warming/execute", 
-      "schedule": "0 12 * * *"
+    "app/api/warmup/health/route.ts": {
+      "maxDuration": 60
     },
-    {
-      "path": "/api/automation/run",
-      "schedule": "0 15 * * *"
+    "app/api/warmup/debug/route.ts": {
+      "maxDuration": 60
     }
-  ]
+  }
 }
