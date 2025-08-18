@@ -1256,7 +1256,6 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           </p>
                         </div>
                       </div>
-                    )}
 
                     {/* Progress */}
                     <div className="mb-6">
@@ -1304,7 +1303,16 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                             className="flex-1 border-orange-300 hover:bg-orange-50 text-orange-700 font-medium transition-all duration-300 rounded-2xl"
                             onClick={(e) => {
                               e.stopPropagation()
-                              window.open('/warming-dashboard', '_blank')
+                              setSelectedCampaign(campaign)
+                              setCurrentView("analytics")
+                              // Add URL parameter to expand warming details
+                              if (typeof window !== 'undefined') {
+                                const url = new URL(window.location.href)
+                                url.searchParams.set("tab", "analytics")
+                                url.searchParams.set("campaign", campaign.id.toString())
+                                url.searchParams.set("expandWarming", "true")
+                                window.history.pushState({}, "", url.toString())
+                              }
                             }}
                           >
                             <Flame className="w-4 h-4 mr-2 text-orange-700 animate-pulse" />

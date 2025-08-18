@@ -627,6 +627,21 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     }
   }, [dateRange])
 
+  // Check for expandWarming URL parameter to expand warming details
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const expandWarming = urlParams.get('expandWarming')
+      if (expandWarming === 'true') {
+        setWarmingProgressExpanded(true)
+        // Remove the parameter from URL after setting the state
+        urlParams.delete('expandWarming')
+        const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '')
+        window.history.replaceState({}, '', newUrl)
+      }
+    }
+  }, [])
+
   // Note: Automatic refresh disabled to prevent React DOM errors
   // Users can manually refresh sequences using the refresh button
 
@@ -2161,16 +2176,6 @@ Please add content to this email in the sequence settings.`
                 <Calendar className="w-5 h-5 text-gray-600" />
                 Email Sequence Timeline
               </DialogTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={refreshSequences}
-                disabled={sequencesRefreshing}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${sequencesRefreshing ? 'animate-spin' : ''}`} />
-                {sequencesRefreshing ? 'Refreshing...' : 'Refresh Sequences'}
-              </Button>
             </div>
           </DialogHeader>
           
@@ -2623,10 +2628,10 @@ Please add content to this email in the sequence settings.`
 
       {/* Warmup Warning Dialog */}
       <Dialog open={showWarmupWarning} onOpenChange={setShowWarmupWarning}>
-        <DialogContent className="sm:max-w-[425px] rounded-3xl border border-gray-100 p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[425px] rounded-2xl border border-gray-200 p-0 overflow-hidden">
           <div className="p-6 pb-0">
             <div className="flex items-center space-x-4 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
                 <Flame className="w-6 h-6 text-orange-600" />
               </div>
               <div>
@@ -2641,9 +2646,9 @@ Please add content to this email in the sequence settings.`
           </div>
           
           <div className="px-6 pb-4">
-            <div className="bg-orange-50/50 rounded-xl p-3 mb-3">
-              <p className="text-xs font-medium text-orange-900 mb-2">Accounts Still Below 90% Health</p>
-              <div className="space-y-1.5">
+            <div className="bg-orange-50 rounded-xl p-4 mb-4">
+              <p className="text-sm font-medium text-orange-900 mb-3">Accounts Below 90% Health</p>
+              <div className="space-y-2">
                 {lowHealthSenders.map((sender, index) => {
                   const getScoreColor = (score: number) => {
                     if (score >= 80) return 'text-green-700 bg-green-100'
@@ -2652,9 +2657,9 @@ Please add content to this email in the sequence settings.`
                   }
                   
                   return (
-                    <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg">
+                    <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg">
                       <span className="text-sm text-gray-700 truncate flex-1 mr-2">{sender.email}</span>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getScoreColor(sender.score)}`}>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(sender.score)}`}>
                         {sender.score}%
                       </span>
                     </div>
@@ -2663,10 +2668,10 @@ Please add content to this email in the sequence settings.`
               </div>
             </div>
             
-            <div className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
-              <p><span className="font-semibold">Continue Warmup:</span> Keep warming to improve health scores before going active.</p>
-              <p className="mt-1">
-                <span className="font-semibold">
+            <div className="text-sm text-gray-600 bg-gray-50 rounded-xl p-4">
+              <p className="mb-2"><span className="font-medium">Continue Warmup:</span> Keep warming to improve health scores before going active.</p>
+              <p>
+                <span className="font-medium">
                   {pendingResumeStatus === "Completed" ? "Stop Anyway:" : "Resume Anyway:"}
                 </span>{" "}
                 {pendingResumeStatus === "Completed" 
@@ -2677,7 +2682,7 @@ Please add content to this email in the sequence settings.`
             </div>
           </div>
           
-          <div className="flex gap-2 p-6 pt-3 border-t border-gray-100">
+          <div className="flex gap-3 p-6 pt-3 border-t border-gray-100">
             <Button
               variant="outline"
               onClick={(e) => {
@@ -2686,7 +2691,7 @@ Please add content to this email in the sequence settings.`
                 handleWarmupDecision(false)
               }}
               disabled={warmupDecisionLoading}
-              className="flex-1 h-10 rounded-xl text-sm"
+              className="flex-1 h-10 rounded-xl"
             >
               {warmupDecisionLoading ? (
                 <>
@@ -2704,7 +2709,7 @@ Please add content to this email in the sequence settings.`
                 handleWarmupDecision(true)
               }}
               disabled={warmupDecisionLoading}
-              className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {warmupDecisionLoading ? (
                 <>
