@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, RefreshCw, Pause, Play, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit } from "lucide-react"
+import { ArrowLeft, RefreshCw, Pause, Play, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -34,12 +34,44 @@ interface SendGridMetrics {
   unsubscribeRate: number
 }
 
+interface WarmingSender {
+  sender_email: string
+  phase: number
+  day_in_phase: number
+  total_warming_days: number
+  daily_target: number
+  emails_sent_today: number
+  opens_today: number
+  replies_today: number
+  clicks_today: number
+  current_health_score: number
+  target_health_score: number
+  status: string
+}
+
+interface WarmingMetrics {
+  campaigns: Array<{
+    id: string
+    name: string
+    senders: WarmingSender[]
+  }>
+  summary: {
+    activeWarmups: number
+    totalEmailsSentToday: number
+    totalOpensToday: number
+    totalRepliesToday: number
+    averageHealthScore: number
+    openRate: number
+    replyRate: number
+  }
+}
+
 interface Campaign {
   id: string | number
   name: string
   type: "Email"
   trigger: "New Client"
-  status: "Draft" | "Active" | "Paused" | "Completed"
+  status: "Draft" | "Active" | "Paused" | "Completed" | "Warming"
   sent: number | null
   totalPlanned?: number
 }
@@ -90,7 +122,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Health score state
   const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { score: number; breakdown: any; lastUpdated: string }>>({})
   const [healthScoresLoading, setHealthScoresLoading] = useState(false)
+  
+  // Warming metrics state
+  const [warmingMetrics, setWarmingMetrics] = useState<WarmingMetrics | null>(null)
+  const [warmingLoading, setWarmingLoading] = useState(false)
   const [healthScoresExpanded, setHealthScoresExpanded] = useState(true)
+  const [warmingProgressExpanded, setWarmingProgressExpanded] = useState(false)
   
   // Warmup warning state
   const [showWarmupWarning, setShowWarmupWarning] = useState(false)
@@ -113,6 +150,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
 
   // Fetch campaign senders
   const fetchCampaignSenders = async () => {
+    if (!campaign?.id) return
     try {
       const response = await fetch(`/api/campaigns/${campaign.id}/senders`, {
         credentials: "include"
@@ -137,6 +175,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
 
   // Fetch campaign sequences
   const fetchCampaignSequences = async () => {
+    if (!campaign?.id) return
     try {
       const response = await fetch(`/api/campaigns/${campaign.id}/sequences`, {
         credentials: "include"
@@ -309,6 +348,45 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       console.error('Error fetching sender health scores:', error)
     } finally {
       setHealthScoresLoading(false)
+    }
+  }
+
+  // Fetch warming metrics for warming campaigns
+  const fetchWarmingMetrics = async () => {
+    if (!campaign || campaign.status !== 'Warming') {
+      setWarmingMetrics(null)
+      return
+    }
+
+    setWarmingLoading(true)
+    try {
+      console.log('🔥 Fetching warming metrics for campaign:', campaign.id)
+      
+      const response = await fetch(`/api/warming/progress?campaign_id=${campaign.id}`, {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          console.log('🔥 Warming metrics loaded:', result.data)
+          setWarmingMetrics(result.data)
+        } else {
+          console.log('🔥 No warming data available yet')
+          setWarmingMetrics(null)
+        }
+      } else if (response.status === 401) {
+        console.log('🔥 Authentication required for warming metrics - will retry')
+        setWarmingMetrics(null)
+      } else {
+        console.error('Failed to fetch warming metrics:', response.status, response.statusText)
+        setWarmingMetrics(null)
+      }
+    } catch (error) {
+      console.error('Error fetching warming metrics:', error)
+      setWarmingMetrics(null)
+    } finally {
+      setWarmingLoading(false)
     }
   }
 
@@ -538,8 +616,9 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       fetchCampaignSenders()
       fetchCampaignSequences()
       fetchSenderHealthScores()
+      fetchWarmingMetrics()
     }
-  }, [campaign?.id, campaign.name])
+  }, [campaign?.id, campaign.name, campaign.status])
 
   // Fetch metrics when date range changes
   useEffect(() => {
@@ -1246,21 +1325,261 @@ Please add content to this email in the sequence settings.`
 
         {/* Health Score and Daily Limit Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Health Score Section - Compact */}
-          <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
+          {/* Health Score Section - Enhanced for Warming */}
+          <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
             <CardContent className="p-6">
-            {healthScoresLoading ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
-                    <Heart className="w-5 h-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">Sender Health</h3>
-                    <p className="text-xs text-gray-500">Loading...</p>
-                  </div>
+            {(healthScoresLoading || warmingLoading) ? (
+              <div className="flex items-center space-x-4 mb-6">
+                <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center">
+                  {campaign.status === 'Warming' ? (
+                    <Flame className="w-6 h-6 text-orange-600 animate-pulse" />
+                  ) : (
+                    <Heart className="w-6 h-6 text-orange-600" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    {campaign.status === 'Warming' ? 'Warming Progress' : 'Sender Health'}
+                  </h3>
+                  <p className="text-gray-500 text-sm">Loading...</p>
                 </div>
               </div>
+            ) : campaign.status === 'Warming' ? (
+              warmingMetrics && warmingMetrics.senders && warmingMetrics.senders.length > 0 ? (
+              <>
+                {(() => {
+                  const senders = warmingMetrics.senders || []
+                  const avgPhase = senders.length > 0 ? (senders.reduce((sum: number, s: any) => sum + (s.phase || 0), 0) / senders.length) : 0
+                  const avgHealthScore = warmingMetrics.summary?.averageHealthScore || 0
+                  
+                  const getPhaseColor = (phase: number) => {
+                    if (phase >= 3) return 'text-green-600 bg-green-50'
+                    if (phase >= 2) return 'text-yellow-600 bg-yellow-50'
+                    return 'text-orange-600 bg-orange-50'
+                  }
+                  
+                  const getPhaseStatus = (phase: number) => {
+                    if (phase >= 3) return 'Advanced'
+                    if (phase >= 2) return 'Growing'
+                    return 'Starting'
+                  }
+                  
+                  return (
+                    <>
+                      <div className="flex items-center space-x-4 mb-6">
+                        <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center">
+                          <Flame className="w-6 h-6 text-orange-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-medium text-gray-900">Warming Progress</h3>
+                          <p className="text-gray-500 text-sm">{senders.length} sender{senders.length > 1 ? 's' : ''} warming • {getPhaseStatus(avgPhase)}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setWarmingProgressExpanded(!warmingProgressExpanded)}
+                          className="flex items-center space-x-2 px-3 py-2 text-sm"
+                        >
+                          <span>{warmingProgressExpanded ? 'Minimize' : 'View Details'}</span>
+                          <ChevronDown className={`w-4 h-4 transition-transform ${warmingProgressExpanded ? 'rotate-180' : ''}`} />
+                        </Button>
+                      </div>
+
+                      {/* Overall Progress Bar */}
+                      {(() => {
+                        const totalDays = senders.reduce((sum: number, s: any) => sum + (s.total_warming_days || 0), 0)
+                        const avgDays = senders.length > 0 ? totalDays / senders.length : 0
+                        const overallProgress = Math.min((avgDays / 35) * 100, 100)
+                        
+                        return (
+                          <div className="mb-6 p-4 bg-white rounded-xl border">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm font-medium text-gray-700">Overall Warming Progress</span>
+                                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPhaseColor(avgPhase)}`}>
+                                  Phase {avgPhase.toFixed(1)}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-lg font-semibold text-gray-900">{overallProgress.toFixed(1)}%</span>
+                                <p className="text-xs text-gray-500">{avgDays.toFixed(0)} of 35 days</p>
+                              </div>
+                            </div>
+                            
+                            {/* Progress Bar */}
+                            <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                              <div 
+                                className="bg-gradient-to-r from-orange-500 to-amber-500 h-3 rounded-full transition-all duration-300" 
+                                style={{ width: `${overallProgress}%` }}
+                              ></div>
+                            </div>
+                            
+                            {/* Phase Milestones */}
+                            <div className="flex justify-between text-xs text-gray-500">
+                              <span className={avgPhase >= 1 ? 'text-orange-600 font-medium' : ''}>Phase 1</span>
+                              <span className={avgPhase >= 2 ? 'text-orange-600 font-medium' : ''}>Phase 2</span>
+                              <span className={avgPhase >= 3 ? 'text-orange-600 font-medium' : ''}>Phase 3</span>
+                              <span className={overallProgress >= 100 ? 'text-green-600 font-medium' : ''}>Complete</span>
+                            </div>
+                          </div>
+                        )
+                      })()}
+
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2 flex-wrap">
+                          <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium text-gray-600 bg-gray-50">
+                            Health: {avgHealthScore}%
+                          </div>
+                          <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium text-gray-600 bg-gray-50">
+                            {warmingMetrics.summary?.totalEmailsSentToday || 0} emails today
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Expandable details */}
+                      {warmingProgressExpanded && (
+                        <div className="mt-4 space-y-2 border-t pt-4">
+                          {senders.map((sender: any, index: number) => {
+                            const phase = sender.phase || 1
+                            const healthScore = sender.current_health_score || 0
+                            const dayInPhase = sender.day_in_phase || 1
+                            const emailsToday = sender.emails_sent_today || 0
+                            const opensToday = sender.opens_today || 0
+                            const repliesToday = sender.replies_today || 0
+                            const dailyTarget = sender.daily_target || 5
+                            
+                            return (
+                              <div key={sender.sender_email || index} className="p-4 bg-gray-50 rounded-lg">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center space-x-2">
+                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${getPhaseColor(phase)}`}>
+                                      <Flame className="w-3 h-3" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <p className="text-sm font-medium text-gray-900">{sender.sender_email}</p>
+                                      <div className="flex items-center space-x-2 text-xs text-gray-500">
+                                        <span>Phase {phase} • Day {dayInPhase}</span>
+                                        <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
+                                        <span>{healthScore}% health</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPhaseColor(phase)}`}>
+                                    Phase {phase}
+                                  </div>
+                                </div>
+                                
+                                {/* Today's Activity */}
+                                <div className="grid grid-cols-3 gap-3 mb-4">
+                                  <div className="text-center p-3 bg-white rounded-lg border">
+                                    <p className="text-lg font-medium text-gray-900">{emailsToday}</p>
+                                    <p className="text-xs text-gray-500">Emails sent</p>
+                                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                                      <div 
+                                        className="bg-blue-500 h-1.5 rounded-full" 
+                                        style={{ width: `${Math.min((emailsToday / dailyTarget) * 100, 100)}%` }}
+                                      ></div>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1">{dailyTarget} target</p>
+                                  </div>
+                                  <div className="text-center p-3 bg-white rounded-lg border">
+                                    <p className="text-lg font-medium text-gray-900">{opensToday}</p>
+                                    <p className="text-xs text-gray-500">Opens today</p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      {emailsToday > 0 ? `${((opensToday / emailsToday) * 100).toFixed(1)}%` : '0%'} rate
+                                    </p>
+                                  </div>
+                                  <div className="text-center p-3 bg-white rounded-lg border">
+                                    <p className="text-lg font-medium text-gray-900">{repliesToday}</p>
+                                    <p className="text-xs text-gray-500">Replies today</p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      {emailsToday > 0 ? `${((repliesToday / emailsToday) * 100).toFixed(1)}%` : '0%'} rate
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Overall Progress */}
+                                <div className="grid grid-cols-2 gap-3 mb-4">
+                                  <div className="p-3 bg-white rounded-lg border">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="text-sm font-medium text-gray-700">Total Warming Days</span>
+                                      <span className="text-sm text-gray-900">{sender.total_warming_days || 0}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                      <div 
+                                        className="bg-orange-500 h-2 rounded-full" 
+                                        style={{ width: `${Math.min(((sender.total_warming_days || 0) / 35) * 100, 100)}%` }}
+                                      ></div>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1">35 days target</p>
+                                  </div>
+                                  <div className="p-3 bg-white rounded-lg border">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="text-sm font-medium text-gray-700">Health Score</span>
+                                      <span className="text-sm text-gray-900">{healthScore}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                      <div 
+                                        className={`h-2 rounded-full ${healthScore >= 80 ? 'bg-green-500' : healthScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                        style={{ width: `${healthScore}%` }}
+                                      ></div>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1">{sender.target_health_score || 90}% target</p>
+                                  </div>
+                                </div>
+
+                                {/* Phase Progress */}
+                                <div className="p-3 bg-white rounded-lg border">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-gray-700">Phase {phase} Progress</span>
+                                    <span className="text-xs text-gray-500">Day {dayInPhase}</span>
+                                  </div>
+                                  
+                                  {/* Phase timeline */}
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    {[1, 2, 3].map((phaseNum) => (
+                                      <div key={phaseNum} className="flex-1">
+                                        <div className={`h-2 rounded-full ${
+                                          phaseNum < phase ? 'bg-green-500' : 
+                                          phaseNum === phase ? 'bg-orange-500' : 'bg-gray-200'
+                                        }`}></div>
+                                        <p className="text-xs text-center mt-1 text-gray-500">Phase {phaseNum}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  
+                                  <div className="text-xs text-gray-500 text-center">
+                                    {phase === 1 && "Building initial reputation"}
+                                    {phase === 2 && "Increasing volume and engagement"}
+                                    {phase === 3 && "Full warming capacity"}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
+              </>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl flex items-center justify-center">
+                      <Flame className="w-6 h-6 text-orange-600 animate-pulse" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900">Warming Progress</h3>
+                      <p className="text-sm text-gray-500 font-light">Initializing warming system...</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-3xl font-light text-orange-600">—</p>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">No data yet</p>
+                  </div>
+                </div>
+              )
             ) : Object.keys(senderHealthScores).length > 0 ? (
               <>
                 {(() => {
@@ -1282,16 +1601,16 @@ Please add content to this email in the sequence settings.`
                   
                   return (
                     <>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
-                            <Heart className="w-5 h-5 text-orange-600" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-medium text-gray-900">Sender Health</h3>
-                            <p className="text-xs text-gray-500">{scores.length} selected sender{scores.length > 1 ? 's' : ''} • {getScoreStatus(avgScore)}</p>
-                          </div>
+                      <div className="flex items-center space-x-4 mb-6">
+                        <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center">
+                          <Heart className="w-6 h-6 text-orange-600" />
                         </div>
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900">Sender Health</h3>
+                          <p className="text-gray-500 text-sm">{scores.length} selected sender{scores.length > 1 ? 's' : ''} • {getScoreStatus(avgScore)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2 flex-wrap">
                           <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getScoreColor(avgScore)}`}>
                             Avg: {avgScore}/100
@@ -1359,15 +1678,13 @@ Please add content to this email in the sequence settings.`
                 })()}
               </>
             ) : (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
-                    <Heart className="w-5 h-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">Sender Health</h3>
-                    <p className="text-xs text-gray-500">No senders selected</p>
-                  </div>
+              <div className="flex items-center space-x-4 mb-6">
+                <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center">
+                  <Heart className="w-6 h-6 text-orange-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">Sender Health</h3>
+                  <p className="text-gray-500 text-sm">No senders selected</p>
                 </div>
               </div>
             )}
@@ -1375,7 +1692,7 @@ Please add content to this email in the sequence settings.`
         </Card>
 
           {/* Daily Limit Section */}
-          <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
+          <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
             <CardContent className="p-6">
               {(() => {
                 // Calculate total daily limit based on selected senders
@@ -1385,16 +1702,16 @@ Please add content to this email in the sequence settings.`
                 
                 return (
                   <>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                          <Zap className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-medium text-gray-900">Daily Limit</h3>
-                          <p className="text-xs text-gray-500">{selectedSenderCount} selected sender{selectedSenderCount > 1 ? 's' : ''} • {dailyLimitPerSender} emails each</p>
-                        </div>
+                    <div className="flex items-center space-x-4 mb-6">
+                      <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                        <Zap className="w-6 h-6 text-blue-600" />
                       </div>
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900">Daily Limit</h3>
+                        <p className="text-gray-500 text-sm">{selectedSenderCount} selected sender{selectedSenderCount > 1 ? 's' : ''} • {dailyLimitPerSender} emails each</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-50 text-blue-700">
                           {totalDailyLimit} emails/day

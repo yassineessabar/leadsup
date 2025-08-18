@@ -70,6 +70,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   const [pendingResumeStatus, setPendingResumeStatus] = useState<string | null>(null)
   const [pendingResumeCampaign, setPendingResumeCampaign] = useState<{ id: string | number; name: string } | null>(null)
   const [campaignHealthScores, setCampaignHealthScores] = useState<Record<string | number, Array<{ email: string; score: number }>>>({})
+  const [warmingProgress, setWarmingProgress] = useState<Record<string | number, any>>({})
 
   const triggerOptions = [
     { value: "New Client", label: "New Client", icon: UserPlus, description: "Trigger when a new client signs up" },
@@ -103,6 +104,54 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     return []
   }
 
+  // Fetch warming progress for warming campaigns
+  const fetchWarmingProgress = async () => {
+    try {
+      const response = await fetch('/api/warming/progress', {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          console.log('🔥 Warming System Status:', result.data)
+          
+          // Convert warming data to campaign-indexed format
+          const warmingByCampaign: Record<string | number, any> = {}
+          
+          result.data.campaigns?.forEach((campaign: any) => {
+            warmingByCampaign[campaign.id] = {
+              ...campaign,
+              senders: campaign.senders || []
+            }
+            
+            // Log warming activity for each campaign
+            if (campaign.senders?.length > 0) {
+              console.log(`🔥 Campaign "${campaign.name}" warming status:`)
+              campaign.senders.forEach((sender: any) => {
+                console.log(`  📧 ${sender.sender_email}: Phase ${sender.phase}, Day ${sender.day_in_phase}, Health Score: ${sender.current_health_score}%, Status: ${sender.status}`)
+              })
+            }
+          })
+          
+          setWarmingProgress(warmingByCampaign)
+          
+          // Show summary in console
+          if (result.data.summary) {
+            console.log('🔥 Warming Summary:', {
+              'Active Warmups': result.data.summary.activeWarmups,
+              'Emails Sent Today': result.data.summary.totalEmailsSentToday,
+              'Average Health Score': `${result.data.summary.averageHealthScore}%`,
+              'Open Rate': `${result.data.summary.openRate}%`,
+              'Reply Rate': `${result.data.summary.replyRate}%`
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching warming progress:', error)
+    }
+  }
 
   // Sync campaign with SendGrid API
   const syncCampaignWithSendGrid = async (campaignId: string | number, userId: string) => {
@@ -254,6 +303,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
   useEffect(() => {
     fetchCampaigns()
+    fetchWarmingProgress()
+    
+    // Auto-refresh warming progress every 2 minutes
+    const warmingInterval = setInterval(() => {
+      fetchWarmingProgress()
+    }, 120000)
+    
+    return () => clearInterval(warmingInterval)
   }, [])
 
   // Check for campaign ID and subtab in URL params to auto-open campaign dashboard
@@ -529,6 +586,26 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       console.log(`📝 API Response:`, result)
 
       if (result.success) {
+        // Special logging for warming system
+        if (newStatus === 'Warming') {
+          console.log('🔥🔥🔥 WARMING SYSTEM ACTIVATED! 🔥🔥🔥')
+          console.log(`🔥 Campaign "${campaignName}" is now in warming mode`)
+          console.log('🔥 The warming system will:')
+          console.log('  📧 Send warming emails gradually (3 phases over 35 days)')
+          console.log('  👁️ Simulate email opens to improve sender reputation')
+          console.log('  💬 Generate automated replies for engagement')
+          console.log('  📊 Track and improve health scores automatically')
+          console.log('  ⚡ Run 24/7 via Vercel cron jobs')
+          console.log('🔥 Check the warming dashboard at /warming-dashboard for progress')
+          console.log('🔥 Warming progress will be fetched every 2 minutes')
+          
+          // Trigger immediate warming progress fetch
+          setTimeout(() => {
+            console.log('🔥 Fetching initial warming progress...')
+            fetchWarmingProgress()
+          }, 2000)
+        }
+        
         // Update the campaign in local state
         setCampaigns(prevCampaigns => 
           prevCampaigns.map(campaign => 
@@ -1160,25 +1237,26 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
                     {/* Metrics */}
                     <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                        <p className="text-2xl font-light text-gray-900">
-                          {hasBeenStarted && hasRealCampaignData ? `${openRate}%` : 
-                           hasBeenStarted ? '0%' : '—'}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {hasBeenStarted ? 'Open Rate' : 'Not started'}
-                        </p>
+                        <div className="text-center p-4 bg-gray-50 rounded-2xl">
+                          <p className="text-2xl font-light text-gray-900">
+                            {hasBeenStarted && hasRealCampaignData ? `${openRate}%` : 
+                             hasBeenStarted ? '0%' : '—'}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {hasBeenStarted ? 'Open Rate' : 'Not started'}
+                          </p>
+                        </div>
+                        <div className="text-center p-4 bg-gray-50 rounded-2xl">
+                          <p className="text-2xl font-light text-gray-900">
+                            {hasBeenStarted && hasRealCampaignData ? `${responseRate}%` : 
+                             hasBeenStarted ? '0%' : '—'}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {hasBeenStarted ? 'Response' : 'Not started'}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                        <p className="text-2xl font-light text-gray-900">
-                          {hasBeenStarted && hasRealCampaignData ? `${responseRate}%` : 
-                           hasBeenStarted ? '0%' : '—'}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {hasBeenStarted ? 'Response' : 'Not started'}
-                        </p>
-                      </div>
-                    </div>
+                    )}
 
                     {/* Progress */}
                     <div className="mb-6">
@@ -1220,14 +1298,29 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           Pause
                         </Button>
                       ) : campaign.status === 'Warming' ? (
-                        <Button
-                          variant="outline"
-                          className="flex-1 border-orange-300 hover:bg-orange-50 text-orange-700 font-medium transition-all duration-300 rounded-2xl"
-                          disabled
-                        >
-                          <Flame className="w-4 h-4 mr-2 text-orange-700 animate-pulse" />
-                          Warming Up...
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            className="flex-1 border-orange-300 hover:bg-orange-50 text-orange-700 font-medium transition-all duration-300 rounded-2xl"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              window.open('/warming-dashboard', '_blank')
+                            }}
+                          >
+                            <Flame className="w-4 h-4 mr-2 text-orange-700 animate-pulse" />
+                            View Warming
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl px-3"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
+                            }}
+                          >
+                            <Pause className="w-4 h-4" />
+                          </Button>
+                        </>
                       ) : campaign.status === 'Paused' ? (
                         <Button
                           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-0 font-medium transition-all duration-300 rounded-2xl"

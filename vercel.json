@@ -1,0 +1,27 @@
+{
+  "functions": {
+    "app/api/warming/scheduler/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/warming/execute/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/automation/run/route.ts": {
+      "maxDuration": 300
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/warming/scheduler",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/warming/execute", 
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/automation/run",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}

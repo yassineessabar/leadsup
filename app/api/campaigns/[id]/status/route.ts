@@ -102,10 +102,13 @@ export async function PUT(
 
     console.log(`✅ Campaign "${existingCampaign.name}" status updated: ${existingCampaign.status} → ${status}`)
 
-    // If campaign is being launched (set to Active or Warming), trigger n8n automation setup
+    // If campaign is being launched (set to Active or Warming), trigger automation setup
     if ((status === 'Active' || status === 'Warming') && existingCampaign.status !== 'Active' && existingCampaign.status !== 'Warming') {
       await triggerCampaignAutomation(campaignId, updatedCampaign.name, status === 'Warming')
     }
+
+    // Handle warming system integration
+    await handleWarmingSystemIntegration(campaignId, status, existingCampaign.status)
 
     // Handle scheduled emails based on status changes
     await handleScheduledEmailsForStatusChange(campaignId, status, existingCampaign.status)
@@ -380,5 +383,100 @@ async function handleScheduledEmailsForStatusChange(campaignId: string, newStatu
 
   } catch (error) {
     console.error('❌ Error handling scheduled emails for status change:', error)
+  }
+}
+
+// Handle warming system integration when campaign status changes
+async function handleWarmingSystemIntegration(campaignId: string, newStatus: string, previousStatus: string) {
+  try {
+    console.log(`🔥 Handling warming system integration: ${previousStatus} → ${newStatus}`)
+
+    if (newStatus === 'Warming') {
+      // Campaign switched to Warming - the scheduler will pick it up on next scheduled run
+      console.log(`🚀 Campaign ${campaignId} set to Warming status - will be initialized by cron job`)
+      
+    } else if (previousStatus === 'Warming' && newStatus === 'Active') {
+      // Campaign graduated from Warming to Active
+      console.log(`🎓 Campaign ${campaignId} graduated from warming to active`)
+      
+      // Mark all warming campaigns for this campaign as completed
+      const { error: completeError } = await getSupabaseServerClient()
+        .from('warmup_campaigns')
+        .update({ 
+          status: 'completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('campaign_id', campaignId)
+        .eq('status', 'active')
+      
+      if (completeError) {
+        console.error('Error completing warming campaigns:', completeError)
+      } else {
+        console.log('✅ Marked warming campaigns as completed')
+      }
+      
+    } else if (previousStatus === 'Warming' && newStatus === 'Paused') {
+      // Campaign paused during warming
+      console.log(`⏸️ Campaign ${campaignId} paused during warming`)
+      
+      // Pause all warming campaigns
+      const { error: pauseError } = await getSupabaseServerClient()
+        .from('warmup_campaigns')
+        .update({ 
+          status: 'paused',
+          updated_at: new Date().toISOString()
+        })
+        .eq('campaign_id', campaignId)
+        .eq('status', 'active')
+      
+      if (pauseError) {
+        console.error('Error pausing warming campaigns:', pauseError)
+      } else {
+        console.log('✅ Paused warming campaigns')
+      }
+      
+    } else if (previousStatus === 'Paused' && newStatus === 'Warming') {
+      // Campaign resumed to warming
+      console.log(`▶️ Campaign ${campaignId} resumed to warming`)
+      
+      // Resume all paused warming campaigns
+      const { error: resumeError } = await getSupabaseServerClient()
+        .from('warmup_campaigns')
+        .update({ 
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('campaign_id', campaignId)
+        .eq('status', 'paused')
+      
+      if (resumeError) {
+        console.error('Error resuming warming campaigns:', resumeError)
+      } else {
+        console.log('✅ Resumed warming campaigns')
+      }
+      
+    } else if ((newStatus === 'Completed' || newStatus === 'Draft') && previousStatus === 'Warming') {
+      // Campaign stopped/completed during warming
+      console.log(`🛑 Campaign ${campaignId} stopped during warming`)
+      
+      // Mark warming campaigns as failed/stopped
+      const { error: stopError } = await getSupabaseServerClient()
+        .from('warmup_campaigns')
+        .update({ 
+          status: 'failed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('campaign_id', campaignId)
+        .in('status', ['active', 'paused'])
+      
+      if (stopError) {
+        console.error('Error stopping warming campaigns:', stopError)
+      } else {
+        console.log('✅ Stopped warming campaigns')
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Error handling warming system integration:', error)
   }
 }
