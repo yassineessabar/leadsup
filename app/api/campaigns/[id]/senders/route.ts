@@ -64,12 +64,15 @@ export async function GET(
     }
 
     // Get all sender assignments for this campaign from the existing campaign_senders table
-    console.log('📖 Using existing campaign_senders table...')
+    console.log('📖 DEBUGGING CAMPAIGN SENDERS API:')
+    console.log(`🏷️ Campaign ID: ${campaignId}`)
+    console.log(`👤 User ID: ${userId}`)
     
     const { data: assignmentsData, error: assignmentsError } = await getSupabaseServerClient()
       .from('campaign_senders')
       .select('*')
       .eq('campaign_id', campaignId)
+      .eq('is_selected', true)
 
     if (assignmentsError) {
       console.error('Error fetching campaign senders:', assignmentsError)
@@ -80,7 +83,9 @@ export async function GET(
     }
 
     const assignments = assignmentsData || []
-    console.log('📋 Found assignments:', assignments)
+    console.log(`📋 Found ${assignments.length} assignments for campaign ${campaignId}:`, assignments)
+    console.log('📧 Assignment emails:', assignments.map(a => a.email).filter(Boolean))
+    console.log('🆔 Assignment sender_ids:', assignments.map(a => a.sender_id).filter(Boolean))
 
     return NextResponse.json({
       success: true,

@@ -97,6 +97,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [lowHealthSenders, setLowHealthSenders] = useState<Array<{email: string, score: number}>>([])
   const [pendingResumeStatus, setPendingResumeStatus] = useState<string | null>(null)
   
+  // Debug state to track sender assignments
+  const [debugSenderAssignments, setDebugSenderAssignments] = useState<any[]>([])
+  const [debugSelectedEmails, setDebugSelectedEmails] = useState<string[]>([])
+  
   // SendGrid analytics state
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
   const [metricsLoading, setMetricsLoading] = useState(true)
@@ -185,8 +189,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         const sendersResult = await sendersResponse.json()
         const senderAssignments = sendersResult.assignments || []
         
+        // Update debug state
+        setDebugSenderAssignments(senderAssignments)
+        
+        console.log('🔍 DEBUGGING CAMPAIGN SENDERS:')
+        console.log(`📋 Campaign ID: ${campaign.id}`)
         console.log('📋 Raw sender assignments from API:', senderAssignments)
         console.log('📋 Full senders API response:', sendersResult)
+        console.log(`📊 Number of assignments returned: ${senderAssignments.length}`)
         
         if (senderAssignments.length > 0) {
           // Check what fields are available and extract sender IDs from assignments
@@ -198,11 +208,13 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           if (senderIds.length === 0) {
             // Fall back to using email addresses directly in health score API
             const senderEmails = senderAssignments.map((assignment: any) => assignment.email).filter(Boolean)
+            setDebugSelectedEmails(senderEmails) // Update debug state
             console.log('📧 Found sender emails instead of IDs:', senderEmails)
             
             if (senderEmails.length > 0) {
               // Pass emails directly to health score API for resolution
               console.log('🔍 Fetching health scores using emails:', senderEmails)
+              console.log(`📊 Campaign ${campaign.id} has ${senderEmails.length} selected senders:`, senderEmails)
               
               const healthResponse = await fetch(`/api/sender-accounts/health-score?emails=${senderEmails.join(',')}&campaignId=${campaign.id}`, {
                 credentials: "include"
@@ -211,8 +223,23 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               if (healthResponse.ok) {
                 const healthResult = await healthResponse.json()
                 if (healthResult.success) {
-                  setSenderHealthScores(healthResult.healthScores || {})
-                  console.log('✅ Loaded health scores from emails:', healthResult.healthScores)
+                  const allHealthScores = healthResult.healthScores || {}
+                  
+                  // SAFETY FILTER: Only keep health scores for emails that are in our selected senders
+                  const filteredHealthScores: Record<string, any> = {}
+                  senderEmails.forEach(email => {
+                    if (allHealthScores[email]) {
+                      filteredHealthScores[email] = allHealthScores[email]
+                    }
+                  })
+                  
+                  setSenderHealthScores(filteredHealthScores)
+                  console.log('✅ Loaded health scores from emails:', allHealthScores)
+                  console.log(`📊 All health scores count: ${Object.keys(allHealthScores).length}`)
+                  console.log(`🎯 Filtered health scores count: ${Object.keys(filteredHealthScores).length}`)
+                  console.log('📧 All health score email keys:', Object.keys(allHealthScores))
+                  console.log('🎯 Expected emails from assignments:', senderEmails)
+                  console.log('✅ Final filtered health scores:', filteredHealthScores)
                   
                   return // Exit early since we got the health scores
                 }
@@ -226,6 +253,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           
           if (senderIds.length > 0) {
             console.log('🔍 Fetching health scores for sender IDs:', senderIds)
+            console.log(`📊 Campaign ${campaign.id} has ${senderIds.length} selected sender IDs:`, senderIds)
             
             // Fetch health scores
             const healthResponse = await fetch(`/api/sender-accounts/health-score?senderIds=${senderIds.join(',')}&campaignId=${campaign.id}`, {
@@ -235,8 +263,27 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             if (healthResponse.ok) {
               const healthResult = await healthResponse.json()
               if (healthResult.success) {
-                setSenderHealthScores(healthResult.healthScores || {})
-                console.log('✅ Loaded health scores:', healthResult.healthScores)
+                const allHealthScores = healthResult.healthScores || {}
+                
+                // SAFETY FILTER: Get emails from assignments to cross-check
+                const assignmentEmails = senderAssignments.map((a: any) => a.email).filter(Boolean)
+                const filteredHealthScores: Record<string, any> = {}
+                
+                // Filter by email keys that match our assignments
+                Object.keys(allHealthScores).forEach(key => {
+                  if (assignmentEmails.includes(key)) {
+                    filteredHealthScores[key] = allHealthScores[key]
+                  }
+                })
+                
+                setSenderHealthScores(filteredHealthScores)
+                console.log('✅ Loaded health scores from IDs:', allHealthScores)
+                console.log(`📊 All health scores count: ${Object.keys(allHealthScores).length}`)
+                console.log(`🎯 Filtered health scores count: ${Object.keys(filteredHealthScores).length}`)
+                console.log('📧 All health score keys:', Object.keys(allHealthScores))
+                console.log('🎯 Expected sender IDs:', senderIds)
+                console.log('📧 Assignment emails for filtering:', assignmentEmails)
+                console.log('✅ Final filtered health scores:', filteredHealthScores)
               }
             } else {
               console.error('Failed to fetch health scores:', healthResponse.statusText)
@@ -247,6 +294,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         } else {
           console.log('⚠️ No sender assignments found for campaign')
           console.log('📋 Senders response:', sendersResult)
+          console.log('🚨 PROBLEM: Campaign has no sender assignments in database!')
+          console.log('💡 This means sender selection was not saved properly in campaign settings')
+          setSenderHealthScores({}) // Clear health scores if no senders selected
+          setDebugSenderAssignments([])
+          setDebugSelectedEmails([])
         }
       }
     } catch (error) {
@@ -1241,7 +1293,7 @@ Please add content to this email in the sequence settings.`
                           </div>
                           <div>
                             <h3 className="text-lg font-medium text-gray-900">Sender Health</h3>
-                            <p className="text-xs text-gray-500">{scores.length} sender{scores.length > 1 ? 's' : ''} • {getScoreStatus(avgScore)}</p>
+                            <p className="text-xs text-gray-500">{scores.length} selected sender{scores.length > 1 ? 's' : ''} • {getScoreStatus(avgScore)}</p>
                           </div>
                         </div>
                         <div className="flex items-center space-x-3">
@@ -1302,7 +1354,7 @@ Please add content to this email in the sequence settings.`
                   </div>
                   <div>
                     <h3 className="text-lg font-medium text-gray-900">Sender Health</h3>
-                    <p className="text-xs text-gray-500">No data available</p>
+                    <p className="text-xs text-gray-500">No senders selected</p>
                   </div>
                 </div>
               </div>

@@ -182,14 +182,19 @@ export async function GET(request: NextRequest) {
 
     // If no sender IDs or emails provided, return empty result
     if (senderIds.length === 0 && emails.length === 0) {
+      console.log('⚠️ No sender IDs or emails provided - returning empty result')
       return NextResponse.json({
         success: true,
         healthScores: {},
-        message: 'No sender IDs or emails provided'
+        message: 'No sender IDs or emails provided - campaign has no selected senders'
       })
     }
 
-    console.log('🔍 Health score calculation for senders:', senderIds.length > 0 ? senderIds : emails)
+    console.log('🔍 HEALTH SCORE API DEBUG:')
+    console.log('📧 Emails received:', emails)
+    console.log('🆔 Sender IDs received:', senderIds)
+    console.log('🏷️ Campaign ID:', campaignId)
+    console.log('👤 User ID:', userId)
 
     // Get sender accounts for the user - try different query approaches
     let senderAccounts: any[] = []
@@ -202,9 +207,19 @@ export async function GET(request: NextRequest) {
         .select('id, email, created_at, user_id')
 
       if (senderIds.length > 0) {
+        console.log('🔍 Filtering by sender IDs:', senderIds)
         query = query.in('id', senderIds)
       } else if (emails.length > 0) {
+        console.log('🔍 Filtering by emails:', emails)
         query = query.in('email', emails)
+      } else {
+        console.log('⚠️ No filtering applied - this should not happen!')
+        // Return empty result instead of querying all accounts
+        return NextResponse.json({
+          success: true,
+          healthScores: {},
+          message: 'No valid sender identifiers provided'
+        })
       }
 
       const result = await query.eq('user_id', userId)
@@ -223,9 +238,18 @@ export async function GET(request: NextRequest) {
           .select('id, email, created_at')
 
         if (senderIds.length > 0) {
+          console.log('🔍 Fallback: Filtering by sender IDs:', senderIds)
           query = query.in('id', senderIds)
         } else if (emails.length > 0) {
+          console.log('🔍 Fallback: Filtering by emails:', emails)
           query = query.in('email', emails)
+        } else {
+          console.log('⚠️ Fallback query with no filtering - returning empty result instead')
+          return NextResponse.json({
+            success: true,
+            healthScores: {},
+            message: 'No valid sender identifiers provided for fallback query'
+          })
         }
 
         const result = await query
@@ -233,7 +257,8 @@ export async function GET(request: NextRequest) {
         senderAccounts = result.data || []
         sendersError = result.error
         
-        console.log('Using fallback query - all sender accounts without user filtering')
+        console.log(`🔄 Fallback query returned ${senderAccounts.length} accounts`)
+        console.log('📧 Fallback account emails:', senderAccounts?.map(s => s.email) || [])
       } catch (fallbackError) {
         sendersError = fallbackError
         console.error('Both queries failed:', fallbackError)
@@ -253,6 +278,8 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`📋 Found ${senderAccounts?.length || 0} sender accounts for user ${userId}`)
+    console.log('📧 Sender account emails found:', senderAccounts?.map(s => s.email) || [])
+    console.log('🆔 Sender account IDs found:', senderAccounts?.map(s => s.id) || [])
 
     // Use real data calculation instead of simulated data
     console.log('🔄 Using real SendGrid webhook data for health calculation...')

@@ -38,6 +38,7 @@ export interface CampaignMetricsOptions {
     start: Date
     end: Date
   }
+  selectedSenderEmails?: string[]
 }
 
 export interface UserMetricsOptions {
@@ -55,10 +56,32 @@ export class SendGridAnalyticsService {
    */
   static async getCampaignMetrics(options: CampaignMetricsOptions): Promise<SendGridMetrics> {
     try {
-      const { campaignId, userId, dateRange } = options
+      const { campaignId, userId, dateRange, selectedSenderEmails } = options
       const supabase = getSupabaseClient()
       
-      // Get aggregated metrics from campaign_metrics table
+      // If we have selected sender emails, filter metrics by those senders
+      if (selectedSenderEmails && selectedSenderEmails.length > 0) {
+        console.log(`📧 Filtering campaign metrics by selected senders:`, selectedSenderEmails)
+        
+        // Get aggregated metrics filtered by selected sender emails
+        const { data, error } = await supabase.rpc('get_sendgrid_campaign_metrics_by_senders', {
+          p_campaign_id: campaignId,
+          p_user_id: userId,
+          p_sender_emails: selectedSenderEmails,
+          p_start_date: dateRange?.start?.toISOString().split('T')[0] || null,
+          p_end_date: dateRange?.end?.toISOString().split('T')[0] || null
+        })
+        
+        if (error) {
+          console.error("❌ Error fetching filtered campaign metrics:", error)
+          console.log("🔄 Falling back to original method...")
+        } else if (data && data.length > 0) {
+          const metrics = data[0]
+          return this.formatMetrics(metrics)
+        }
+      }
+      
+      // Fallback to original method if no sender filtering or if the filtered method fails
       const { data, error } = await supabase.rpc('get_sendgrid_campaign_metrics', {
         p_campaign_id: campaignId,
         p_user_id: userId,
@@ -122,7 +145,7 @@ export class SendGridAnalyticsService {
    */
   static async getCampaignMetricsTimeSeries(options: CampaignMetricsOptions & { granularity?: 'day' | 'week' | 'month' }) {
     try {
-      const { campaignId, userId, dateRange, granularity = 'day' } = options
+      const { campaignId, userId, dateRange, granularity = 'day', selectedSenderEmails } = options
       const supabase = getSupabaseClient()
       
       let query = supabase
@@ -131,6 +154,11 @@ export class SendGridAnalyticsService {
         .eq('campaign_id', campaignId)
         .eq('user_id', userId)
         .order('date', { ascending: true })
+      
+      // Filter by selected sender emails if provided
+      if (selectedSenderEmails && selectedSenderEmails.length > 0) {
+        query = query.in('sender_email', selectedSenderEmails)
+      }
       
       if (dateRange) {
         query = query
@@ -195,9 +223,10 @@ export class SendGridAnalyticsService {
     limit?: number
     offset?: number
     status?: string
+    selectedSenderEmails?: string[]
   }) {
     try {
-      const { limit = 50, offset = 0, status } = options || {}
+      const { limit = 50, offset = 0, status, selectedSenderEmails } = options || {}
       const supabase = getSupabaseClient()
       
       let query = supabase
@@ -207,6 +236,11 @@ export class SendGridAnalyticsService {
         .eq('user_id', userId)
         .order('sent_at', { ascending: false })
         .range(offset, offset + limit - 1)
+      
+      // Filter by selected sender emails if provided
+      if (selectedSenderEmails && selectedSenderEmails.length > 0) {
+        query = query.in('sender_email', selectedSenderEmails)
+      }
       
       if (status) {
         query = query.eq('status', status)
@@ -225,6 +259,11 @@ export class SendGridAnalyticsService {
         .select('*', { count: 'exact', head: true })
         .eq('campaign_id', campaignId)
         .eq('user_id', userId)
+      
+      // Filter by selected sender emails if provided
+      if (selectedSenderEmails && selectedSenderEmails.length > 0) {
+        countQuery = countQuery.in('sender_email', selectedSenderEmails)
+      }
       
       if (status) {
         countQuery = countQuery.eq('status', status)

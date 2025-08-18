@@ -65,26 +65,41 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get campaign metrics
+    // First, get the selected senders for this campaign
+    const { data: campaignSenders, error: sendersError } = await supabase
+      .from('campaign_senders')
+      .select('email, sender_id')
+      .eq('campaign_id', campaignId)
+    
+    if (sendersError) {
+      console.error("❌ Error fetching campaign senders:", sendersError)
+    }
+    
+    const selectedSenderEmails = campaignSenders?.map(s => s.email).filter(Boolean) || []
+    console.log(`📧 Campaign ${campaignId} selected senders:`, selectedSenderEmails)
+
+    // Get campaign metrics (filtered by selected senders)
     const metrics = await SendGridAnalyticsService.getCampaignMetrics({
       campaignId,
       userId,
-      dateRange
+      dateRange,
+      selectedSenderEmails
     })
 
-    // Get time series data for charts
+    // Get time series data for charts (filtered by selected senders)
     const timeSeries = await SendGridAnalyticsService.getCampaignMetricsTimeSeries({
       campaignId,
       userId,
       dateRange,
-      granularity: 'day'
+      granularity: 'day',
+      selectedSenderEmails
     })
 
-    // Get email tracking details
+    // Get email tracking details (filtered by selected senders)
     const emailTracking = await SendGridAnalyticsService.getEmailTrackingDetails(
       campaignId,
       userId,
-      { limit: 100 }
+      { limit: 100, selectedSenderEmails }
     )
 
     return NextResponse.json({
