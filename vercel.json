@@ -15,5 +15,15 @@
     "app/api/warmup/debug/route.ts": {
       "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/warming/scheduler",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/warming/execute", 
+      "schedule": "0 18 * * *"
+    }
+  ]
 }
