@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     // First, get the selected senders for this campaign
     const { data: campaignSenders, error: sendersError } = await supabase
       .from('campaign_senders')
-      .select('email, sender_id')
+      .select('email, id')
       .eq('campaign_id', campaignId)
     
     if (sendersError) {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { Search, Plus, MoreHorizontal, Play, Mail, MessageSquare, Users, MousePointer, UserPlus, Trash2, Eye, UserCheck, Send, Reply, TrendingUp, TrendingDown, UserX, ChevronDown, ChevronRight, RefreshCw, Flame, Pause, AlertTriangle } from "lucide-react"
+import { Search, Plus, MoreHorizontal, Play, Mail, MessageSquare, Users, MousePointer, UserPlus, Trash2, Eye, UserCheck, Send, Reply, TrendingUp, TrendingDown, UserX, ChevronDown, ChevronRight, RefreshCw, Flame, Pause } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -69,11 +69,40 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   const [lowHealthSenders, setLowHealthSenders] = useState<Array<{ email: string; score: number }>>([])
   const [pendingResumeStatus, setPendingResumeStatus] = useState<string | null>(null)
   const [pendingResumeCampaign, setPendingResumeCampaign] = useState<{ id: string | number; name: string } | null>(null)
-  const [warmupDecisionLoading, setWarmupDecisionLoading] = useState(false)
+  const [campaignHealthScores, setCampaignHealthScores] = useState<Record<string | number, Array<{ email: string; score: number }>>>({})
 
   const triggerOptions = [
     { value: "New Client", label: "New Client", icon: UserPlus, description: "Trigger when a new client signs up" },
   ]
+
+  // Fetch health scores for a specific campaign
+  const fetchCampaignHealthScores = async (campaignId: string | number) => {
+    try {
+      const healthResponse = await fetch(`/api/sender-accounts/health-score?campaignId=${campaignId}`, {
+        credentials: "include"
+      })
+      
+      if (healthResponse.ok) {
+        const healthResult = await healthResponse.json()
+        if (healthResult.success && healthResult.data) {
+          const healthScores = healthResult.data
+          const senderHealthArray = Object.entries(healthScores)
+            .map(([email, healthData]: [string, any]) => ({ email, score: healthData.score }))
+          
+          setCampaignHealthScores(prev => ({
+            ...prev,
+            [campaignId]: senderHealthArray
+          }))
+          
+          return senderHealthArray
+        }
+      }
+    } catch (error) {
+      console.warn(`Error fetching health scores for campaign ${campaignId}:`, error)
+    }
+    return []
+  }
+
 
   // Sync campaign with SendGrid API
   const syncCampaignWithSendGrid = async (campaignId: string | number, userId: string) => {
@@ -442,33 +471,39 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   }
 
   const handleWarmupDecision = async (shouldContinueWarmup: boolean) => {
-    if (warmupDecisionLoading) return // Prevent multiple clicks
+    if (!pendingResumeCampaign) {
+      return
+    }
     
-    setWarmupDecisionLoading(true)
+    const targetStatus = shouldContinueWarmup ? "Warming" : "Active"
     
     try {
-      if (shouldContinueWarmup) {
-        // Continue warmup - change status to Warming
-        if (pendingResumeCampaign) {
-          await proceedWithStatusChange(pendingResumeCampaign.id, "Warming", pendingResumeCampaign.name)
-        }
-      } else {
-        // Resume anyway - proceed with original activation
-        if (pendingResumeCampaign && pendingResumeStatus) {
-          await proceedWithStatusChange(pendingResumeCampaign.id, pendingResumeStatus, pendingResumeCampaign.name)
-        }
-      }
-    } finally {
-      // Reset states regardless of success or failure
-      setWarmupDecisionLoading(false)
+      await proceedWithStatusChange(
+        pendingResumeCampaign.id, 
+        targetStatus, 
+        pendingResumeCampaign.name
+      )
+      
+      // Success - close the popup and reset states
       setShowWarmupWarning(false)
       setPendingResumeStatus(null)
       setPendingResumeCampaign(null)
+      
+    } catch (error) {
+      console.error('❌ ERROR in handleWarmupDecision:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update campaign status",
+        variant: "destructive"
+      })
     }
   }
 
+
   const proceedWithStatusChange = async (campaignId: string | number, newStatus: string, campaignName: string) => {
     const action = newStatus === "Active" ? "activate" : newStatus === "Warming" ? "warm up" : "pause"
+    
+    console.log(`🔄 proceedWithStatusChange START: ${action} for campaign ${campaignId} to status: ${newStatus}`)
     
     try {
       const response = await fetch(`/api/campaigns/${campaignId}/status`, {
@@ -482,34 +517,39 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         }),
       })
 
+      console.log(`📡 Response received: status=${response.status}`)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`❌ HTTP error: ${response.status}, body: ${errorText}`)
+        throw new Error(`Failed to update campaign status (HTTP ${response.status})`)
+      }
+
       const result = await response.json()
+      console.log(`📝 API Response:`, result)
 
       if (result.success) {
         // Update the campaign in local state
-        setCampaigns(campaigns.map(campaign => 
-          campaign.id === campaignId 
-            ? { ...campaign, status: newStatus as "Draft" | "Active" | "Paused" | "Completed" | "Warming" }
-            : campaign
-        ))
+        setCampaigns(prevCampaigns => 
+          prevCampaigns.map(campaign => 
+            campaign.id === campaignId 
+              ? { ...campaign, status: newStatus as "Draft" | "Active" | "Paused" | "Completed" | "Warming" }
+              : campaign
+          )
+        )
         
-        toast({
-          title: `Campaign ${action === "activate" ? "Activated" : action === "warm up" ? "Warming Up" : "Paused"}`,
-          description: `"${campaignName}" has been ${action}${action === "warm up" ? "" : "d"} successfully`,
-        })
+        console.log(`✅ Successfully updated campaign ${campaignId} to ${newStatus}`)
+        
+        // Don't show toast here - let the calling function handle it
+        return result
+        
       } else {
-        toast({
-          title: "Error",
-          description: result.error || `Failed to ${action} campaign`,
-          variant: "destructive"
-        })
+        console.error(`❌ API returned success=false:`, result)
+        throw new Error(result.error || `Failed to ${action} campaign`)
       }
     } catch (error) {
-      console.error(`Error ${action}ing campaign:`, error)
-      toast({
-        title: "Error",
-        description: `Failed to ${action} campaign`,
-        variant: "destructive"
-      })
+      console.error(`❌ EXCEPTION in proceedWithStatusChange:`, error)
+      throw error // Re-throw for handling in handleWarmupDecision
     }
   }
 
@@ -522,19 +562,44 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     // Always show warmup popup when resuming from Paused status
     if (currentStatus === "Paused" && newStatus === "Active") {
       try {
-        console.log('🔍 Fetching health scores for warmup popup...')
-        const healthResponse = await fetch(`/api/sender-accounts/health-score?campaignId=${campaignId}`, {
+        console.log('🔍 Fetching health scores for warmup popup for campaign:', campaignId)
+        
+        // First, fetch campaign senders to get their emails
+        const sendersResponse = await fetch(`/api/campaigns/${campaignId}/senders`, {
           credentials: "include"
         })
         
-        let allSenders = []
-        if (healthResponse.ok) {
-          const healthResult = await healthResponse.json()
-          if (healthResult.success && healthResult.data) {
-            const healthScores = healthResult.data
-            allSenders = Object.entries(healthScores)
-              .map(([email, healthData]: [string, any]) => ({ email, score: healthData.score }))
+        let senderEmails = []
+        if (sendersResponse.ok) {
+          const sendersResult = await sendersResponse.json()
+          console.log('📧 Campaign senders result:', sendersResult)
+          if (sendersResult.success && sendersResult.assignments) {
+            senderEmails = sendersResult.assignments
+              .map((a: any) => a.email)
+              .filter(Boolean)
           }
+        }
+        
+        console.log('📧 Sender emails for health check:', senderEmails)
+        
+        // Now fetch health scores for these specific senders
+        let allSenders = []
+        if (senderEmails.length > 0) {
+          const healthResponse = await fetch(`/api/sender-accounts/health-score?emails=${senderEmails.join(',')}`, {
+            credentials: "include"
+          })
+          
+          if (healthResponse.ok) {
+            const healthResult = await healthResponse.json()
+            console.log('💚 Health scores result:', healthResult)
+            if (healthResult.success && healthResult.data) {
+              const healthScores = healthResult.data
+              allSenders = Object.entries(healthScores)
+                .map(([email, healthData]: [string, any]) => ({ email, score: healthData.score }))
+            }
+          }
+        } else {
+          console.log('⚠️ No senders assigned to campaign, showing empty warmup popup')
         }
         
         // Show warmup popup regardless of health scores
@@ -1319,80 +1384,84 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           onComplete={handleAdvancedCampaignComplete}
         />
 
-        {/* Warmup Warning Dialog */}
+        {/* Warmup Warning Dialog - EXACT COPY FROM ANALYTICS */}
         <Dialog open={showWarmupWarning} onOpenChange={setShowWarmupWarning}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader className="pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-100 to-amber-100 flex items-center justify-center">
-                  <Flame className="w-5 h-5 text-orange-600" />
+          <DialogContent className="sm:max-w-[425px] rounded-3xl border border-gray-100 p-0 overflow-hidden">
+            <div className="p-6 pb-0">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl flex items-center justify-center">
+                  <Flame className="w-6 h-6 text-orange-600" />
                 </div>
                 <div>
                   <DialogTitle className="text-lg font-semibold text-gray-900">
-                    Campaign Warmup Recommended
+                    Health Score Alert
                   </DialogTitle>
-                  <DialogDescription className="text-sm text-gray-600 mt-1">
-                    Choose how to proceed with resuming your campaign
+                  <DialogDescription className="text-sm text-gray-500">
+                    Some senders still need warming up
                   </DialogDescription>
                 </div>
               </div>
-            </DialogHeader>
+            </div>
             
-            <div className="space-y-4">
-              {lowHealthSenders.length > 0 && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <h4 className="font-medium text-orange-900 mb-2">Sender Health Scores:</h4>
-                  <div className="space-y-2">
-                    {lowHealthSenders.map((sender, index) => (
-                      <div key={index} className="flex justify-between items-center text-sm">
-                        <span className="text-orange-800">{sender.email}</span>
-                        <span className={`font-semibold ${sender.score < 90 ? 'text-orange-900' : 'text-green-700'}`}>
+            <div className="px-6 pb-4">
+              <div className="bg-orange-50/50 rounded-xl p-3 mb-3">
+                <p className="text-xs font-medium text-orange-900 mb-2">Accounts Still Below 90% Health</p>
+                <div className="space-y-1.5">
+                  {lowHealthSenders.map((sender, index) => {
+                    const getScoreColor = (score: number) => {
+                      if (score >= 80) return 'text-green-700 bg-green-100'
+                      if (score >= 60) return 'text-yellow-700 bg-yellow-100'
+                      return 'text-red-700 bg-red-100'
+                    }
+                    
+                    return (
+                      <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg">
+                        <span className="text-sm text-gray-700 truncate flex-1 mr-2">{sender.email}</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getScoreColor(sender.score)}`}>
                           {sender.score}%
                         </span>
                       </div>
-                    ))}
-                  </div>
+                    )
+                  })}
                 </div>
-              )}
+              </div>
               
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+              <div className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
                 <p><span className="font-semibold">Continue Warmup:</span> Keep warming to improve health scores before going active.</p>
-                <p className="mt-1"><span className="font-semibold">Resume Anyway:</span> Go active now despite low health scores.</p>
+                <p className="mt-1">
+                  <span className="font-semibold">
+                    {pendingResumeStatus === "Completed" ? "Stop Anyway:" : "Resume Anyway:"}
+                  </span>{" "}
+                  {pendingResumeStatus === "Completed" 
+                    ? "Stop the campaign now despite health scores." 
+                    : "Go active now despite low health scores."
+                  }
+                </p>
               </div>
             </div>
             
-            <div className="flex gap-2 pt-4">
+            <div className="flex gap-2 p-6 pt-3 border-t border-gray-100">
               <Button
                 variant="outline"
-                onClick={() => handleWarmupDecision(false)}
-                disabled={warmupDecisionLoading}
-                className="flex-1"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleWarmupDecision(false)
+                }}
+                className="flex-1 h-10 rounded-xl text-sm"
               >
-                {warmupDecisionLoading ? (
-                  <>
-                    <div className="w-4 h-4 mr-2 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-                    Processing...
-                  </>
-                ) : (
-                  'Resume Anyway'
-                )}
+                {pendingResumeStatus === "Completed" ? "Stop Anyway" : "Resume Anyway"}
               </Button>
               <Button
-                onClick={() => handleWarmupDecision(true)}
-                disabled={warmupDecisionLoading}
-                className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleWarmupDecision(true)
+                }}
+                className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium"
               >
-                {warmupDecisionLoading ? (
-                  <>
-                    <div className="w-4 h-4 mr-1.5 border-2 border-white border-t-orange-200 rounded-full animate-spin"></div>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Flame className="w-4 h-4 mr-1.5" />
-                    Continue Warmup
-                  </>
-                )}
+                <Flame className="w-4 h-4 mr-1.5" />
+                Continue Warmup
               </Button>
             </div>
           </DialogContent>
