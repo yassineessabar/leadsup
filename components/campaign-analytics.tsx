@@ -1365,7 +1365,21 @@ Please add content to this email in the sequence settings.`
                 {(() => {
                   const senders = warmingMetrics.senders || []
                   const avgPhase = senders.length > 0 ? (senders.reduce((sum: number, s: any) => sum + (s.phase || 0), 0) / senders.length) : 0
-                  const avgHealthScore = warmingMetrics.summary?.averageHealthScore || 0
+                  // Calculate average health score from actual sender health scores if available
+                  let avgHealthScore = 0
+                  if (Object.keys(senderHealthScores).length > 0) {
+                    // Use actual health scores
+                    const validScores = senders
+                      .map((s: any) => senderHealthScores[s.sender_email]?.score)
+                      .filter((score: number | undefined) => score !== undefined)
+                    if (validScores.length > 0) {
+                      avgHealthScore = Math.round(validScores.reduce((a: number, b: number) => a + b, 0) / validScores.length)
+                    } else {
+                      avgHealthScore = warmingMetrics.summary?.averageHealthScore || 0
+                    }
+                  } else {
+                    avgHealthScore = warmingMetrics.summary?.averageHealthScore || 0
+                  }
                   
                   const getPhaseColor = (phase: number) => {
                     if (phase >= 3) return 'text-green-600 bg-green-50'
@@ -1456,7 +1470,9 @@ Please add content to this email in the sequence settings.`
                         <div className="mt-4 space-y-2 border-t pt-4">
                           {senders.map((sender: any, index: number) => {
                             const phase = sender.phase || 1
-                            const healthScore = sender.current_health_score || 0
+                            // Use actual health score from senderHealthScores if available, otherwise use warmup data
+                            const actualHealthScore = senderHealthScores[sender.sender_email]?.score
+                            const healthScore = actualHealthScore !== undefined ? actualHealthScore : (sender.current_health_score || 0)
                             const dayInPhase = sender.day_in_phase || 1
                             const emailsToday = sender.emails_sent_today || 0
                             const opensToday = sender.opens_today || 0

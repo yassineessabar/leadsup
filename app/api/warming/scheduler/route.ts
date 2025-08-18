@@ -16,16 +16,19 @@ export async function GET(request: NextRequest) {
     // 1. Initialize warming campaigns for campaigns with "Warming" status
     await initializeWarmingCampaigns()
     
-    // 2. Reset daily counters if needed
+    // 2. Sync health scores with actual sender data
+    await syncHealthScores()
+    
+    // 3. Reset daily counters if needed
     await resetDailyCounters()
     
-    // 3. Schedule today's warming activities
+    // 4. Schedule today's warming activities
     await scheduleWarmingActivities()
     
-    // 4. Update warming phases based on progress
+    // 5. Update warming phases based on progress
     await updateWarmingPhases()
     
-    // 5. Check for graduation to Active status
+    // 6. Check for graduation to Active status
     await checkForGraduation()
     
     console.log('✅ Warming Scheduler Completed Successfully')
@@ -74,18 +77,28 @@ async function initializeWarmingCampaigns() {
   console.log(`Found ${warmingCampaigns.length} campaigns in warming status`)
   
   for (const campaign of warmingCampaigns) {
-    // For now, use a default set of senders for warming
-    // TODO: Replace with actual sender detection when table structure is confirmed
-    const defaultSenders = [
-      { email: 'info@leadsup.io', name: 'Info' },
-      { email: 'hello@leadsup.io', name: 'Hello' },
-      { email: 'contact@leadsup.io', name: 'Contact' }
-    ]
+    // Fetch actual campaign senders from campaign_senders table
+    const { data: campaignSenders, error: sendersError } = await supabase
+      .from('campaign_senders')
+      .select('email, name')
+      .eq('campaign_id', campaign.id)
+      .eq('is_selected', true)
     
-    console.log(`Initializing warming for campaign ${campaign.id} with ${defaultSenders.length} senders`)
+    if (sendersError) {
+      console.error(`Error fetching senders for campaign ${campaign.id}:`, sendersError)
+      continue
+    }
+    
+    // If no senders found, skip this campaign
+    if (!campaignSenders || campaignSenders.length === 0) {
+      console.log(`No senders found for campaign ${campaign.id} - skipping warming initialization`)
+      continue
+    }
+    
+    console.log(`Initializing warming for campaign ${campaign.id} with ${campaignSenders.length} senders:`, campaignSenders.map(s => s.email))
     
     // Initialize warming for each sender
-    for (const sender of defaultSenders) {
+    for (const sender of campaignSenders) {
       // Check if warming record already exists
       const { data: existingWarmup } = await supabase
         .from('warmup_campaigns')
@@ -128,12 +141,97 @@ async function initializeWarmingCampaigns() {
   }
 }
 
+// Sync actual sender health scores with warmup campaigns
+async function syncHealthScores() {
+  console.log('🔄 Syncing sender health scores with warming campaigns...')
+  
+  // Get all active warming campaigns
+  const { data: warmupCampaigns, error: warmupError } = await supabase
+    .from('warmup_campaigns')
+    .select('id, campaign_id, sender_email')
+    .eq('status', 'active')
+  
+  if (warmupError || !warmupCampaigns) {
+    console.error('Error fetching warmup campaigns:', warmupError)
+    return
+  }
+  
+  for (const warmup of warmupCampaigns) {
+    try {
+      // Fetch actual health score for this sender
+      // First try to get it from sender_accounts if email matches
+      const { data: senderAccount } = await supabase
+        .from('sender_accounts')
+        .select('health_score')
+        .eq('email', warmup.sender_email)
+        .single()
+      
+      if (senderAccount && senderAccount.health_score !== null) {
+        // Update warmup campaign with actual health score
+        const { error: updateError } = await supabase
+          .from('warmup_campaigns')
+          .update({ 
+            current_health_score: senderAccount.health_score,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', warmup.id)
+        
+        if (updateError) {
+          console.error(`Error updating health score for ${warmup.sender_email}:`, updateError)
+        } else {
+          console.log(`✅ Updated health score for ${warmup.sender_email}: ${senderAccount.health_score}`)
+        }
+      } else {
+        // If no actual health score found, calculate a simulated one based on warming progress
+        const { data: stats } = await supabase
+          .from('warmup_daily_stats')
+          .select('open_rate, reply_rate')
+          .eq('warmup_campaign_id', warmup.id)
+          .order('date', { ascending: false })
+          .limit(7) // Last 7 days
+        
+        if (stats && stats.length > 0) {
+          // Calculate average metrics
+          const avgOpenRate = stats.reduce((sum, s) => sum + (s.open_rate || 0), 0) / stats.length
+          const avgReplyRate = stats.reduce((sum, s) => sum + (s.reply_rate || 0), 0) / stats.length
+          
+          // Simple health score calculation
+          // Base score of 50, +30 for good open rate, +20 for good reply rate
+          let healthScore = 50
+          if (avgOpenRate > 20) healthScore += 30
+          else if (avgOpenRate > 10) healthScore += 20
+          else if (avgOpenRate > 5) healthScore += 10
+          
+          if (avgReplyRate > 2) healthScore += 20
+          else if (avgReplyRate > 1) healthScore += 15
+          else if (avgReplyRate > 0.5) healthScore += 10
+          
+          // Update with calculated score
+          await supabase
+            .from('warmup_campaigns')
+            .update({ 
+              current_health_score: Math.min(healthScore, 100),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', warmup.id)
+          
+          console.log(`📊 Calculated health score for ${warmup.sender_email}: ${healthScore}`)
+        }
+      }
+    } catch (error) {
+      console.error(`Error syncing health score for ${warmup.sender_email}:`, error)
+    }
+  }
+  
+  console.log('✅ Health scores sync completed')
+}
+
 // Reset daily counters at midnight
 async function resetDailyCounters() {
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   
-  // Reset warmup campaign daily counters
+  // Reset warmup campaign daily counters (force reset for debugging)
   const { error: resetError } = await supabase
     .from('warmup_campaigns')
     .update({
@@ -143,7 +241,9 @@ async function resetDailyCounters() {
       clicks_today: 0,
       last_reset_at: now.toISOString()
     })
-    .lt('last_reset_at', todayStart.toISOString())
+    // For now, force reset all campaigns to help with debugging
+    // .lt('last_reset_at', todayStart.toISOString())
+    .eq('status', 'active')
   
   if (resetError) {
     console.error('Error resetting daily counters:', resetError)
@@ -183,17 +283,31 @@ async function scheduleWarmingActivities() {
     return
   }
   
+  console.log(`Found ${allActiveWarmups?.length || 0} total warmup campaigns`)
+  console.log(`${activeWarmups.length} campaigns need more emails today`)
+  
   if (!activeWarmups || activeWarmups.length === 0) {
     console.log('No active warmup campaigns need scheduling')
     return
   }
   
   console.log(`Scheduling activities for ${activeWarmups.length} warming campaigns`)
+  console.log('Active warmups:', activeWarmups.map(w => ({ 
+    id: w.id, 
+    email: w.sender_email, 
+    sent_today: w.emails_sent_today, 
+    target: w.daily_target,
+    phase: w.phase 
+  })))
   
   for (const warmup of activeWarmups) {
     const emailsNeeded = warmup.daily_target - warmup.emails_sent_today
+    console.log(`📧 Campaign ${warmup.campaign_id} - Sender ${warmup.sender_email}: needs ${emailsNeeded} more emails today`)
     
-    if (emailsNeeded <= 0) continue
+    if (emailsNeeded <= 0) {
+      console.log(`✅ Warmup ${warmup.id} (${warmup.sender_email}) has reached daily target`)
+      continue
+    }
     
     console.log(`Scheduling ${emailsNeeded} emails for ${warmup.sender_email}`)
     

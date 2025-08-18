@@ -61,7 +61,9 @@ export async function GET(request: NextRequest) {
     // Process each activity
     for (const activity of pendingActivities) {
       try {
+        console.log(`\n🔄 Processing activity ${activity.id} (${activity.activity_type}) for ${activity.warmup_campaigns?.sender_email}`)
         const success = await executeActivity(activity)
+        console.log(`📋 Activity execution result: ${success}`)
         
         // Update activity record
         await supabase
@@ -74,9 +76,11 @@ export async function GET(request: NextRequest) {
         
         if (success) {
           executed++
+          console.log(`📈 Calling updateWarmupStats for successful ${activity.activity_type} activity`)
           await updateWarmupStats(activity)
         } else {
           failed++
+          console.log(`❌ Activity failed, not updating stats`)
         }
         
       } catch (error) {
@@ -143,11 +147,20 @@ async function executeSendActivity(activity: any, warmup: any): Promise<boolean>
   try {
     const { subject, content, recipient_email } = activity
     
+    console.log(`🚀 Starting executeSendActivity for ${warmup.sender_email} -> ${recipient_email}`)
+    
     // Check if we should actually send emails or simulate
     const EMAIL_SIMULATION_MODE = process.env.EMAIL_SIMULATION_MODE !== 'false'
+    const HAS_SENDGRID_KEY = !!process.env.SENDGRID_API_KEY
     
-    if (EMAIL_SIMULATION_MODE) {
-      console.log(`🧪 SIMULATED EMAIL SEND:`)
+    console.log(`🔍 Debug - EMAIL_SIMULATION_MODE env var: "${process.env.EMAIL_SIMULATION_MODE}"`)
+    console.log(`🔍 Debug - EMAIL_SIMULATION_MODE boolean: ${EMAIL_SIMULATION_MODE}`)
+    console.log(`🔍 Debug - SENDGRID_API_KEY exists: ${HAS_SENDGRID_KEY}`)
+    console.log(`🔍 Debug - Should use simulation: ${EMAIL_SIMULATION_MODE || !HAS_SENDGRID_KEY}`)
+    
+    // Use simulation mode if explicitly set OR if no SendGrid key is available
+    if (EMAIL_SIMULATION_MODE || !HAS_SENDGRID_KEY) {
+      console.log(`🧪 SIMULATED EMAIL SEND (simulation=${EMAIL_SIMULATION_MODE}, has_key=${HAS_SENDGRID_KEY}):`)
       console.log(`   From: ${warmup.sender_email}`)
       console.log(`   To: ${recipient_email}`)
       console.log(`   Subject: ${subject}`)
@@ -168,11 +181,12 @@ async function executeSendActivity(activity: any, warmup: any): Promise<boolean>
         })
         .eq('id', activity.id)
       
+      console.log(`✅ Simulated send completed - returning TRUE`)
       return true
     }
     
-    // Real email sending via SendGrid
-    if (process.env.SENDGRID_API_KEY) {
+    // Real email sending via SendGrid (only if we have a key and simulation is disabled)
+    if (HAS_SENDGRID_KEY) {
       const sgMail = require('@sendgrid/mail')
       sgMail.setApiKey(process.env.SENDGRID_API_KEY)
       
@@ -237,15 +251,16 @@ async function executeSendActivity(activity: any, warmup: any): Promise<boolean>
         })
         .eq('id', activity.id)
       
+      console.log(`✅ Real email send completed - returning TRUE`)
       return true
     }
     
     // Fallback simulation if no SendGrid
-    console.log(`⚠️ No SendGrid API key configured, simulating send`)
+    console.log(`⚠️ No SendGrid API key configured, simulating send - returning TRUE`)
     return true
     
   } catch (error) {
-    console.error('Error sending warming email:', error)
+    console.error('❌ Error in executeSendActivity:', error)
     return false
   }
 }
@@ -335,15 +350,47 @@ async function updateWarmupStats(activity: any): Promise<void> {
   try {
     const { activity_type, warmup_campaigns: warmup } = activity
     
+    console.log(`\n📊 updateWarmupStats called for:`)
+    console.log(`   Activity Type: ${activity_type}`)
+    console.log(`   Sender: ${warmup?.sender_email}`)
+    console.log(`   Warmup ID: ${warmup?.id}`)
+    
     // Update daily counters
     const updateField = `${activity_type === 'send' ? 'emails_sent' : 
                          activity_type === 'open' ? 'opens' :
                          activity_type === 'reply' ? 'replies' : 'clicks'}_today`
     
-    await supabase.rpc('increment_warmup_counter', {
-      warmup_id: warmup.id,
-      counter_field: updateField
-    })
+    console.log(`   Update Field: ${updateField}`)
+    
+    // Get current value and increment it
+    const { data: current, error: fetchError } = await supabase
+      .from('warmup_campaigns')
+      .select(`${updateField}, sender_email`)
+      .eq('id', warmup.id)
+      .single()
+    
+    if (fetchError) {
+      console.error(`❌ Error fetching current ${updateField}:`, fetchError)
+      return
+    }
+    
+    const newValue = (current[updateField] || 0) + 1
+    console.log(`📊 Incrementing ${updateField} for ${current.sender_email}: ${current[updateField] || 0} → ${newValue}`)
+    
+    // Update with incremented value
+    const { error: incrementError } = await supabase
+      .from('warmup_campaigns')
+      .update({
+        [updateField]: newValue,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', warmup.id)
+    
+    if (incrementError) {
+      console.error(`❌ Error incrementing ${updateField}:`, incrementError)
+    } else {
+      console.log(`✅ Successfully incremented ${updateField} for ${current.sender_email}`)
+    }
     
     // Update last activity timestamp
     await supabase
@@ -352,10 +399,19 @@ async function updateWarmupStats(activity: any): Promise<void> {
       .eq('id', warmup.id)
     
     // Update recipient counter for sends
-    if (activity_type === 'send') {
-      await supabase.rpc('increment_recipient_counter', {
-        recipient_email: activity.recipient_email
-      })
+    if (activity_type === 'send' && activity.recipient_email) {
+      console.log(`📮 Incrementing recipient counter for ${activity.recipient_email}`)
+      const { error: recipientError } = await supabase
+        .from('warmup_recipients')
+        .update({
+          emails_received_today: supabase.raw('emails_received_today + 1'),
+          updated_at: new Date().toISOString()
+        })
+        .eq('email', activity.recipient_email)
+      
+      if (recipientError) {
+        console.error('Error incrementing recipient counter:', recipientError)
+      }
     }
     
   } catch (error) {
