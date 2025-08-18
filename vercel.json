@@ -13,15 +13,15 @@
   "crons": [
     {
       "path": "/api/warming/scheduler",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/warming/execute", 
-      "schedule": "*/5 * * * *"
+      "schedule": "0 12 * * *"
     },
     {
       "path": "/api/automation/run",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 15 * * *"
     }
   ]
 }
