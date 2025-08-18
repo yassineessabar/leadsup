@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
+// Force rebuild to clear Vercel cache - 2025-01-18
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
