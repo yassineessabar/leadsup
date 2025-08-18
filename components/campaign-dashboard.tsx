@@ -410,17 +410,21 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       // Set campaign status to "Warming"
       console.log('🔥 Starting warmup for campaign:', campaign.id)
       onStatusUpdate(campaign.id, 'Warming')
+      setIsGuidedFlow(false)
       
-      // Redirect to campaigns page to see warming status
-      window.location.href = '/?tab=campaigns'
+      // Redirect to analytics page for this campaign
+      const redirectUrl = `/?tab=analytics&campaign=${campaign.id}`
+      console.log('🔄 Redirecting to analytics after warmup start:', redirectUrl)
+      window.location.href = redirectUrl
     } else if (!shouldWarmup && campaign?.id && onStatusUpdate) {
       // User chose to ignore warning and launch anyway
       console.log('⚠️ Launching campaign despite low health scores')
       onStatusUpdate(campaign.id, 'Active')
       setIsGuidedFlow(false)
       
-      // Redirect to analytics page
+      // Redirect to analytics page for this campaign
       const redirectUrl = `/?tab=analytics&campaign=${campaign.id}`
+      console.log('🔄 Redirecting to analytics after launch:', redirectUrl)
       window.location.href = redirectUrl
     }
   }
