@@ -469,14 +469,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           description: `"${campaignName}" has been ${action}d successfully`,
         })
 
-        // If campaign is being activated, open it in contact tab
-        if (action === "activate" && updatedCampaign) {
-          setSelectedCampaign({
-            ...updatedCampaign,
-            status: newStatus as "Draft" | "Active" | "Paused" | "Completed"
-          })
-          setCurrentView("dashboard")
-        }
+        // Don't automatically redirect when changing campaign status
+        // Users should stay on their current view
       } else {
         toast({
           title: "Error",
