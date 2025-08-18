@@ -90,6 +90,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Health score state
   const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { score: number; breakdown: any; lastUpdated: string }>>({})
   const [healthScoresLoading, setHealthScoresLoading] = useState(false)
+  const [healthScoresExpanded, setHealthScoresExpanded] = useState(false)
   
   // SendGrid analytics state
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
@@ -1154,29 +1155,27 @@ Please add content to this email in the sequence settings.`
           </Card>
         </div>
 
-        {/* Health Score Section */}
+        {/* Health Score Section - Compact */}
         <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
           <CardContent className="p-6">
-            <div className="flex items-center space-x-4 mb-6">
-              <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
-                <Heart className="w-5 h-5 text-orange-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-medium text-gray-900">Sender Health Scores</h3>
-                <p className="text-gray-500 text-xs mt-0.5">Account health metrics</p>
-              </div>
-            </div>
-            
             {healthScoresLoading ? (
-              <div className="flex items-center justify-center py-6">
-                <div className="animate-spin h-5 w-5 border-2 border-orange-600 border-t-transparent rounded-full"></div>
-                <span className="ml-2 text-sm text-gray-600">Loading...</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
+                    <Heart className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">Sender Health</h3>
+                    <p className="text-xs text-gray-500">Loading...</p>
+                  </div>
+                </div>
               </div>
             ) : Object.keys(senderHealthScores).length > 0 ? (
-              <div className="space-y-3">
-                {Object.entries(senderHealthScores).map(([emailOrId, healthData]) => {
-                  const score = healthData.score
-                  const email = emailOrId // Now the API returns email addresses as keys
+              <>
+                {(() => {
+                  // Calculate average score
+                  const scores = Object.values(senderHealthScores).map(data => data.score)
+                  const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
                   
                   const getScoreColor = (score: number) => {
                     if (score >= 80) return 'text-green-600 bg-green-50'
@@ -1191,28 +1190,70 @@ Please add content to this email in the sequence settings.`
                   }
                   
                   return (
-                    <div key={emailOrId} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getScoreColor(score)}`}>
-                          <Mail className="w-4 h-4" />
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
+                            <Heart className="w-5 h-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-medium text-gray-900">Sender Health</h3>
+                            <p className="text-xs text-gray-500">{scores.length} sender{scores.length > 1 ? 's' : ''} • {getScoreStatus(avgScore)}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{email}</p>
-                          <p className="text-xs text-gray-500">{getScoreStatus(score)}</p>
+                        <div className="flex items-center space-x-3">
+                          <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getScoreColor(avgScore)}`}>
+                            Avg: {avgScore}/100
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setHealthScoresExpanded(!healthScoresExpanded)}
+                            className="p-1 h-8 w-8"
+                          >
+                            <ChevronDown className={`w-4 h-4 transition-transform ${healthScoresExpanded ? 'rotate-180' : ''}`} />
+                          </Button>
                         </div>
                       </div>
-                      <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getScoreColor(score)}`}>
-                        {score}/100
-                      </div>
-                    </div>
+                      
+                      {/* Expandable details */}
+                      {healthScoresExpanded && (
+                        <div className="mt-4 space-y-2 border-t pt-4">
+                          {Object.entries(senderHealthScores).map(([emailOrId, healthData]) => {
+                            const score = healthData.score
+                            const email = emailOrId
+                            
+                            return (
+                              <div key={emailOrId} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                <div className="flex items-center space-x-2">
+                                  <div className={`w-6 h-6 rounded flex items-center justify-center ${getScoreColor(score)}`}>
+                                    <Mail className="w-3 h-3" />
+                                  </div>
+                                  <p className="text-sm text-gray-700">{email}</p>
+                                </div>
+                                <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getScoreColor(score)}`}>
+                                  {score}/100
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </>
                   )
-                })}
-              </div>
+                })()}
+              </>
             ) : (
-              <div className="text-center py-6">
-                <Heart className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">No health score data available</p>
-                <p className="text-xs text-gray-400 mt-1">Configure sender accounts to see scores</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
+                    <Heart className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">Sender Health</h3>
+                    <p className="text-xs text-gray-500">No data available</p>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>
