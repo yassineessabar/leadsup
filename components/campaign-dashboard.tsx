@@ -389,10 +389,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           onStatusUpdate(campaign.id, 'Active')
           setIsGuidedFlow(false)
           
-          // Redirect to analytics page for this campaign
-          const redirectUrl = `/?tab=analytics&campaign=${campaign.id}`
-          console.log('🔄 Redirecting to:', redirectUrl)
-          window.location.href = redirectUrl
+          // Status update completed - no automatic redirect needed
+          console.log('✅ Campaign launched successfully')
         }
       } else {
         console.error('❌ Cannot launch campaign - missing campaign ID')
@@ -412,20 +410,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       onStatusUpdate(campaign.id, 'Warming')
       setIsGuidedFlow(false)
       
-      // Redirect to analytics page for this campaign
-      const redirectUrl = `/?tab=analytics&campaign=${campaign.id}`
-      console.log('🔄 Redirecting to analytics after warmup start:', redirectUrl)
-      window.location.href = redirectUrl
+      // Warmup started - no automatic redirect needed
+      console.log('✅ Campaign warmup started successfully')
     } else if (!shouldWarmup && campaign?.id && onStatusUpdate) {
       // User chose to ignore warning and launch anyway
       console.log('⚠️ Launching campaign despite low health scores')
       onStatusUpdate(campaign.id, 'Active')
       setIsGuidedFlow(false)
       
-      // Redirect to analytics page for this campaign
-      const redirectUrl = `/?tab=analytics&campaign=${campaign.id}`
-      console.log('🔄 Redirecting to analytics after launch:', redirectUrl)
-      window.location.href = redirectUrl
+      // Campaign launched - no automatic redirect needed
+      console.log('✅ Campaign launched successfully despite low health scores')
     }
   }
 
