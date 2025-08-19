@@ -74,13 +74,18 @@ export async function GET(request: NextRequest) {
     
     // Filter contacts who are actually due for their next email
     const emailsDue = []
+    let skippedInactiveCampaigns = 0
+    let skippedCompletedContacts = 0
+    let skippedNotDue = 0
+    let skippedTimezone = 0
     
     for (const contact of dueContacts) {
       if (!contact.email_address || !contact.campaign_id) continue
       
       // Skip contacts with completed status early
       if (['Completed', 'Replied', 'Unsubscribed', 'Bounced'].includes(contact.status)) {
-        console.log(`⏭️ SKIPPED EARLY: ${contact.email_address} has status ${contact.status}`)
+        console.log(`⏭️ SKIPPED: ${contact.email_address} has status ${contact.status}`)
+        skippedCompletedContacts++
         continue
       }
       
@@ -97,7 +102,8 @@ export async function GET(request: NextRequest) {
       }
       
       if (campaign.status !== 'Active') {
-        console.log(`⏸️ SKIPPED: Campaign "${campaign.name}" is ${campaign.status}, not Active`)
+        console.log(`⏸️ SKIPPED: Campaign "${campaign.name}" is ${campaign.status}, not Active - Contact: ${contact.email_address}`)
+        skippedInactiveCampaigns++
         continue
       }
       
@@ -172,7 +178,7 @@ export async function GET(request: NextRequest) {
         continue
       }
       
-      // Add business hours (9-17, avoid weekends)
+      // Add business hours (9-17, avoid weekends) with timezone awareness
       const contactHash = String(contact.id).split('').reduce((hash, char) => {
         return ((hash << 5) - hash) + char.charCodeAt(0)
       }, 0)
@@ -181,14 +187,27 @@ export async function GET(request: NextRequest) {
       const minute = (seedValue * 7) % 60
       scheduledDate.setHours(hour, minute, 0, 0)
       
+      // Check if contact is in a timezone where it's currently outside business hours
+      let skipForTimezone = false
+      const now = new Date()
+      const currentHour = now.getUTCHours()
+      
+      if (contact.location && contact.location.includes('Tokyo')) {
+        // Tokyo is UTC+9, so business hours (9-17 JST) = UTC 0-8
+        const tokyoHour = (currentHour + 9) % 24
+        if (tokyoHour < 9 || tokyoHour >= 17) {
+          skipForTimezone = true
+          console.log(`🌏 TIMEZONE SKIP: ${contact.email_address} in Tokyo - current hour ${tokyoHour}:00 JST (outside 9-17)`)
+        }
+      }
+      
       // Skip weekends
       const dayOfWeek = scheduledDate.getDay()
       if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1)
       if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2)
       
       // Check if it's time to send this email
-      const now = new Date()
-      const shouldProcess = testMode ? true : (scheduledDate <= now)
+      const shouldProcess = !skipForTimezone && scheduledDate <= now
       
       console.log(`🔍 Contact ${contact.email_address}: currentStep=${currentStep + 1}/${campaignSequences.length}, timing=${nextSequenceTiming}d, scheduledDate=${scheduledDate.toISOString()}, shouldProcess=${shouldProcess}`)
       
@@ -202,16 +221,37 @@ export async function GET(request: NextRequest) {
         })
         console.log(`📧 Added to queue: ${contact.email_address} - Step ${currentStep + 1} (${nextSequence.subject}) - Timing: ${nextSequenceTiming} days`)
       } else {
-        console.log(`⏰ NOT DUE: ${contact.email_address} - Step ${currentStep + 1} scheduled for ${scheduledDate.toISOString()} (${nextSequenceTiming} days after ${lastSentAt || contact.created_at})`)
+        if (skipForTimezone) {
+          skippedTimezone++
+        } else {
+          console.log(`⏰ NOT DUE: ${contact.email_address} - Step ${currentStep + 1} scheduled for ${scheduledDate.toISOString()} (${nextSequenceTiming} days after ${lastSentAt || contact.created_at})`)
+          skippedNotDue++
+        }
       }
     }
     
     if (emailsDue.length === 0) {
-      console.log('✅ No emails due for processing')
+      let skipSummary = []
+      if (skippedInactiveCampaigns > 0) skipSummary.push(`${skippedInactiveCampaigns} inactive campaigns`)
+      if (skippedCompletedContacts > 0) skipSummary.push(`${skippedCompletedContacts} completed contacts`)
+      if (skippedTimezone > 0) skipSummary.push(`${skippedTimezone} timezone restrictions`)
+      if (skippedNotDue > 0) skipSummary.push(`${skippedNotDue} not due yet`)
+      
+      const message = skipSummary.length > 0 
+        ? `No emails due for processing (skipped: ${skipSummary.join(', ')})`
+        : 'No emails due for processing'
+      
+      console.log(`✅ ${message}`)
       return NextResponse.json({
         success: true,
-        message: 'No emails due for processing',
+        message,
         processed: 0,
+        skipped: {
+          inactiveCampaigns: skippedInactiveCampaigns,
+          completedContacts: skippedCompletedContacts,
+          timezone: skippedTimezone,
+          notDue: skippedNotDue
+        },
         timestamp: new Date().toISOString()
       })
     }
