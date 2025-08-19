@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 Fetching sequence status for campaign ${campaignId}${contactEmail ? ` and contact ${contactEmail}` : ''}`)
 
-    // Get prospects for the campaign
+    // Try prospects table first (UUID-based)
     let prospectsQuery = supabaseServer
       .from('prospects')
       .select('id, email_address, first_name, last_name, created_at')
@@ -63,14 +63,35 @@ export async function GET(request: NextRequest) {
       prospectsQuery = prospectsQuery.eq('email_address', contactEmail)
     }
 
-    const { data: prospects, error: prospectsError } = await prospectsQuery
+    let { data: prospects, error: prospectsError } = await prospectsQuery
 
-    if (prospectsError) {
-      console.error('Error fetching prospects:', prospectsError)
-      return NextResponse.json({
-        success: false,
-        error: prospectsError.message
-      }, { status: 500 })
+    // If no prospects found, try contacts table (integer-based)
+    if ((!prospects || prospects.length === 0) && !prospectsError?.message?.includes('relation "public.prospects" does not exist')) {
+      console.log('📋 No prospects found, checking contacts table for sequence status...')
+      
+      let contactsQuery = supabaseServer
+        .from('contacts')
+        .select('id, email, first_name, last_name, created_at, sequence_step')
+        .eq('campaign_id', campaignId)
+      
+      if (contactEmail) {
+        contactsQuery = contactsQuery.eq('email', contactEmail)
+      }
+      
+      const { data: contacts, error: contactsError } = await contactsQuery
+      
+      if (!contactsError && contacts && contacts.length > 0) {
+        // Convert contacts to prospect format
+        prospects = contacts.map(contact => ({
+          id: contact.id.toString(),
+          email_address: contact.email,
+          first_name: contact.first_name,
+          last_name: contact.last_name,
+          created_at: contact.created_at,
+          sequence_step: contact.sequence_step || 0
+        }))
+        console.log(`📋 Found ${prospects.length} contacts in legacy table`)
+      }
     }
 
     if (!prospects || prospects.length === 0) {
@@ -115,20 +136,35 @@ export async function GET(request: NextRequest) {
 
     // Process each prospect's sequence status
     const contactStatuses = prospects.map(prospect => {
-      const prospectProgress = allProgress?.filter(p => p.prospect_id === prospect.id) || []
+      // For integer IDs (contacts table), use the sequence_step directly
+      const isIntegerID = !prospect.id.includes('-')
       
-      console.log(`🔍 DEBUG: Processing prospect ${prospect.email_address} (${prospect.id})`)
-      console.log(`🔍 DEBUG: Raw progress records:`, prospectProgress)
+      let sentCount = 0
+      let scheduledCount = 0
+      let failedCount = 0
+      let currentStep = 0
       
-      // Count sent and scheduled sequences
-      const sentCount = prospectProgress.filter(p => p.status === 'sent').length
-      const scheduledCount = prospectProgress.filter(p => p.status === 'scheduled').length
-      const failedCount = prospectProgress.filter(p => p.status === 'failed').length
+      if (isIntegerID && prospect.sequence_step !== undefined) {
+        // For contacts table, use the sequence_step field directly
+        currentStep = prospect.sequence_step || 0
+        sentCount = currentStep
+        console.log(`📋 Using sequence_step from contacts table: ${currentStep} for ${prospect.email_address}`)
+      } else {
+        // For prospects table, use the progress records
+        const prospectProgress = allProgress?.filter(p => p.prospect_id === prospect.id) || []
+        
+        console.log(`🔍 DEBUG: Processing prospect ${prospect.email_address} (${prospect.id})`)
+        console.log(`🔍 DEBUG: Raw progress records:`, prospectProgress)
+        
+        sentCount = prospectProgress.filter(p => p.status === 'sent').length
+        scheduledCount = prospectProgress.filter(p => p.status === 'scheduled').length
+        failedCount = prospectProgress.filter(p => p.status === 'failed').length
+        currentStep = sentCount
+        
+        console.log(`🔍 DEBUG: Counts - Sent: ${sentCount}, Scheduled: ${scheduledCount}, Failed: ${failedCount}`)
+      }
       
-      console.log(`🔍 DEBUG: Counts - Sent: ${sentCount}, Scheduled: ${scheduledCount}, Failed: ${failedCount}`)
-      
-      // Determine current step and status
-      let currentStep = sentCount
+      // Determine status
       let status = 'upcoming'
       let nextSequenceDate = null
       
@@ -161,13 +197,16 @@ export async function GET(request: NextRequest) {
       const totalSequences = campaignSequences?.length || 6
       
       for (let i = 1; i <= totalSequences; i++) {
-        const sequenceProgress = prospectProgress.find(p => {
-          // Try to match by sequence step number
-          const campaignSeq = campaignSequences?.find(cs => cs.step_number === i)
-          return campaignSeq ? p.sequence_id === campaignSeq.id : false
-        })
-        
         const campaignSeq = campaignSequences?.find(cs => cs.step_number === i)
+        
+        let sequenceProgress = null
+        if (!isIntegerID) {
+          // For prospects table, find matching progress record
+          const prospectProgress = allProgress?.filter(p => p.prospect_id === prospect.id) || []
+          sequenceProgress = prospectProgress.find(p => {
+            return campaignSeq ? p.sequence_id === campaignSeq.id : false
+          })
+        }
         
         let sequenceStatus = 'upcoming'
         let sentAt = null
