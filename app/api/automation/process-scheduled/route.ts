@@ -155,8 +155,12 @@ export async function GET(request: NextRequest) {
       if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1)
       if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2)
       
-      // Check if email is due (within lookAhead window)
-      if (scheduledDate <= lookAheadTime) {
+      // For testing, always process if not at final step (remove timing constraint)
+      const shouldProcess = testMode ? (currentStep < campaignSequences.length) : (scheduledDate <= lookAheadTime)
+      
+      console.log(`🔍 Contact ${contact.email_address}: currentStep=${currentStep}, totalSteps=${campaignSequences.length}, scheduledDate=${scheduledDate.toISOString()}, shouldProcess=${shouldProcess}`)
+      
+      if (shouldProcess) {
         const nextSequence = campaignSequences[currentStep]
         if (nextSequence) {
           emailsDue.push({
@@ -166,7 +170,10 @@ export async function GET(request: NextRequest) {
             scheduledFor: scheduledDate.toISOString(),
             currentStep: currentStep + 1 // Next step number
           })
+          console.log(`📧 Added to queue: ${contact.email_address} - Step ${currentStep + 1} (${nextSequence.subject})`)
         }
+      } else {
+        console.log(`⏰ Skipping ${contact.email_address}: currentStep=${currentStep}, scheduledFor=${scheduledDate.toISOString()}`)
       }
     }
     
@@ -193,12 +200,20 @@ export async function GET(request: NextRequest) {
         processedCount++
         const { contact, sequence, scheduledFor, currentStep } = emailJob
         
+        console.log(`\n🎯 Processing contact ${processedCount}/${emailsDue.length}:`)
+        console.log(`   📧 Email: ${contact.email_address}`)
+        console.log(`   📊 Step: ${currentStep} of ${sequence.step_number ? 'max' : 'unknown'}`)
+        console.log(`   📝 Subject: ${sequence.subject}`)
+        console.log(`   ⏰ Scheduled for: ${scheduledFor}`)
+        console.log(`   🏷️  Status: ${contact.status || 'Active'}`)
+        
         // Skip if contact has final status
         if (['Completed', 'Replied', 'Unsubscribed', 'Bounced'].includes(contact.status)) {
+          console.log(`   ⏭️  SKIPPED: Contact status is ${contact.status}`)
           skippedCount++
           results.push({
             contactId: contact.id,
-            contactEmail: contact.email,
+            contactEmail: contact.email_address,
             status: 'skipped',
             reason: `Contact status: ${contact.status}`
           })
@@ -250,7 +265,7 @@ export async function GET(request: NextRequest) {
               autoProgressNext: true
             })
           } else {
-            // For integer IDs from contacts table, just update the contact directly
+            // For integer IDs from contacts table, update both legacy table AND create progression record
             await supabase
               .from('contacts')
               .update({
@@ -259,7 +274,26 @@ export async function GET(request: NextRequest) {
               })
               .eq('id', parseInt(contact.id))
             
-            console.log(`📝 Updated contact ${contact.id} to step ${currentStep} (legacy table)`)
+            // Also create a progression record so the frontend can track it
+            const { error: progressError } = await supabase
+              .from('prospect_sequence_progress')
+              .upsert({
+                campaign_id: contact.campaign_id,
+                prospect_id: contact.id, // Use string ID
+                sequence_id: sequence.id,
+                status: 'sent',
+                sent_at: new Date().toISOString(),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'campaign_id,prospect_id,sequence_id'
+              })
+            
+            if (progressError) {
+              console.error(`❌ Failed to create progression record for contact ${contact.id}:`, progressError)
+            } else {
+              console.log(`📝 Updated contact ${contact.id} to step ${currentStep} and created progression record`)
+            }
           }
           
           
@@ -287,7 +321,13 @@ export async function GET(request: NextRequest) {
             scheduledFor
           })
           
-          console.log(`✅ ${testMode ? '[TEST] ' : ''}Email sent: ${senders[0].email} → ${contact.email_address} (Step ${currentStep})`)
+          console.log(`   ✅ ${testMode ? '[TEST] ' : ''}EMAIL SENT successfully!`)
+          console.log(`      From: ${senders[0].email}`)
+          console.log(`      To: ${contact.email_address}`)
+          console.log(`      Step: ${currentStep}`)
+          console.log(`      Subject: ${sequence.subject}`)
+          console.log(`      Message ID: ${sendResult.messageId}`)
+          console.log(`      Test Mode: ${testMode || sendResult.simulation}`)
         } else {
           // Log failed email attempt
           await logEmailTracking({
