@@ -29,7 +29,7 @@ class LinkedInScraper:
         if self.headless:
             opts.add_argument('--headless')
         opts.add_argument('--no-sandbox')
-        opts.add_argument('--disable-dev-shm-usage')
+        opts.add_argument('--disable-dev-shm-usage')``
         opts.add_argument('--user-agent=Mozilla/5.0')
         self.driver = webdriver.Chrome(options=opts)
         print('✅ LinkedIn Chrome driver initialized')

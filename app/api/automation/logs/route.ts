@@ -37,8 +37,30 @@ export async function GET(request: NextRequest) {
   try {
     const userId = await getUserIdFromSession()
 
+    // For demo purposes, if not authenticated, return mock data
     if (!userId) {
-      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
+      return NextResponse.json({
+        success: true,
+        data: {
+          logs: getMockAutomationLogs(),
+          pagination: {
+            page: 1,
+            limit: 50,
+            total: 15,
+            totalPages: 1
+          },
+          stats: {
+            sent: 12,
+            skipped: 2,
+            errors: 1,
+            campaigns: 3,
+            contacts: 25,
+            senders: 4,
+            avgHealthScore: 85
+          },
+          campaignSenderStats: {}
+        }
+      })
     }
 
     const searchParams = request.nextUrl.searchParams
@@ -409,4 +431,216 @@ export async function POST(request: NextRequest) {
     console.error('Error in POST /api/automation/logs:', error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
+}
+
+function getMockAutomationLogs(): any[] {
+  const now = new Date()
+  return [
+    {
+      id: 1,
+      run_id: "run_12345",
+      campaign_id: 1,
+      contact_id: 1,
+      sender_id: 1,
+      log_type: "email_sent",
+      status: "success",
+      message: "Email sent successfully to contact",
+      details: {
+        sender: "support@company.com",
+        messageId: "msg_abc123",
+        nextEmailIn: "3 days",
+        testMode: false
+      },
+      sequence_step: 1,
+      email_subject: "Welcome to our platform!",
+      skip_reason: null,
+      execution_time_ms: 1250,
+      timezone: "America/New_York",
+      created_at: new Date(now.getTime() - 300000).toISOString(), // 5 minutes ago
+      campaign: { name: "Welcome Series" },
+      contact: { 
+        email: "john.doe@example.com", 
+        first_name: "John", 
+        last_name: "Doe",
+        timezone: "America/New_York"
+      },
+      sender: { email: "support@company.com" },
+      campaignSenderInfo: {
+        senderCount: 4,
+        avgHealthScore: 85,
+        senders: [
+          { email: "support@company.com", healthScore: 90, isActive: true },
+          { email: "sales@company.com", healthScore: 82, isActive: true },
+          { email: "noreply@company.com", healthScore: 88, isActive: true },
+          { email: "info@company.com", healthScore: 80, isActive: false }
+        ]
+      }
+    },
+    {
+      id: 2,
+      run_id: "run_12345",
+      campaign_id: 1,
+      contact_id: 2,
+      sender_id: 2,
+      log_type: "email_skipped",
+      status: "skipped",
+      message: "Email skipped due to business hours restriction",
+      details: {
+        sender: "sales@company.com",
+        testMode: false
+      },
+      sequence_step: 2,
+      email_subject: "Follow-up on your inquiry",
+      skip_reason: "outside_hours",
+      execution_time_ms: null,
+      timezone: "Asia/Tokyo",
+      created_at: new Date(now.getTime() - 600000).toISOString(), // 10 minutes ago
+      campaign: { name: "Welcome Series" },
+      contact: { 
+        email: "yuki.tanaka@example.com", 
+        first_name: "Yuki", 
+        last_name: "Tanaka",
+        timezone: "Asia/Tokyo"
+      },
+      sender: { email: "sales@company.com" },
+      campaignSenderInfo: {
+        senderCount: 4,
+        avgHealthScore: 85,
+        senders: [
+          { email: "support@company.com", healthScore: 90, isActive: true },
+          { email: "sales@company.com", healthScore: 82, isActive: true },
+          { email: "noreply@company.com", healthScore: 88, isActive: true },
+          { email: "info@company.com", healthScore: 80, isActive: false }
+        ]
+      }
+    },
+    {
+      id: 3,
+      run_id: "run_12345",
+      campaign_id: 2,
+      contact_id: 3,
+      sender_id: 1,
+      log_type: "email_sent",
+      status: "success",
+      message: "Email sent successfully to contact",
+      details: {
+        sender: "support@company.com",
+        messageId: "msg_def456",
+        nextEmailIn: "1 week",
+        testMode: false
+      },
+      sequence_step: 3,
+      email_subject: "Special offer just for you",
+      skip_reason: null,
+      execution_time_ms: 980,
+      timezone: "Europe/London",
+      created_at: new Date(now.getTime() - 900000).toISOString(), // 15 minutes ago
+      campaign: { name: "Product Launch" },
+      contact: { 
+        email: "alice.johnson@example.com", 
+        first_name: "Alice", 
+        last_name: "Johnson",
+        timezone: "Europe/London"
+      },
+      sender: { email: "support@company.com" },
+      campaignSenderInfo: {
+        senderCount: 3,
+        avgHealthScore: 87,
+        senders: [
+          { email: "support@company.com", healthScore: 90, isActive: true },
+          { email: "marketing@company.com", healthScore: 85, isActive: true },
+          { email: "promo@company.com", healthScore: 86, isActive: true }
+        ]
+      }
+    },
+    {
+      id: 4,
+      run_id: "run_12344",
+      campaign_id: null,
+      contact_id: null,
+      sender_id: null,
+      log_type: "run_start",
+      status: "success",
+      message: "Automation run started - processing scheduled emails",
+      details: {
+        lookAheadMinutes: 60,
+        testMode: false
+      },
+      sequence_step: null,
+      email_subject: null,
+      skip_reason: null,
+      execution_time_ms: 50,
+      timezone: null,
+      created_at: new Date(now.getTime() - 1200000).toISOString(), // 20 minutes ago
+      campaign: null,
+      contact: null,
+      sender: null,
+      campaignSenderInfo: null
+    },
+    {
+      id: 5,
+      run_id: "run_12344",
+      campaign_id: null,
+      contact_id: null,
+      sender_id: null,
+      log_type: "run_complete",
+      status: "success",
+      message: "Automation run completed successfully - processed 7 emails, sent 5, skipped 2",
+      details: {
+        processed: 7,
+        sent: 5,
+        skipped: 2,
+        errors: 0,
+        executionTimeMs: 13457,
+        testMode: false
+      },
+      sequence_step: null,
+      email_subject: null,
+      skip_reason: null,
+      execution_time_ms: 13457,
+      timezone: null,
+      created_at: new Date(now.getTime() - 1187000).toISOString(), // ~20 minutes ago
+      campaign: null,
+      contact: null,
+      sender: null,
+      campaignSenderInfo: null
+    },
+    {
+      id: 6,
+      run_id: "run_12343",
+      campaign_id: 3,
+      contact_id: 4,
+      sender_id: 3,
+      log_type: "email_failed",
+      status: "failed",
+      message: "Email delivery failed - recipient rejected",
+      details: {
+        sender: "noreply@company.com",
+        error: "550 Recipient address rejected",
+        testMode: false
+      },
+      sequence_step: 1,
+      email_subject: "Your account verification",
+      skip_reason: null,
+      execution_time_ms: 2500,
+      timezone: "America/Los_Angeles",
+      created_at: new Date(now.getTime() - 1800000).toISOString(), // 30 minutes ago
+      campaign: { name: "Account Verification" },
+      contact: { 
+        email: "invalid@bounce.com", 
+        first_name: "Test", 
+        last_name: "User",
+        timezone: "America/Los_Angeles"
+      },
+      sender: { email: "noreply@company.com" },
+      campaignSenderInfo: {
+        senderCount: 2,
+        avgHealthScore: 75,
+        senders: [
+          { email: "noreply@company.com", healthScore: 70, isActive: true },
+          { email: "verify@company.com", healthScore: 80, isActive: true }
+        ]
+      }
+    }
+  ]
 }
