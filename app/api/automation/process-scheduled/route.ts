@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     console.log(`🧪 Test Mode: ${testMode}`)
     console.log(`👀 Look Ahead: ${lookAheadMinutes} minutes`)
     console.log(`🌍 Current UTC Hour: ${new Date().getUTCHours()}:00`)
+    console.log(`🔧 Code Version: ${new Date().toISOString().slice(0,16)} (Fixed campaignSequences scope)`)
     console.log('─'.repeat(80))
     
     // Get emails that are due within the next 15 minutes (or specified lookahead)
