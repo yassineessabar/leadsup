@@ -21,12 +21,12 @@ export async function GET(request: NextRequest) {
     const now = new Date()
     const lookAheadTime = new Date(now.getTime() + (lookAheadMinutes * 60 * 1000))
     
-    // Get contacts who are due for their next email in the sequence
+    // Get prospects who are due for their next email in the sequence
     const { data: dueContacts, error: fetchError } = await supabase
-      .from('contacts')
+      .from('prospects')
       .select('*')
       .order('created_at', { ascending: true })
-      .limit(50) // Check contacts to find due ones
+      .limit(50) // Check prospects to find due ones
 
     if (fetchError) {
       console.error('❌ Error fetching contacts:', fetchError)
@@ -37,10 +37,10 @@ export async function GET(request: NextRequest) {
     }
     
     if (!dueContacts || dueContacts.length === 0) {
-      console.log('✅ No contacts found for processing')
+      console.log('✅ No prospects found for processing')
       return NextResponse.json({
         success: true,
-        message: 'No contacts found',
+        message: 'No prospects found',
         processed: 0,
         timestamp: new Date().toISOString()
       })
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     const emailsDue = []
     
     for (const contact of dueContacts) {
-      if (!contact.email || !contact.campaign_id) continue
+      if (!contact.email_address || !contact.campaign_id) continue
       
       // Get campaign details
       const { data: campaign } = await supabase
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       
       if (!campaignSequences || campaignSequences.length === 0) continue
       
-      const currentStep = contact.sequence_step || 0
+      const currentStep = contact.current_step || 0
       
       // Check if there's a next step
       if (currentStep >= campaignSequences.length) continue // Sequence complete
@@ -190,13 +190,22 @@ export async function GET(request: NextRequest) {
         })
         
         if (sendResult.success) {
-          // Update contact's sequence progress
-          await updateContactSequenceProgress(contact.id, currentStep)
+          // Update sequence progression using proper API
+          await updateSequenceProgression({
+            campaignId: contact.campaign_id,
+            contactId: contact.id, // This is already a UUID from prospects table
+            sequenceId: sequence.id,
+            status: 'sent',
+            sentAt: new Date().toISOString(),
+            messageId: sendResult.messageId,
+            autoProgressNext: true
+          })
+          
           
           // Log email tracking for account logs
           await logEmailTracking({
             contactId: contact.id,
-            contactEmail: contact.email,
+            contactEmail: contact.email_address,
             campaignId: contact.campaign_id,
             sequenceId: sequence.id,
             sequenceStep: currentStep,
@@ -209,7 +218,7 @@ export async function GET(request: NextRequest) {
           sentCount++
           results.push({
             contactId: contact.id,
-            contactEmail: contact.email,
+            contactEmail: contact.email_address,
             sequenceStep: currentStep,
             status: 'sent',
             messageId: sendResult.messageId,
@@ -217,12 +226,12 @@ export async function GET(request: NextRequest) {
             scheduledFor
           })
           
-          console.log(`✅ ${testMode ? '[TEST] ' : ''}Email sent: ${senders[0].email} → ${contact.email} (Step ${currentStep})`)
+          console.log(`✅ ${testMode ? '[TEST] ' : ''}Email sent: ${senders[0].email} → ${contact.email_address} (Step ${currentStep})`)
         } else {
           // Log failed email attempt
           await logEmailTracking({
             contactId: contact.id,
-            contactEmail: contact.email,
+            contactEmail: contact.email_address,
             campaignId: contact.campaign_id,
             sequenceId: sequence.id,
             sequenceStep: currentStep,
@@ -236,12 +245,12 @@ export async function GET(request: NextRequest) {
           errorCount++
           results.push({
             contactId: contact.id,
-            contactEmail: contact.email,
+            contactEmail: contact.email_address,
             status: 'failed',
             error: sendResult.error
           })
           
-          console.error(`❌ Email failed: ${contact.email} - ${sendResult.error}`)
+          console.error(`❌ Email failed: ${contact.email_address} - ${sendResult.error}`)
         }
         
       } catch (error) {
@@ -249,7 +258,7 @@ export async function GET(request: NextRequest) {
         errorCount++
         results.push({
           contactId: emailJob.contact.id,
-          contactEmail: emailJob.contact.email,
+          contactEmail: emailJob.contact.email_address,
           status: 'failed',
           error: error instanceof Error ? error.message : 'Unknown error'
         })
@@ -301,7 +310,7 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, testMode }: a
     if (SIMULATION_MODE) {
       console.log(`🧪 SIMULATED SEQUENCE EMAIL:`)
       console.log(`   From: ${senderEmail}`)
-      console.log(`   To: ${contact.email}`)
+      console.log(`   To: ${contact.email_address}`)
       console.log(`   Subject: ${sequence.subject}`)
       console.log(`   Step: ${sequence.step_number}`)
       
@@ -329,7 +338,7 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, testMode }: a
         .replace(/\{\{company\}\}/g, contact.company || 'your company')
       
       const msg = {
-        to: contact.email,
+        to: contact.email_address,
         from: {
           email: senderEmail,
           name: senderEmail.split('@')[0]
@@ -368,6 +377,62 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, testMode }: a
       success: false,
       error: error instanceof Error ? error.message : 'Failed to send email'
     }
+  }
+}
+
+async function updateSequenceProgression({
+  campaignId,
+  contactId,
+  sequenceId,
+  status,
+  sentAt,
+  messageId,
+  autoProgressNext
+}: {
+  campaignId: string
+  contactId: string
+  sequenceId: string
+  status: 'sent' | 'scheduled' | 'failed'
+  sentAt: string
+  messageId: string
+  autoProgressNext: boolean
+}) {
+  try {
+    // Call our sequence progression API internally
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'
+    const username = process.env.N8N_API_USERNAME || 'admin'
+    const password = process.env.N8N_API_PASSWORD || 'password'
+    
+    const response = await fetch(`${baseUrl}/api/sequences/progress-update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
+      },
+      body: JSON.stringify({
+        campaignId,
+        contactId, // Already a string UUID
+        sequenceId,
+        status,
+        sentAt,
+        messageId,
+        autoProgressNext
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error(`❌ Sequence progression API error (${response.status}):`, error)
+      return { success: false, error }
+    }
+
+    const result = await response.json()
+    console.log(`✅ Sequence progression updated: Contact ${contactId}, Sequence ${sequenceId}, Status: ${status}`)
+    return { success: true, result }
+    
+  } catch (error) {
+    console.error('❌ Error calling sequence progression API:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 }
 
