@@ -21,30 +21,47 @@ export async function GET(request: NextRequest) {
     const now = new Date()
     const lookAheadTime = new Date(now.getTime() + (lookAheadMinutes * 60 * 1000))
     
-    // Get prospects who are due for their next email in the sequence
-    const { data: dueContacts, error: fetchError } = await supabase
+    // Try to get prospects first (new table with UUID IDs)
+    let { data: dueContacts, error: fetchError } = await supabase
       .from('prospects')
       .select('*')
       .order('created_at', { ascending: true })
-      .limit(50) // Check prospects to find due ones
+      .limit(50)
 
-    if (fetchError) {
-      console.error('❌ Error fetching contacts:', fetchError)
-      return NextResponse.json({
-        success: false,
-        error: fetchError.message
-      }, { status: 500 })
+    // If prospects table is empty or doesn't exist, fall back to contacts table
+    if ((!dueContacts || dueContacts.length === 0) && !fetchError?.message?.includes('relation "public.prospects" does not exist')) {
+      console.log('📋 No prospects found, checking contacts table...')
+      
+      // Try contacts table (legacy with integer IDs)
+      const { data: legacyContacts, error: legacyError } = await supabase
+        .from('contacts')
+        .select('*')
+        .order('created_at', { ascending: true })
+        .limit(50)
+      
+      if (!legacyError && legacyContacts && legacyContacts.length > 0) {
+        console.log(`📋 Found ${legacyContacts.length} contacts in legacy table`)
+        // Convert contacts to prospect format
+        dueContacts = legacyContacts.map(contact => ({
+          ...contact,
+          email_address: contact.email || contact.email_address,
+          id: contact.id.toString(), // Convert integer ID to string
+          current_step: contact.sequence_step || 0
+        }))
+      }
     }
-    
+
     if (!dueContacts || dueContacts.length === 0) {
-      console.log('✅ No prospects found for processing')
+      console.log('✅ No contacts found for processing')
       return NextResponse.json({
         success: true,
-        message: 'No prospects found',
+        message: 'No contacts found',
         processed: 0,
         timestamp: new Date().toISOString()
       })
     }
+
+    console.log(`📧 Processing ${dueContacts.length} contacts (${dueContacts[0].id.includes('-') ? 'UUID' : 'Integer'} IDs)`)
     
     // Filter contacts who are actually due for their next email
     const emailsDue = []
@@ -191,15 +208,32 @@ export async function GET(request: NextRequest) {
         
         if (sendResult.success) {
           // Update sequence progression using proper API
-          await updateSequenceProgression({
-            campaignId: contact.campaign_id,
-            contactId: contact.id, // This is already a UUID from prospects table
-            sequenceId: sequence.id,
-            status: 'sent',
-            sentAt: new Date().toISOString(),
-            messageId: sendResult.messageId,
-            autoProgressNext: true
-          })
+          // Check if we have a UUID (prospects) or integer (contacts) ID
+          const isUUID = contact.id.includes('-')
+          
+          if (isUUID) {
+            // Use prospect sequence progression for UUID IDs
+            await updateSequenceProgression({
+              campaignId: contact.campaign_id,
+              contactId: contact.id,
+              sequenceId: sequence.id,
+              status: 'sent',
+              sentAt: new Date().toISOString(),
+              messageId: sendResult.messageId,
+              autoProgressNext: true
+            })
+          } else {
+            // For integer IDs from contacts table, just update the contact directly
+            await supabase
+              .from('contacts')
+              .update({
+                sequence_step: currentStep,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', parseInt(contact.id))
+            
+            console.log(`📝 Updated contact ${contact.id} to step ${currentStep} (legacy table)`)
+          }
           
           
           // Log email tracking for account logs
