@@ -174,12 +174,15 @@ export async function GET(request: NextRequest) {
       } else if (scheduledCount > 0) {
         status = 'scheduled'
         currentStep = sentCount
-        // Find next scheduled sequence
-        const nextScheduled = prospectProgress
-          .filter(p => p.status === 'scheduled')
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0]
-        if (nextScheduled) {
-          nextSequenceDate = nextScheduled.created_at
+        // Find next scheduled sequence (only for prospects table)
+        if (!isIntegerID) {
+          const prospectProgress = allProgress?.filter(p => p.prospect_id === prospect.id) || []
+          const nextScheduled = prospectProgress
+            .filter(p => p.status === 'scheduled')
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0]
+          if (nextScheduled) {
+            nextSequenceDate = nextScheduled.created_at
+          }
         }
       } else if (sentCount > 0) {
         status = 'active'
