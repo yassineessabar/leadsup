@@ -226,6 +226,7 @@ export async function GET(request: NextRequest) {
       
       console.log(`\n📋 PROCESSING DECISION FOR: ${contact.email_address}`)
       console.log(`├─ Current Step: ${currentStep + 1}/${campaignSequences.length}`)
+      const totalSequences = campaignSequences.length
       console.log(`├─ Timing Days: ${nextSequenceTiming} days`)
       console.log(`├─ Scheduled Date: ${scheduledDate.toISOString()}`)
       console.log(`├─ Current Time: ${now.toISOString()}`)
@@ -240,7 +241,8 @@ export async function GET(request: NextRequest) {
           campaign,
           sequence: nextSequence,
           scheduledFor: scheduledDate.toISOString(),
-          currentStep: currentStep + 1 // Next step number
+          currentStep: currentStep + 1, // Next step number
+          totalSequences: totalSequences
         })
         console.log(`📧 Added to queue: ${contact.email_address} - Step ${currentStep + 1} (${nextSequence.subject}) - Timing: ${nextSequenceTiming} days`)
       } else {
@@ -290,7 +292,7 @@ export async function GET(request: NextRequest) {
     for (const emailJob of emailsDue) {
       try {
         processedCount++
-        const { contact, sequence, scheduledFor, currentStep } = emailJob
+        const { contact, sequence, scheduledFor, currentStep, totalSequences } = emailJob
         
         console.log(`\n🎯 SENDING EMAIL ${processedCount}/${emailsDue.length}`)
         console.log('═'.repeat(60))
@@ -298,7 +300,7 @@ export async function GET(request: NextRequest) {
         console.log(`👤 Name: ${contact.first_name} ${contact.last_name}`)
         console.log(`🏢 Company: ${contact.company || 'N/A'}`)
         console.log(`📍 Location: ${contact.location || 'N/A'}`)
-        console.log(`📊 Sequence Step: ${currentStep} of ${campaignSequences.length}`)
+        console.log(`📊 Sequence Step: ${currentStep} of ${totalSequences || 'unknown'}`)
         console.log(`📝 Email Subject: "${sequence.subject}"`)
         console.log(`⏰ Originally Scheduled: ${scheduledFor}`)
         console.log(`🏷️  Contact Status: ${contact.status || 'Active'}`)
