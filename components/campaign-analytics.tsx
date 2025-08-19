@@ -119,6 +119,9 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [sequencesLastUpdated, setSequencesLastUpdated] = useState<number>(Date.now())
   const [sequencesRefreshing, setSequencesRefreshing] = useState(false)
   
+  // Sequence status state - stores real progression data from API
+  const [contactSequenceStatus, setContactSequenceStatus] = useState<Map<string, any>>(new Map())
+  
   // Health score state
   const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { score: number; breakdown: any; lastUpdated: string }>>({})
   const [healthScoresLoading, setHealthScoresLoading] = useState(false)
@@ -450,11 +453,32 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       contactsParams.append('limit', '50')
       contactsParams.append('offset', '0')
 
-      const contactsResponse = await fetch(`/api/contacts?${contactsParams.toString()}`, {
-        credentials: "include"
-      })
+      // Fetch both contacts and their sequence status
+      const [contactsResponse, sequenceStatusResponse] = await Promise.all([
+        fetch(`/api/contacts?${contactsParams.toString()}`, {
+          credentials: "include"
+        }),
+        fetch(`/api/contacts/sequence-status?campaignId=${campaign.id}`, {
+          credentials: "include"
+        })
+      ])
       
       const contactsResult = await contactsResponse.json()
+      const sequenceStatusResult = await sequenceStatusResponse.json()
+
+      console.log('📊 Fetched sequence status:', sequenceStatusResult)
+
+      // Create a map of sequence status by email
+      const sequenceStatusMap = new Map()
+      if (sequenceStatusResult.success && sequenceStatusResult.data) {
+        sequenceStatusResult.data.forEach(status => {
+          sequenceStatusMap.set(status.email, status)
+        })
+        // Update component state with sequence status data
+        setContactSequenceStatus(new Map(sequenceStatusMap))
+        console.log(`🔍 DEBUG: SequenceStatusMap size:`, sequenceStatusMap.size)
+        console.log(`🔍 DEBUG: SequenceStatusMap entries:`, Array.from(sequenceStatusMap.entries()))
+      }
 
       if (contactsResult.contacts && contactsResult.contacts.length > 0) {
         const contactIds = contactsResult.contacts.map((c: any) => c.id)
@@ -496,47 +520,99 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         }
 
         const mappedContacts = contactsResult.contacts.map((contact: any) => {
-          const status = sequenceProgressMap[contact.id] || "Pending"
+          // Get real sequence status from our progression tracking
+          console.log(`🔍 DEBUG: Contact object:`, contact)
+          const contactEmail = contact.email_address || contact.email
+          const sequenceStatus = sequenceStatusMap.get(contactEmail)
+          console.log(`🔍 DEBUG: Contact ${contactEmail} sequence status:`, sequenceStatus)
+          console.log(`🔍 DEBUG: sequences_sent: ${sequenceStatus?.sequences_sent}, current_step: ${sequenceStatus?.current_step}, sequences_scheduled: ${sequenceStatus?.sequences_scheduled}`)
+          
+          // Use real status if available, otherwise fallback to old logic
+          const status = sequenceStatus ? 
+            (sequenceStatus.sequences_sent === 0 ? "Pending" : 
+             sequenceStatus.status === 'completed' ? "Completed" : 
+             sequenceStatus.sequences_scheduled > 0 ? `Email ${sequenceStatus.sequences_sent + 1} Scheduled` :
+             `Email ${sequenceStatus.sequences_sent + 1} Ready`) : 
+            (sequenceProgressMap[contact.id] || "Pending")
+          
+          console.log(`🔍 DEBUG: Final status for ${contactEmail}:`, status)
+          
           const createdAt = new Date(contact.created_at)
           
           // Generate timezone based on location using the new timezone utils
           let timezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'UTC'
           
-          // Calculate sequence step and email template info
-          let sequence_step = 0
+          // Calculate sequence step and email template info using real data
+          // Use the current_step from API which represents the completed step number
+          let sequence_step = sequenceStatus?.current_step || 0
+          console.log(`🔍 DEBUG: Final sequence_step for ${contactEmail}:`, sequence_step)
           let email_subject = ''
           let nextEmailIn = ''
           
-          if (status === "Pending") {
+          if (sequenceStatus && sequenceStatus.sequences_sent === 0) {
             sequence_step = 0
             email_subject = "Initial Outreach"
-            nextEmailIn = "Immediate"
-          } else if (status.startsWith("Email ")) {
-            sequence_step = parseInt(status.split(" ")[1]) || 1
+            nextEmailIn = "Ready to send"
+          } else if (sequenceStatus) {
+            // Handle the case where there are sent emails
+            sequence_step = sequenceStatus.current_step
             
-            // Mock email subjects based on sequence step
-            const emailSubjects = [
-              "Initial Outreach",
-              "Follow-up #1",
-              "Follow-up #2", 
-              "Value Proposition",
-              "Final Follow-up",
-              "Closing Sequence"
-            ]
-            email_subject = emailSubjects[sequence_step - 1] || "Email"
-            
-            // Calculate next email timing using consistent logic
-            const nextEmailData = calculateNextEmailDate(contact)
-            if (nextEmailData) {
-              nextEmailIn = nextEmailData.relative
+            // Use real sequence data if available
+            if (sequenceStatus.sequences) {
+              const currentSequence = sequenceStatus.sequences.find(s => s.step === sequence_step)
+              email_subject = currentSequence?.title || `Email ${sequence_step}`
+              
+              // Determine next email status based on progression
+              if (sequenceStatus.sequences_scheduled > 0) {
+                // Find the next scheduled sequence
+                const nextScheduledSequence = sequenceStatus.sequences.find(s => s.status === 'scheduled')
+                if (nextScheduledSequence) {
+                  email_subject = nextScheduledSequence.title || `Email ${nextScheduledSequence.step}`
+                  nextEmailIn = "Scheduled"
+                } else {
+                  nextEmailIn = "Scheduled"
+                }
+              } else if (sequenceStatus.sequences_sent >= sequenceStatus.total_sequences) {
+                nextEmailIn = "Sequence complete"
+              } else {
+                // Next sequence is ready to be sent
+                const nextStep = sequenceStatus.sequences_sent + 1
+                const nextSequence = sequenceStatus.sequences.find(s => s.step === nextStep)
+                if (nextSequence) {
+                  email_subject = nextSequence.title || `Email ${nextStep}`
+                }
+                nextEmailIn = "Ready to send"
+              }
             } else {
-              nextEmailIn = "Sequence complete"
+              // Fallback to mock subjects
+              const emailSubjects = [
+                "Initial Outreach",
+                "Follow-up #1",
+                "Follow-up #2", 
+                "Value Proposition",
+                "Final Follow-up",
+                "Closing Sequence"
+              ]
+              email_subject = emailSubjects[sequence_step - 1] || "Email"
+              
+              // Calculate next email timing using consistent logic
+              const nextEmailData = calculateNextEmailDate(contact)
+              if (nextEmailData) {
+                nextEmailIn = nextEmailData.relative
+              } else {
+                nextEmailIn = "Sequence complete"
+              }
             }
             
             // Override next email timing if paused
             if (campaign.status === 'Paused' || contact.email_status === 'Paused') {
               nextEmailIn = "Paused"
             }
+          } else {
+            // No sequence status data available - fallback to old logic
+            sequence_step = contact.sequence_step || 0
+            email_subject = "Initial Outreach"
+            nextEmailIn = "Ready to send"
           }
           
           // Calculate next scheduled time for the old format (fallback)
@@ -878,7 +954,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     return { relative: `${simpleTiming} days`, date: null }
   }
 
-  // Generate full email schedule for a contact with consistent sender assignment
+  // Generate full email schedule for a contact with real sequence progression data
   const generateContactSchedule = (contact: Contact) => {
     // Assign one sender for the entire sequence for this contact
     // Use contact ID hash to ensure consistency across renders
@@ -887,11 +963,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       return ((hash << 5) - hash) + char.charCodeAt(0)
     }, 0)
     const senderIndex = Math.abs(contactHash) % Math.max(campaignSenders.length, 1)
-    const assignedSender = campaignSenders[senderIndex] || contact.sender_email || 'No sender assigned'
+    const assignedSender = campaignSenders[senderIndex] || contact.sender_email || 'hello@leadsup.io'
     
     console.log(`🎯 SEQUENCE ASSIGNMENT: Contact ${contact.email} assigned to sender:`, assignedSender)
     console.log(`📧 Available campaign senders for assignment:`, campaignSenders)
     console.log(`🔢 Sender index: ${senderIndex} (from ${campaignSenders.length} total selected senders)`)
+    
+    // Get real sequence status from our progression tracking
+    const realSequenceStatus = contactSequenceStatus.get(contact.email)
     
     // Track current step to preserve scheduled times for past emails
     const currentStep = contact.sequence_step || 0
@@ -1036,16 +1115,41 @@ Please add content to this email in the sequence settings.`
       if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Sunday -> Monday
       if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Saturday -> Monday
       
-      // Determine status based on current progress
+      // Determine status based on real sequence progression data
       let status: 'sent' | 'pending' | 'skipped' | 'upcoming'
-      if (email.step < currentStep) {
-        status = 'sent'
-      } else if (email.step === currentStep) {
-        status = contact.status === 'Completed' || contact.status === 'Replied' ? 'sent' : 'pending'
-      } else if (contact.status === 'Completed' || contact.status === 'Replied' || contact.status === 'Unsubscribed') {
-        status = 'skipped'
+      
+      if (realSequenceStatus && realSequenceStatus.sequences) {
+        // Use real sequence progression data from API
+        const sequenceForStep = realSequenceStatus.sequences.find(s => s.step === email.step)
+        if (sequenceForStep) {
+          if (sequenceForStep.status === 'sent') {
+            status = 'sent'
+          } else if (sequenceForStep.status === 'scheduled') {
+            status = 'pending'
+          } else {
+            status = 'upcoming'
+          }
+        } else {
+          // No progression record for this step yet
+          if (email.step <= (realSequenceStatus.sequences_sent || 0)) {
+            status = 'sent'
+          } else if (email.step <= (realSequenceStatus.sequences_sent + realSequenceStatus.sequences_scheduled || 0)) {
+            status = 'pending'
+          } else {
+            status = 'upcoming'
+          }
+        }
       } else {
-        status = 'upcoming'
+        // Fallback to old logic if no real data available
+        if (email.step < currentStep) {
+          status = 'sent'
+        } else if (email.step === currentStep) {
+          status = contact.status === 'Completed' || contact.status === 'Replied' ? 'sent' : 'pending'
+        } else if (contact.status === 'Completed' || contact.status === 'Replied' || contact.status === 'Unsubscribed') {
+          status = 'skipped'
+        } else {
+          status = 'upcoming'
+        }
       }
 
       // For sent emails, preserve original content (don't update with new sequence settings)

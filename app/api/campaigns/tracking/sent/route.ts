@@ -311,10 +311,46 @@ export async function POST(request: NextRequest) {
         console.warn('Campaign stats function not available:', statsError)
       }
 
+      // If email was successfully sent, trigger sequence progression
+      let progressionResult = null
+      if (status === 'sent') {
+        try {
+          console.log('🔄 Triggering sequence progression...')
+          
+          // Call sequence progression API
+          const progressResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/sequences/progress-update`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Basic ${Buffer.from(`${process.env.N8N_API_USERNAME || 'admin'}:${process.env.N8N_API_PASSWORD || 'password'}`).toString('base64')}`
+            },
+            body: JSON.stringify({
+              campaignId,
+              contactId,
+              sequenceId,
+              status: 'sent',
+              sentAt,
+              messageId,
+              autoProgressNext: true
+            })
+          })
+
+          if (progressResponse.ok) {
+            progressionResult = await progressResponse.json()
+            console.log('✅ Sequence progression triggered successfully:', progressionResult.message)
+          } else {
+            console.warn('⚠️ Sequence progression failed:', await progressResponse.text())
+          }
+        } catch (progressError) {
+          console.warn('⚠️ Error triggering sequence progression:', progressError)
+        }
+      }
+
       return NextResponse.json({
         success: true,
         data: result,
-        message: 'Email tracking updated successfully'
+        message: 'Email tracking updated successfully',
+        sequence_progression: progressionResult || { triggered: false, reason: status !== 'sent' ? 'Email not sent successfully' : 'Progression disabled' }
       })
 
     } catch (trackingError) {
