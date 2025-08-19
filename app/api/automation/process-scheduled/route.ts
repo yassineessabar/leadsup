@@ -196,16 +196,24 @@ export async function GET(request: NextRequest) {
       
       // Check if contact is in a timezone where it's currently outside business hours
       let skipForTimezone = false
+      let timezoneReason = ''
       const now = new Date()
       const currentHour = now.getUTCHours()
       
       if (contact.location && contact.location.includes('Tokyo')) {
         // Tokyo is UTC+9, so business hours (9-17 JST) = UTC 0-8
         const tokyoHour = (currentHour + 9) % 24
+        timezoneReason = `Tokyo timezone: ${tokyoHour}:00 JST (business hours: 9-17)`
         if (tokyoHour < 9 || tokyoHour >= 17) {
           skipForTimezone = true
-          console.log(`🌏 TIMEZONE SKIP: ${contact.email_address} in Tokyo - current hour ${tokyoHour}:00 JST (outside 9-17)`)
+          console.log(`🌏 TIMEZONE BLOCK: ${contact.email_address} - ${timezoneReason} - OUTSIDE business hours`)
+        } else {
+          console.log(`🌏 TIMEZONE OK: ${contact.email_address} - ${timezoneReason} - INSIDE business hours`)
         }
+      } else {
+        // For non-Tokyo contacts, assume they're in a "friendly" timezone
+        timezoneReason = `Location: ${contact.location || 'Unknown'} - assuming business hours OK`
+        console.log(`🌍 TIMEZONE DEFAULT: ${contact.email_address} - ${timezoneReason}`)
       }
       
       // Skip weekends
@@ -216,7 +224,15 @@ export async function GET(request: NextRequest) {
       // Check if it's time to send this email
       const shouldProcess = !skipForTimezone && scheduledDate <= now
       
-      console.log(`🔍 Contact ${contact.email_address}: currentStep=${currentStep + 1}/${campaignSequences.length}, timing=${nextSequenceTiming}d, scheduledDate=${scheduledDate.toISOString()}, shouldProcess=${shouldProcess}`)
+      console.log(`\n📋 PROCESSING DECISION FOR: ${contact.email_address}`)
+      console.log(`├─ Current Step: ${currentStep + 1}/${campaignSequences.length}`)
+      console.log(`├─ Timing Days: ${nextSequenceTiming} days`)
+      console.log(`├─ Scheduled Date: ${scheduledDate.toISOString()}`)
+      console.log(`├─ Current Time: ${now.toISOString()}`)
+      console.log(`├─ Is Due: ${scheduledDate <= now ? '✅ YES' : '❌ NO'} (${Math.round((now - scheduledDate) / (1000 * 60))} minutes ${scheduledDate <= now ? 'overdue' : 'remaining'})`)
+      console.log(`├─ Timezone Check: ${skipForTimezone ? '❌ BLOCKED' : '✅ OK'} (${timezoneReason})`)
+      console.log(`├─ Weekend Check: ${dayOfWeek === 0 || dayOfWeek === 6 ? '⚠️ WEEKEND' : '✅ WEEKDAY'}`)
+      console.log(`└─ FINAL DECISION: ${shouldProcess ? '✅ PROCESS (ADD TO QUEUE)' : '❌ SKIP'}`)
       
       if (shouldProcess) {
         emailsDue.push({
@@ -276,16 +292,22 @@ export async function GET(request: NextRequest) {
         processedCount++
         const { contact, sequence, scheduledFor, currentStep } = emailJob
         
-        console.log(`\n🎯 Processing contact ${processedCount}/${emailsDue.length}:`)
-        console.log(`   📧 Email: ${contact.email_address}`)
-        console.log(`   📊 Step: ${currentStep} of ${sequence.step_number ? 'max' : 'unknown'}`)
-        console.log(`   📝 Subject: ${sequence.subject}`)
-        console.log(`   ⏰ Scheduled for: ${scheduledFor}`)
-        console.log(`   🏷️  Status: ${contact.status || 'Active'}`)
+        console.log(`\n🎯 SENDING EMAIL ${processedCount}/${emailsDue.length}`)
+        console.log('═'.repeat(60))
+        console.log(`📧 Contact: ${contact.email_address}`)
+        console.log(`👤 Name: ${contact.first_name} ${contact.last_name}`)
+        console.log(`🏢 Company: ${contact.company || 'N/A'}`)
+        console.log(`📍 Location: ${contact.location || 'N/A'}`)
+        console.log(`📊 Sequence Step: ${currentStep} of ${campaignSequences.length}`)
+        console.log(`📝 Email Subject: "${sequence.subject}"`)
+        console.log(`⏰ Originally Scheduled: ${scheduledFor}`)
+        console.log(`🏷️  Contact Status: ${contact.status || 'Active'}`)
+        console.log(`🧪 Test Mode: ${testMode}`)
         
         // Skip if contact has final status
         if (['Completed', 'Replied', 'Unsubscribed', 'Bounced'].includes(contact.status)) {
-          console.log(`   ⏭️  SKIPPED: Contact status is ${contact.status}`)
+          console.log(`🚫 STATUS BLOCK: Contact status is "${contact.status}" - SKIPPING EMAIL`)
+          console.log(`📝 Reason: Final status prevents further emails`)
           skippedCount++
           results.push({
             contactId: contact.id,
