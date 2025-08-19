@@ -78,14 +78,28 @@ export async function GET(request: NextRequest) {
     for (const contact of dueContacts) {
       if (!contact.email_address || !contact.campaign_id) continue
       
-      // Get campaign details
+      // Skip contacts with completed status early
+      if (['Completed', 'Replied', 'Unsubscribed', 'Bounced'].includes(contact.status)) {
+        console.log(`⏭️ SKIPPED EARLY: ${contact.email_address} has status ${contact.status}`)
+        continue
+      }
+      
+      // Get campaign details and ensure it's active
       const { data: campaign } = await supabase
         .from('campaigns')
         .select('id, name, status')
         .eq('id', contact.campaign_id)
         .single()
       
-      if (!campaign || campaign.status !== 'Active') continue
+      if (!campaign) {
+        console.log(`❌ Campaign ${contact.campaign_id} not found for ${contact.email_address}`)
+        continue
+      }
+      
+      if (campaign.status !== 'Active') {
+        console.log(`⏸️ SKIPPED: Campaign "${campaign.name}" is ${campaign.status}, not Active`)
+        continue
+      }
       
       // Get campaign sequences
       const { data: campaignSequences } = await supabase
@@ -98,6 +112,7 @@ export async function GET(request: NextRequest) {
       
       // Determine current step based on sent emails from progression records
       let currentStep = 0
+      let lastSentAt = null
       const isUUID = contact.id.includes('-')
       
       if (isUUID) {
@@ -107,39 +122,55 @@ export async function GET(request: NextRequest) {
           .select('*')
           .eq('prospect_id', contact.id)
           .eq('status', 'sent')
+          .order('sent_at', { ascending: false })
         
         currentStep = sentProgress?.length || 0
-        console.log(`📊 Contact ${contact.email_address}: Found ${currentStep} sent emails in progression records`)
+        lastSentAt = sentProgress?.[0]?.sent_at || null
+        console.log(`📊 Contact ${contact.email_address}: Found ${currentStep} sent emails, last sent: ${lastSentAt}`)
       } else {
-        // For integer contacts (legacy table), use sequence_step field
-        currentStep = contact.current_step || 0
-        console.log(`📊 Contact ${contact.email_address}: Using sequence_step ${currentStep} from contacts table`)
+        // For integer contacts (legacy table), check email_tracking for actual sent emails
+        const { data: emailTracking } = await supabase
+          .from('email_tracking')
+          .select('*')
+          .eq('contact_id', contact.id.toString())
+          .eq('campaign_id', contact.campaign_id)
+          .eq('status', 'sent')
+          .order('sent_at', { ascending: false })
+        
+        currentStep = emailTracking?.length || 0
+        lastSentAt = emailTracking?.[0]?.sent_at || null
+        console.log(`📊 Contact ${contact.email_address}: Found ${currentStep} sent emails in tracking, last sent: ${lastSentAt}`)
       }
       
-      // Check if there's a next step
-      if (currentStep >= campaignSequences.length) continue // Sequence complete
-      
-      // Calculate when the next email should be sent
-      const contactCreatedAt = new Date(contact.created_at)
-      let cumulativeDays = 0
-      
-      // Calculate cumulative days up to current step
-      for (let i = 0; i <= currentStep; i++) {
-        const sequence = campaignSequences[i]
-        if (sequence) {
-          const timing = sequence.timing_days || (i === 0 ? 0 : 1)
-          if (i === currentStep) {
-            cumulativeDays += timing
-            break
-          } else if (i > 0) {
-            cumulativeDays += timing
-          }
-        }
+      // Check if sequence is complete
+      if (currentStep >= campaignSequences.length) {
+        console.log(`✅ Contact ${contact.email_address}: Sequence complete (${currentStep}/${campaignSequences.length})`)
+        continue
       }
       
-      // Calculate scheduled send time
-      const scheduledDate = new Date(contactCreatedAt)
-      scheduledDate.setDate(scheduledDate.getDate() + cumulativeDays)
+      // Get the next sequence to send
+      const nextSequence = campaignSequences[currentStep]
+      if (!nextSequence) {
+        console.log(`❌ No sequence found for step ${currentStep + 1}`)
+        continue
+      }
+      
+      // Calculate when this specific email should be sent
+      let scheduledDate
+      const nextSequenceTiming = nextSequence.timing_days || 0
+      
+      if (currentStep === 0) {
+        // First email: schedule based on contact creation + timing_days
+        scheduledDate = new Date(contact.created_at)
+        scheduledDate.setDate(scheduledDate.getDate() + nextSequenceTiming)
+      } else if (lastSentAt) {
+        // Subsequent emails: schedule based on last email sent + timing_days
+        scheduledDate = new Date(lastSentAt)
+        scheduledDate.setDate(scheduledDate.getDate() + nextSequenceTiming)
+      } else {
+        console.log(`⚠️ No last sent date found for ${contact.email_address}, cannot calculate timing`)
+        continue
+      }
       
       // Add business hours (9-17, avoid weekends)
       const contactHash = String(contact.id).split('').reduce((hash, char) => {
@@ -155,25 +186,23 @@ export async function GET(request: NextRequest) {
       if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1)
       if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2)
       
-      // For testing, always process if not at final step (remove timing constraint)
-      const shouldProcess = testMode ? (currentStep < campaignSequences.length) : (scheduledDate <= lookAheadTime)
+      // Check if it's time to send this email
+      const now = new Date()
+      const shouldProcess = testMode ? true : (scheduledDate <= now)
       
-      console.log(`🔍 Contact ${contact.email_address}: currentStep=${currentStep}, totalSteps=${campaignSequences.length}, scheduledDate=${scheduledDate.toISOString()}, shouldProcess=${shouldProcess}`)
+      console.log(`🔍 Contact ${contact.email_address}: currentStep=${currentStep + 1}/${campaignSequences.length}, timing=${nextSequenceTiming}d, scheduledDate=${scheduledDate.toISOString()}, shouldProcess=${shouldProcess}`)
       
       if (shouldProcess) {
-        const nextSequence = campaignSequences[currentStep]
-        if (nextSequence) {
-          emailsDue.push({
-            contact,
-            campaign,
-            sequence: nextSequence,
-            scheduledFor: scheduledDate.toISOString(),
-            currentStep: currentStep + 1 // Next step number
-          })
-          console.log(`📧 Added to queue: ${contact.email_address} - Step ${currentStep + 1} (${nextSequence.subject})`)
-        }
+        emailsDue.push({
+          contact,
+          campaign,
+          sequence: nextSequence,
+          scheduledFor: scheduledDate.toISOString(),
+          currentStep: currentStep + 1 // Next step number
+        })
+        console.log(`📧 Added to queue: ${contact.email_address} - Step ${currentStep + 1} (${nextSequence.subject}) - Timing: ${nextSequenceTiming} days`)
       } else {
-        console.log(`⏰ Skipping ${contact.email_address}: currentStep=${currentStep}, scheduledFor=${scheduledDate.toISOString()}`)
+        console.log(`⏰ NOT DUE: ${contact.email_address} - Step ${currentStep + 1} scheduled for ${scheduledDate.toISOString()} (${nextSequenceTiming} days after ${lastSentAt || contact.created_at})`)
       }
     }
     
