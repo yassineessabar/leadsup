@@ -19,7 +19,7 @@ jobs:
           response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -X GET \
             -H "Content-Type: application/json" \
-            "${{ secrets.APP_URL }}/api/automation/process-scheduled?lookAhead=60")
+            "${{ secrets.APP_URL }}/api/automation/process-scheduled?lookAhead=60&testMode=true")
           
           # Extract HTTP status and body
           http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
