@@ -28,26 +28,34 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: true })
       .limit(50)
 
-    // If prospects table is empty or doesn't exist, fall back to contacts table
-    if ((!dueContacts || dueContacts.length === 0) && !fetchError?.message?.includes('relation "public.prospects" does not exist')) {
-      console.log('📋 No prospects found, checking contacts table...')
+    // Also check contacts table for additional contacts
+    console.log('📋 Checking contacts table for additional contacts...')
+    
+    // Try contacts table (legacy with integer IDs)
+    const { data: legacyContacts, error: legacyError } = await supabase
+      .from('contacts')
+      .select('*')
+      .order('created_at', { ascending: true })
+      .limit(50)
+    
+    if (!legacyError && legacyContacts && legacyContacts.length > 0) {
+      console.log(`📋 Found ${legacyContacts.length} additional contacts in legacy table`)
+      // Convert contacts to prospect format and add to the list
+      const convertedContacts = legacyContacts.map(contact => ({
+        ...contact,
+        email_address: contact.email || contact.email_address,
+        id: contact.id.toString(), // Convert integer ID to string
+        current_step: contact.sequence_step || 0
+      }))
       
-      // Try contacts table (legacy with integer IDs)
-      const { data: legacyContacts, error: legacyError } = await supabase
-        .from('contacts')
-        .select('*')
-        .order('created_at', { ascending: true })
-        .limit(50)
-      
-      if (!legacyError && legacyContacts && legacyContacts.length > 0) {
-        console.log(`📋 Found ${legacyContacts.length} contacts in legacy table`)
-        // Convert contacts to prospect format
-        dueContacts = legacyContacts.map(contact => ({
-          ...contact,
-          email_address: contact.email || contact.email_address,
-          id: contact.id.toString(), // Convert integer ID to string
-          current_step: contact.sequence_step || 0
-        }))
+      // Merge with existing prospects (avoid duplicates by email)
+      if (dueContacts && dueContacts.length > 0) {
+        const existingEmails = new Set(dueContacts.map(c => c.email_address))
+        const newContacts = convertedContacts.filter(c => !existingEmails.has(c.email_address))
+        dueContacts = [...dueContacts, ...newContacts]
+        console.log(`📋 Added ${newContacts.length} new contacts from legacy table`)
+      } else {
+        dueContacts = convertedContacts
       }
     }
 
@@ -62,6 +70,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`📧 Processing ${dueContacts.length} contacts (${dueContacts[0].id.includes('-') ? 'UUID' : 'Integer'} IDs)`)
+    console.log(`🔍 DEBUG: All contacts found:`, dueContacts.map(c => ({ id: c.id, email: c.email_address, campaign: c.campaign_id })))
     
     // Filter contacts who are actually due for their next email
     const emailsDue = []
@@ -87,7 +96,25 @@ export async function GET(request: NextRequest) {
       
       if (!campaignSequences || campaignSequences.length === 0) continue
       
-      const currentStep = contact.current_step || 0
+      // Determine current step based on sent emails from progression records
+      let currentStep = 0
+      const isUUID = contact.id.includes('-')
+      
+      if (isUUID) {
+        // For UUID contacts (prospects table), read from progression records
+        const { data: sentProgress } = await supabase
+          .from('prospect_sequence_progress')
+          .select('*')
+          .eq('prospect_id', contact.id)
+          .eq('status', 'sent')
+        
+        currentStep = sentProgress?.length || 0
+        console.log(`📊 Contact ${contact.email_address}: Found ${currentStep} sent emails in progression records`)
+      } else {
+        // For integer contacts (legacy table), use sequence_step field
+        currentStep = contact.current_step || 0
+        console.log(`📊 Contact ${contact.email_address}: Using sequence_step ${currentStep} from contacts table`)
+      }
       
       // Check if there's a next step
       if (currentStep >= campaignSequences.length) continue // Sequence complete
