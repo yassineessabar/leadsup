@@ -15,7 +15,14 @@ export async function GET(request: NextRequest) {
     const testMode = searchParams.get('testMode') === 'true' || process.env.EMAIL_SIMULATION_MODE === 'true'
     const lookAheadMinutes = parseInt(searchParams.get('lookAhead') || '15') // Default 15 minutes lookahead
     
-    console.log(`🕐 Processing scheduled emails - Test Mode: ${testMode}`)
+    console.log('═'.repeat(80))
+    console.log('🚀 EMAIL AUTOMATION PROCESSOR STARTED')
+    console.log('═'.repeat(80))
+    console.log(`⏰ Start Time: ${new Date().toISOString()}`)
+    console.log(`🧪 Test Mode: ${testMode}`)
+    console.log(`👀 Look Ahead: ${lookAheadMinutes} minutes`)
+    console.log(`🌍 Current UTC Hour: ${new Date().getUTCHours()}:00`)
+    console.log('─'.repeat(80))
     
     // Get emails that are due within the next 15 minutes (or specified lookahead)
     const now = new Date()
