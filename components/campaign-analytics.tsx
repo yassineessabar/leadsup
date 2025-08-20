@@ -497,7 +497,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             // Use actual sequence_step from contact data to match timeline logic
             const actualSequenceStep = contact.sequence_step || 0
             
-            // Check if campaign or contact is paused first
+            // Show actual campaign status for non-active campaigns
             if (campaign.status === 'Paused' || contact.email_status === 'Paused') {
               status = "Paused"
             } else if (campaign.status === 'Warming') {
@@ -527,13 +527,27 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           console.log(`🔍 DEBUG: Contact ${contactEmail} sequence status:`, sequenceStatus)
           console.log(`🔍 DEBUG: sequences_sent: ${sequenceStatus?.sequences_sent}, current_step: ${sequenceStatus?.current_step}, sequences_scheduled: ${sequenceStatus?.sequences_scheduled}`)
           
-          // Use real status if available, otherwise fallback to old logic
-          const status = sequenceStatus ? 
-            (sequenceStatus.sequences_sent === 0 ? "Pending" : 
-             sequenceStatus.status === 'completed' ? "Completed" : 
-             sequenceStatus.sequences_scheduled > 0 ? `Email ${sequenceStatus.sequences_sent + 1} Scheduled` :
-             `Email ${sequenceStatus.sequences_sent + 1} Ready`) : 
-            (sequenceProgressMap[contact.id] || "Pending")
+          // Show actual campaign status for non-active campaigns
+          let status: Contact["status"]
+          if (campaign.status === 'Paused' || contact.email_status === 'Paused') {
+            status = "Paused"
+          } else if (campaign.status === 'Warming') {
+            status = "Warming Up"
+          } else if (sequenceStatus) {
+            // Use real sequence status if campaign is active
+            if (sequenceStatus.sequences_sent === 0) {
+              status = "Pending"
+            } else if (sequenceStatus.status === 'completed') {
+              status = "Completed"
+            } else if (sequenceStatus.sequences_scheduled > 0) {
+              status = `Email ${sequenceStatus.sequences_sent + 1} Scheduled` as Contact["status"]
+            } else {
+              status = `Email ${sequenceStatus.sequences_sent + 1} Ready` as Contact["status"]
+            }
+          } else {
+            // Fallback to old logic
+            status = (sequenceProgressMap[contact.id] || "Pending") as Contact["status"]
+          }
           
           console.log(`🔍 DEBUG: Final status for ${contactEmail}:`, status)
           
@@ -604,9 +618,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               }
             }
             
-            // Override next email timing if paused
+            // Override next email timing based on actual campaign status
             if (campaign.status === 'Paused' || contact.email_status === 'Paused') {
               nextEmailIn = "Paused"
+            } else if (campaign.status === 'Warming') {
+              nextEmailIn = "Warming"
             }
           } else {
             // No sequence status data available - fallback to old logic
@@ -839,7 +855,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const getContactStatusBadgeColor = (status: Contact["status"]) => {
     switch (status) {
       case "Pending":
-        return "bg-gray-50 text-gray-600 border-gray-200"
+        return "bg-blue-50 text-blue-700 border-blue-200"
       case "Email 1":
       case "Email 2":
       case "Email 3":
@@ -1046,29 +1062,31 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           
           console.log(`📅 Step ${stepNumber} timing: ${timingDays} days interval, ${cumulativeDays} cumulative days (from seq.timing: ${seq.timing})`)
           
-          // Better fallback content that shows sequence info
-          const fallbackContent = seq.content ? seq.content : 
-            `[Email content is empty for "${seq.title || `Email ${stepNumber}`}"]
+          // Use actual sequence content from database, or show helpful message if empty
+          const actualContent = seq.content || `[No content set for "${seq.title || `Email ${stepNumber}`}"]
 
-This email step exists in your sequence but doesn't have content yet.
+This email step exists in your campaign sequence but doesn't have content yet. 
 
-Sequence Details:
+To add content:
+1. Go to Campaign Management
+2. Select the "Sequence" tab  
+3. Edit Step ${stepNumber}: "${seq.subject || 'Untitled'}"
+4. Add your email content
+
+Sequence Info:
 - Title: ${seq.title || `Email ${stepNumber}`}
-- Sequence: ${seq.sequence || 1}
-- Step: ${seq.sequenceStep || stepNumber}
-- Timing: ${timingDays} day${timingDays === 1 ? '' : 's'} from start
-
-Please add content to this email in the sequence settings.`
+- Subject: ${seq.subject || 'No subject'}
+- Timing: ${timingDays} day${timingDays === 1 ? '' : 's'} from start`
 
           return {
             step: stepNumber,
             // Store both original and current content
             originalSubject: seq.subject || `Email ${stepNumber}`,
-            originalContent: fallbackContent,
+            originalContent: actualContent,
             subject: replaceTemplateVariables(seq.subject || `Email ${stepNumber}`, contact),
             days: cumulativeDays, // Use cumulative days for scheduling
             label: timingDays === 0 ? 'Immediate' : `${timingDays} day${timingDays === 1 ? '' : 's'}`,
-            content: replaceTemplateVariables(fallbackContent, contact),
+            content: replaceTemplateVariables(actualContent, contact),
             // Add sequence metadata for debugging
             sequenceId: seq.id,
             sequenceNumber: seq.sequence,

@@ -48,12 +48,7 @@ async function fetchAllContactsForDemo(request: Request) {
     // Build query without user filter for demo including campaign status
     let query = supabase
       .from('contacts')
-      .select(`
-        id, first_name, last_name, email, email_status, title, company, location, industry, linkedin, image_url, campaign_id, created_at,
-        campaigns!campaign_id (
-          id, name, status
-        )
-      `)
+      .select('id, first_name, last_name, email, email_status, title, company, location, industry, linkedin, image_url, campaign_id, created_at')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -87,32 +82,33 @@ async function fetchAllContactsForDemo(request: Request) {
 
     const { count, error: countError } = await countQuery
 
-    // Get campaign names for the contacts (same as authenticated version)
+    // Get campaign names and status for the contacts
     const campaignIds = [...new Set(contacts?.map(c => c.campaign_id).filter(Boolean) || [])]
-    let campaignMap: Record<string, string> = {}
+    let campaignMap: Record<string, {name: string, status: string}> = {}
     
     if (campaignIds.length > 0) {
       const { data: campaigns, error: campaignError } = await supabase
         .from('campaigns')
-        .select('id, name')
+        .select('id, name, status')
         .in('id', campaignIds)
       
       if (campaigns) {
         campaignMap = campaigns.reduce((acc, campaign) => {
-          acc[campaign.id] = campaign.name
+          acc[campaign.id] = { name: campaign.name, status: campaign.status }
           return acc
-        }, {} as Record<string, string>)
+        }, {} as Record<string, {name: string, status: string}>)
       }
     }
 
     // Transform contacts to include campaign_name and campaign_status
-    const transformedContacts = contacts?.map(contact => ({
-      ...contact,
-      campaign_name: contact.campaigns ? contact.campaigns.name : (campaignMap[contact.campaign_id] || null),
-      campaign_status: contact.campaigns ? contact.campaigns.status : null,
-      // Remove the nested campaigns object to keep response clean
-      campaigns: undefined
-    })) || []
+    const transformedContacts = contacts?.map(contact => {
+      const campaignInfo = campaignMap[contact.campaign_id]
+      return {
+        ...contact,
+        campaign_name: campaignInfo?.name || null,
+        campaign_status: campaignInfo?.status || null
+      }
+    }) || []
 
     return NextResponse.json({ 
       contacts: transformedContacts,
@@ -147,12 +143,7 @@ export async function GET(request: Request) {
     // Build query with user filter including campaign status
     let query = supabase
       .from('contacts')
-      .select(`
-        id, first_name, last_name, email, email_status, title, company, location, industry, linkedin, image_url, campaign_id, created_at,
-        campaigns!campaign_id (
-          id, name, status
-        )
-      `)
+      .select('id, first_name, last_name, email, email_status, title, company, location, industry, linkedin, image_url, campaign_id, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
@@ -325,32 +316,33 @@ export async function GET(request: Request) {
 
     const { count, error: countError } = await countQuery
 
-    // Get campaign names for the contacts
+    // Get campaign names and status for the contacts
     const campaignIds = [...new Set(contacts?.map(c => c.campaign_id).filter(Boolean) || [])]
-    let campaignMap: Record<string, string> = {}
+    let campaignMap: Record<string, {name: string, status: string}> = {}
     
     if (campaignIds.length > 0) {
       const { data: campaigns, error: campaignError } = await supabase
         .from('campaigns')
-        .select('id, name')
+        .select('id, name, status')
         .in('id', campaignIds)
       
       if (campaigns) {
         campaignMap = campaigns.reduce((acc, campaign) => {
-          acc[campaign.id] = campaign.name
+          acc[campaign.id] = { name: campaign.name, status: campaign.status }
           return acc
-        }, {} as Record<string, string>)
+        }, {} as Record<string, {name: string, status: string}>)
       }
     }
 
     // Transform contacts to include campaign_name and campaign_status
-    const transformedContacts = contacts?.map(contact => ({
-      ...contact,
-      campaign_name: contact.campaigns ? contact.campaigns.name : (campaignMap[contact.campaign_id] || null),
-      campaign_status: contact.campaigns ? contact.campaigns.status : null,
-      // Remove the nested campaigns object to keep response clean
-      campaigns: undefined
-    })) || []
+    const transformedContacts = contacts?.map(contact => {
+      const campaignInfo = campaignMap[contact.campaign_id]
+      return {
+        ...contact,
+        campaign_name: campaignInfo?.name || null,
+        campaign_status: campaignInfo?.status || null
+      }
+    }) || []
 
     return NextResponse.json({ 
       contacts: transformedContacts,

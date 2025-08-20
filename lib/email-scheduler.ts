@@ -142,70 +142,77 @@ export async function scheduleContactEmails({
       }
     })
 
-    // 6. Check daily limit for selected sender
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    // 6. Find the next available date that doesn't exceed daily limits
+    const nextAvailableDate = await findNextAvailableDate({
+      campaignId,
+      selectedSenderId: selectedSender.id,
+      dailyLimit,
+      startFromDate: new Date() // Start from now, not in the past
+    })
     
-    const { count: todayScheduled } = await supabaseServer
-      .from('scheduled_emails')
-      .select('*', { count: 'exact', head: true })
-      .eq('sender_account_id', selectedSender.id)
-      .gte('scheduled_for', today.toISOString())
-      .lt('scheduled_for', new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString())
-
-    if ((todayScheduled || 0) >= dailyLimit) {
-      // Try next day if today is full
-      startDate = new Date(today.getTime() + 24 * 60 * 60 * 1000)
-    }
+    // Set the start date to the next available slot (in the future)
+    startDate = nextAvailableDate
 
     // 7. Get email sequences from campaign or use defaults
     const emailSequences = campaign.campaign_sequences?.length > 0 
       ? campaign.campaign_sequences.map((seq: any) => ({
           step: seq.step_number,
-          daysFromStart: seq.delay_days || DEFAULT_EMAIL_SEQUENCE[seq.step_number - 1]?.daysFromStart || 0,
+          daysFromStart: seq.timing_days >= 0 ? seq.timing_days : (DEFAULT_EMAIL_SEQUENCE[seq.step_number - 1]?.daysFromStart || 0),
           subject: seq.subject,
           templateKey: seq.template_type || `step${seq.step_number}`,
           content: seq.content
         }))
       : DEFAULT_EMAIL_SEQUENCE
 
-    // 8. Schedule all emails in the sequence with randomization
+    // 8. Schedule all emails in the sequence respecting configured delays
     const scheduledEmails = []
     
-    // Add some variance to the days offset to avoid patterns (-1 to +1 day variance)
-    // But ensure minimum spacing between emails
+    // Track the last scheduled date to ensure proper spacing
     let lastScheduledDate: Date | null = null
     
     for (const sequence of emailSequences) {
-      // Add random variance to days offset (except for first email which should be immediate)
-      let adjustedDaysOffset = sequence.daysFromStart
-      if (sequence.step > 1) {
-        // Add random variance: -1 to +1 day
-        const variance = Math.random() * 2 - 1 // -1 to +1
-        adjustedDaysOffset = Math.max(1, sequence.daysFromStart + Math.round(variance))
+      let schedulingDate: Date
+      
+      if (sequence.step === 1) {
+        // First email: use the next available date (already calculated above)
+        schedulingDate = new Date(startDate)
+      } else {
+        // Subsequent emails: use exact delay from campaign configuration
+        const exactDelayDays = sequence.daysFromStart
+        schedulingDate = new Date(startDate)
+        schedulingDate.setDate(schedulingDate.getDate() + exactDelayDays)
         
-        // Ensure minimum 2 days between emails
+        // Ensure minimum 1 day between emails (but respect config delays)
         if (lastScheduledDate) {
           const minDate = new Date(lastScheduledDate)
-          minDate.setDate(minDate.getDate() + 2)
-          const proposedDate = new Date(startDate)
-          proposedDate.setDate(proposedDate.getDate() + adjustedDaysOffset)
+          minDate.setDate(minDate.getDate() + 1) // Minimum 1 day gap
           
-          if (proposedDate < minDate) {
-            adjustedDaysOffset = Math.ceil((minDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+          if (schedulingDate < minDate) {
+            console.log(`⚠️ Sequence ${sequence.step} delay (${exactDelayDays} days) too short, adjusting to maintain 1-day minimum gap`)
+            schedulingDate = new Date(minDate)
           }
+        }
+        
+        // Skip weekends for subsequent emails too
+        let dayOfWeek = schedulingDate.getDay()
+        while (dayOfWeek === 0 || dayOfWeek === 6) {
+          schedulingDate.setDate(schedulingDate.getDate() + 1)
+          dayOfWeek = schedulingDate.getDay()
         }
       }
       
-      const scheduledDate = calculateOptimalSendTime({
-        baseDate: startDate,
-        daysOffset: adjustedDaysOffset,
+      // Calculate final send time with business hours and timezone
+      const finalScheduledDate = calculateOptimalSendTime({
+        baseDate: schedulingDate, // Use the scheduling date we calculated
+        daysOffset: 0, // No additional offset since we already calculated the date
         timezone,
         businessStartHour: parseInt(sendingStartTime.split(':')[0]),
         businessEndHour: parseInt(sendingEndTime.split(':')[0])
       })
       
-      lastScheduledDate = scheduledDate
+      lastScheduledDate = finalScheduledDate
+
+      console.log(`📧 Scheduling Email ${sequence.step}: ${finalScheduledDate.toLocaleString()} (${Math.ceil((finalScheduledDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days from now)`)
 
       const { data: scheduled, error: scheduleError } = await supabaseServer
         .from('scheduled_emails')
@@ -216,7 +223,7 @@ export async function scheduleContactEmails({
           sequence_step: sequence.step,
           email_subject: sequence.subject,
           email_content: sequence.content || '',
-          scheduled_for: scheduledDate.toISOString(),
+          scheduled_for: finalScheduledDate.toISOString(),
           status: 'pending'
         })
         .select()
@@ -557,4 +564,79 @@ async function rescheduleWithHealthySender(email: any) {
       error_message: 'Sender health score below threshold, needs rescheduling'
     })
     .eq('id', email.id)
+}
+
+/**
+ * Find the next available date that doesn't exceed daily limits
+ * This ensures new contacts get scheduled in the future, not immediately
+ */
+async function findNextAvailableDate({
+  campaignId,
+  selectedSenderId,
+  dailyLimit,
+  startFromDate
+}: {
+  campaignId: string
+  selectedSenderId: number
+  dailyLimit: number
+  startFromDate: Date
+}): Promise<Date> {
+  const currentDate = new Date(startFromDate)
+  currentDate.setHours(0, 0, 0, 0) // Start of day
+  
+  // Start checking from tomorrow (never schedule for today when adding new contacts)
+  currentDate.setDate(currentDate.getDate() + 1)
+  
+  let attempts = 0
+  const maxAttempts = 30 // Don't check more than 30 days ahead
+  
+  while (attempts < maxAttempts) {
+    // Skip weekends
+    const dayOfWeek = currentDate.getDay()
+    if (dayOfWeek === 0 || dayOfWeek === 6) { // Sunday = 0, Saturday = 6
+      currentDate.setDate(currentDate.getDate() + 1)
+      attempts++
+      continue
+    }
+    
+    // Check how many emails are already scheduled for this date for this sender
+    const dayEnd = new Date(currentDate)
+    dayEnd.setHours(23, 59, 59, 999)
+    
+    const { count: scheduledCount } = await supabaseServer
+      .from('scheduled_emails')
+      .select('*', { count: 'exact', head: true })
+      .eq('sender_account_id', selectedSenderId)
+      .gte('scheduled_for', currentDate.toISOString())
+      .lte('scheduled_for', dayEnd.toISOString())
+      .neq('status', 'cancelled')
+    
+    // Also check campaign-wide limit (total emails for this campaign on this date)
+    const { count: campaignDailyCount } = await supabaseServer
+      .from('scheduled_emails')
+      .select('*', { count: 'exact', head: true })
+      .eq('campaign_id', campaignId)
+      .gte('scheduled_for', currentDate.toISOString())
+      .lte('scheduled_for', dayEnd.toISOString())
+      .neq('status', 'cancelled')
+    
+    // If this day has availability for both sender and campaign, use it
+    const senderHasCapacity = (scheduledCount || 0) < dailyLimit
+    const campaignHasCapacity = (campaignDailyCount || 0) < (dailyLimit * 2) // Allow 2x sender limit per campaign
+    
+    if (senderHasCapacity && campaignHasCapacity) {
+      console.log(`📅 Next available date found: ${currentDate.toDateString()} (sender: ${scheduledCount}/${dailyLimit}, campaign: ${campaignDailyCount}/${dailyLimit * 2})`)
+      return new Date(currentDate)
+    }
+    
+    // Try next day
+    currentDate.setDate(currentDate.getDate() + 1)
+    attempts++
+  }
+  
+  // Fallback: if we can't find availability within 30 days, just schedule 7 days from now
+  console.log('⚠️ Could not find optimal date within 30 days, falling back to 7 days from now')
+  const fallbackDate = new Date(startFromDate)
+  fallbackDate.setDate(fallbackDate.getDate() + 7)
+  return fallbackDate
 }

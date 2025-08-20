@@ -1,77 +1,156 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    console.log('🗄️ Creating scheduled_emails table...')
 
-    // Create the scheduled_emails table if it doesn't exist
-    const { data, error } = await supabase.rpc('create_scheduled_emails_table', {
-      sql_query: `
-        CREATE TABLE IF NOT EXISTS scheduled_emails (
-          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-          campaign_id UUID NOT NULL,
-          contact_id UUID NOT NULL,
-          step INTEGER NOT NULL,
-          subject TEXT NOT NULL,
-          scheduled_date TIMESTAMPTZ NOT NULL,
-          status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'paused', 'cancelled', 'failed')),
-          sent_at TIMESTAMPTZ NULL,
-          error_message TEXT NULL,
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          updated_at TIMESTAMPTZ DEFAULT NOW(),
-          
-          CONSTRAINT fk_scheduled_emails_campaign 
-            FOREIGN KEY (campaign_id) 
-            REFERENCES campaigns(id) 
-            ON DELETE CASCADE,
-            
-          CONSTRAINT fk_scheduled_emails_contact 
-            FOREIGN KEY (contact_id) 
-            REFERENCES contacts(id) 
-            ON DELETE CASCADE
-        );
+    // Check if table already exists by trying a simple query
+    const { data: tableTest, error: tableTestError } = await supabase
+      .from('scheduled_emails')
+      .select('*')
+      .limit(0)
 
-        -- Create indexes for better performance
-        CREATE INDEX IF NOT EXISTS idx_scheduled_emails_campaign_id ON scheduled_emails(campaign_id);
-        CREATE INDEX IF NOT EXISTS idx_scheduled_emails_contact_id ON scheduled_emails(contact_id);
-        CREATE INDEX IF NOT EXISTS idx_scheduled_emails_status ON scheduled_emails(status);
-        CREATE INDEX IF NOT EXISTS idx_scheduled_emails_scheduled_date ON scheduled_emails(scheduled_date);
-        CREATE INDEX IF NOT EXISTS idx_scheduled_emails_step ON scheduled_emails(step);
-
-        -- Create a composite index for common queries
-        CREATE INDEX IF NOT EXISTS idx_scheduled_emails_campaign_status_date 
-          ON scheduled_emails(campaign_id, status, scheduled_date);
-
-        -- Add trigger for updated_at
-        CREATE OR REPLACE FUNCTION update_scheduled_emails_updated_at()
-        RETURNS TRIGGER AS $$
-        BEGIN
-          NEW.updated_at = NOW();
-          RETURN NEW;
-        END;
-        $$ language 'plpgsql';
-
-        CREATE TRIGGER IF NOT EXISTS trigger_scheduled_emails_updated_at
-          BEFORE UPDATE ON scheduled_emails
-          FOR EACH ROW
-          EXECUTE FUNCTION update_scheduled_emails_updated_at();
-      `
-    })
-
-    if (error) {
-      console.error('Error creating scheduled_emails table:', error)
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    if (tableTestError?.code !== 'PGRST106') { // PGRST106 = table not found
+      console.log('✅ scheduled_emails table already exists')
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Scheduled emails table already exists' 
+      })
     }
 
-    console.log('✅ Successfully created scheduled_emails table and indexes')
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Scheduled emails table created successfully' 
+    // Create the table using the exact schema email-scheduler.ts expects
+    const createTableSQL = `
+      CREATE TABLE IF NOT EXISTS scheduled_emails (
+        id SERIAL PRIMARY KEY,
+        contact_id INTEGER NOT NULL,
+        campaign_id TEXT NOT NULL,
+        sender_account_id INTEGER NOT NULL,
+        sequence_step INTEGER NOT NULL,
+        email_subject TEXT NOT NULL,
+        email_content TEXT DEFAULT '',
+        scheduled_for TIMESTAMPTZ NOT NULL,
+        status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'cancelled', 'failed', 'skipped')),
+        sent_at TIMESTAMPTZ NULL,
+        error_message TEXT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `
+
+    // Try multiple approaches since RPC functions might not be available
+    let createTableError: any = null
+    
+    try {
+      const { error } = await supabase.rpc('exec', {
+        sql: createTableSQL
+      })
+      createTableError = error
+    } catch (rpcError1) {
+      try {
+        const { error } = await supabase.rpc('exec_sql', {
+          sql: createTableSQL
+        })
+        createTableError = error
+      } catch (rpcError2) {
+        console.log('RPC methods not available, trying direct table creation...')
+        // The table creation will be verified below regardless
+      }
+    }
+
+    // Try to create indexes (similar approach)
+    const indexSQL = `
+      -- Create indexes for performance
+      CREATE INDEX IF NOT EXISTS idx_scheduled_emails_contact_id ON scheduled_emails(contact_id);
+      CREATE INDEX IF NOT EXISTS idx_scheduled_emails_campaign_id ON scheduled_emails(campaign_id);
+      CREATE INDEX IF NOT EXISTS idx_scheduled_emails_sender_id ON scheduled_emails(sender_account_id);
+      CREATE INDEX IF NOT EXISTS idx_scheduled_emails_status ON scheduled_emails(status);
+      CREATE INDEX IF NOT EXISTS idx_scheduled_emails_scheduled_for ON scheduled_emails(scheduled_for);
+      CREATE INDEX IF NOT EXISTS idx_scheduled_emails_sequence_step ON scheduled_emails(sequence_step);
+
+      -- Composite indexes for daily limit queries
+      CREATE INDEX IF NOT EXISTS idx_scheduled_emails_sender_date 
+        ON scheduled_emails(sender_account_id, scheduled_for);
+      CREATE INDEX IF NOT EXISTS idx_scheduled_emails_campaign_date 
+        ON scheduled_emails(campaign_id, scheduled_for);
+    `
+
+    try {
+      await supabase.rpc('exec', { sql: indexSQL })
+    } catch (indexError) {
+      try {
+        await supabase.rpc('exec_sql', { sql: indexSQL })
+      } catch (indexError2) {
+        console.warn('Could not create indexes via RPC')
+      }
+    }
+
+    // Test that the table was created successfully
+    const { data: verificationTest, error: verificationError } = await supabase
+      .from('scheduled_emails')
+      .select('*')
+      .limit(1)
+
+    if (verificationError) {
+      console.error('Table creation verification failed:', verificationError)
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Table creation verification failed',
+        details: verificationError.message 
+      }, { status: 500 })
+    }
+
+    console.log('✅ scheduled_emails table created successfully')
+
+    return NextResponse.json({
+      success: true,
+      message: 'Scheduled emails table created successfully',
+      table_exists: true,
+      timestamp: new Date().toISOString()
     })
 
   } catch (error) {
-    console.error('❌ Error in create scheduled emails table endpoint:', error)
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
+    console.error('❌ Error creating scheduled_emails table:', error)
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to create scheduled_emails table',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
+
+// GET method to check if table exists
+export async function GET(request: NextRequest) {
+  try {
+    const { data, error } = await supabase
+      .from('scheduled_emails')
+      .select('*')
+      .limit(1)
+
+    if (error) {
+      return NextResponse.json({
+        success: false,
+        table_exists: false,
+        error: error.message
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      table_exists: true,
+      message: 'scheduled_emails table exists and is accessible'
+    })
+
+  } catch (error) {
+    return NextResponse.json({
+      success: false,
+      table_exists: false,
+      error: 'Failed to check table existence'
+    }, { status: 500 })
   }
 }

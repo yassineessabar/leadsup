@@ -446,12 +446,18 @@ export function LeadsTab() {
         body: JSON.stringify({ contacts })
       })
 
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        console.error('❌ Failed to parse response as JSON:', jsonError)
+        throw new Error(`Server returned invalid response (status: ${response.status})`)
+      }
 
       if (response.ok) {
         toast({
           title: "Import Successful",
-          description: `${data.imported || contacts.length} contacts imported successfully`
+          description: `${data.imported || contacts.length} contacts imported successfully${data.scheduled > 0 ? `, ${data.scheduled} sequences scheduled` : ''}`
         })
         setShowImportModal(false)
         fetchContacts()
@@ -769,18 +775,18 @@ export function LeadsTab() {
                       <Badge 
                         variant="outline" 
                         className={`text-xs border rounded-full px-2 py-1 ${
-                          contact.campaign_status === 'Paused' 
+                          (contact.campaign_status === 'Paused' || contact.campaign_status === 'Warming') 
                             ? 'bg-blue-50 text-blue-700 border-blue-200' 
                             : 'bg-green-50 text-green-700 border-green-200'
                         }`}
                       >
-                        {contact.campaign_status === 'Paused' ? 'Pending' : (contact.email_status || 'Ready')}
+                        {(contact.campaign_status === 'Paused' || contact.campaign_status === 'Warming') ? 'Pending' : (contact.email_status || 'Ready')}
                       </Badge>
                     </td>
                     <td className="p-4">
-                      {/* Next Email Column - Show "Pending" when campaign is paused */}
+                      {/* Next Email Column - Show "Pending" when campaign is paused or warming */}
                       <span className="text-sm text-gray-600">
-                        {contact.campaign_status === 'Paused' ? 'Pending' : (contact.next_email || 'Ready')}
+                        {(contact.campaign_status === 'Paused' || contact.campaign_status === 'Warming') ? 'Pending' : (contact.next_email || 'Ready')}
                       </span>
                     </td>
                     <td className="p-4">
