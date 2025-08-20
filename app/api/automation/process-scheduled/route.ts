@@ -202,19 +202,19 @@ export async function GET(request: NextRequest) {
       const now = new Date()
       const currentHour = now.getUTCHours()
       
-      // Define timezone mappings for major locations
+      // Define timezone mappings for major locations (using August offsets - daylight saving time)
       const timezoneMap = {
         'Tokyo': { offset: 9, name: 'JST' },
-        'Sydney': { offset: 11, name: 'AEDT' }, // Note: This is simplified, doesn't account for DST
-        'London': { offset: 0, name: 'GMT' }, // Note: This is simplified, doesn't account for BST
-        'New York': { offset: -5, name: 'EST' }, // Note: This is simplified, doesn't account for EDT
-        'Los Angeles': { offset: -8, name: 'PST' }, // Note: This is simplified, doesn't account for PDT
-        'Chicago': { offset: -6, name: 'CST' },
-        'Boston': { offset: -5, name: 'EST' },
-        'Seattle': { offset: -8, name: 'PST' },
-        'Miami': { offset: -5, name: 'EST' },
-        'Denver': { offset: -7, name: 'MST' },
-        'Phoenix': { offset: -7, name: 'MST' }
+        'Sydney': { offset: 10, name: 'AEST' }, // August is winter in Sydney (AEST, not AEDT)
+        'London': { offset: 1, name: 'BST' }, // British Summer Time in August
+        'New York': { offset: -4, name: 'EDT' }, // Eastern Daylight Time in August
+        'Los Angeles': { offset: -7, name: 'PDT' }, // Pacific Daylight Time in August
+        'Chicago': { offset: -5, name: 'CDT' }, // Central Daylight Time in August
+        'Boston': { offset: -4, name: 'EDT' }, // Eastern Daylight Time in August
+        'Seattle': { offset: -7, name: 'PDT' }, // Pacific Daylight Time in August
+        'Miami': { offset: -4, name: 'EDT' }, // Eastern Daylight Time in August
+        'Denver': { offset: -6, name: 'MDT' }, // Mountain Daylight Time in August
+        'Phoenix': { offset: -7, name: 'MST' } // Arizona doesn't observe DST
       }
       
       // Find timezone info for contact's location
@@ -232,20 +232,20 @@ export async function GET(request: NextRequest) {
       if (timezoneInfo) {
         // Calculate local time for the contact's location
         const localHour = (currentHour + timezoneInfo.offset + 24) % 24
-        timezoneReason = `${timezoneInfo.city} timezone: ${localHour}:00 ${timezoneInfo.name} (business hours: 9-17)`
+        timezoneReason = `${timezoneInfo.city} timezone: ${localHour}:00 ${timezoneInfo.name} (business hours: 8-18)`
         
-        if (localHour < 9 || localHour >= 17) {
+        if (localHour < 8 || localHour >= 18) {
           skipForTimezone = true
           console.log(`🌏 TIMEZONE BLOCK: ${contact.email_address} - ${timezoneReason} - OUTSIDE business hours`)
         } else {
           console.log(`🌏 TIMEZONE OK: ${contact.email_address} - ${timezoneReason} - INSIDE business hours`)
         }
       } else {
-        // For unknown locations, assume friendly timezone (US Eastern as default)
-        const defaultHour = (currentHour - 5 + 24) % 24
-        timezoneReason = `Location: ${contact.location || 'Unknown'} - defaulting to US Eastern: ${defaultHour}:00 EST`
+        // For unknown locations, assume friendly timezone (US Eastern Daylight Time as default)
+        const defaultHour = (currentHour - 4 + 24) % 24 // EDT = UTC-4 in August
+        timezoneReason = `Location: ${contact.location || 'Unknown'} - defaulting to US Eastern: ${defaultHour}:00 EDT`
         
-        if (defaultHour < 9 || defaultHour >= 17) {
+        if (defaultHour < 8 || defaultHour >= 18) {
           skipForTimezone = true
           console.log(`🌏 TIMEZONE BLOCK: ${contact.email_address} - ${timezoneReason} - OUTSIDE business hours`)
         } else {
