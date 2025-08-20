@@ -258,15 +258,15 @@ export async function GET(request: NextRequest) {
       if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1)
       if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2)
       
-      // Check email_date < today condition
+      // Check if email is due (scheduled date/time has passed)
       const today = new Date()
       today.setHours(0, 0, 0, 0) // Start of today
       const emailDate = new Date(scheduledDate)
       emailDate.setHours(0, 0, 0, 0) // Start of email date
-      const emailDateBeforeToday = emailDate < today
+      const emailDateIsDueOrPast = emailDate <= today // Email is due if scheduled date is today or in the past
       
       // Check if it's time to send this email
-      const shouldProcess = !skipForTimezone && scheduledDate <= now && emailDateBeforeToday
+      const shouldProcess = !skipForTimezone && scheduledDate <= now && emailDateIsDueOrPast
       
       console.log(`\n📋 PROCESSING DECISION FOR: ${contact.email_address}`)
       console.log(`├─ Current Step: ${currentStep + 1}/${campaignSequences.length}`)
@@ -275,7 +275,7 @@ export async function GET(request: NextRequest) {
       console.log(`├─ Scheduled Date: ${scheduledDate.toISOString()}`)
       console.log(`├─ Current Time: ${now.toISOString()}`)
       console.log(`├─ Is Due: ${scheduledDate <= now ? '✅ YES' : '❌ NO'} (${Math.round((now - scheduledDate) / (1000 * 60))} minutes ${scheduledDate <= now ? 'overdue' : 'remaining'})`)
-      console.log(`├─ Email Date Check: ${emailDateBeforeToday ? '✅ BEFORE TODAY' : '❌ NOT BEFORE TODAY'} (${emailDate.toDateString()} vs ${today.toDateString()})`)
+      console.log(`├─ Email Date Check: ${emailDateIsDueOrPast ? '✅ DUE OR PAST' : '❌ NOT DUE YET'} (${emailDate.toDateString()} vs ${today.toDateString()})`)
       console.log(`├─ Timezone Check: ${skipForTimezone ? '❌ BLOCKED' : '✅ OK'} (${timezoneReason})`)
       console.log(`├─ Weekend Check: ${dayOfWeek === 0 || dayOfWeek === 6 ? '⚠️ WEEKEND' : '✅ WEEKDAY'}`)
       console.log(`└─ FINAL DECISION: ${shouldProcess ? '✅ PROCESS (ADD TO QUEUE)' : '❌ SKIP'}`)
@@ -293,8 +293,8 @@ export async function GET(request: NextRequest) {
       } else {
         if (skipForTimezone) {
           skippedTimezone++
-        } else if (!emailDateBeforeToday) {
-          console.log(`📅 DATE CONDITION FAILED: ${contact.email_address} - Email date ${emailDate.toDateString()} is not before today ${today.toDateString()}`)
+        } else if (!emailDateIsDueOrPast) {
+          console.log(`📅 DATE CONDITION FAILED: ${contact.email_address} - Email date ${emailDate.toDateString()} is scheduled for future (after today ${today.toDateString()})`)
           skippedDateCondition++
         } else {
           console.log(`⏰ NOT DUE: ${contact.email_address} - Step ${currentStep + 1} scheduled for ${scheduledDate.toISOString()} (${nextSequenceTiming} days after ${lastSentAt || contact.created_at})`)
