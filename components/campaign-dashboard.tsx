@@ -3182,7 +3182,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           </div>
                         </div>
                         <div className="text-sm text-gray-500">
-                          {contact.email_status || 'Ready'}
+                          {campaign?.status === 'Paused' ? 'Pending' : (contact.email_status || 'Ready')}
                         </div>
                       </div>
                     ))}

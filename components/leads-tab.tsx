@@ -112,7 +112,14 @@ export function LeadsTab() {
       const data = await response.json()
       
       if (data.contacts) {
-        setContacts(data.contacts)
+        // Enhance contacts with campaign status information
+        const contactsWithCampaignStatus = data.contacts.map(contact => ({
+          ...contact,
+          campaign_status: contact.campaign_status || 'Active', // Default to Active if not provided
+          next_email: contact.next_email || null // Next email timing if available
+        }))
+        
+        setContacts(contactsWithCampaignStatus)
         setTotalContacts(data.total)
         setHasMore(data.hasMore)
       }
@@ -682,6 +689,8 @@ export function LeadsTab() {
                 </th>
                 <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
                 <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Campaign</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Next Email</th>
                 <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Company</th>
                 <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
                 <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Industry</th>
@@ -705,6 +714,8 @@ export function LeadsTab() {
                       </div>
                     </td>
                     <td className="p-4"><div className="h-5 bg-gray-200 rounded-full w-16 animate-pulse"></div></td>
+                    <td className="p-4"><div className="h-5 bg-gray-200 rounded-full w-14 animate-pulse"></div></td>
+                    <td className="p-4"><div className="h-3 bg-gray-200 rounded w-20 animate-pulse"></div></td>
                     <td className="p-4"><div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div></td>
                     <td className="p-4"><div className="h-3 bg-gray-200 rounded w-20 animate-pulse"></div></td>
                     <td className="p-4"><div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div></td>
@@ -713,7 +724,7 @@ export function LeadsTab() {
                 ))
               ) : contacts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center text-gray-500">
+                  <td colSpan={9} className="p-12 text-center text-gray-500">
                     <Users2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                     <p className="text-lg font-medium text-gray-900 mb-2">No contacts found</p>
                     <p className="text-sm text-gray-500">Try adjusting your search or filters</p>
@@ -752,6 +763,25 @@ export function LeadsTab() {
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
+                    </td>
+                    <td className="p-4">
+                      {/* Status Column - Show "Pending" when campaign is paused */}
+                      <Badge 
+                        variant="outline" 
+                        className={`text-xs border rounded-full px-2 py-1 ${
+                          contact.campaign_status === 'Paused' 
+                            ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                            : 'bg-green-50 text-green-700 border-green-200'
+                        }`}
+                      >
+                        {contact.campaign_status === 'Paused' ? 'Pending' : (contact.email_status || 'Ready')}
+                      </Badge>
+                    </td>
+                    <td className="p-4">
+                      {/* Next Email Column - Show "Pending" when campaign is paused */}
+                      <span className="text-sm text-gray-600">
+                        {contact.campaign_status === 'Paused' ? 'Pending' : (contact.next_email || 'Ready')}
+                      </span>
                     </td>
                     <td className="p-4">
                       <p className="font-medium text-gray-900">{contact.company || '-'}</p>

@@ -45,10 +45,15 @@ async function fetchAllContactsForDemo(request: Request) {
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50
     const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0
 
-    // Build query without user filter for demo (no campaigns join for now)
+    // Build query without user filter for demo including campaign status
     let query = supabase
       .from('contacts')
-      .select('id, first_name, last_name, email, email_status, title, company, location, industry, linkedin, image_url, campaign_id, created_at')
+      .select(`
+        id, first_name, last_name, email, email_status, title, company, location, industry, linkedin, image_url, campaign_id, created_at,
+        campaigns!campaign_id (
+          id, name, status
+        )
+      `)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -100,10 +105,13 @@ async function fetchAllContactsForDemo(request: Request) {
       }
     }
 
-    // Transform contacts to include campaign_name
+    // Transform contacts to include campaign_name and campaign_status
     const transformedContacts = contacts?.map(contact => ({
       ...contact,
-      campaign_name: contact.campaign_id ? campaignMap[contact.campaign_id] || null : null
+      campaign_name: contact.campaigns ? contact.campaigns.name : (campaignMap[contact.campaign_id] || null),
+      campaign_status: contact.campaigns ? contact.campaigns.status : null,
+      // Remove the nested campaigns object to keep response clean
+      campaigns: undefined
     })) || []
 
     return NextResponse.json({ 
@@ -136,10 +144,15 @@ export async function GET(request: Request) {
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50
     const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0
 
-    // Build query with user filter (no campaigns join for now)
+    // Build query with user filter including campaign status
     let query = supabase
       .from('contacts')
-      .select('id, first_name, last_name, email, email_status, title, company, location, industry, linkedin, image_url, campaign_id, created_at')
+      .select(`
+        id, first_name, last_name, email, email_status, title, company, location, industry, linkedin, image_url, campaign_id, created_at,
+        campaigns!campaign_id (
+          id, name, status
+        )
+      `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
@@ -330,10 +343,13 @@ export async function GET(request: Request) {
       }
     }
 
-    // Transform contacts to include campaign_name
+    // Transform contacts to include campaign_name and campaign_status
     const transformedContacts = contacts?.map(contact => ({
       ...contact,
-      campaign_name: contact.campaign_id ? campaignMap[contact.campaign_id] || null : null
+      campaign_name: contact.campaigns ? contact.campaigns.name : (campaignMap[contact.campaign_id] || null),
+      campaign_status: contact.campaigns ? contact.campaigns.status : null,
+      // Remove the nested campaigns object to keep response clean
+      campaigns: undefined
     })) || []
 
     return NextResponse.json({ 
