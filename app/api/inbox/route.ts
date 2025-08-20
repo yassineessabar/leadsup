@@ -178,6 +178,21 @@ async function getThreadedMessages(userId: string, filters: any) {
       .eq('user_id', userId)
       .order('last_message_at', { ascending: false })
 
+    // Get conversations with outbound messages for sent folder filtering
+    let outboundConversationIds: string[] = []
+    if (folder === 'sent') {
+      const { data: outboundConversations } = await supabaseServer
+        .from('inbox_messages')
+        .select('conversation_id')
+        .eq('user_id', userId)
+        .eq('direction', 'outbound')
+        .neq('folder', 'trash');
+      
+      if (outboundConversations && outboundConversations.length > 0) {
+        outboundConversationIds = [...new Set(outboundConversations.map(m => m.conversation_id))];
+      }
+    }
+
     // Helper function to find fully trashed conversations
     const getFullyTrashedConversations = async () => {
       const { data: trashMessageIds, error: trashError } = await supabaseServer
@@ -243,6 +258,16 @@ async function getThreadedMessages(userId: string, filters: any) {
         if (folder === 'inbox') {
           query = query.gt('unread_count', 0);
           console.log('📥 + filtering for unread conversations');
+        } else if (folder === 'sent') {
+          // For sent folder, filter threads that have outbound messages
+          console.log('📤 + filtering for threads with outbound messages');
+          
+          if (outboundConversationIds.length > 0) {
+            query = query.in('conversation_id', outboundConversationIds);
+          } else {
+            // No outbound messages, return no results
+            query = query.in('conversation_id', ['no-matches']);
+          }
         }
       }
     }
@@ -318,6 +343,13 @@ async function getThreadedMessages(userId: string, filters: any) {
         
         if (folder === 'inbox') {
           countQuery = countQuery.gt('unread_count', 0)
+        } else if (folder === 'sent') {
+          // Apply the same sent folder filtering to count query
+          if (outboundConversationIds.length > 0) {
+            countQuery = countQuery.in('conversation_id', outboundConversationIds);
+          } else {
+            countQuery = countQuery.in('conversation_id', ['no-matches']);
+          }
         }
       }
     }

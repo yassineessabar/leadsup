@@ -95,7 +95,8 @@ export class SendGridAnalyticsService {
       }
       
       if (!data || data.length === 0) {
-        return this.getEmptyMetrics()
+        console.log("📊 No data from sendgrid metrics, trying fallback calculation from email_tracking...")
+        return this.calculateMetricsFromEmailTracking(campaignId, userId, dateRange)
       }
       
       const metrics = data[0]
@@ -233,7 +234,6 @@ export class SendGridAnalyticsService {
         .from('email_tracking')
         .select('*')
         .eq('campaign_id', campaignId)
-        .eq('user_id', userId)
         .order('sent_at', { ascending: false })
         .range(offset, offset + limit - 1)
       
@@ -258,7 +258,6 @@ export class SendGridAnalyticsService {
         .from('email_tracking')
         .select('*', { count: 'exact', head: true })
         .eq('campaign_id', campaignId)
-        .eq('user_id', userId)
       
       // Filter by selected sender emails if provided
       if (selectedSenderEmails && selectedSenderEmails.length > 0) {
@@ -358,6 +357,87 @@ export class SendGridAnalyticsService {
     }
   }
   
+  /**
+   * Fallback method to calculate metrics directly from email_tracking table
+   */
+  private static async calculateMetricsFromEmailTracking(
+    campaignId: string, 
+    userId: string, 
+    dateRange?: { start: Date; end: Date }
+  ): Promise<SendGridMetrics> {
+    try {
+      console.log("📊 Calculating metrics from email_tracking table...")
+      const supabase = getSupabaseClient()
+      
+      // Build query for email_tracking
+      let query = supabase
+        .from('email_tracking')
+        .select('*')
+        .eq('campaign_id', campaignId)
+      
+      // Apply date range if provided
+      if (dateRange) {
+        query = query
+          .gte('sent_at', dateRange.start.toISOString())
+          .lte('sent_at', dateRange.end.toISOString())
+      }
+      
+      const { data: emailTracking, error } = await query
+      
+      if (error) {
+        console.error("❌ Error fetching email tracking data:", error)
+        return this.getEmptyMetrics()
+      }
+      
+      if (!emailTracking || emailTracking.length === 0) {
+        console.log("📧 No email tracking data found")
+        return this.getEmptyMetrics()
+      }
+      
+      console.log(`📧 Found ${emailTracking.length} email tracking records`)
+      
+      // Calculate metrics from email_tracking data
+      const emailsSent = emailTracking.filter(email => email.status === 'sent').length
+      const emailsDelivered = emailTracking.filter(email => email.delivered_at !== null).length
+      const uniqueOpens = emailTracking.filter(email => email.opened_at !== null).length
+      const uniqueClicks = emailTracking.filter(email => email.clicked_at !== null).length
+      const emailsBounced = emailTracking.filter(email => email.bounced_at !== null).length
+      const spamReports = emailTracking.filter(email => email.spam_reported_at !== null).length
+      const unsubscribes = emailTracking.filter(email => email.unsubscribed_at !== null).length
+      
+      // Calculate rates
+      const deliveryRate = emailsSent > 0 ? (emailsDelivered / emailsSent) * 100 : 0
+      const bounceRate = emailsSent > 0 ? (emailsBounced / emailsSent) * 100 : 0
+      const openRate = emailsSent > 0 ? (uniqueOpens / emailsSent) * 100 : 0
+      const clickRate = emailsSent > 0 ? (uniqueClicks / emailsSent) * 100 : 0
+      const unsubscribeRate = emailsSent > 0 ? (unsubscribes / emailsSent) * 100 : 0
+      
+      console.log(`✅ Calculated metrics: ${emailsSent} sent, ${emailsDelivered} delivered, ${uniqueOpens} opened, ${uniqueClicks} clicked`)
+      
+      return {
+        emailsSent,
+        emailsDelivered,
+        emailsBounced,
+        emailsBlocked: 0, // Not tracked in email_tracking
+        uniqueOpens,
+        totalOpens: uniqueOpens, // Assuming unique opens = total opens for now
+        uniqueClicks,
+        totalClicks: uniqueClicks, // Assuming unique clicks = total clicks for now
+        unsubscribes,
+        spamReports,
+        deliveryRate,
+        bounceRate,
+        openRate,
+        clickRate,
+        unsubscribeRate,
+      }
+      
+    } catch (error) {
+      console.error("❌ Error calculating metrics from email_tracking:", error)
+      return this.getEmptyMetrics()
+    }
+  }
+
   /**
    * Format raw metrics data into standardized format
    */

@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
       // Get campaign details and ensure it's active
       const { data: campaign } = await supabase
         .from('campaigns')
-        .select('id, name, status')
+        .select('id, name, status, user_id')
         .eq('id', contact.campaign_id)
         .single()
       
@@ -342,7 +342,7 @@ export async function GET(request: NextRequest) {
     for (const emailJob of emailsDue) {
       try {
         processedCount++
-        const { contact, sequence, scheduledFor, currentStep, totalSequences } = emailJob
+        const { contact, campaign, sequence, scheduledFor, currentStep, totalSequences } = emailJob
         
         console.log(`\n🎯 SENDING EMAIL ${processedCount}/${emailsDue.length}`)
         console.log('═'.repeat(60))
@@ -457,6 +457,21 @@ export async function GET(request: NextRequest) {
             messageId: sendResult.messageId,
             senderEmail: senders[0].email,
             status: 'sent',
+            testMode: testMode || sendResult.simulation
+          })
+
+          // Add to inbox sent folder for unified email management
+          await logToInbox({
+            userId: campaign.user_id,
+            messageId: sendResult.messageId,
+            contactEmail: contact.email_address,
+            contactName: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email_address,
+            senderEmail: senders[0].email,
+            subject: sequence.subject || `Email ${currentStep}`,
+            bodyText: sequence.content || '',
+            bodyHtml: sequence.content || '',
+            campaignId: contact.campaign_id,
+            sequenceStep: currentStep,
             testMode: testMode || sendResult.simulation
           })
           
@@ -770,5 +785,102 @@ async function logEmailTracking({
     }
   } catch (error) {
     console.error('❌ Error in logEmailTracking:', error)
+  }
+}
+
+async function logToInbox({
+  userId,
+  messageId,
+  contactEmail,
+  contactName,
+  senderEmail,
+  subject,
+  bodyText,
+  bodyHtml,
+  campaignId,
+  sequenceStep,
+  testMode = false
+}: {
+  userId: string
+  messageId: string
+  contactEmail: string
+  contactName: string
+  senderEmail: string
+  subject: string
+  bodyText: string
+  bodyHtml: string
+  campaignId: string
+  sequenceStep: number
+  testMode?: boolean
+}) {
+  try {
+    // Generate conversation ID (same logic as manual send-email)
+    const generateConversationId = (contactEmail: string, senderEmail: string) => {
+      const participants = [contactEmail, senderEmail].sort().join('|')
+      return Buffer.from(participants).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 32)
+    }
+
+    const conversationId = generateConversationId(contactEmail, senderEmail)
+    const now = new Date().toISOString()
+    
+    const inboxEntry = {
+      user_id: userId,
+      message_id: messageId,
+      conversation_id: conversationId,
+      contact_email: contactEmail,
+      contact_name: contactName,
+      sender_email: senderEmail,
+      subject: subject,
+      body_text: bodyText,
+      body_html: bodyHtml,
+      direction: 'outbound',
+      channel: 'email',
+      message_type: 'email',
+      status: 'read', // Outbound emails are 'read' by definition
+      folder: 'sent',
+      provider: 'smtp',
+      provider_data: {
+        campaign_id: campaignId,
+        sequence_step: sequenceStep
+      },
+      sent_at: now,
+      created_at: now,
+      updated_at: now
+    }
+    
+    console.log(`📥 Adding automation email to inbox sent folder: ${contactEmail} (Step ${sequenceStep})...`)
+    
+    // Create or update inbox thread first
+    await supabase
+      .from('inbox_threads')
+      .upsert({
+        user_id: userId,
+        conversation_id: conversationId,
+        contact_email: contactEmail,
+        contact_name: contactName,
+        subject: subject,
+        last_message_at: now,
+        last_message_preview: bodyText.substring(0, 150),
+        status: 'active'
+      }, {
+        onConflict: 'conversation_id,user_id'
+      })
+
+    const { error } = await supabase
+      .from('inbox_messages')
+      .insert(inboxEntry)
+    
+    if (error) {
+      console.error('❌ Error logging to inbox:', error)
+      console.error('❌ Inbox entry that failed:', JSON.stringify(inboxEntry, null, 2))
+    } else {
+      console.log(`✅ Successfully added to inbox sent folder: ${contactEmail} (Step ${sequenceStep})`)
+      console.log(`   📧 Message ID: ${messageId}`)
+      console.log(`   💬 Conversation ID: ${conversationId}`)
+      console.log(`   👤 Sender: ${senderEmail}`)
+      console.log(`   🎯 Test Mode: ${testMode}`)
+    }
+  } catch (error) {
+    console.error('❌ Error in logToInbox:', error)
   }
 }
