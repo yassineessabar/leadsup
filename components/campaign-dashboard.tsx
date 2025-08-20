@@ -3309,7 +3309,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   {step.title}
                                 </div>
                                 <div className="text-sm text-gray-500 mt-1">
-                                  {step.timing === 0 ? 'Send immediately' : `Day ${step.timing}`}
+                                  {step.timing === 0 ? 'Immediately' : `Day ${step.timing}`}
                                 </div>
                               </div>
                               <div className="flex items-center space-x-2">
@@ -3536,7 +3536,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               <div className="flex items-center space-x-2 text-sm text-gray-500">
                                 <span>{activeStep.sequence === 1 ? 'Initial Outreach' : 'Follow-up Outreach'}</span>
                                 <span>•</span>
-                                <span>{activeStep.timing === 0 ? 'Send immediately' : `Day ${activeStep.timing}`}</span>
+                                <span>{activeStep.timing === 0 ? 'Immediately' : `Day ${activeStep.timing}`}</span>
                               </div>
                             </div>
                           </div>
@@ -3565,7 +3565,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               {activeStep.sequence === 1 ? (
                                 <Select
                                   value={(() => {
-                                    // Calculate relative timing from previous step
+                                    // For first email in sequence, show actual timing
+                                    if (activeStep.sequenceStep === 1) {
+                                      return activeStep.timing.toString()
+                                    }
+                                    // Calculate relative timing from previous step for subsequent emails
                                     const prevSteps = steps.filter(s => s.sequence === 1 && s.sequenceStep < activeStep.sequenceStep)
                                     const baseTime = prevSteps.length > 0 ? Math.max(...prevSteps.map(s => s.timing)) : 0
                                     const relativeTiming = activeStep.timing - baseTime
@@ -3574,19 +3578,39 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   })()}
                                   onValueChange={(value) => {
                                     const newTiming = parseInt(value)
-                                    const prevSteps = steps.filter(s => s.sequence === 1 && s.sequenceStep < activeStep.sequenceStep)
-                                    const baseTime = prevSteps.length > 0 ? Math.max(...prevSteps.map(s => s.timing)) : 0
-                                    updateStepTiming(activeStep.id, baseTime + newTiming)
+                                    if (activeStep.sequenceStep === 1) {
+                                      // For first email, set timing directly
+                                      updateStepTiming(activeStep.id, newTiming)
+                                    } else {
+                                      // For subsequent emails, add to previous email's timing
+                                      const prevSteps = steps.filter(s => s.sequence === 1 && s.sequenceStep < activeStep.sequenceStep)
+                                      const baseTime = prevSteps.length > 0 ? Math.max(...prevSteps.map(s => s.timing)) : 0
+                                      updateStepTiming(activeStep.id, baseTime + newTiming)
+                                    }
                                   }}
                                 >
                                   <SelectTrigger className="h-11 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="3">📅 3 days after</SelectItem>
-                                    <SelectItem value="4">📅 4 days after</SelectItem>
-                                    <SelectItem value="5">📅 5 days after</SelectItem>
-                                    <SelectItem value="7">📅 1 week after</SelectItem>
+                                    {activeStep.sequenceStep === 1 ? (
+                                      <>
+                                        <SelectItem value="0">🚀 Immediately</SelectItem>
+                                        <SelectItem value="1">📅 After 1 day</SelectItem>
+                                        <SelectItem value="2">📅 After 2 days</SelectItem>
+                                        <SelectItem value="3">📅 After 3 days</SelectItem>
+                                        <SelectItem value="7">📅 After 1 week</SelectItem>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <SelectItem value="1">📅 1 day after previous</SelectItem>
+                                        <SelectItem value="2">📅 2 days after previous</SelectItem>
+                                        <SelectItem value="3">📅 3 days after previous</SelectItem>
+                                        <SelectItem value="4">📅 4 days after previous</SelectItem>
+                                        <SelectItem value="5">📅 5 days after previous</SelectItem>
+                                        <SelectItem value="7">📅 1 week after previous</SelectItem>
+                                      </>
+                                    )}
                                   </SelectContent>
                                 </Select>
                               ) : (
@@ -4197,7 +4221,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium">{step.title}</h3>
                     <span className="text-sm text-gray-500">
-                      {step.timing === 0 ? 'Send immediately' : `Wait ${step.timing} days`}
+                      {step.timing === 0 ? 'Immediately' : `Wait ${step.timing} days`}
                     </span>
                   </div>
                   <div className="text-sm text-gray-600 mb-2">

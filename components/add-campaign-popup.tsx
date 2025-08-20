@@ -1874,7 +1874,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         emailSequences.forEach((email: any, index: number) => {
           steps.push({
             type: "timing",
-            text: email.timing_days === 0 ? "Send immediately" : `Wait for ${email.timing_days} day${email.timing_days > 1 ? 's' : ''}`,
+            text: email.timing_days === 0 ? "Immediately" : `Wait for ${email.timing_days} day${email.timing_days > 1 ? 's' : ''}`,
             color: "text-blue-600"
           })
           steps.push({
