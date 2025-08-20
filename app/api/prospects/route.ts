@@ -180,11 +180,71 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to create prospects' }, { status: 500 })
       }
 
+      // ✅ AUTO-TRIGGER SEQUENCE TIMELINE CREATION FOR BULK PROSPECTS IMPORT
+      let scheduledCount = 0
+      const prospectsWithCampaigns = prospects.filter(p => p.campaign_id)
+      
+      if (prospectsWithCampaigns.length > 0) {
+        console.log(`🎯 Checking campaigns for ${prospectsWithCampaigns.length} prospects with campaign assignments...`)
+        
+        // Group prospects by campaign to batch process
+        const campaignGroups = prospectsWithCampaigns.reduce((groups, prospect) => {
+          const campaignId = prospect.campaign_id
+          if (!groups[campaignId]) groups[campaignId] = []
+          groups[campaignId].push(prospect)
+          return groups
+        }, {})
+
+        for (const [campaignId, campaignProspects] of Object.entries(campaignGroups)) {
+          try {
+            // Check if campaign is active
+            const { data: campaign } = await supabase
+              .from('campaigns')
+              .select('id, name, status')
+              .eq('id', campaignId)
+              .single()
+
+            if (campaign && campaign.status === 'Active') {
+              console.log(`🎯 Auto-scheduling sequences for ${campaignProspects.length} prospects in active campaign: ${campaign.name}`)
+              
+              // Import the scheduler
+              const { scheduleContactEmails } = await import('@/lib/email-scheduler')
+              
+              // Schedule sequences for prospects in this campaign
+              const schedulingPromises = campaignProspects.map(async (prospect) => {
+                try {
+                  // Note: scheduleContactEmails expects integer contactId, but prospects have UUID
+                  // We'll need to create a contact record or modify the scheduler
+                  // For now, log that we would schedule
+                  console.log(`📋 Would schedule sequences for prospect ${prospect.email_address} (UUID: ${prospect.id})`)
+                  return true
+                } catch (error) {
+                  console.error(`❌ Error scheduling sequences for prospect ${prospect.email_address}:`, error)
+                  return false
+                }
+              })
+
+              const results = await Promise.all(schedulingPromises)
+              const campaignScheduled = results.filter(Boolean).length
+              scheduledCount += campaignScheduled
+              
+              console.log(`✅ Would schedule sequences for ${campaignScheduled}/${campaignProspects.length} prospects in campaign ${campaign.name}`)
+            } else {
+              console.log(`⏸️ Campaign ${campaignId} is not active (status: ${campaign?.status || 'not found'}), skipping auto-scheduling`)
+            }
+          } catch (error) {
+            console.error(`❌ Error processing campaign ${campaignId} for prospect scheduling:`, error)
+          }
+        }
+      }
+
       return NextResponse.json({ 
         prospects,
         imported: prospects.length,
         duplicates: existingEmails.length,
-        total: prospectsToInsert.length
+        total: prospectsToInsert.length,
+        scheduling_checked: prospectsWithCampaigns.length,
+        scheduling_note: "Prospects use UUID IDs - sequence scheduling needs adaptation for UUID support"
       })
     } else {
       // Single prospect creation (existing functionality)

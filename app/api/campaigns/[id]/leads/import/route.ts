@@ -184,12 +184,72 @@ export async function POST(
     console.log(`✅ Successfully imported ${leads.length} contacts to database`)
     console.log('📋 Sample imported contact:', leads[0])
 
+    // ✅ AUTO-TRIGGER SEQUENCE TIMELINE CREATION FOR BULK IMPORT
+    // Check if campaign is active and schedule sequences for all new contacts
+    let scheduledCount = 0
+    try {
+      const { data: campaign } = await supabase
+        .from('campaigns')
+        .select('id, name, status')
+        .eq('id', campaignId)
+        .single()
+
+      if (campaign && campaign.status === 'Active') {
+        console.log(`🎯 Auto-scheduling sequences for ${leads.length} imported contacts in active campaign: ${campaign.name}`)
+        
+        // Import the scheduler
+        const { scheduleContactEmails } = await import('@/lib/email-scheduler')
+        
+        // Schedule sequences for each imported contact (process in parallel batches)
+        const schedulingPromises = leads.map(async (contact) => {
+          try {
+            const result = await scheduleContactEmails({
+              contactId: contact.id,
+              campaignId: campaignId,
+              contactLocation: contact.location,
+              startDate: new Date()
+            })
+
+            if (result.success) {
+              // Update contact status to reflect scheduling
+              await supabase
+                .from('contacts')
+                .update({ 
+                  email_status: 'Scheduled',
+                  updated_at: new Date().toISOString() 
+                })
+                .eq('id', contact.id)
+              
+              console.log(`✅ Scheduled sequences for ${contact.email}`)
+              return true
+            } else {
+              console.error(`❌ Failed to schedule for ${contact.email}:`, result.message)
+              return false
+            }
+          } catch (error) {
+            console.error(`❌ Error scheduling sequences for ${contact.email}:`, error)
+            return false
+          }
+        })
+
+        const results = await Promise.all(schedulingPromises)
+        scheduledCount = results.filter(Boolean).length
+        
+        console.log(`✅ Successfully scheduled sequences for ${scheduledCount}/${leads.length} imported contacts`)
+      } else {
+        console.log(`⏸️ Campaign ${campaignId} is not active (status: ${campaign?.status || 'not found'}), skipping auto-scheduling`)
+      }
+    } catch (schedulingError) {
+      console.error('❌ Error auto-scheduling sequences for imported contacts:', schedulingError)
+    }
+
     return NextResponse.json({
       success: true,
-      message: `${leads.length} new leads imported to main contacts table`,
+      message: `${leads.length} new leads imported to main contacts table${scheduledCount > 0 ? `, ${scheduledCount} sequences scheduled` : ''}`,
       data: {
         imported_count: leads.length,
         existing_count: existingContacts.length,
+        scheduled_count: scheduledCount,
         leads,
         demo_mode: false
       }

@@ -392,7 +392,55 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to create contact' }, { status: 500 })
     }
 
-    return NextResponse.json({ contact })
+    // ✅ AUTO-TRIGGER SEQUENCE TIMELINE CREATION
+    // If contact has a campaign_id, check if campaign is active and schedule sequences
+    if (contact.campaign_id) {
+      try {
+        // Check if campaign is active
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('id, name, status')
+          .eq('id', contact.campaign_id)
+          .single()
+
+        if (campaign && campaign.status === 'Active') {
+          console.log(`🎯 Auto-scheduling sequences for new contact ${contact.email} in active campaign: ${campaign.name}`)
+          
+          // Import and call the sequence scheduler
+          const { scheduleContactEmails } = await import('@/lib/email-scheduler')
+          const schedulingResult = await scheduleContactEmails({
+            contactId: contact.id,
+            campaignId: contact.campaign_id,
+            contactLocation: contact.location,
+            startDate: new Date()
+          })
+
+          if (schedulingResult.success) {
+            console.log(`✅ Successfully scheduled ${schedulingResult.scheduledEmails?.length || 0} emails for contact ${contact.email}`)
+            // Update contact to reflect scheduling completion
+            await supabase
+              .from('contacts')
+              .update({ 
+                email_status: 'Scheduled',
+                updated_at: new Date().toISOString() 
+              })
+              .eq('id', contact.id)
+          } else {
+            console.error(`❌ Failed to schedule sequences for contact ${contact.email}:`, schedulingResult.message)
+          }
+        } else {
+          console.log(`⏸️ Campaign ${contact.campaign_id} is not active (status: ${campaign?.status || 'not found'}), skipping auto-scheduling`)
+        }
+      } catch (schedulingError) {
+        console.error('❌ Error auto-scheduling sequences for new contact:', schedulingError)
+        // Don't fail the contact creation if scheduling fails
+      }
+    }
+
+    return NextResponse.json({ 
+      contact,
+      scheduling_triggered: !!contact.campaign_id
+    })
   } catch (error) {
     console.error('Error in contacts POST:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
