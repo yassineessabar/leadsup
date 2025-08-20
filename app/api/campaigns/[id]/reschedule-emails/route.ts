@@ -49,72 +49,130 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ success: true, message: 'No contacts to reschedule' })
     }
 
-    // Reschedule emails for each contact
+    // Get actual campaign sequences from database (not hardcoded!)
+    const { data: campaignSequences, error: sequencesError } = await supabase
+      .from('campaign_sequences')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .order('step_number')
+
+    if (sequencesError || !campaignSequences || campaignSequences.length === 0) {
+      console.warn('No campaign sequences found, using default schedule')
+      return NextResponse.json({ 
+        success: false, 
+        error: 'No campaign sequences configured for this campaign',
+        details: 'Please configure your email sequence in Campaign Management > Sequence tab'
+      }, { status: 400 })
+    }
+
+    console.log(`📧 Using ${campaignSequences.length} actual campaign sequences (not hardcoded)`)
+
+    // Reschedule emails for each contact using ACTUAL sequence configuration
     const rescheduledEmails = []
     const now = new Date()
+    let totalRescheduled = 0
+    let contactsProcessed = 0
+    const dailyLimit = 35 // Default daily sending limit
 
     for (const contact of contacts) {
-      const currentStep = contact.sequence_step || 0
-      
-      // Skip if contact has completed the sequence or unsubscribed
-      if (contact.status === 'Completed' || contact.status === 'Replied' || 
-          contact.status === 'Unsubscribed' || contact.status === 'Bounced') {
-        continue
-      }
-
-      // Email sequence schedule (days from start)
-      const emailSchedule = [
-        { step: 1, days: 0, subject: "Initial Outreach" },
-        { step: 2, days: 3, subject: "Follow-up #1" },
-        { step: 3, days: 7, subject: "Follow-up #2" },
-        { step: 4, days: 14, subject: "Value Proposition" },
-        { step: 5, days: 21, subject: "Final Follow-up" },
-        { step: 6, days: 28, subject: "Closing Sequence" }
-      ]
-
-      // Calculate new schedule based on current progress
-      const contactStartDate = contact.created_at ? new Date(contact.created_at) : now
-      
-      for (const email of emailSchedule) {
-        // Only schedule future emails (current step + 1 onwards)
-        if (email.step <= currentStep) continue
-
-        let scheduledDate = new Date(now)
+      try {
+        contactsProcessed++
         
-        // If this is the next email, schedule it immediately or with minimal delay
-        if (email.step === currentStep + 1) {
-          // Schedule next email for immediate sending (or 5 minutes from now)
-          scheduledDate.setMinutes(scheduledDate.getMinutes() + 5)
-        } else {
-          // For future emails, calculate based on original schedule but adjusted from resume time
-          const originalDays = emailSchedule[email.step - 1].days
-          const previousStepDays = email.step > 1 ? emailSchedule[email.step - 2].days : 0
-          const daysBetweenSteps = originalDays - previousStepDays
+        // Skip if contact has completed the sequence or unsubscribed
+        if (contact.email_status === 'Completed' || contact.email_status === 'Replied' || 
+            contact.email_status === 'Unsubscribed' || contact.email_status === 'Bounced') {
+          console.log(`⏭️ Skipping ${contact.email}: Status is ${contact.email_status}`)
+          continue
+        }
+
+        // Get current progress for this contact (how many emails have been sent)
+        const { data: sentEmails } = await supabase
+          .from('automation_email_tracking')
+          .select('sequence_step, sent_at')
+          .eq('contact_id', contact.id.toString())
+          .eq('campaign_id', campaignId)
+          .eq('status', 'sent')
+          .order('sent_at', { ascending: false })
+
+        const currentStep = sentEmails?.length || 0
+        console.log(`👤 ${contact.email}: Currently at step ${currentStep}/${campaignSequences.length} (${sentEmails?.length || 0} emails sent)`)
+
+        if (currentStep >= campaignSequences.length) {
+          console.log(`✅ ${contact.email}: Sequence already complete`)
+          continue
+        }
+
+        // **SMART TIMELINE REFRESH**: Calculate new schedule starting from NOW + proper delays
+        let baseScheduleDate = new Date(now)
+        
+        // Move to next business day if we're on weekend
+        const dayOfWeek = baseScheduleDate.getDay()
+        if (dayOfWeek === 0) baseScheduleDate.setDate(baseScheduleDate.getDate() + 1) // Sunday -> Monday
+        if (dayOfWeek === 6) baseScheduleDate.setDate(baseScheduleDate.getDate() + 2) // Saturday -> Monday
+        
+        // Schedule remaining emails in the sequence
+        for (let i = currentStep; i < campaignSequences.length; i++) {
+          const sequence = campaignSequences[i]
+          const sequenceStep = i + 1
+          let scheduledDate = new Date(baseScheduleDate)
           
-          // Schedule future emails with proper intervals from the next email
-          const nextEmailDate = new Date(now)
-          nextEmailDate.setMinutes(nextEmailDate.getMinutes() + 5) // Base time for next email
-          nextEmailDate.setDate(nextEmailDate.getDate() + (daysBetweenSteps * (email.step - currentStep - 1)))
-          scheduledDate.setTime(nextEmailDate.getTime())
-        }
+          if (i === currentStep) {
+            // Next immediate email
+            if (sequence.timing_days === 0) {
+              // Immediate send - schedule for next available slot (respecting business hours)
+              const currentHour = now.getHours()
+              if (currentHour >= 8 && currentHour < 18) {
+                // During business hours - schedule for 1-2 hours from now
+                scheduledDate.setHours(scheduledDate.getHours() + 1 + Math.floor(Math.random() * 2))
+              } else {
+                // Outside business hours - schedule for tomorrow 9-11 AM
+                scheduledDate.setDate(scheduledDate.getDate() + 1)
+                scheduledDate.setHours(9 + Math.floor(Math.random() * 2), Math.floor(Math.random() * 60), 0, 0)
+              }
+            } else {
+              // Has delay - but since campaign was paused, recalculate from resume time
+              scheduledDate.setDate(baseScheduleDate.getDate() + Math.max(sequence.timing_days, 1))
+              scheduledDate.setHours(9 + Math.floor(Math.random() * 8), Math.floor(Math.random() * 60), 0, 0)
+            }
+          } else {
+            // Subsequent emails - use ACTUAL sequence delays from database
+            const prevSequence = campaignSequences[i - 1]
+            const delayFromPrevious = sequence.timing_days - (prevSequence?.timing_days || 0)
+            const actualDelay = Math.max(delayFromPrevious, 1) // Minimum 1 day between emails
+            
+            scheduledDate.setDate(baseScheduleDate.getDate() + sequence.timing_days)
+            scheduledDate.setHours(9 + Math.floor(Math.random() * 8), Math.floor(Math.random() * 60), 0, 0)
+          }
 
-        // Set to randomized business hours (9 AM - 5 PM) in contact's timezone
-        scheduledDate = randomizeWithinBusinessHours(scheduledDate, contact.timezone || 'UTC', email.step)
+          // Skip weekends
+          const emailDayOfWeek = scheduledDate.getDay()
+          if (emailDayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1)
+          if (emailDayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2)
+
+          // Randomize within business hours for more natural sending
+          scheduledDate = randomizeWithinBusinessHours(scheduledDate, contact.location || 'UTC', sequenceStep)
+
+          const scheduledEmail = {
+            campaign_id: campaignId,
+            contact_id: contact.id,
+            sender_account_id: 1, // Will be assigned properly by scheduler
+            sequence_step: sequenceStep,
+            email_subject: sequence.subject || `Email ${sequenceStep}`,
+            email_content: sequence.content || '',
+            scheduled_for: scheduledDate.toISOString(),
+            status: 'pending',
+            created_at: now.toISOString()
+          }
+
+          rescheduledEmails.push(scheduledEmail)
+          totalRescheduled++
+          
+          console.log(`📅 ${contact.email}: Step ${sequenceStep} rescheduled for ${scheduledDate.toLocaleDateString()} ${scheduledDate.toLocaleTimeString()} (${sequence.timing_days} days from start)`)
+        }
         
-        // Ensure email is not scheduled for weekend - move to next Monday if needed
-        scheduledDate = avoidWeekends(scheduledDate, email.step)
-
-        const scheduledEmail = {
-          campaign_id: campaignId,
-          contact_id: contact.id,
-          step: email.step,
-          subject: email.subject,
-          scheduled_date: scheduledDate.toISOString(),
-          status: 'pending',
-          created_at: now.toISOString()
-        }
-
-        rescheduledEmails.push(scheduledEmail)
+      } catch (contactError) {
+        console.error(`❌ Error processing ${contact.email}:`, contactError)
+        continue
       }
     }
 
