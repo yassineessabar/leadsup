@@ -202,20 +202,55 @@ export async function GET(request: NextRequest) {
       const now = new Date()
       const currentHour = now.getUTCHours()
       
-      if (contact.location && contact.location.includes('Tokyo')) {
-        // Tokyo is UTC+9, so business hours (9-17 JST) = UTC 0-8
-        const tokyoHour = (currentHour + 9) % 24
-        timezoneReason = `Tokyo timezone: ${tokyoHour}:00 JST (business hours: 9-17)`
-        if (tokyoHour < 9 || tokyoHour >= 17) {
+      // Define timezone mappings for major locations
+      const timezoneMap = {
+        'Tokyo': { offset: 9, name: 'JST' },
+        'Sydney': { offset: 11, name: 'AEDT' }, // Note: This is simplified, doesn't account for DST
+        'London': { offset: 0, name: 'GMT' }, // Note: This is simplified, doesn't account for BST
+        'New York': { offset: -5, name: 'EST' }, // Note: This is simplified, doesn't account for EDT
+        'Los Angeles': { offset: -8, name: 'PST' }, // Note: This is simplified, doesn't account for PDT
+        'Chicago': { offset: -6, name: 'CST' },
+        'Boston': { offset: -5, name: 'EST' },
+        'Seattle': { offset: -8, name: 'PST' },
+        'Miami': { offset: -5, name: 'EST' },
+        'Denver': { offset: -7, name: 'MST' },
+        'Phoenix': { offset: -7, name: 'MST' }
+      }
+      
+      // Find timezone info for contact's location
+      let timezoneInfo = null
+      if (contact.location) {
+        // Check for exact matches or partial matches
+        for (const [city, info] of Object.entries(timezoneMap)) {
+          if (contact.location.includes(city)) {
+            timezoneInfo = { city, ...info }
+            break
+          }
+        }
+      }
+      
+      if (timezoneInfo) {
+        // Calculate local time for the contact's location
+        const localHour = (currentHour + timezoneInfo.offset + 24) % 24
+        timezoneReason = `${timezoneInfo.city} timezone: ${localHour}:00 ${timezoneInfo.name} (business hours: 9-17)`
+        
+        if (localHour < 9 || localHour >= 17) {
           skipForTimezone = true
           console.log(`🌏 TIMEZONE BLOCK: ${contact.email_address} - ${timezoneReason} - OUTSIDE business hours`)
         } else {
           console.log(`🌏 TIMEZONE OK: ${contact.email_address} - ${timezoneReason} - INSIDE business hours`)
         }
       } else {
-        // For non-Tokyo contacts, assume they're in a "friendly" timezone
-        timezoneReason = `Location: ${contact.location || 'Unknown'} - assuming business hours OK`
-        console.log(`🌍 TIMEZONE DEFAULT: ${contact.email_address} - ${timezoneReason}`)
+        // For unknown locations, assume friendly timezone (US Eastern as default)
+        const defaultHour = (currentHour - 5 + 24) % 24
+        timezoneReason = `Location: ${contact.location || 'Unknown'} - defaulting to US Eastern: ${defaultHour}:00 EST`
+        
+        if (defaultHour < 9 || defaultHour >= 17) {
+          skipForTimezone = true
+          console.log(`🌏 TIMEZONE BLOCK: ${contact.email_address} - ${timezoneReason} - OUTSIDE business hours`)
+        } else {
+          console.log(`🌍 TIMEZONE DEFAULT: ${contact.email_address} - ${timezoneReason} - INSIDE business hours`)
+        }
       }
       
       // Skip weekends
