@@ -20,7 +20,7 @@ export const SenderTabContent = ({
   // Handle test button click
   const handleTestClick = (account) => {
     setTestModalSender(account)
-    setTestModalEmail('ecomm2405@gmail.com') // Pre-fill with test email
+    setTestModalEmail('essabar.yassine@gmail.com') // Pre-fill with your email
     setShowTestModal(true)
   }
 

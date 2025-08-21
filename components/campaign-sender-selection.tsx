@@ -573,7 +573,7 @@ export default function CampaignSenderSelection({
   // Handle test email button click
   const handleTestClick = (sender: Sender) => {
     setTestModalSender(sender)
-    setTestModalEmail('ecomm2405@gmail.com') // Pre-fill with test email
+    setTestModalEmail('essabar.yassine@gmail.com') // Pre-fill with your email
     setShowTestModal(true)
   }
 
