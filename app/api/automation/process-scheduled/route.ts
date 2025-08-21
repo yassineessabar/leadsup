@@ -187,6 +187,37 @@ export async function GET(request: NextRequest) {
         continue
       }
       
+      // Determine contact timezone first
+      let contactTimezone = contact.timezone
+      
+      // If no timezone but has location, try to derive timezone from location
+      if (!contactTimezone && contact.location) {
+        const locationTimezoneMap = {
+          'Sydney': 'Australia/Sydney',
+          'Melbourne': 'Australia/Melbourne', 
+          'Brisbane': 'Australia/Brisbane',
+          'Perth': 'Australia/Perth',
+          'Adelaide': 'Australia/Adelaide',
+          'Tokyo': 'Asia/Tokyo',
+          'London': 'Europe/London',
+          'New York': 'America/New_York',
+          'Los Angeles': 'America/Los_Angeles',
+          'Chicago': 'America/Chicago',
+          'Boston': 'America/New_York',
+          'Seattle': 'America/Los_Angeles',
+          'Miami': 'America/New_York',
+          'Denver': 'America/Denver',
+          'Phoenix': 'America/Phoenix'
+        }
+        
+        for (const [city, timezone] of Object.entries(locationTimezoneMap)) {
+          if (contact.location.includes(city)) {
+            contactTimezone = timezone
+            break
+          }
+        }
+      }
+      
       // Add business hours (9-17, avoid weekends) with timezone awareness
       const contactHash = String(contact.id).split('').reduce((hash, char) => {
         return ((hash << 5) - hash) + char.charCodeAt(0)
@@ -194,63 +225,79 @@ export async function GET(request: NextRequest) {
       const seedValue = (contactHash + (currentStep + 1)) % 1000
       const hour = 9 + (seedValue % 8) // 9-16
       const minute = (seedValue * 7) % 60
-      scheduledDate.setHours(hour, minute, 0, 0)
+      
+      // Set the time in the contact's timezone if available
+      if (contactTimezone) {
+        try {
+          // Create a date string in the contact's timezone format
+          const dateStr = scheduledDate.toLocaleDateString('en-CA') // YYYY-MM-DD format
+          const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`
+          
+          // Create date in contact's timezone
+          const localDateTime = new Date(`${dateStr}T${timeStr}`)
+          
+          // Convert to UTC by finding the equivalent UTC time
+          const testDate = new Date()
+          testDate.setFullYear(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate())
+          testDate.setHours(hour, minute, 0, 0)
+          
+          // Get the local time string in contact's timezone
+          const localTimeString = testDate.toLocaleString('sv-SE', {timeZone: contactTimezone})
+          const localTime = new Date(localTimeString)
+          
+          // Calculate the timezone offset and adjust
+          const offsetMs = testDate.getTime() - localTime.getTime()
+          scheduledDate = new Date(testDate.getTime() + offsetMs)
+          
+          console.log(`🕐 Timezone-aware scheduling: ${hour}:${minute.toString().padStart(2, '0')} ${contactTimezone} = ${scheduledDate.toISOString()}`)
+        } catch (error) {
+          // Fallback to UTC if timezone conversion fails
+          scheduledDate.setHours(hour, minute, 0, 0)
+          console.log(`⚠️ Timezone conversion failed for ${contactTimezone}, using UTC: ${scheduledDate.toISOString()}`)
+        }
+      } else {
+        // No timezone info, use UTC
+        scheduledDate.setHours(hour, minute, 0, 0)
+        console.log(`🕐 UTC scheduling: ${hour}:${minute.toString().padStart(2, '0')} UTC = ${scheduledDate.toISOString()}`)
+      }
       
       // Check if contact is in a timezone where it's currently outside business hours
       let skipForTimezone = false
       let timezoneReason = ''
       const now = new Date()
-      const currentHour = now.getUTCHours()
       
-      // Define timezone mappings for major locations (using August offsets - daylight saving time)
-      const timezoneMap = {
-        'Tokyo': { offset: 9, name: 'JST' },
-        'Sydney': { offset: 10, name: 'AEST' }, // August is winter in Sydney (AEST, not AEDT)
-        'London': { offset: 1, name: 'BST' }, // British Summer Time in August
-        'New York': { offset: -4, name: 'EDT' }, // Eastern Daylight Time in August
-        'Los Angeles': { offset: -7, name: 'PDT' }, // Pacific Daylight Time in August
-        'Chicago': { offset: -5, name: 'CDT' }, // Central Daylight Time in August
-        'Boston': { offset: -4, name: 'EDT' }, // Eastern Daylight Time in August
-        'Seattle': { offset: -7, name: 'PDT' }, // Pacific Daylight Time in August
-        'Miami': { offset: -4, name: 'EDT' }, // Eastern Daylight Time in August
-        'Denver': { offset: -6, name: 'MDT' }, // Mountain Daylight Time in August
-        'Phoenix': { offset: -7, name: 'MST' } // Arizona doesn't observe DST
-      }
-      
-      // Find timezone info for contact's location
-      let timezoneInfo = null
-      if (contact.location) {
-        // Check for exact matches or partial matches
-        for (const [city, info] of Object.entries(timezoneMap)) {
-          if (contact.location.includes(city)) {
-            timezoneInfo = { city, ...info }
-            break
+      if (contactTimezone) {
+        try {
+          // Get current time in contact's timezone
+          const contactTime = new Date(now.toLocaleString("en-US", {timeZone: contactTimezone}))
+          const contactHour = contactTime.getHours()
+          
+          timezoneReason = `${contactTimezone}: ${contactHour}:${contactTime.getMinutes().toString().padStart(2, '0')} (business hours: 8-18)`
+          
+          if (contactHour < 8 || contactHour >= 18) {
+            skipForTimezone = true
+            console.log(`🌏 TIMEZONE BLOCK: ${contact.email_address} - ${timezoneReason} - OUTSIDE business hours`)
+          } else {
+            console.log(`🌏 TIMEZONE OK: ${contact.email_address} - ${timezoneReason} - INSIDE business hours`)
+          }
+        } catch (error) {
+          // Invalid timezone, fall back to UTC
+          console.log(`⚠️ Invalid timezone ${contactTimezone} for ${contact.email_address}, using UTC`)
+          timezoneReason = `Invalid timezone ${contactTimezone}, using UTC: ${now.getUTCHours()}:${now.getUTCMinutes().toString().padStart(2, '0')}`
+          
+          const utcHour = now.getUTCHours()
+          if (utcHour < 8 || utcHour >= 18) {
+            skipForTimezone = true
+            console.log(`🌏 TIMEZONE BLOCK: ${contact.email_address} - ${timezoneReason} - OUTSIDE business hours`)
+          } else {
+            console.log(`🌏 TIMEZONE OK: ${contact.email_address} - ${timezoneReason} - INSIDE business hours`)
           }
         }
-      }
-      
-      if (timezoneInfo) {
-        // Calculate local time for the contact's location
-        const localHour = (currentHour + timezoneInfo.offset + 24) % 24
-        timezoneReason = `${timezoneInfo.city} timezone: ${localHour}:00 ${timezoneInfo.name} (business hours: 8-18)`
-        
-        if (localHour < 8 || localHour >= 18) {
-          skipForTimezone = true
-          console.log(`🌏 TIMEZONE BLOCK: ${contact.email_address} - ${timezoneReason} - OUTSIDE business hours`)
-        } else {
-          console.log(`🌏 TIMEZONE OK: ${contact.email_address} - ${timezoneReason} - INSIDE business hours`)
-        }
       } else {
-        // For unknown locations, assume friendly timezone (US Eastern Daylight Time as default)
-        const defaultHour = (currentHour - 4 + 24) % 24 // EDT = UTC-4 in August
-        timezoneReason = `Location: ${contact.location || 'Unknown'} - defaulting to US Eastern: ${defaultHour}:00 EDT`
-        
-        if (defaultHour < 8 || defaultHour >= 18) {
-          skipForTimezone = true
-          console.log(`🌏 TIMEZONE BLOCK: ${contact.email_address} - ${timezoneReason} - OUTSIDE business hours`)
-        } else {
-          console.log(`🌍 TIMEZONE DEFAULT: ${contact.email_address} - ${timezoneReason} - INSIDE business hours`)
-        }
+        // No timezone info, use UTC with permissive hours (assume always in business hours)
+        timezoneReason = `No timezone info (location: ${contact.location || 'Unknown'}) - using UTC: ${now.getUTCHours()}:${now.getUTCMinutes().toString().padStart(2, '0')} - ALLOWING`
+        skipForTimezone = false // Be permissive when no timezone info
+        console.log(`🌍 TIMEZONE DEFAULT: ${contact.email_address} - ${timezoneReason}`)
       }
       
       // Skip weekends
@@ -265,8 +312,25 @@ export async function GET(request: NextRequest) {
       emailDate.setHours(0, 0, 0, 0) // Start of email date
       const emailDateIsDueOrPast = emailDate <= today // Email is due if scheduled date is today or in the past
       
-      // Check if it's time to send this email
-      const shouldProcess = !skipForTimezone && scheduledDate <= now && emailDateIsDueOrPast
+      // Check if it's time to send this email - timezone aware
+      let shouldProcess = false
+      
+      if (!skipForTimezone && emailDateIsDueOrPast) {
+        if (contactTimezone) {
+          // Convert scheduled time to contact's timezone for comparison
+          try {
+            const contactNow = new Date(now.toLocaleString("en-US", {timeZone: contactTimezone}))
+            const contactScheduledTime = new Date(scheduledDate.toLocaleString("en-US", {timeZone: contactTimezone}))
+            shouldProcess = contactScheduledTime <= contactNow
+          } catch (error) {
+            // Fallback to UTC comparison if timezone conversion fails
+            shouldProcess = scheduledDate <= now
+          }
+        } else {
+          // No timezone info, use standard UTC comparison
+          shouldProcess = scheduledDate <= now
+        }
+      }
       
       console.log(`\n📋 PROCESSING DECISION FOR: ${contact.email_address}`)
       console.log(`├─ Current Step: ${currentStep + 1}/${campaignSequences.length}`)
@@ -274,7 +338,24 @@ export async function GET(request: NextRequest) {
       console.log(`├─ Timing Days: ${nextSequenceTiming} days`)
       console.log(`├─ Scheduled Date: ${scheduledDate.toISOString()}`)
       console.log(`├─ Current Time: ${now.toISOString()}`)
-      console.log(`├─ Is Due: ${scheduledDate <= now ? '✅ YES' : '❌ NO'} (${Math.round((now - scheduledDate) / (1000 * 60))} minutes ${scheduledDate <= now ? 'overdue' : 'remaining'})`)
+      
+      // Show timezone-aware time comparison
+      if (contactTimezone) {
+        try {
+          const contactNow = new Date(now.toLocaleString("en-US", {timeZone: contactTimezone}))
+          const contactScheduledTime = new Date(scheduledDate.toLocaleString("en-US", {timeZone: contactTimezone}))
+          console.log(`├─ Contact Timezone: ${contactTimezone}`)
+          console.log(`├─ Contact Current Time: ${contactNow.toLocaleString()}`)
+          console.log(`├─ Contact Scheduled Time: ${contactScheduledTime.toLocaleString()}`)
+          console.log(`├─ Is Due (Timezone-aware): ${contactScheduledTime <= contactNow ? '✅ YES' : '❌ NO'} (${Math.round((contactNow - contactScheduledTime) / (1000 * 60))} minutes ${contactScheduledTime <= contactNow ? 'overdue' : 'remaining'})`)
+        } catch (error) {
+          console.log(`├─ Timezone Conversion Error: ${error.message}`)
+          console.log(`├─ Is Due (UTC fallback): ${scheduledDate <= now ? '✅ YES' : '❌ NO'} (${Math.round((now - scheduledDate) / (1000 * 60))} minutes ${scheduledDate <= now ? 'overdue' : 'remaining'})`)
+        }
+      } else {
+        console.log(`├─ Is Due (UTC): ${scheduledDate <= now ? '✅ YES' : '❌ NO'} (${Math.round((now - scheduledDate) / (1000 * 60))} minutes ${scheduledDate <= now ? 'overdue' : 'remaining'})`)
+      }
+      
       console.log(`├─ Email Date Check: ${emailDateIsDueOrPast ? '✅ DUE OR PAST' : '❌ NOT DUE YET'} (${emailDate.toDateString()} vs ${today.toDateString()})`)
       console.log(`├─ Timezone Check: ${skipForTimezone ? '❌ BLOCKED' : '✅ OK'} (${timezoneReason})`)
       console.log(`├─ Weekend Check: ${dayOfWeek === 0 || dayOfWeek === 6 ? '⚠️ WEEKEND' : '✅ WEEKDAY'}`)
