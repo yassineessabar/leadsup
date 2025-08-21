@@ -521,7 +521,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           console.log('Using fallback sequence progress logic')
         }
 
+        console.log(`🔍 PROCESSING ${contactsResult.contacts.length} CONTACTS`)
         const mappedContacts = contactsResult.contacts.map((contact: any) => {
+          console.log(`📝 Processing contact: ${contact.email || contact.email_address} (Step: ${contact.sequence_step || 0})`)
+          
+          // CRITICAL: Log any contact that might be showing Step 2/6
+          if ((contact.sequence_step || 0) > 0) {
+            console.log(`🚨🚨🚨 FOUND NON-ZERO STEP CONTACT: ${contact.email} at Step ${contact.sequence_step}`)
+          }
           try {
             // Get real sequence status from our progression tracking
             const contactEmail = contact.email_address || contact.email
