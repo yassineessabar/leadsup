@@ -331,16 +331,13 @@ export async function GET(request: NextRequest) {
       })
     }
     
-    // Get all contacts for this campaign (exclude completed statuses)
+    // Get all contacts for this campaign - CHECK BOTH TABLES
     console.log('\n🔍 STEP 3: Fetching contacts for campaign...')
-    console.log(`   📊 Query: SELECT * FROM contacts WHERE`)
-    console.log(`      campaign_id = '${campaignId}'`)
-    console.log(`      AND email_status != 'Completed'`)
-    console.log(`      AND email_status != 'Replied'`)
-    console.log(`      AND email_status != 'Unsubscribed'`)
-    console.log(`      AND email_status != 'Bounced'`)
+    console.log('   📊 Checking BOTH contacts AND prospects tables...')
     
-    const { data: contacts, error: contactsError } = await supabase
+    // First check contacts table
+    console.log(`   📊 Query 1: SELECT * FROM contacts WHERE campaign_id = '${campaignId}'`)
+    const { data: contactsData, error: contactsError } = await supabase
       .from('contacts')
       .select('*')
       .eq('campaign_id', campaignId)
@@ -348,6 +345,35 @@ export async function GET(request: NextRequest) {
       .neq('email_status', 'Replied') 
       .neq('email_status', 'Unsubscribed')
       .neq('email_status', 'Bounced')
+    
+    console.log(`   ✅ Contacts table: ${contactsData?.length || 0} records found`)
+    
+    // Also check prospects table
+    console.log(`   📊 Query 2: SELECT * FROM prospects WHERE campaign_id = '${campaignId}'`)
+    const { data: prospectsData, error: prospectsError } = await supabase
+      .from('prospects')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .neq('email_status', 'Completed')
+      .neq('email_status', 'Replied')
+      .neq('email_status', 'Unsubscribed')
+      .neq('email_status', 'Bounced')
+    
+    console.log(`   ✅ Prospects table: ${prospectsData?.length || 0} records found`)
+    
+    // Combine both tables - prospects have email_address, contacts have email
+    const contacts = [
+      ...(contactsData || []),
+      ...(prospectsData || []).map(p => ({
+        ...p,
+        email: p.email_address || p.email, // Normalize email field
+        email_address: p.email_address || p.email
+      }))
+    ]
+    
+    console.log(`   📊 TOTAL from both tables: ${contacts.length} records`)
+    
+    const contactsError = contactsError || prospectsError
     
     if (contactsError) {
       console.error('❌ Error fetching contacts:', contactsError)
