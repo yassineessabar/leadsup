@@ -95,6 +95,7 @@ interface Contact {
   sequence_step?: number
   email_subject?: string
   nextEmailIn?: string
+  isDue?: boolean
   created_at?: string
 }
 
@@ -520,12 +521,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         }
 
         const mappedContacts = contactsResult.contacts.map((contact: any) => {
-          // Get real sequence status from our progression tracking
-          console.log(`🔍 DEBUG: Contact object:`, contact)
-          const contactEmail = contact.email_address || contact.email
-          const sequenceStatus = sequenceStatusMap.get(contactEmail)
-          console.log(`🔍 DEBUG: Contact ${contactEmail} sequence status:`, sequenceStatus)
-          console.log(`🔍 DEBUG: sequences_sent: ${sequenceStatus?.sequences_sent}, current_step: ${sequenceStatus?.current_step}, sequences_scheduled: ${sequenceStatus?.sequences_scheduled}`)
+          try {
+            // Get real sequence status from our progression tracking
+            const contactEmail = contact.email_address || contact.email
+            const sequenceStatus = sequenceStatusMap.get(contactEmail)
           
           // Show actual campaign status for non-active campaigns
           let status: Contact["status"]
@@ -549,8 +548,6 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             status = (sequenceProgressMap[contact.id] || "Pending") as Contact["status"]
           }
           
-          console.log(`🔍 DEBUG: Final status for ${contactEmail}:`, status)
-          
           const createdAt = new Date(contact.created_at)
           
           // Generate timezone based on location using the new timezone utils
@@ -559,14 +556,76 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           // Calculate sequence step and email template info using real data
           // Use the current_step from API which represents the completed step number
           let sequence_step = sequenceStatus?.current_step || 0
-          console.log(`🔍 DEBUG: Final sequence_step for ${contactEmail}:`, sequence_step)
           let email_subject = ''
           let nextEmailIn = ''
+          let isDue = false
           
           if (sequenceStatus && sequenceStatus.sequences_sent === 0) {
             sequence_step = 0
             email_subject = "Initial Outreach"
-            nextEmailIn = "Ready to send"
+            
+            // Check if immediate email is due (step 0 with 0 timing)
+            const nextEmailData = calculateNextEmailDate(contact)
+            
+            if (nextEmailData && nextEmailData.date) {
+              // Simple UTC comparison: current time >= scheduled time
+              const now = new Date()
+              const scheduledDate = nextEmailData.date
+              
+              // Check business hours
+              const businessHoursStatus = getBusinessHoursStatus(timezone)
+              
+              let isTimeReached = false
+              
+              // For immediate emails, we need special handling due to timezone issues
+              if (nextEmailData.relative === 'Immediate') {
+                // Recalculate the intended hour/minute using the same logic as calculateNextEmailDate
+                const contactIdString = String(contact.id || '')
+                const contactHash = contactIdString.split('').reduce((hash, char) => {
+                  return ((hash << 5) - hash) + char.charCodeAt(0)
+                }, 0)
+                const seedValue = (contactHash + 1) % 1000
+                const intendedHour = 9 + (seedValue % 8) // 9 AM - 5 PM (intended for contact's timezone)
+                const intendedMinute = (seedValue * 7) % 60
+                
+                // Get current time in contact's timezone
+                const currentHourInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
+                  timeZone: timezone,
+                  hour: 'numeric',
+                  hour12: false
+                }).format(now))
+                const currentMinuteInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
+                  timeZone: timezone,
+                  minute: 'numeric'
+                }).format(now))
+                
+                // Compare the INTENDED time with current time (both in contact's timezone)
+                const currentTimeInMinutes = currentHourInContactTz * 60 + currentMinuteInContactTz
+                const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
+                
+                // Email is due if the intended time has passed AND we're in business hours
+                isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
+                isDue = isTimeReached && businessHoursStatus.isBusinessHours
+              } else {
+                // For non-immediate emails, use normal UTC comparison
+                isTimeReached = now >= scheduledDate
+                isDue = isTimeReached && businessHoursStatus.isBusinessHours
+              }
+              
+            }
+            
+            nextEmailIn = isDue ? "Due next" : "Ready to send"
+            
+            // Debug log for due status decision
+            if (contact.email === 'lukas.schmidt.berlin@example.com') {
+              console.log(`🚨 FINAL STATUS for ${contact.email}:`, {
+                isDue,
+                nextEmailIn,
+                timezone,
+                scheduledTime: nextEmailData?.date?.toLocaleString("en-US", {timeZone: timezone}),
+                currentTime: new Date().toLocaleString("en-US", {timeZone: timezone})
+              })
+            }
           } else if (sequenceStatus) {
             // Handle the case where there are sent emails
             sequence_step = sequenceStatus.current_step
@@ -595,7 +654,27 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 if (nextSequence) {
                   email_subject = nextSequence.title || `Email ${nextStep}`
                 }
-                nextEmailIn = "Ready to send"
+                
+                // Check if next email is due based on timing
+                const nextEmailData = calculateNextEmailDate(contact)
+                if (nextEmailData && nextEmailData.date) {
+                  const now = new Date()
+                  // Check if it's past scheduled time in contact's timezone
+                  try {
+                    const contactTime = new Date(now.toLocaleString("en-US", {timeZone: timezone}))
+                    const scheduledTime = new Date(nextEmailData.date.toLocaleString("en-US", {timeZone: timezone}))
+                    const isTimeReached = scheduledTime <= contactTime
+                    
+                    // Also check business hours using timezone utils
+                    const businessHoursStatus = getBusinessHoursStatus(timezone)
+                    isDue = isTimeReached && businessHoursStatus.isBusinessHours
+                  } catch (error) {
+                    // Fallback to UTC comparison
+                    isDue = nextEmailData.date <= now
+                  }
+                }
+                
+                nextEmailIn = isDue ? "Due next" : "Ready to send"
               }
             } else {
               // Fallback to mock subjects
@@ -612,7 +691,24 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               // Calculate next email timing using consistent logic
               const nextEmailData = calculateNextEmailDate(contact)
               if (nextEmailData) {
-                nextEmailIn = nextEmailData.relative
+                // Check if next email is due based on timing
+                if (nextEmailData.date) {
+                  const now = new Date()
+                  // Check if it's past scheduled time in contact's timezone
+                  try {
+                    const contactTime = new Date(now.toLocaleString("en-US", {timeZone: timezone}))
+                    const scheduledTime = new Date(nextEmailData.date.toLocaleString("en-US", {timeZone: timezone}))
+                    const isTimeReached = scheduledTime <= contactTime
+                    
+                    // Also check business hours using timezone utils
+                    const businessHoursStatus = getBusinessHoursStatus(timezone)
+                    isDue = isTimeReached && businessHoursStatus.isBusinessHours
+                  } catch (error) {
+                    // Fallback to UTC comparison
+                    isDue = nextEmailData.date <= now
+                  }
+                }
+                nextEmailIn = isDue ? "Due next" : nextEmailData.relative
               } else {
                 nextEmailIn = "Sequence complete"
               }
@@ -628,7 +724,27 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             // No sequence status data available - fallback to old logic
             sequence_step = contact.sequence_step || 0
             email_subject = "Initial Outreach"
-            nextEmailIn = "Ready to send"
+            
+            // Check if fallback email is due
+            const nextEmailData = calculateNextEmailDate(contact)
+            if (nextEmailData && nextEmailData.date) {
+              const now = new Date()
+              // Check if it's past scheduled time in contact's timezone
+              try {
+                const contactTime = new Date(now.toLocaleString("en-US", {timeZone: timezone}))
+                const scheduledTime = new Date(nextEmailData.date.toLocaleString("en-US", {timeZone: timezone}))
+                const isTimeReached = scheduledTime <= contactTime
+                
+                // Check business hours using timezone utils
+                const businessHoursStatus = getBusinessHoursStatus(timezone)
+                isDue = isTimeReached && businessHoursStatus.isBusinessHours
+              } catch (error) {
+                // Fallback to UTC comparison
+                isDue = nextEmailData.date <= now
+              }
+            }
+            
+            nextEmailIn = isDue ? "Due next" : "Ready to send"
           }
           
           // Calculate next scheduled time for the old format (fallback)
@@ -684,7 +800,34 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             sequence_step,
             email_subject,
             nextEmailIn,
+            isDue,
             created_at: contact.created_at
+          }
+          } catch (error) {
+            console.error(`❌ ERROR in contact mapping for ${contact.email || contact.email_address}:`, error)
+            console.error(`❌ Contact data:`, contact)
+            // Return fallback contact object
+            return {
+              id: contact.id,
+              first_name: contact.first_name || '',
+              last_name: contact.last_name || '',
+              email: contact.email || contact.email_address || '',
+              title: contact.title || '',
+              company: contact.company || '',
+              location: contact.location || '',
+              industry: contact.industry || '',
+              linkedin: contact.linkedin || '',
+              image_url: contact.image_url || undefined,
+              status: "Pending" as Contact["status"],
+              campaign_name: campaign.name,
+              timezone: 'UTC',
+              next_scheduled: '',
+              sequence_step: 0,
+              email_subject: '',
+              nextEmailIn: 'ERROR',
+              isDue: false,
+              created_at: contact.created_at
+            }
           }
         })
         
@@ -924,9 +1067,86 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       return { relative: 'Paused', date: null }
     }
     
-    // If pending (step 0), next email is immediate
+    // If pending (step 0), calculate based on first sequence timing
     if (currentStep === 0) {
-      return { relative: 'Immediate', date: new Date() }
+      // Use actual campaign sequences if available
+      if (campaignSequences.length > 0) {
+        const firstSequence = campaignSequences[0]
+        const timingDays = firstSequence?.timing_days !== undefined ? firstSequence.timing_days : (firstSequence?.timing !== undefined ? firstSequence.timing : 0)
+        
+        // Calculate actual scheduled date using the same logic as generateContactSchedule
+        const contactDate = contact.created_at ? new Date(contact.created_at) : new Date()
+        let scheduledDate = new Date(contactDate)
+        
+        // If timing is 0 (immediate), use EXACT same logic as modal
+        if (timingDays === 0) {
+          // Use same contactHash calculation as modal  
+          const contactIdString = String(contact.id || '')
+          const contactHash = contactIdString.split('').reduce((hash, char) => {
+            return ((hash << 5) - hash) + char.charCodeAt(0)
+          }, 0)
+          
+          // Apply same immediate email logic as modal (lines 1310-1343)
+          const now = new Date()
+          const contactTimezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
+          const businessHoursStatus = getBusinessHoursStatus(contactTimezone)
+          
+          if (businessHoursStatus.isBusinessHours) {
+            // Schedule for a consistent time today 
+            const seedValue = (contactHash + 1) % 1000 // Use step 1 like modal
+            const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM in contact's timezone
+            const consistentMinute = (seedValue * 7) % 60
+            
+            // Set the time (this will be in server timezone, but the comparison logic handles it)
+            scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+          } else {
+            // If outside business hours, schedule for next business day at 9 AM
+            scheduledDate = new Date(now)
+            scheduledDate.setHours(9, 0, 0, 0)
+            
+            // If it's weekend or after hours today, move to next business day
+            const dayOfWeek = scheduledDate.getDay()
+            if (dayOfWeek === 0 || dayOfWeek === 6) { // Weekend
+              scheduledDate.setDate(scheduledDate.getDate() + (dayOfWeek === 0 ? 1 : 2)) // Monday
+            } else if (now.getHours() >= 17) { // After business hours
+              scheduledDate.setDate(scheduledDate.getDate() + 1)
+              const nextDay = scheduledDate.getDay()
+              if (nextDay === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Skip Sunday
+              if (nextDay === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Skip Saturday
+            }
+          }
+          
+          // Avoid weekends
+          const dayOfWeek = scheduledDate.getDay()
+          if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Sunday -> Monday
+          if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Saturday -> Monday
+        } else {
+          // For non-immediate emails, use the original logic
+          scheduledDate.setDate(contactDate.getDate() + timingDays)
+          
+          // Add consistent business hours
+          const contactIdString = String(contact.id || '')
+          const contactHash = contactIdString.split('').reduce((hash, char) => {
+            return ((hash << 5) - hash) + char.charCodeAt(0)
+          }, 0)
+          const seedValue = (contactHash + 1) % 1000
+          const consistentHour = 9 + (seedValue % 8)
+          const consistentMinute = (seedValue * 7) % 60
+          scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+          
+          // Avoid weekends
+          const dayOfWeek = scheduledDate.getDay()
+          if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1)
+          if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2)
+        }
+        
+        return {
+          relative: timingDays === 0 ? 'Immediate' : `${timingDays} day${timingDays === 1 ? '' : 's'}`,
+          date: scheduledDate
+        }
+      } else {
+        return { relative: 'Immediate', date: new Date() }
+      }
     }
     
     // Use actual campaign sequences if available
@@ -937,7 +1157,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       }
       
       const nextSequence = campaignSequences[nextStepIndex]
-      const timingDays = nextSequence?.timing !== undefined ? nextSequence.timing : (nextStepIndex === 0 ? 0 : 1)
+      const timingDays = nextSequence?.timing_days !== undefined ? nextSequence.timing_days : (nextSequence?.timing !== undefined ? nextSequence.timing : (nextStepIndex === 0 ? 0 : 1))
       
       // Calculate actual scheduled date like in generateContactSchedule
       const contactDate = contact.created_at ? new Date(contact.created_at) : new Date()
@@ -1118,20 +1338,58 @@ Sequence Info:
     const contactDate = contact.created_at ? new Date(contact.created_at) : new Date()
     
     return emailSchedule.map(email => {
-      const scheduledDate = new Date(contactDate)
-      scheduledDate.setDate(contactDate.getDate() + email.days)
+      let scheduledDate = new Date(contactDate)
       
-      // Add consistent business hours based on contact and step (not random)
-      // Use contact ID and step to generate consistent but varied times
-      const seedValue = (contactHash + email.step) % 1000
-      const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM (consistent for this contact+step)
-      const consistentMinute = (seedValue * 7) % 60 // Consistent minute based on seed
-      scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
-      
-      // Avoid weekends
-      const dayOfWeek = scheduledDate.getDay()
-      if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Sunday -> Monday
-      if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Saturday -> Monday
+      // Apply same immediate email logic as main table
+      if (email.days === 0) {
+        // Immediate email - use business hours logic
+        const now = new Date()
+        const contactTimezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
+        const businessHoursStatus = getBusinessHoursStatus(contactTimezone)
+        
+        if (businessHoursStatus.isBusinessHours) {
+          // If within business hours, schedule for a consistent time today (not current time)
+          const seedValue = (contactHash + email.step) % 1000
+          const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM
+          const consistentMinute = (seedValue * 7) % 60
+          scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+        } else {
+          // If outside business hours, schedule for next business day at 9 AM
+          scheduledDate = new Date(now)
+          scheduledDate.setHours(9, 0, 0, 0)
+          
+          // If it's weekend or after hours today, move to next business day
+          const dayOfWeek = scheduledDate.getDay()
+          if (dayOfWeek === 0 || dayOfWeek === 6) { // Weekend
+            scheduledDate.setDate(scheduledDate.getDate() + (dayOfWeek === 0 ? 1 : 2)) // Monday
+          } else if (now.getHours() >= 17) { // After business hours
+            scheduledDate.setDate(scheduledDate.getDate() + 1)
+            const nextDay = scheduledDate.getDay()
+            if (nextDay === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Skip Sunday
+            if (nextDay === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Skip Saturday
+          }
+        }
+        
+        // Avoid weekends
+        const dayOfWeek = scheduledDate.getDay()
+        if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Sunday -> Monday
+        if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Saturday -> Monday
+      } else {
+        // Non-immediate emails - use original logic
+        scheduledDate.setDate(contactDate.getDate() + email.days)
+        
+        // Add consistent business hours based on contact and step (not random)
+        // Use contact ID and step to generate consistent but varied times
+        const seedValue = (contactHash + email.step) % 1000
+        const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM (consistent for this contact+step)
+        const consistentMinute = (seedValue * 7) % 60 // Consistent minute based on seed
+        scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+        
+        // Avoid weekends
+        const dayOfWeek = scheduledDate.getDay()
+        if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Sunday -> Monday
+        if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Saturday -> Monday
+      }
       
       // Determine status based on real sequence progression data
       let status: 'sent' | 'pending' | 'skipped' | 'upcoming'
@@ -1167,6 +1425,31 @@ Sequence Info:
           status = 'skipped'
         } else {
           status = 'upcoming'
+        }
+      }
+
+      // Check if upcoming emails are actually due based on time and business hours
+      if (status === 'upcoming' && email.step === 1) {
+        // For the first step, check if it's actually due now
+        const now = new Date()
+        try {
+          const contactTimezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'UTC'
+          const contactTime = new Date(now.toLocaleString("en-US", {timeZone: contactTimezone}))
+          const scheduledTime = new Date(scheduledDate.toLocaleString("en-US", {timeZone: contactTimezone}))
+          const isTimeReached = scheduledTime <= contactTime
+          
+          // Check business hours using timezone utils
+          const businessHoursStatus = getBusinessHoursStatus(contactTimezone)
+          const isDue = isTimeReached && businessHoursStatus.isBusinessHours
+          
+          if (isDue) {
+            status = 'pending' // Change to pending to show "Up Next" instead of "Upcoming"
+          }
+        } catch (error) {
+          // Fallback to UTC comparison
+          if (scheduledDate <= now) {
+            status = 'pending'
+          }
         }
       }
 
@@ -2142,15 +2425,28 @@ Sequence Info:
                                     </span>
                                   </div>
                                   {contact.nextEmailIn && contact.nextEmailIn !== "Sequence complete" && (
-                                    <div className="text-xs text-blue-600">
+                                    <div className={`text-xs ${
+                                      contact.isDue && contact.nextEmailIn === "Due next" 
+                                        ? "text-blue-700 font-medium" 
+                                        : "text-blue-600"
+                                    }`}>
                                       Next: {contact.nextEmailIn}
                                     </div>
                                   )}
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-1">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
-                                  <span className="text-xs text-yellow-600">Pending Start</span>
+                                  {contact.isDue && contact.nextEmailIn === "Due next" ? (
+                                    <>
+                                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                      <span className="text-xs text-blue-600 font-medium">Due next</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
+                                      <span className="text-xs text-yellow-600">Pending Start</span>
+                                    </>
+                                  )}
                                 </div>
                               )}
                               

@@ -38,7 +38,7 @@ interface CampaignDashboardProps {
   initialTab?: string
 }
 
-export default function CampaignDashboard({ campaign, onBack, onDelete, onStatusUpdate, onNameUpdate, initialTab = "contacts" }: CampaignDashboardProps) {
+export default function CampaignDashboard({ campaign, onBack, onDelete, onStatusUpdate, onNameUpdate, initialTab = "target" }: CampaignDashboardProps) {
   const [activeTab, setActiveTab] = useState(initialTab)
   
   // Campaign name editing state
@@ -2219,7 +2219,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           description: "Add at least one contact to your campaign.",
           action: () => {
             setShowLaunchValidationModal(false)
-            handleTabChange('contacts')
+            handleTabChange('target')
           },
           buttonText: "Add Contacts"
         })
@@ -3131,91 +3131,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           />
         );
 
-      case 'contacts':
-        return (
-          <div className="w-full animate-in fade-in duration-500">
-            {/* Clean Header */}
-            <div className="flex justify-between items-start mb-8">
-              <div>
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight">Contacts</h1>
-                <p className="text-gray-500 mt-2 font-light">Review and manage your campaign contacts</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-500">
-                  {contacts?.length || 0} contacts
-                </span>
-                <Button
-                  onClick={() => handleTabChange('target')}
-                  variant="outline"
-                  className="border-blue-300 text-blue-700 hover:bg-blue-50 rounded-2xl"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add More Contacts
-                </Button>
-              </div>
-            </div>
-
-            {/* Contact List */}
-            <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
-              {contacts && contacts.length > 0 ? (
-                <div className="p-6">
-                  <div className="grid gap-4">
-                    {contacts.slice(0, 10).map((contact, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-medium text-sm">
-                              {contact.first_name?.charAt(0) || contact.email?.charAt(0) || '?'}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {contact.first_name || contact.last_name 
-                                ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
-                                : contact.email
-                              }
-                            </p>
-                            <p className="text-sm text-gray-500">{contact.email}</p>
-                            {contact.company && (
-                              <p className="text-xs text-gray-400">{contact.company}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {(campaign?.status === 'Paused' || campaign?.status === 'Warming') ? 'Pending' : (contact.email_status || 'Ready')}
-                        </div>
-                      </div>
-                    ))}
-                    {contacts.length > 10 && (
-                      <div className="text-center py-4">
-                        <p className="text-gray-500 text-sm">
-                          And {contacts.length - 10} more contacts...
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-                    <Users className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">No contacts yet</h3>
-                  <p className="text-gray-500 mb-8 font-light">
-                    Add contacts to your campaign using the Target tab
-                  </p>
-                  <Button
-                    onClick={() => handleTabChange('target')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Contacts
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        );
 
       case 'sequence':
         return (
@@ -4099,21 +4014,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             >
               <Target className="w-4 h-4 mr-2" />
               Target
-            </Button>
-            <Button 
-              variant={activeTab === 'contacts' ? 'default' : 'outline'}
-              onClick={isGuidedFlow ? undefined : () => handleTabChange('contacts')}
-              disabled={isGuidedFlow}
-              className={`${
-                activeTab === 'contacts' 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-0' 
-                  : 'border-gray-300 hover:bg-gray-50 text-gray-700'
-              } px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl whitespace-nowrap ${
-                isGuidedFlow ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
-              }`}
-            >
-              <Users className="w-4 h-4 mr-2" />
-              Contacts
             </Button>
             <Button 
               variant={activeTab === 'sequence' ? 'default' : 'outline'}

@@ -590,7 +590,7 @@ export default function CampaignSenderSelection({
     return 'text-red-600'
   }
 
-  // Handle test email button click
+  // Handle test email button click - Updated to use dynamic user email
   const handleTestClick = (sender: Sender) => {
     setTestModalSender(sender)
     setTestModalEmail(userEmail || 'essabar.yassine@gmail.com') // Pre-fill with logged-in user's email
