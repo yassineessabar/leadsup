@@ -844,6 +844,13 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             isDue,
             created_at: contact.created_at
           }
+          
+          // ALWAYS LOG contact info for debugging the Step 2/6 issue
+          if (contact.sequence_step >= 1) {
+            console.log(`🚨 CONTACT DEBUG: ${contact.email} at Step ${contact.sequence_step}/${campaignSequences.length}`)
+            console.log(`   Status: ${nextEmailIn}`)
+            console.log(`   isDue: ${isDue}`)
+          }
           } catch (error) {
             console.error(`❌ ERROR in contact mapping for ${contact.email || contact.email_address}:`, error)
             console.error(`❌ Contact data:`, contact)
