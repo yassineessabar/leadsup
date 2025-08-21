@@ -245,17 +245,9 @@ export async function GET(request: NextRequest) {
       const hour = 9 + (seedValue % 8) // 9-16
       const minute = (seedValue * 7) % 60
       
-      // For now, let's simplify and just set the time to be due NOW for testing
-      // This bypasses the complex timezone conversion while we debug
-      if ((contact.first_name === 'John' && contact.last_name === 'Doe') || contact.id === '267' || contact.id === 267) {
-        // Force John Doe contacts (both 267 and 268) to be due now for testing
-        scheduledDate = new Date(Date.now() - 60000) // 1 minute ago
-        console.log(`🧪 TEST MODE: Forcing John Doe (ID: ${contact.id}) to be due now: ${scheduledDate.toISOString()}`)
-      } else {
-        // Use regular scheduling for other contacts
-        scheduledDate.setHours(hour, minute, 0, 0)
-        console.log(`🕐 Regular scheduling: ${hour}:${minute.toString().padStart(2, '0')} UTC = ${scheduledDate.toISOString()}`)
-      }
+      // Apply business hours timing to the scheduled date
+      scheduledDate.setHours(hour, minute, 0, 0)
+      console.log(`🕐 Scheduled for: ${hour}:${minute.toString().padStart(2, '0')} on ${scheduledDate.toDateString()} = ${scheduledDate.toISOString()}`)
       
       // Check if contact is in a timezone where it's currently outside business hours
       let skipForTimezone = false
