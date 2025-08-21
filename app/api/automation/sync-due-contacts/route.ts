@@ -373,15 +373,15 @@ export async function GET(request: NextRequest) {
     
     console.log(`   📊 TOTAL from both tables: ${contacts.length} records`)
     
-    const contactsError = contactsError || prospectsError
+    const fetchError = contactsError || prospectsError
     
-    if (contactsError) {
-      console.error('❌ Error fetching contacts:', contactsError)
-      console.error('   Error details:', JSON.stringify(contactsError, null, 2))
+    if (fetchError) {
+      console.error('❌ Error fetching contacts:', fetchError)
+      console.error('   Error details:', JSON.stringify(fetchError, null, 2))
       console.error('   Campaign ID:', campaignId)
       return NextResponse.json({ 
         error: 'Failed to fetch contacts',
-        details: contactsError.message,
+        details: fetchError.message,
         campaignId 
       }, { status: 500 })
     }
