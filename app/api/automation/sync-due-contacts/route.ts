@@ -545,7 +545,14 @@ export async function GET(request: NextRequest) {
       dueContacts,
       totalContacts: contacts.length,
       dueCount: dueContacts.length,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      version: 'SYNC-V3.0-' + Date.now(),
+      debug: {
+        contactsTableFound: contactsData?.length || 0,
+        prospectsTableFound: prospectsData?.length || 0,
+        totalCombined: contacts.length,
+        firstFewContacts: contacts.slice(0, 3).map(c => `${c.email} (${c.first_name} ${c.last_name})`)
+      }
     })
     
   } catch (error) {

@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
                          process.env.NODE_ENV === 'production' ? `https://${request.headers.get('host')}` : 
                          'http://localhost:3000'
           
-          const syncUrl = `${baseUrl}/api/automation/sync-due-contacts?campaignId=${campaign.id}`
+          const syncUrl = `${baseUrl}/api/automation/sync-due-contacts?campaignId=${campaign.id}&v=${Date.now()}&cacheBust=true`
           
           console.log(`   🔗 Base URL: ${baseUrl}`)
           console.log(`   🎯 Campaign ID: ${campaign.id}`)
