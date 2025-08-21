@@ -181,11 +181,6 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
     const timezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
     const businessHoursStatus = getBusinessHoursStatus(timezone)
     
-    // If not in business hours, not due
-    if (!businessHoursStatus.isBusinessHours) {
-      return false
-    }
-    
     const now = new Date()
     const scheduledDate = nextEmailData.date
     let isTimeReached = false
@@ -215,7 +210,16 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
       const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
       
       isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
-      return isTimeReached && businessHoursStatus.isBusinessHours
+      const isDue = isTimeReached && businessHoursStatus.isBusinessHours
+      
+      console.log(`🔍 IMMEDIATE EMAIL DUE CHECK for ${contact.id}:`)
+      console.log(`   Current time: ${currentHourInContactTz}:${currentMinuteInContactTz.toString().padStart(2, '0')} (${currentTimeInMinutes} min)`)
+      console.log(`   Intended time: ${intendedHour}:${intendedMinute.toString().padStart(2, '0')} (${intendedTimeInMinutes} min)`)
+      console.log(`   Time reached: ${isTimeReached}`)
+      console.log(`   Business hours: ${businessHoursStatus.isBusinessHours}`)
+      console.log(`   FINAL RESULT: ${isDue} (${isDue ? 'DUE NEXT' : 'PENDING START'})`)
+      
+      return isDue
     } else {
       // For non-immediate emails, compare full datetime in contact's timezone
       if (scheduledDate) {
@@ -224,7 +228,16 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
         const scheduledInContactTz = new Date(scheduledDate.toLocaleString("en-US", {timeZone: timezone}))
         
         isTimeReached = nowInContactTz >= scheduledInContactTz
-        return isTimeReached && businessHoursStatus.isBusinessHours
+        const isDue = isTimeReached && businessHoursStatus.isBusinessHours
+        
+        console.log(`🔍 NON-IMMEDIATE EMAIL DUE CHECK for ${contact.id}:`)
+        console.log(`   Now in contact TZ: ${nowInContactTz.toISOString()}`)
+        console.log(`   Scheduled in contact TZ: ${scheduledInContactTz.toISOString()}`)
+        console.log(`   Time reached: ${isTimeReached}`)
+        console.log(`   Business hours: ${businessHoursStatus.isBusinessHours}`)
+        console.log(`   FINAL RESULT: ${isDue} (${isDue ? 'DUE NEXT' : 'PENDING START'})`)
+        
+        return isDue
       }
     }
     
@@ -248,24 +261,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Campaign ID required' }, { status: 400 })
     }
     
-    // STRICT AUTOMATION SAFEGUARD: Only run during conservative global business hours
-    const now = new Date()
-    const utcHour = now.getUTCHours()
-    
-    // Only run between 12:00-18:00 UTC to ensure we're in business hours for major regions:
-    // - 12:00 UTC = 8:00 AM EST, 5:00 AM PST (good for US East, too early for US West)
-    // - 18:00 UTC = 2:00 PM EST, 11:00 AM PST (good for US, still business hours in Europe)
-    if (utcHour < 12 || utcHour >= 18) {
-      console.log(`🚫 AUTOMATION BLOCKED: UTC hour ${utcHour} is outside safe automation window (12-18 UTC)`)
-      return NextResponse.json({ 
-        success: true, 
-        dueContacts: [], 
-        message: `Automation blocked: UTC hour ${utcHour} outside safe window (12-18 UTC)`,
-        timestamp: new Date().toISOString()
-      })
-    }
-    
-    console.log(`✅ AUTOMATION ALLOWED: UTC hour ${utcHour} is within safe window (12-18 UTC)`)
     
     // Get campaign sequences
     const { data: campaignSequences, error: sequencesError } = await supabase
@@ -315,24 +310,16 @@ export async function GET(request: NextRequest) {
     for (const contact of contacts) {
       console.log(`🔍 Checking contact ${contact.id}: ${contact.email} (step: ${contact.sequence_step || 0})`)
       
-      // ADDITIONAL SAFEGUARD: Skip contacts created in the last hour to avoid immediate processing
-      const contactCreatedAt = new Date(contact.created_at)
-      const hoursSinceCreated = (now.getTime() - contactCreatedAt.getTime()) / (1000 * 60 * 60)
-      
-      if (hoursSinceCreated < 1) {
-        console.log(`⏸️ SKIPPED: Contact ${contact.id} created ${Math.round(hoursSinceCreated * 60)} minutes ago (< 1 hour)`)
-        continue
-      }
       
       if (await isContactDue(contact, campaignSequences || [])) {
         const timezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
         const businessHours = getBusinessHoursStatus(timezone)
         
-        console.log(`✅ Contact ${contact.id} is due for next email`)
+        console.log(`✅ Contact ${contact.id} STATUS: DUE NEXT (will be processed)`)
         console.log(`   📍 Location: ${contact.location}`)
         console.log(`   🕐 Timezone: ${timezone}`)
         console.log(`   🏢 Business Hours: ${businessHours.isBusinessHours ? '✅ YES' : '❌ NO'} (${businessHours.currentTime})`)
-        console.log(`   📅 Created: ${contact.created_at} (${Math.round(hoursSinceCreated)} hours ago)`)
+        console.log(`   📅 Created: ${contact.created_at}`)
         console.log(`   📧 Current Step: ${contact.sequence_step || 0}`)
         
         // Get sequence status to determine actual progress (same logic as in isContactDue)
@@ -388,7 +375,14 @@ export async function GET(request: NextRequest) {
           })
         }
       } else {
-        console.log(`❌ Contact ${contact.id} is NOT due for next email`)
+        const timezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
+        const businessHours = getBusinessHoursStatus(timezone)
+        
+        console.log(`❌ Contact ${contact.id} STATUS: PENDING START (will be skipped)`)
+        console.log(`   📍 Location: ${contact.location}`)
+        console.log(`   🕐 Timezone: ${timezone}`)
+        console.log(`   🏢 Business Hours: ${businessHours.isBusinessHours ? '✅ YES' : '❌ NO'} (${businessHours.currentTime})`)
+        console.log(`   📧 Current Step: ${contact.sequence_step || 0}`)
       }
     }
     
