@@ -592,6 +592,28 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, testMode }: a
       const sgMail = require('@sendgrid/mail')
       sgMail.setApiKey(process.env.SENDGRID_API_KEY)
       
+      // Get dynamic Reply-To address based on sender domain
+      const senderDomain = senderEmail.split('@')[1]
+      let replyToEmail = senderEmail // fallback to sender email
+      
+      try {
+        const { data: domainConfig } = await supabaseServer
+          .from('domains')
+          .select('reply_hostname, reply_subdomain, domain')
+          .eq('domain', senderDomain)
+          .eq('status', 'verified')
+          .single()
+          
+        if (domainConfig) {
+          replyToEmail = domainConfig.reply_hostname || `${domainConfig.reply_subdomain || 'reply'}.${domainConfig.domain}`
+          console.log(`📧 Using dynamic Reply-To: ${replyToEmail} for domain: ${senderDomain}`)
+        } else {
+          console.log(`⚠️ No verified domain config found for ${senderDomain}, using sender email as Reply-To`)
+        }
+      } catch (error) {
+        console.log(`⚠️ Error fetching domain config for ${senderDomain}:`, error.message)
+      }
+      
       // Personalize content
       const personalizedSubject = sequence.subject
         .replace(/\{\{firstName\}\}/g, contact.first_name || 'there')
@@ -609,7 +631,7 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, testMode }: a
           email: senderEmail,
           name: senderEmail.split('@')[0]
         },
-        replyTo: 'info@leadsup.io',
+        replyTo: replyToEmail,
         subject: personalizedSubject,
         html: personalizedContent,
         text: personalizedContent.replace(/<[^>]*>/g, '') // Strip HTML

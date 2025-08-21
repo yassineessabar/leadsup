@@ -258,6 +258,28 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      // Get dynamic Reply-To address based on sender domain
+      const senderDomain = senderEmail.split('@')[1]
+      let replyToEmail = senderEmail // fallback to sender email
+      
+      try {
+        const { data: domainConfig } = await supabaseServer
+          .from('domains')
+          .select('reply_hostname, reply_subdomain, domain')
+          .eq('domain', senderDomain)
+          .eq('status', 'verified')
+          .single()
+          
+        if (domainConfig) {
+          replyToEmail = domainConfig.reply_hostname || `${domainConfig.reply_subdomain || 'reply'}.${domainConfig.domain}`
+          console.log(`📧 Test email using dynamic Reply-To: ${replyToEmail} for domain: ${senderDomain}`)
+        } else {
+          console.log(`⚠️ No verified domain config found for ${senderDomain}, using sender email as Reply-To`)
+        }
+      } catch (error) {
+        console.log(`⚠️ Error fetching domain config for ${senderDomain}:`, error.message)
+      }
+      
       // Send email via SendGrid
       const result = await sendEmailWithSendGrid({
         to: testEmail,
@@ -266,7 +288,7 @@ export async function POST(request: NextRequest) {
         subject: subject,
         html: htmlContent,
         text: htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
-        replyTo: 'info@leadsup.io' // Use working reply address for webhook capture
+        replyTo: replyToEmail // Use dynamic reply address based on domain config
       })
 
       console.log(`✅ Test email sent - Message ID: ${result.messageId}`)
@@ -280,8 +302,8 @@ export async function POST(request: NextRequest) {
           return Buffer.from(base).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 32)
         }
 
-        // Use info@leadsup.io for conversation ID since that's where replies go
-        const conversationId = generateConversationId(testEmail, 'info@leadsup.io')
+        // Use dynamic replyTo for conversation ID since that's where replies go
+        const conversationId = generateConversationId(testEmail, replyToEmail)
 
         const inboxMessageData = {
           user_id: userId, // Use current session user_id
