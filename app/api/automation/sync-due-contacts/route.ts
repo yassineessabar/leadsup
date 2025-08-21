@@ -59,12 +59,32 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
       // Set to intended time today
       scheduledDate.setHours(intendedHour, intendedMinute, 0, 0)
       
-      // If time has passed today and we're after business hours, schedule for tomorrow
-      if (scheduledDate <= now) {
+      // Check if this time has already passed today in the contact's timezone
+      const currentHourInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        hour: 'numeric',
+        hour12: false
+      }).format(now))
+      const currentMinuteInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        minute: 'numeric'
+      }).format(now))
+      
+      const currentTimeInMinutes = currentHourInContactTz * 60 + currentMinuteInContactTz
+      const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
+      
+      // If the intended time has passed today OR we're outside business hours, schedule for next business day
+      if (currentTimeInMinutes >= intendedTimeInMinutes || !getBusinessHoursStatus(timezone).isBusinessHours) {
+        // Move to next business day
         scheduledDate.setDate(scheduledDate.getDate() + 1)
+        
+        // Skip weekends
+        const dayOfWeek = scheduledDate.getDay()
+        if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Skip Sunday
+        if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Skip Saturday
       }
       
-      // Final weekend check
+      // Final weekend check (in case the immediate schedule falls on weekend)
       const finalDayOfWeek = scheduledDate.getDay()
       if (finalDayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Sunday -> Monday
       if (finalDayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Saturday -> Monday
