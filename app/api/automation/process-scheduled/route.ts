@@ -80,54 +80,53 @@ export async function GET(request: NextRequest) {
         console.log('─'.repeat(60))
         
         try {
-          // Use our internal API to get due contacts (same domain call)
-          const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                         process.env.NODE_ENV === 'production' ? `https://${request.headers.get('host')}` : 
-                         'http://localhost:3000'
+          // BYPASS CACHED ENDPOINT - QUERY DATABASE DIRECTLY
+          console.log(`🔍 BYPASSING sync-due-contacts endpoint due to cache issues`)
+          console.log(`📊 Querying database directly for campaign ${campaign.id}`)
           
-          const syncUrl = `${baseUrl}/api/automation/sync-due-contacts?campaignId=${campaign.id}&v=${Date.now()}&cacheBust=true`
+          // Query contacts table directly
+          const { data: contactsData, error: contactsError } = await supabase
+            .from('contacts')
+            .select('*')
+            .eq('campaign_id', campaign.id)
+            .neq('email_status', 'Completed')
+            .neq('email_status', 'Replied') 
+            .neq('email_status', 'Unsubscribed')
+            .neq('email_status', 'Bounced')
           
-          console.log(`   🔗 Base URL: ${baseUrl}`)
-          console.log(`   🎯 Campaign ID: ${campaign.id}`)
-          console.log(`   📡 Full Sync URL: ${syncUrl}`)
-          console.log(`   ⏱️ Calling sync endpoint at: ${new Date().toISOString()}`)
+          console.log(`   ✅ Direct query result: ${contactsData?.length || 0} contacts found`)
           
-          const response = await fetch(syncUrl, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-          })
-          
-          console.log(`📊 Sync response status: ${response.status}`)
-          
-          if (response.ok) {
-            const syncResult = await response.json()
-            console.log(`📊 Full sync result for campaign ${campaign.id}:`)
-            console.log(JSON.stringify(syncResult, null, 2))
-            if (syncResult.success && syncResult.dueContacts) {
-              console.log(`  📋 Campaign "${campaign.name}" (${campaign.id}): ${syncResult.dueContacts.length} due contacts`)
-              if (syncResult.dueContacts.length > 0) {
-                console.log(`     Contact IDs: ${syncResult.dueContacts.map((c: any) => c.id).join(', ')}`)
-              }
-              analyticsContacts.push(...syncResult.dueContacts.map((c: any) => ({
-                ...c,
-                campaign_id: campaign.id,
-                campaign_name: campaign.name,
-                source: 'analytics'
-              })))
-            } else {
-              console.log(`⚠️ Campaign "${campaign.name}": No due contacts found`)
-              if (syncResult.totalContacts !== undefined) {
-                console.log(`     Total contacts in campaign: ${syncResult.totalContacts}`)
-                console.log(`     Due contacts: ${syncResult.dueCount || 0}`)
-              }
-            }
-          } else {
-            console.error(`❌ Sync API call failed for campaign ${campaign.id}: ${response.status} ${response.statusText}`)
-            const errorText = await response.text()
-            console.error(`❌ Error response:`, errorText)
+          if (contactsError) {
+            console.error(`   ❌ Query error:`, contactsError)
+            continue
           }
-        } catch (syncError) {
-          console.error(`Error syncing campaign ${campaign.id}:`, syncError)
+          
+          if (contactsData && contactsData.length > 0) {
+            console.log(`   📝 Sample contacts found:`)
+            contactsData.slice(0, 3).forEach(c => {
+              console.log(`      - ${c.email} (${c.first_name} ${c.last_name}) - Location: ${c.location}`)
+            })
+            
+            // Add all contacts to analytics array for processing
+            // We'll check if they're "due" in the main processing loop
+            const campaignContacts = contactsData.map((c: any) => ({
+              ...c,
+              email_address: c.email || c.email_address, // Normalize email field
+              campaign_id: campaign.id,
+              campaign_name: campaign.name,
+              source: 'direct-db'
+            }))
+            
+            analyticsContacts.push(...campaignContacts)
+            
+            console.log(`  📋 Campaign "${campaign.name}": Added ${campaignContacts.length} contacts to processing queue`)
+            console.log(`     Contact emails: ${campaignContacts.map((c: any) => c.email).slice(0, 5).join(', ')}${campaignContacts.length > 5 ? '...' : ''}`)
+          } else {
+            console.log(`  ⚠️ Campaign "${campaign.name}": No contacts found in database`)
+          }
+          
+        } catch (directError) {
+          console.error(`❌ Direct database query failed for campaign ${campaign.id}:`, directError)
         }
       }
     }
@@ -151,17 +150,19 @@ export async function GET(request: NextRequest) {
       // Return detailed debug info in test mode
       const debugResponse = testMode ? {
         success: true,
-        message: 'No analytics due contacts found - VERSION 2.0 DEBUG',
+        message: analyticsContacts.length > 0 ? 'Found contacts via direct DB query - VERSION 3.0' : 'No analytics due contacts found - VERSION 3.0 DIRECT-DB',
         processed: 0,
         timestamp: new Date().toISOString(),
-        version: 'DEBUG-2.0-' + Date.now(),
+        version: 'DEBUG-3.0-DIRECT-DB-' + Date.now(),
         debug: {
           activeCampaignsCount: activeCampaigns?.length || 0,
           activeCampaignsFound: activeCampaigns?.map(c => ({ name: c.name, id: c.id })) || [],
           analyticsContactsFound: analyticsContacts.length,
+          contactsFromDirectDB: analyticsContacts.length,
+          sampleContactEmails: analyticsContacts.slice(0, 5).map(c => c.email || c.email_address),
           testMode: true,
-          note: "VERSION 2.0 - WITH ULTRA DEBUG - " + new Date().toISOString(),
-          deploymentCheck: "If you don't see VERSION 2.0, deployment is not updating"
+          note: "VERSION 3.0 - BYPASSED CACHED ENDPOINT - DIRECT DB QUERY - " + new Date().toISOString(),
+          deploymentCheck: "Should show contacts now via direct database query!"
         }
       } : {
         success: true,
