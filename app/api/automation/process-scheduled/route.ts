@@ -8,17 +8,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Direct analytics logic function - same as in analytics page
+// Direct analytics logic function - EXACT match with analytics page logic
 function isContactDueDirectly(contact: any, campaignSequences: any[]) {
   try {
     // Get the contact's timezone
     const timezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
     const businessHoursStatus = getBusinessHoursStatus(timezone)
-    
-    // If not in business hours, not due
-    if (!businessHoursStatus.isBusinessHours) {
-      return false
-    }
     
     // Calculate the intended scheduled time (same logic as analytics)
     const contactIdString = String(contact.id || '')
@@ -56,7 +51,18 @@ function isContactDueDirectly(contact: any, campaignSequences: any[]) {
       const currentTimeInMinutes = currentHourInContactTz * 60 + currentMinuteInContactTz
       const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
       
-      return currentTimeInMinutes >= intendedTimeInMinutes
+      // Time is reached AND we're in business hours (exact analytics logic)
+      const isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
+      
+      console.log(`    📅 IMMEDIATE EMAIL CHECK for contact ${contact.id}:`)
+      console.log(`       Timezone: ${timezone}`)
+      console.log(`       Intended time: ${intendedHour}:${intendedMinute.toString().padStart(2, '0')}`)
+      console.log(`       Current time in ${timezone}: ${currentHourInContactTz}:${currentMinuteInContactTz.toString().padStart(2, '0')}`)
+      console.log(`       Time reached: ${isTimeReached}`)
+      console.log(`       In business hours: ${businessHoursStatus.isBusinessHours}`)
+      console.log(`       Final result: ${isTimeReached && businessHoursStatus.isBusinessHours}`)
+      
+      return isTimeReached && businessHoursStatus.isBusinessHours
     } else {
       // For non-immediate emails, check if timing has passed
       const contactDate = new Date(contact.created_at)
@@ -173,7 +179,13 @@ export async function GET(request: NextRequest) {
             // Apply the same "Due next" logic from analytics
             let campaignDueCount = 0
             for (const contact of campaignContacts) {
-              if (isContactDueDirectly(contact, campaignSequences)) {
+              console.log(`\n🔍 Checking contact ${contact.id} (${contact.email})`)
+              const isDue = isContactDueDirectly(contact, campaignSequences)
+              console.log(`├─ Location: ${contact.location}`)
+              console.log(`├─ Sequence Step: ${contact.sequence_step || 0}`)
+              console.log(`└─ Is Due: ${isDue ? '✅ YES' : '❌ NO'}`)
+              
+              if (isDue) {
                 console.log(`✅ Contact ${contact.id} (${contact.email}) is due for next email`)
                 analyticsContacts.push({
                   ...contact,
