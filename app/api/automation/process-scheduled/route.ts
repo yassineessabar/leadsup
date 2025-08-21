@@ -80,10 +80,21 @@ function isContactDueDirectly(contact: any, campaignSequences: any[]) {
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
   
+  console.log('🚨 AUTOMATION STARTED - Function entry point reached')
+  console.log('🚨 Request URL:', request.url)
+  console.log('🚨 Environment check:', {
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+  })
+  
   try {
     const { searchParams } = new URL(request.url)
     const testMode = searchParams.get('testMode') === 'true' || process.env.EMAIL_SIMULATION_MODE === 'true'
     const lookAheadMinutes = parseInt(searchParams.get('lookAhead') || '15') // Default 15 minutes lookahead
+    
+    console.log('🚨 Parameters parsed:', { testMode, lookAheadMinutes })
     
     console.log('═'.repeat(80))
     console.log('🚀 EMAIL AUTOMATION PROCESSOR STARTED')
@@ -250,12 +261,29 @@ export async function GET(request: NextRequest) {
     
     if (allContacts.length === 0) {
       console.log('📭 No analytics due contacts found')
-      return NextResponse.json({
+      console.log('🚨 About to return "No analytics due contacts found" response')
+      
+      // Return detailed debug info in test mode
+      const debugResponse = testMode ? {
+        success: true,
+        message: 'No analytics due contacts found',
+        processed: 0,
+        timestamp: new Date().toISOString(),
+        debug: {
+          activeCampaignsCount: activeCampaigns?.length || 0,
+          activeCampaignsFound: activeCampaigns?.map(c => ({ name: c.name, id: c.id })) || [],
+          analyticsContactsFound: analyticsContacts.length,
+          testMode: true,
+          note: "Check Vercel function logs for detailed contact evaluation"
+        }
+      } : {
         success: true,
         message: 'No analytics due contacts found',
         processed: 0,
         timestamp: new Date().toISOString()
-      })
+      }
+      
+      return NextResponse.json(debugResponse)
     }
 
     console.log(`🎯 Processing ${allContacts.length} ANALYTICS-ONLY contacts`)
