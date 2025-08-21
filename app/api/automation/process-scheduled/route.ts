@@ -581,7 +581,7 @@ export async function GET(request: NextRequest) {
         if (sendResult.success) {
           // Update sequence progression using proper API
           // Check if we have a UUID (prospects) or integer (contacts) ID
-          const isUUID = contact.id.includes('-')
+          const isUUID = String(contact.id).includes('-')
           
           if (isUUID) {
             // Use prospect sequence progression for UUID IDs
@@ -629,7 +629,7 @@ export async function GET(request: NextRequest) {
           
           // Log email tracking for account logs
           await logEmailTracking({
-            contactId: isUUID ? contact.id : parseInt(contact.id),
+            contactId: isUUID ? contact.id : parseInt(String(contact.id)),
             contactEmail: contact.email_address,
             campaignId: contact.campaign_id,
             sequenceId: sequence.id,
@@ -704,7 +704,7 @@ export async function GET(request: NextRequest) {
         } else {
           // Log failed email attempt
           await logEmailTracking({
-            contactId: isUUID ? contact.id : parseInt(contact.id),
+            contactId: isUUID ? contact.id : parseInt(String(contact.id)),
             contactEmail: contact.email_address,
             campaignId: contact.campaign_id,
             sequenceId: sequence.id,
