@@ -151,21 +151,24 @@ export async function GET(request: NextRequest) {
       // Return detailed debug info in test mode
       const debugResponse = testMode ? {
         success: true,
-        message: 'No analytics due contacts found',
+        message: 'No analytics due contacts found - VERSION 2.0 DEBUG',
         processed: 0,
         timestamp: new Date().toISOString(),
+        version: 'DEBUG-2.0-' + Date.now(),
         debug: {
           activeCampaignsCount: activeCampaigns?.length || 0,
           activeCampaignsFound: activeCampaigns?.map(c => ({ name: c.name, id: c.id })) || [],
           analyticsContactsFound: analyticsContacts.length,
           testMode: true,
-          note: "Used corrected sync-due-contacts endpoint results"
+          note: "VERSION 2.0 - WITH ULTRA DEBUG - " + new Date().toISOString(),
+          deploymentCheck: "If you don't see VERSION 2.0, deployment is not updating"
         }
       } : {
         success: true,
-        message: 'No analytics due contacts found',
+        message: 'No analytics due contacts found - VERSION 2.0',
         processed: 0,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        version: 'DEBUG-2.0'
       }
       
       return NextResponse.json(debugResponse)
