@@ -673,18 +673,21 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 const nextEmailData = calculateNextEmailDate(contact)
                 if (nextEmailData && nextEmailData.date) {
                   const now = new Date()
-                  // Check if it's past scheduled time in contact's timezone
-                  try {
-                    const contactTime = new Date(now.toLocaleString("en-US", {timeZone: timezone}))
-                    const scheduledTime = new Date(nextEmailData.date.toLocaleString("en-US", {timeZone: timezone}))
-                    const isTimeReached = scheduledTime <= contactTime
-                    
-                    // Also check business hours using timezone utils
-                    const businessHoursStatus = getBusinessHoursStatus(timezone)
-                    isDue = isTimeReached && businessHoursStatus.isBusinessHours
-                  } catch (error) {
-                    // Fallback to UTC comparison
-                    isDue = nextEmailData.date <= now
+                  // Simple UTC comparison - if scheduled date is in the past, it's due
+                  const isTimeReached = nextEmailData.date <= now
+                  
+                  // Also check business hours using timezone utils
+                  const businessHoursStatus = getBusinessHoursStatus(timezone)
+                  isDue = isTimeReached && businessHoursStatus.isBusinessHours
+                  
+                  // Debug logging for this specific issue
+                  if (contact.sequence_step >= 1) {
+                    console.log(`🔍 DUE CHECK for ${contact.email} (Step ${contact.sequence_step}/6):`)
+                    console.log(`   Scheduled Date: ${nextEmailData.date.toISOString()}`)
+                    console.log(`   Current Time: ${now.toISOString()}`)
+                    console.log(`   Is Time Reached: ${isTimeReached}`)
+                    console.log(`   Business Hours: ${businessHoursStatus.isBusinessHours}`)
+                    console.log(`   Final isDue: ${isDue}`)
                   }
                 }
                 
