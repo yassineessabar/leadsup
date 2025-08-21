@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
         subject: subject,
         html: htmlContent,
         text: htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
-        replyTo: 'reply@leadsup.io' // Use working reply address for webhook capture
+        replyTo: 'info@leadsup.io' // Use working reply address for webhook capture
       })
 
       console.log(`✅ Test email sent - Message ID: ${result.messageId}`)
@@ -280,8 +280,8 @@ export async function POST(request: NextRequest) {
           return Buffer.from(base).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 32)
         }
 
-        // Use reply@leadsup.io for conversation ID since that's where replies go
-        const conversationId = generateConversationId(testEmail, 'reply@leadsup.io')
+        // Use info@leadsup.io for conversation ID since that's where replies go
+        const conversationId = generateConversationId(testEmail, 'info@leadsup.io')
 
         const inboxMessageData = {
           user_id: userId, // Use current session user_id
