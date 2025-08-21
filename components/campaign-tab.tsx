@@ -52,7 +52,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   const [sortBy, setSortBy] = useState("newest")
   const [currentView, setCurrentView] = useState<"list" | "dashboard" | "analytics">("list")
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null)
-  const [dashboardInitialTab, setDashboardInitialTab] = useState<string>("contacts")
+  const [dashboardInitialTab, setDashboardInitialTab] = useState<string>("target")
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
@@ -313,16 +313,43 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     return () => clearInterval(warmingInterval)
   }, [])
 
-  // Check for campaign ID and subtab in URL params to auto-open campaign dashboard
+  // Clear URL parameters when campaigns tab is first mounted to ensure clean state
+  useEffect(() => {
+    // Only clear params if we're in the campaigns tab and don't have explicit intent to open a specific campaign
+    const campaignId = searchParams.get('campaignId')
+    const subtab = searchParams.get('subtab')
+    const autoOpen = searchParams.get('autoOpen')
+    
+    // If there are URL params but no explicit intent to open, clear them
+    if ((campaignId || subtab) && autoOpen !== 'true') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('campaignId')
+      url.searchParams.delete('subtab')
+      url.searchParams.delete('openCampaign')
+      window.history.replaceState({}, '', url.toString())
+    }
+  }, []) // Run only once on mount
+
+  // Check for campaign ID and tab in URL params to auto-open campaign
   useEffect(() => {
     const campaignId = searchParams.get('campaignId')
     const subtab = searchParams.get('subtab')
+    const openCampaign = searchParams.get('openCampaign')
+    const tab = searchParams.get('tab')
     
-    if (campaignId && campaigns.length > 0) {
+    // Only auto-open campaign if explicitly requested via URL params
+    if (campaignId && campaigns.length > 0 && openCampaign === 'true') {
       const campaign = campaigns.find(c => c.id.toString() === campaignId)
       if (campaign) {
         setSelectedCampaign(campaign)
-        setCurrentView("dashboard")
+        // Check if tab parameter specifies the view
+        if (tab === 'analytics') {
+          setCurrentView("analytics")
+        } else if (subtab) {
+          setCurrentView("dashboard")
+          setDashboardInitialTab(subtab) // Set the specific tab from URL
+        }
+        // If no tab/subtab specified, don't override the onClick handler's view choice
       }
     }
   }, [searchParams, campaigns])
@@ -864,7 +891,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         campaign={selectedCampaign}
         onBack={() => {
           setCurrentView("list")
-          setDashboardInitialTab("contacts") // Reset to default
+          setSelectedCampaign(null)
+          setDashboardInitialTab("target") // Reset to default
+          // Clear URL parameters when going back to list
+          const url = new URL(window.location.href)
+          url.searchParams.delete('campaignId')
+          url.searchParams.delete('openCampaign')
+          url.searchParams.delete('subtab')
+          window.history.pushState({}, '', url.toString())
         }}
         onStatusUpdate={async (campaignId, newStatus) => {
           try {
@@ -917,7 +951,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   if (currentView === "dashboard" && selectedCampaign) {
     // Check URL params for specific tab, otherwise use dashboardInitialTab state
     const subtab = searchParams.get('subtab')
-    const initialTab = subtab && ['contacts', 'sequence', 'sender', 'inbox', 'settings', 'target'].includes(subtab) 
+    const initialTab = subtab && ['sequence', 'sender', 'inbox', 'settings', 'target'].includes(subtab) 
       ? subtab 
       : dashboardInitialTab
     
@@ -929,7 +963,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         }} 
         onBack={() => {
           setCurrentView("list")
-          setDashboardInitialTab("contacts") // Reset to default
+          setSelectedCampaign(null)
+          setDashboardInitialTab("target") // Reset to default
+          // Clear URL parameters when going back to list
+          const url = new URL(window.location.href)
+          url.searchParams.delete('campaignId')
+          url.searchParams.delete('openCampaign')
+          url.searchParams.delete('subtab')
+          window.history.pushState({}, '', url.toString())
         }}
         onDelete={(campaignId) => {
           // Remove from local state and go back to list view
@@ -1135,12 +1176,16 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                   className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden cursor-pointer group"
                   onClick={() => {
                     setSelectedCampaign(campaign)
-                    if (campaign.status === "Draft") {
-                      setCurrentView("dashboard")
-                      setDashboardInitialTab("target")
-                    } else {
-                      setCurrentView("analytics")
-                    }
+                    // Add openCampaign parameter to URL to indicate explicit campaign opening
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('campaignId', campaign.id.toString())
+                    url.searchParams.set('campaign', campaign.id.toString()) // For analytics wrapper
+                    url.searchParams.set('openCampaign', 'true')
+                    url.searchParams.set('tab', 'analytics')
+                    window.history.pushState({}, '', url.toString())
+                    
+                    // Always go to analytics view when clicking on campaign
+                    setCurrentView("analytics")
                   }}
                 >
                   <div className="p-8">
@@ -1181,12 +1226,16 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           onClick={(e) => {
                             e.stopPropagation()
                             setSelectedCampaign(campaign)
-                            if (campaign.status === "Draft") {
-                              setCurrentView("dashboard")
-                              setDashboardInitialTab("target")
-                            } else {
-                              setCurrentView("analytics")
-                            }
+                            // Add openCampaign parameter to URL
+                            const url = new URL(window.location.href)
+                            url.searchParams.set('campaignId', campaign.id.toString())
+                            url.searchParams.set('campaign', campaign.id.toString()) // For analytics wrapper
+                            url.searchParams.set('openCampaign', 'true')
+                            url.searchParams.set('tab', 'analytics')
+                            window.history.pushState({}, '', url.toString())
+                            
+                            // Always go to analytics view when clicking analytics button
+                            setCurrentView("analytics")
                           }}
                         >
                           <TrendingUp className="w-4 h-4" />
@@ -1198,6 +1247,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           onClick={(e) => {
                             e.stopPropagation()
                             setSelectedCampaign(campaign)
+                            // Add openCampaign parameter to URL
+                            const url = new URL(window.location.href)
+                            url.searchParams.set('campaignId', campaign.id.toString())
+                            url.searchParams.set('campaign', campaign.id.toString()) // For analytics wrapper
+                            url.searchParams.set('openCampaign', 'true')
+                            url.searchParams.set('subtab', 'settings') // Open settings tab for campaign management
+                            window.history.pushState({}, '', url.toString())
+                            
                             setDashboardInitialTab("settings")
                             setCurrentView("dashboard")
                           }}
@@ -1310,6 +1367,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                                 const url = new URL(window.location.href)
                                 url.searchParams.set("tab", "analytics")
                                 url.searchParams.set("campaign", campaign.id.toString())
+                                url.searchParams.set("campaignId", campaign.id.toString())
+                                url.searchParams.set("openCampaign", "true")
                                 url.searchParams.set("expandWarming", "true")
                                 window.history.pushState({}, "", url.toString())
                               }

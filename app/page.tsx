@@ -124,7 +124,11 @@ function CampaignAnalyticsWrapper({ campaignId, onBack }: { campaignId: string |
     }
   }
 
-  return <CampaignAnalytics campaign={campaign} onBack={onBack} onStatusUpdate={handleStatusUpdate} />
+  return <CampaignAnalytics 
+    campaign={campaign} 
+    onBack={onBack} 
+    onStatusUpdate={handleStatusUpdate}
+  />
 }
 
 export default function Home() {
