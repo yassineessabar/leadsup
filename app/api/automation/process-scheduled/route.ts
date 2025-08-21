@@ -22,8 +22,55 @@ export async function GET(request: NextRequest) {
     console.log(`🧪 Test Mode: ${testMode}`)
     console.log(`👀 Look Ahead: ${lookAheadMinutes} minutes`)
     console.log(`🌍 Current UTC Hour: ${new Date().getUTCHours()}:00`)
-    console.log(`🔧 Code Version: ${new Date().toISOString().slice(0,16)} (Fixed campaignSequences scope)`)
+    console.log(`🔧 Code Version: ${new Date().toISOString().slice(0,16)} (Analytics integration)`)
     console.log('─'.repeat(80))
+    
+    // STEP 1: Get contacts that are due from analytics logic
+    console.log('📊 STEP 1: Syncing with analytics "Due next" contacts...')
+    
+    // Get all active campaigns
+    const { data: activeCampaigns, error: campaignsError } = await supabase
+      .from('campaigns')
+      .select('id, name')
+      .eq('status', 'Active')
+    
+    let analyticsContacts: any[] = []
+    
+    if (!campaignsError && activeCampaigns) {
+      for (const campaign of activeCampaigns) {
+        try {
+          // Use our internal API to get due contacts (same domain call)
+          const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+                         process.env.NODE_ENV === 'production' ? `${request.url.split('/api')[0]}` : 
+                         'http://localhost:3000'
+          
+          const response = await fetch(`${baseUrl}/api/automation/sync-due-contacts?campaignId=${campaign.id}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          
+          if (response.ok) {
+            const syncResult = await response.json()
+            if (syncResult.success && syncResult.dueContacts) {
+              console.log(`  📋 Campaign "${campaign.name}": ${syncResult.dueContacts.length} due contacts`)
+              analyticsContacts.push(...syncResult.dueContacts.map((c: any) => ({
+                ...c,
+                campaign_name: campaign.name,
+                source: 'analytics'
+              })))
+            }
+          }
+        } catch (syncError) {
+          console.error(`Error syncing campaign ${campaign.id}:`, syncError)
+        }
+      }
+    }
+    
+    console.log(`📊 Total analytics due contacts: ${analyticsContacts.length}`)
+    console.log('─'.repeat(40))
+    
+    // STEP 2: Get legacy contacts (original logic as fallback)
+    console.log('📋 STEP 2: Getting legacy contacts (fallback)...')
     
     // Get emails that are due within the next 15 minutes (or specified lookahead)
     const now = new Date()
@@ -67,8 +114,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // STEP 3: Combine analytics contacts with legacy contacts
+    console.log('🔄 STEP 3: Combining contact sources...')
+    
+    // Priority: Analytics contacts first, then legacy contacts
+    let allContacts = [...analyticsContacts]
+    
     if (!dueContacts || dueContacts.length === 0) {
-      console.log('✅ No contacts found for processing')
+      console.log('📭 No legacy contacts found')
+    } else {
+      console.log(`📧 Found ${dueContacts.length} legacy contacts`)
+      // Convert legacy contacts to consistent format and add them
+      const legacyContacts = dueContacts.map(c => ({
+        ...c,
+        email: c.email_address || c.email,
+        source: 'legacy'
+      }))
+      allContacts.push(...legacyContacts)
+    }
+
+    if (allContacts.length === 0) {
+      console.log('📭 No contacts found from any source')
       return NextResponse.json({
         success: true,
         message: 'No contacts found',
@@ -77,8 +143,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    console.log(`📧 Processing ${dueContacts.length} contacts (${dueContacts[0].id.includes('-') ? 'UUID' : 'Integer'} IDs)`)
-    console.log(`🔍 DEBUG: All contacts found:`, dueContacts.map(c => ({ id: c.id, email: c.email_address, campaign: c.campaign_id })))
+    console.log(`📧 Processing ${allContacts.length} total contacts`)
+    console.log(`  📊 Analytics: ${analyticsContacts.length}`)
+    console.log(`  📋 Legacy: ${allContacts.length - analyticsContacts.length}`)
     
     // Filter contacts who are actually due for their next email
     const emailsDue = []
@@ -88,10 +155,11 @@ export async function GET(request: NextRequest) {
     let skippedTimezone = 0
     let skippedDateCondition = 0
     
-    for (const contact of dueContacts) {
-      if (!contact.email_address || !contact.campaign_id) continue
+    for (const contact of allContacts) {
+      const contactEmail = contact.email || contact.email_address
+      if (!contactEmail || !contact.campaign_id) continue
       
-      console.log(`\n🔍 EVALUATING CONTACT: ${contact.email_address}`)
+      console.log(`\n🔍 EVALUATING CONTACT: ${contactEmail} (${contact.source || 'unknown'})`)
       console.log(`├─ Contact ID: ${contact.id}`)
       console.log(`├─ Campaign ID: ${contact.campaign_id}`)
       console.log(`├─ Status: ${contact.status}`)
@@ -611,6 +679,34 @@ export async function GET(request: NextRequest) {
             scheduledFor
           })
           
+          // Update analytics contact status if this came from analytics
+          if (contact.source === 'analytics') {
+            try {
+              const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+                             process.env.NODE_ENV === 'production' ? `${request.url.split('/api')[0]}` : 
+                             'http://localhost:3000'
+              
+              const updateResponse = await fetch(`${baseUrl}/api/automation/sync-due-contacts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contactId: contact.id,
+                  campaignId: contact.campaign_id,
+                  sequenceStep: currentStep - 1, // Current step before increment
+                  success: true
+                })
+              })
+              
+              if (updateResponse.ok) {
+                console.log(`📊 Updated analytics contact ${contact.id} after successful send`)
+              } else {
+                console.error(`❌ Failed to update analytics contact ${contact.id}`)
+              }
+            } catch (syncError) {
+              console.error(`❌ Error updating analytics contact ${contact.id}:`, syncError)
+            }
+          }
+          
           console.log(`   ✅ ${testMode ? '[TEST] ' : ''}EMAIL SENT successfully!`)
           console.log(`      From: ${senders[0].email}`)
           console.log(`      To: ${contact.email_address}`)
@@ -640,6 +736,35 @@ export async function GET(request: NextRequest) {
             status: 'failed',
             error: sendResult.error
           })
+          
+          // Update analytics contact status if this came from analytics (failed case)
+          if (contact.source === 'analytics') {
+            try {
+              const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+                             process.env.NODE_ENV === 'production' ? `${request.url.split('/api')[0]}` : 
+                             'http://localhost:3000'
+              
+              const updateResponse = await fetch(`${baseUrl}/api/automation/sync-due-contacts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contactId: contact.id,
+                  campaignId: contact.campaign_id,
+                  sequenceStep: currentStep - 1, // Current step before increment
+                  success: false,
+                  errorMessage: sendResult.error
+                })
+              })
+              
+              if (updateResponse.ok) {
+                console.log(`📊 Updated analytics contact ${contact.id} after failed send`)
+              } else {
+                console.error(`❌ Failed to update analytics contact ${contact.id} (failed case)`)
+              }
+            } catch (syncError) {
+              console.error(`❌ Error updating analytics contact ${contact.id} (failed case):`, syncError)
+            }
+          }
           
           console.error(`❌ Email failed: ${contact.email_address} - ${sendResult.error}`)
         }
