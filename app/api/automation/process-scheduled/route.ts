@@ -67,14 +67,20 @@ export async function GET(request: NextRequest) {
                          'http://localhost:3000'
           console.log(`🔗 Using baseUrl: ${baseUrl} for campaign ${campaign.id}`)
           
-          const response = await fetch(`${baseUrl}/api/automation/sync-due-contacts?campaignId=${campaign.id}`, {
+          const syncUrl = `${baseUrl}/api/automation/sync-due-contacts?campaignId=${campaign.id}`
+          console.log(`🔗 Calling sync endpoint: ${syncUrl}`)
+          
+          const response = await fetch(syncUrl, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
           })
           
+          console.log(`📊 Sync response status: ${response.status}`)
+          
           if (response.ok) {
             const syncResult = await response.json()
-            console.log(`📊 Sync result for campaign ${campaign.id}:`, JSON.stringify(syncResult, null, 2))
+            console.log(`📊 Full sync result for campaign ${campaign.id}:`)
+            console.log(JSON.stringify(syncResult, null, 2))
             if (syncResult.success && syncResult.dueContacts) {
               console.log(`  📋 Campaign "${campaign.name}" (${campaign.id}): ${syncResult.dueContacts.length} due contacts`)
               if (syncResult.dueContacts.length > 0) {
@@ -87,7 +93,11 @@ export async function GET(request: NextRequest) {
                 source: 'analytics'
               })))
             } else {
-              console.log(`⚠️ Campaign "${campaign.name}": No due contacts or sync failed`)
+              console.log(`⚠️ Campaign "${campaign.name}": No due contacts found`)
+              if (syncResult.totalContacts !== undefined) {
+                console.log(`     Total contacts in campaign: ${syncResult.totalContacts}`)
+                console.log(`     Due contacts: ${syncResult.dueCount || 0}`)
+              }
             }
           } else {
             console.error(`❌ Sync API call failed for campaign ${campaign.id}: ${response.status} ${response.statusText}`)
