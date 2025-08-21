@@ -111,16 +111,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch sequences' }, { status: 500 })
     }
     
-    // Get all contacts for this campaign
+    // Get all contacts for this campaign (exclude completed statuses)
     const { data: contacts, error: contactsError } = await supabase
       .from('contacts')
       .select('*')
       .eq('campaign_id', campaignId)
-      .not('status', 'in', '("Completed","Replied","Unsubscribed","Bounced")')
+      .neq('status', 'Completed')
+      .neq('status', 'Replied') 
+      .neq('status', 'Unsubscribed')
+      .neq('status', 'Bounced')
     
     if (contactsError) {
       console.error('Error fetching contacts:', contactsError)
-      return NextResponse.json({ error: 'Failed to fetch contacts' }, { status: 500 })
+      console.error('Campaign ID:', campaignId)
+      return NextResponse.json({ 
+        error: 'Failed to fetch contacts',
+        details: contactsError.message,
+        campaignId 
+      }, { status: 500 })
     }
     
     console.log(`📋 Found ${contacts?.length || 0} active contacts`)
@@ -137,7 +145,10 @@ export async function GET(request: NextRequest) {
     const dueContacts: ContactWithSequence[] = []
     
     for (const contact of contacts) {
+      console.log(`🔍 Checking contact ${contact.id}: ${contact.email} (step: ${contact.sequence_step || 0})`)
+      
       if (isContactDue(contact, campaignSequences || [])) {
+        console.log(`✅ Contact ${contact.id} is due for next email`)
         const timezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
         const currentStep = contact.sequence_step || 0
         const nextSequence = campaignSequences?.find(seq => seq.step_number === currentStep + 1)
@@ -170,6 +181,8 @@ export async function GET(request: NextRequest) {
             is_due: true
           })
         }
+      } else {
+        console.log(`❌ Contact ${contact.id} is NOT due for next email`)
       }
     }
     

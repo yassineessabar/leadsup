@@ -41,8 +41,9 @@ export async function GET(request: NextRequest) {
         try {
           // Use our internal API to get due contacts (same domain call)
           const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                         process.env.NODE_ENV === 'production' ? `${request.url.split('/api')[0]}` : 
+                         process.env.NODE_ENV === 'production' ? `https://${request.headers.get('host')}` : 
                          'http://localhost:3000'
+          console.log(`🔗 Using baseUrl: ${baseUrl} for campaign ${campaign.id}`)
           
           const response = await fetch(`${baseUrl}/api/automation/sync-due-contacts?campaignId=${campaign.id}`, {
             method: 'GET',
@@ -51,6 +52,7 @@ export async function GET(request: NextRequest) {
           
           if (response.ok) {
             const syncResult = await response.json()
+            console.log(`📊 Sync result for campaign ${campaign.id}:`, JSON.stringify(syncResult, null, 2))
             if (syncResult.success && syncResult.dueContacts) {
               console.log(`  📋 Campaign "${campaign.name}": ${syncResult.dueContacts.length} due contacts`)
               analyticsContacts.push(...syncResult.dueContacts.map((c: any) => ({
@@ -58,7 +60,13 @@ export async function GET(request: NextRequest) {
                 campaign_name: campaign.name,
                 source: 'analytics'
               })))
+            } else {
+              console.log(`⚠️ Campaign "${campaign.name}": No due contacts or sync failed`)
             }
+          } else {
+            console.error(`❌ Sync API call failed for campaign ${campaign.id}: ${response.status} ${response.statusText}`)
+            const errorText = await response.text()
+            console.error(`❌ Error response:`, errorText)
           }
         } catch (syncError) {
           console.error(`Error syncing campaign ${campaign.id}:`, syncError)
@@ -683,7 +691,7 @@ export async function GET(request: NextRequest) {
           if (contact.source === 'analytics') {
             try {
               const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                             process.env.NODE_ENV === 'production' ? `${request.url.split('/api')[0]}` : 
+                             process.env.NODE_ENV === 'production' ? `https://${request.headers.get('host')}` : 
                              'http://localhost:3000'
               
               const updateResponse = await fetch(`${baseUrl}/api/automation/sync-due-contacts`, {
@@ -741,7 +749,7 @@ export async function GET(request: NextRequest) {
           if (contact.source === 'analytics') {
             try {
               const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                             process.env.NODE_ENV === 'production' ? `${request.url.split('/api')[0]}` : 
+                             process.env.NODE_ENV === 'production' ? `https://${request.headers.get('host')}` : 
                              'http://localhost:3000'
               
               const updateResponse = await fetch(`${baseUrl}/api/automation/sync-due-contacts`, {
