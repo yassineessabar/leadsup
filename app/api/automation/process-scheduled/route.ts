@@ -609,6 +609,7 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, testMode }: a
           email: senderEmail,
           name: senderEmail.split('@')[0]
         },
+        replyTo: 'reply@leadsup.io',
         subject: personalizedSubject,
         html: personalizedContent,
         text: personalizedContent.replace(/<[^>]*>/g, '') // Strip HTML
