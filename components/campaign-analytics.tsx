@@ -116,6 +116,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [emailPreviewModal, setEmailPreviewModal] = useState<{contact: Contact, step: any} | null>(null)
   const [contactDetailsModal, setContactDetailsModal] = useState<Contact | null>(null)
   const [displayLimit, setDisplayLimit] = useState(20) // Track how many contacts to display
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ type: 'single' | 'bulk', contactId?: string, count?: number } | null>(null)
   const [campaignSenders, setCampaignSenders] = useState<string[]>([])
   const [campaignSequences, setCampaignSequences] = useState<any[]>([])
   const [sequencesLastUpdated, setSequencesLastUpdated] = useState<number>(Date.now())
@@ -443,6 +445,86 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       })
     } finally {
       setMetricsLoading(false)
+    }
+  }
+
+  // Show delete confirmation for single contact
+  const showDeleteConfirmation = (contactId: string) => {
+    setDeleteConfirmation({ type: 'single', contactId })
+  }
+
+  // Show delete confirmation for selected contacts
+  const showBulkDeleteConfirmation = () => {
+    if (selectedContacts.length === 0) return
+    setDeleteConfirmation({ type: 'bulk', count: selectedContacts.length })
+  }
+
+  // Delete a single contact
+  const deleteContact = async (contactId: string) => {
+    if (!contactId) return
+
+    setIsDeleting(contactId)
+    try {
+      const response = await fetch(`/api/contacts/${contactId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete contact')
+      }
+
+      // Remove the contact from the current contacts list
+      setContacts(prevContacts => prevContacts.filter(c => c.id !== contactId))
+      
+      // Also remove from selected contacts if it was selected
+      setSelectedContacts(prev => prev.filter(id => id !== contactId))
+      
+      // Show success message (optional)
+      console.log('Contact deleted successfully')
+      
+    } catch (error) {
+      console.error('Error deleting contact:', error)
+      // You might want to show an error toast here
+    } finally {
+      setIsDeleting(null)
+    }
+  }
+
+  // Delete multiple contacts (bulk delete)
+  const deleteSelectedContacts = async () => {
+    if (selectedContacts.length === 0) return
+
+    setIsDeleting('bulk')
+    try {
+      // Delete all selected contacts in parallel
+      const deletePromises = selectedContacts.map(contactId => 
+        fetch(`/api/contacts/${contactId}`, { method: 'DELETE' })
+      )
+      
+      const responses = await Promise.all(deletePromises)
+      
+      // Check if all deletions were successful
+      const failedDeletions = responses.filter(r => !r.ok)
+      
+      if (failedDeletions.length > 0) {
+        throw new Error(`Failed to delete ${failedDeletions.length} contacts`)
+      }
+
+      // Remove all selected contacts from the list
+      setContacts(prevContacts => 
+        prevContacts.filter(c => !selectedContacts.includes(c.id))
+      )
+      
+      // Clear selected contacts
+      setSelectedContacts([])
+      
+      console.log(`Successfully deleted ${selectedContacts.length} contacts`)
+      
+    } catch (error) {
+      console.error('Error deleting contacts:', error)
+      // You might want to show an error toast here
+    } finally {
+      setIsDeleting(null)
     }
   }
 
@@ -2514,9 +2596,14 @@ Sequence Info:
                 </DropdownMenuContent>
               </DropdownMenu>
               {selectedContacts.length > 0 && (
-                <Button variant="outline" className="h-10 px-4 border-red-300 hover:bg-red-50 text-red-600 font-medium transition-all duration-300 rounded-2xl">
+                <Button 
+                  variant="outline" 
+                  className="h-10 px-4 border-red-300 hover:bg-red-50 text-red-600 font-medium transition-all duration-300 rounded-2xl"
+                  onClick={showBulkDeleteConfirmation}
+                  disabled={isDeleting === 'bulk'}
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Delete ({selectedContacts.length})
+                  {isDeleting === 'bulk' ? 'Deleting...' : `Delete (${selectedContacts.length})`}
                 </Button>
               )}
             </div>
@@ -2746,8 +2833,12 @@ Sequence Info:
                                   <DropdownMenuItem onClick={() => setContactDetailsModal(contact)}>
                                     View Details
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => console.log('Remove:', contact.id)} className="text-red-600">
-                                    Remove
+                                  <DropdownMenuItem 
+                                    onClick={() => showDeleteConfirmation(contact.id)} 
+                                    className="text-red-600"
+                                    disabled={isDeleting === contact.id}
+                                  >
+                                    {isDeleting === contact.id ? 'Removing...' : 'Remove'}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -3523,6 +3614,52 @@ Sequence Info:
               <Settings className="w-4 h-4 mr-1.5" />
               Warmup Settings
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmation !== null} onOpenChange={() => setDeleteConfirmation(null)}>
+        <DialogContent className="sm:max-w-lg rounded-2xl border-0 shadow-2xl">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="flex items-center gap-3 text-lg font-semibold text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Confirm Deletion
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <p className="text-gray-600">
+              {deleteConfirmation?.type === 'single' 
+                ? 'Are you sure you want to delete this contact? This action cannot be undone.'
+                : `Are you sure you want to delete ${deleteConfirmation?.count} contacts? This action cannot be undone.`
+              }
+            </p>
+            
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteConfirmation(null)}
+                disabled={isDeleting !== null}
+                className="flex-1 h-10 rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (deleteConfirmation?.type === 'single' && deleteConfirmation.contactId) {
+                    deleteContact(deleteConfirmation.contactId)
+                  } else if (deleteConfirmation?.type === 'bulk') {
+                    deleteSelectedContacts()
+                  }
+                  setDeleteConfirmation(null)
+                }}
+                disabled={isDeleting !== null}
+                className="flex-1 h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isDeleting !== null ? 'Deleting...' : 'Delete'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
