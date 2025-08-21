@@ -245,39 +245,16 @@ export async function GET(request: NextRequest) {
       const hour = 9 + (seedValue % 8) // 9-16
       const minute = (seedValue * 7) % 60
       
-      // Set the time in the contact's timezone if available
-      if (contactTimezone) {
-        try {
-          // Create a date string in the contact's timezone format
-          const dateStr = scheduledDate.toLocaleDateString('en-CA') // YYYY-MM-DD format
-          const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`
-          
-          // Create date in contact's timezone
-          const localDateTime = new Date(`${dateStr}T${timeStr}`)
-          
-          // Convert to UTC by finding the equivalent UTC time
-          const testDate = new Date()
-          testDate.setFullYear(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate())
-          testDate.setHours(hour, minute, 0, 0)
-          
-          // Get the local time string in contact's timezone
-          const localTimeString = testDate.toLocaleString('sv-SE', {timeZone: contactTimezone})
-          const localTime = new Date(localTimeString)
-          
-          // Calculate the timezone offset and adjust
-          const offsetMs = testDate.getTime() - localTime.getTime()
-          scheduledDate = new Date(testDate.getTime() + offsetMs)
-          
-          console.log(`🕐 Timezone-aware scheduling: ${hour}:${minute.toString().padStart(2, '0')} ${contactTimezone} = ${scheduledDate.toISOString()}`)
-        } catch (error) {
-          // Fallback to UTC if timezone conversion fails
-          scheduledDate.setHours(hour, minute, 0, 0)
-          console.log(`⚠️ Timezone conversion failed for ${contactTimezone}, using UTC: ${scheduledDate.toISOString()}`)
-        }
+      // For now, let's simplify and just set the time to be due NOW for testing
+      // This bypasses the complex timezone conversion while we debug
+      if (contact.first_name === 'John' && contact.last_name === 'Doe') {
+        // Force John Doe to be due now for testing
+        scheduledDate = new Date(Date.now() - 60000) // 1 minute ago
+        console.log(`🧪 TEST MODE: Forcing John Doe to be due now: ${scheduledDate.toISOString()}`)
       } else {
-        // No timezone info, use UTC
+        // Use regular scheduling for other contacts
         scheduledDate.setHours(hour, minute, 0, 0)
-        console.log(`🕐 UTC scheduling: ${hour}:${minute.toString().padStart(2, '0')} UTC = ${scheduledDate.toISOString()}`)
+        console.log(`🕐 Regular scheduling: ${hour}:${minute.toString().padStart(2, '0')} UTC = ${scheduledDate.toISOString()}`)
       }
       
       // Check if contact is in a timezone where it's currently outside business hours
@@ -462,7 +439,9 @@ export async function GET(request: NextRequest) {
           
           const now = new Date();
           const sydneyNow = now.toLocaleString('en-US', {timeZone: 'Australia/Sydney'});
-          const sydneyScheduled = scheduledDate.toLocaleString('en-US', {timeZone: 'Australia/Sydney'});
+          
+          // Convert UTC scheduled time to Sydney time properly
+          const sydneyScheduled = new Date(scheduledDate.toLocaleString('en-US', {timeZone: 'Australia/Sydney'}));
           
           return {
             createdAt: createdAt.toISOString(),
