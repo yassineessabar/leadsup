@@ -260,6 +260,9 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
 }
 
 export async function GET(request: NextRequest) {
+  // IMMEDIATE DEBUG - This MUST show up if endpoint is called
+  console.error('🚨🚨🚨 SYNC-DUE-CONTACTS CALLED AT', new Date().toISOString())
+  
   console.log('\n' + '█'.repeat(80))
   console.log('🎯 SYNC-DUE-CONTACTS ENDPOINT CALLED - ULTRA DEBUG MODE')
   console.log('█'.repeat(80))
@@ -360,19 +363,45 @@ export async function GET(request: NextRequest) {
     console.log(`\n📊 CONTACTS QUERY RESULT:`)
     console.log(`   ✅ Total contacts found: ${contacts?.length || 0}`)
     
+    // CRITICAL DEBUG - Return immediately with contact info
+    if (!contacts || contacts.length === 0) {
+      console.error('🚨🚨🚨 NO CONTACTS FOUND IN DATABASE!')
+      console.error(`   Campaign ID searched: ${campaignId}`)
+      console.error(`   Table: contacts`)
+      console.error(`   This is why automation finds 0 due contacts!`)
+      
+      // Also check if ANY contacts exist at all
+      const { data: allContacts, count: totalCount } = await supabase
+        .from('contacts')
+        .select('id, campaign_id', { count: 'exact' })
+        .limit(5)
+      
+      console.error(`🚨 Total contacts in entire table: ${totalCount || 0}`)
+      if (allContacts && allContacts.length > 0) {
+        console.error(`🚨 Sample campaign IDs in contacts table:`)
+        allContacts.forEach(c => console.error(`   - Contact ${c.id}: Campaign ${c.campaign_id}`))
+      }
+      
+      return NextResponse.json({ 
+        success: true, 
+        dueContacts: [], 
+        totalContacts: 0,
+        dueCount: 0,
+        message: 'No active contacts found in database',
+        debug: {
+          campaignId,
+          contactsTableEmpty: totalCount === 0,
+          totalContactsInTable: totalCount || 0,
+          searchedCampaignId: campaignId
+        }
+      })
+    }
+    
     // Log first few contacts for debugging
     if (contacts && contacts.length > 0) {
       console.log(`📝 Sample contacts (first 5):`)
       contacts.slice(0, 5).forEach(c => {
-        console.log(`   - ${c.email} (${c.first_name} ${c.last_name}) - Step: ${c.sequence_step || 0}, Status: ${c.email_status || 'Pending'}`)
-      })
-    }
-    
-    if (!contacts || contacts.length === 0) {
-      return NextResponse.json({ 
-        success: true, 
-        dueContacts: [], 
-        message: 'No active contacts found' 
+        console.log(`   - ${c.email || c.email_address} (${c.first_name} ${c.last_name}) - Step: ${c.sequence_step || 0}, Status: ${c.email_status || 'Pending'}`)
       })
     }
     
