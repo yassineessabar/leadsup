@@ -29,46 +29,68 @@ export async function GET(request: NextRequest) {
     console.log('🚨 Parameters parsed:', { testMode, lookAheadMinutes })
     
     console.log('═'.repeat(80))
-    console.log('🚀 EMAIL AUTOMATION PROCESSOR STARTED')
+    console.log('🚀 EMAIL AUTOMATION PROCESSOR STARTED - ULTRA VERBOSE DEBUG MODE')
     console.log('═'.repeat(80))
     console.log(`⏰ Start Time: ${new Date().toISOString()}`)
     console.log(`🧪 Test Mode: ${testMode}`)
     console.log(`👀 Look Ahead: ${lookAheadMinutes} minutes`)
-    console.log(`🌍 Current UTC Hour: ${new Date().getUTCHours()}:00`)
-    console.log(`🔧 Code Version: ${new Date().toISOString().slice(0,16)} (Analytics integration)`)
+    console.log(`🌍 Current UTC Hour: ${new Date().getUTCHours()}:${new Date().getUTCMinutes().toString().padStart(2, '0')}`)
+    console.log(`🔧 Code Version: DEBUG-${Date.now()}`)
+    console.log(`🔗 Request URL: ${request.url}`)
+    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`)
+    console.log(`📡 Vercel URL: ${process.env.VERCEL_URL || 'not set'}`)
     console.log('─'.repeat(80))
     
     // STEP 1: Get contacts that are due from analytics logic
     console.log('📊 STEP 1: Syncing with analytics "Due next" contacts...')
     
     // Get all active campaigns
-    console.log('🔍 Fetching active campaigns...')
+    console.log('🔍 STEP 1.1: Fetching active campaigns from database...')
+    console.log(`   📊 Supabase URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`)
+    console.log(`   🔑 Has Service Key: ${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`)
+    
     const { data: activeCampaigns, error: campaignsError } = await supabase
       .from('campaigns')
-      .select('id, name')
+      .select('id, name, status, created_at, updated_at')
       .eq('status', 'Active')
+    
+    console.log(`   ✅ Query executed: SELECT * FROM campaigns WHERE status = 'Active'`)
     
     console.log(`📋 Found ${activeCampaigns?.length || 0} active campaigns`)
     if (campaignsError) {
       console.error('❌ Error fetching campaigns:', campaignsError)
     }
     if (activeCampaigns) {
-      console.log('📝 Active campaigns:', activeCampaigns.map(c => `${c.name} (${c.id})`))
+      console.log('📝 Active campaigns found:')
+      activeCampaigns.forEach((c, i) => {
+        console.log(`   ${i + 1}. Campaign: "${c.name}"`)
+        console.log(`      ID: ${c.id}`)
+        console.log(`      Status: ${c.status}`)
+        console.log(`      Created: ${c.created_at}`)
+        console.log(`      Updated: ${c.updated_at}`)
+      })
     }
     
     let analyticsContacts: any[] = []
     
     if (!campaignsError && activeCampaigns) {
-      for (const campaign of activeCampaigns) {
+      console.log('🔄 STEP 1.2: Processing each campaign for due contacts...')
+      for (const [index, campaign] of activeCampaigns.entries()) {
+        console.log(`\n📌 Processing Campaign ${index + 1}/${activeCampaigns.length}: "${campaign.name}"`)
+        console.log('─'.repeat(60))
+        
         try {
           // Use our internal API to get due contacts (same domain call)
           const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
                          process.env.NODE_ENV === 'production' ? `https://${request.headers.get('host')}` : 
                          'http://localhost:3000'
-          console.log(`🔗 Using baseUrl: ${baseUrl} for campaign ${campaign.id}`)
           
           const syncUrl = `${baseUrl}/api/automation/sync-due-contacts?campaignId=${campaign.id}`
-          console.log(`🔗 Calling sync endpoint: ${syncUrl}`)
+          
+          console.log(`   🔗 Base URL: ${baseUrl}`)
+          console.log(`   🎯 Campaign ID: ${campaign.id}`)
+          console.log(`   📡 Full Sync URL: ${syncUrl}`)
+          console.log(`   ⏱️ Calling sync endpoint at: ${new Date().toISOString()}`)
           
           const response = await fetch(syncUrl, {
             method: 'GET',

@@ -144,14 +144,28 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
 
 // Calculate if contact's next email is due (matching analytics logic)
 async function isContactDue(contact: any, campaignSequences: any[]) {
+  console.log(`\n   🎯 Checking if contact is due...`)
+  
   try {
     // Get count of emails actually sent to this contact
-    const { data: emailsSent, count } = await supabase
+    console.log(`      📊 Querying email_tracking table...`)
+    console.log(`         Query: SELECT COUNT(*) FROM email_tracking`)
+    console.log(`         WHERE contact_id = '${contact.id}'`)
+    console.log(`         AND campaign_id = '${contact.campaign_id}'`)
+    console.log(`         AND status = 'sent'`)
+    
+    const { data: emailsSent, count, error: trackingError } = await supabase
       .from('email_tracking')
       .select('id', { count: 'exact' })
       .eq('contact_id', contact.id)
       .eq('campaign_id', contact.campaign_id)
       .eq('status', 'sent')
+    
+    if (trackingError) {
+      console.log(`      ❌ Error querying email_tracking:`, trackingError)
+    }
+    
+    console.log(`      📧 Emails sent count: ${count || 0}`)
     
     // Determine actual sequence step based on sent emails
     let actualSequenceStep = contact.sequence_step || 0
@@ -246,12 +260,19 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
 }
 
 export async function GET(request: NextRequest) {
+  console.log('\n' + '█'.repeat(80))
+  console.log('🎯 SYNC-DUE-CONTACTS ENDPOINT CALLED - ULTRA DEBUG MODE')
+  console.log('█'.repeat(80))
+  
   try {
     const { searchParams } = new URL(request.url)
     const campaignId = searchParams.get('campaignId')
     
-    console.log('🔄 SYNCING DUE CONTACTS FOR AUTOMATION')
-    console.log(`📋 Campaign ID: ${campaignId}`)
+    console.log('📋 REQUEST DETAILS:')
+    console.log(`   🔗 Full URL: ${request.url}`)
+    console.log(`   📌 Campaign ID: ${campaignId}`)
+    console.log(`   ⏰ Called at: ${new Date().toISOString()}`)
+    console.log(`   🌐 Method: ${request.method}`)
     console.log('─'.repeat(50))
     
     if (!campaignId) {
@@ -260,18 +281,33 @@ export async function GET(request: NextRequest) {
     
     
     // Get campaign details
-    const { data: campaignDetails } = await supabase
+    console.log('🔍 STEP 1: Fetching campaign details...')
+    console.log(`   📊 Query: SELECT * FROM campaigns WHERE id = '${campaignId}'`)
+    
+    const { data: campaignDetails, error: campaignError } = await supabase
       .from('campaigns')
       .select('id, name, status')
       .eq('id', campaignId)
       .single()
     
+    if (campaignError) {
+      console.error('❌ Error fetching campaign:', campaignError)
+      console.error('   Error details:', JSON.stringify(campaignError, null, 2))
+    }
+    
     if (campaignDetails) {
-      console.log(`📌 Campaign Name: ${campaignDetails.name}`)
-      console.log(`📊 Campaign Status: ${campaignDetails.status}`)
+      console.log('✅ Campaign found:')
+      console.log(`   📌 Name: ${campaignDetails.name}`)
+      console.log(`   🆔 ID: ${campaignDetails.id}`)
+      console.log(`   📊 Status: ${campaignDetails.status}`)
+    } else {
+      console.log('⚠️ No campaign found with ID:', campaignId)
     }
     
     // Get campaign sequences
+    console.log('\n🔍 STEP 2: Fetching campaign sequences...')
+    console.log(`   📊 Query: SELECT * FROM campaign_sequences WHERE campaign_id = '${campaignId}' ORDER BY step_number`)
+    
     const { data: campaignSequences, error: sequencesError } = await supabase
       .from('campaign_sequences')
       .select('*')
@@ -279,11 +315,28 @@ export async function GET(request: NextRequest) {
       .order('step_number', { ascending: true })
     
     if (sequencesError) {
-      console.error('Error fetching campaign sequences:', sequencesError)
+      console.error('❌ Error fetching campaign sequences:', sequencesError)
+      console.error('   Error details:', JSON.stringify(sequencesError, null, 2))
       return NextResponse.json({ error: 'Failed to fetch sequences' }, { status: 500 })
     }
     
+    console.log(`✅ Found ${campaignSequences?.length || 0} sequences`)
+    if (campaignSequences && campaignSequences.length > 0) {
+      console.log('📝 Sequences:')
+      campaignSequences.forEach(seq => {
+        console.log(`   Step ${seq.step_number}: "${seq.subject || 'No subject'}" - Timing: ${seq.timing_days} days`)
+      })
+    }
+    
     // Get all contacts for this campaign (exclude completed statuses)
+    console.log('\n🔍 STEP 3: Fetching contacts for campaign...')
+    console.log(`   📊 Query: SELECT * FROM contacts WHERE`)
+    console.log(`      campaign_id = '${campaignId}'`)
+    console.log(`      AND email_status != 'Completed'`)
+    console.log(`      AND email_status != 'Replied'`)
+    console.log(`      AND email_status != 'Unsubscribed'`)
+    console.log(`      AND email_status != 'Bounced'`)
+    
     const { data: contacts, error: contactsError } = await supabase
       .from('contacts')
       .select('*')
@@ -294,8 +347,9 @@ export async function GET(request: NextRequest) {
       .neq('email_status', 'Bounced')
     
     if (contactsError) {
-      console.error('Error fetching contacts:', contactsError)
-      console.error('Campaign ID:', campaignId)
+      console.error('❌ Error fetching contacts:', contactsError)
+      console.error('   Error details:', JSON.stringify(contactsError, null, 2))
+      console.error('   Campaign ID:', campaignId)
       return NextResponse.json({ 
         error: 'Failed to fetch contacts',
         details: contactsError.message,
@@ -303,7 +357,8 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
     
-    console.log(`📋 Found ${contacts?.length || 0} active contacts`)
+    console.log(`\n📊 CONTACTS QUERY RESULT:`)
+    console.log(`   ✅ Total contacts found: ${contacts?.length || 0}`)
     
     // Log first few contacts for debugging
     if (contacts && contacts.length > 0) {
@@ -322,10 +377,20 @@ export async function GET(request: NextRequest) {
     }
     
     // Filter contacts that are due for their next email
+    console.log('\n🔄 STEP 4: Checking each contact for due status...')
+    console.log('─'.repeat(50))
     const dueContacts: ContactWithSequence[] = []
     
-    for (const contact of contacts) {
-      console.log(`🔍 Checking contact ${contact.id}: ${contact.email} (step: ${contact.sequence_step || 0})`)
+    for (const [idx, contact] of contacts.entries()) {
+      console.log(`\n📍 Contact ${idx + 1}/${contacts.length}:`)
+      console.log(`   🆔 ID: ${contact.id}`)
+      console.log(`   📧 Email: ${contact.email || contact.email_address}`)
+      console.log(`   👤 Name: ${contact.first_name} ${contact.last_name}`)
+      console.log(`   📍 Location: ${contact.location || 'Not set'}`)
+      console.log(`   📊 Step: ${contact.sequence_step || 0}`)
+      console.log(`   📅 Created: ${contact.created_at}`)
+      console.log(`   🔄 Updated: ${contact.updated_at}`)
+      console.log(`   📌 Status: ${contact.email_status || 'Pending'}`)
       
       
       if (await isContactDue(contact, campaignSequences || [])) {
