@@ -401,8 +401,13 @@ async function getThreadedMessages(userId: string, filters: any) {
           id: thread.id,
           conversation_id: thread.conversation_id,
           
-          // UI expects these fields for email display - use thread data as primary source
-          sender: thread.contact_email?.trim() || 'Unknown',
+          // UI expects these fields for email display - map correctly based on message direction
+          sender: latestMessage?.direction === 'outbound' 
+            ? (latestMessage?.sender_email || 'Unknown sender')  // For outbound: our sending account
+            : (thread.contact_email?.trim() || 'Unknown'),  // For inbound: external person
+          to_email: latestMessage?.direction === 'outbound'
+            ? (thread.contact_email?.trim() || 'Unknown recipient')  // For outbound: recipient contact
+            : (latestMessage?.sender_email || 'Unknown recipient'),  // For inbound: our receiving account
           subject: thread.subject || 'No subject',
           preview: thread.last_message_preview || 'No preview available',
           date: new Date(thread.last_message_at).toLocaleDateString('en-US', {
@@ -418,6 +423,7 @@ async function getThreadedMessages(userId: string, filters: any) {
           hasAttachment: latestMessage?.has_attachments || false,
           content: thread.last_message_preview || latestMessage?.body_html || latestMessage?.body_text || 'No content available',
           folder: folder || 'inbox', // Use the requested folder
+          direction: latestMessage?.direction || 'inbound',  // Add direction for frontend
           
           // Keep original thread data for compatibility
           contact_name: thread.contact_name,
