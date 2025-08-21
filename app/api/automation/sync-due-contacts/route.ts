@@ -16,7 +16,7 @@ interface ContactWithSequence {
   location: string
   campaign_id: string
   created_at: string
-  status: string
+  email_status: string
   sequence_step: number
   next_sequence_subject: string
   scheduled_time: string
@@ -75,9 +75,16 @@ function isContactDue(contact: any, campaignSequences: any[]) {
       return currentTimeInMinutes >= intendedTimeInMinutes
     } else {
       // For non-immediate emails, check if timing has passed
-      const contactDate = new Date(contact.created_at)
-      const scheduledDate = new Date(contactDate)
-      scheduledDate.setDate(contactDate.getDate() + nextSequence.timing_days)
+      // Use updated_at for follow-up emails (same logic as analytics)
+      let baseDate
+      if (currentStep === 0) {
+        baseDate = new Date(contact.created_at)
+      } else {
+        baseDate = contact.updated_at ? new Date(contact.updated_at) : new Date(contact.created_at || new Date())
+      }
+      
+      const scheduledDate = new Date(baseDate)
+      scheduledDate.setDate(baseDate.getDate() + nextSequence.timing_days)
       
       return new Date() >= scheduledDate
     }
@@ -116,10 +123,10 @@ export async function GET(request: NextRequest) {
       .from('contacts')
       .select('*')
       .eq('campaign_id', campaignId)
-      .neq('status', 'Completed')
-      .neq('status', 'Replied') 
-      .neq('status', 'Unsubscribed')
-      .neq('status', 'Bounced')
+      .neq('email_status', 'Completed')
+      .neq('email_status', 'Replied') 
+      .neq('email_status', 'Unsubscribed')
+      .neq('email_status', 'Bounced')
     
     if (contactsError) {
       console.error('Error fetching contacts:', contactsError)
@@ -173,7 +180,7 @@ export async function GET(request: NextRequest) {
             location: contact.location,
             campaign_id: contact.campaign_id,
             created_at: contact.created_at,
-            status: contact.status,
+            email_status: contact.email_status,
             sequence_step: currentStep,
             next_sequence_subject: nextSequence.subject || `Email ${nextSequence.step_number}`,
             scheduled_time: scheduledTime,
@@ -222,7 +229,7 @@ export async function POST(request: NextRequest) {
         .from('contacts')
         .update({ 
           sequence_step: (sequenceStep || 0) + 1,
-          status: 'In Progress',
+          email_status: 'In Progress',
           updated_at: new Date().toISOString()
         })
         .eq('id', contactId)
@@ -243,7 +250,7 @@ export async function POST(request: NextRequest) {
       await supabase
         .from('contacts')
         .update({ 
-          status: 'Error',
+          email_status: 'Error',
           updated_at: new Date().toISOString()
         })
         .eq('id', contactId)
