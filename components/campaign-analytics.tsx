@@ -1175,10 +1175,21 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       const nextSequence = campaignSequences[nextStepIndex]
       const timingDays = nextSequence?.timing_days !== undefined ? nextSequence.timing_days : (nextSequence?.timing !== undefined ? nextSequence.timing : (nextStepIndex === 0 ? 0 : 1))
       
-      // Calculate actual scheduled date like in generateContactSchedule
-      const contactDate = contact.created_at ? new Date(contact.created_at) : new Date()
-      const scheduledDate = new Date(contactDate)
-      scheduledDate.setDate(contactDate.getDate() + timingDays)
+      // Calculate actual scheduled date - use last sent date for follow-up emails
+      let baseDate: Date
+      
+      if (currentStep === 0) {
+        // For first email, use contact creation date
+        baseDate = contact.created_at ? new Date(contact.created_at) : new Date()
+      } else {
+        // For follow-up emails, try to get the last sent date from progression records
+        // This is async, so we'll fall back to updated_at for now
+        // TODO: Make this function async to properly query last sent date
+        baseDate = contact.updated_at ? new Date(contact.updated_at) : new Date(contact.created_at || new Date())
+      }
+      
+      const scheduledDate = new Date(baseDate)
+      scheduledDate.setDate(baseDate.getDate() + timingDays)
       
       // Add consistent business hours (same logic as generateContactSchedule)
       const contactIdString = String(contact.id || '')
