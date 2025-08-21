@@ -99,10 +99,19 @@ export async function GET(request: NextRequest) {
     console.log('📊 STEP 1: Syncing with analytics "Due next" contacts...')
     
     // Get all active campaigns
+    console.log('🔍 Fetching active campaigns...')
     const { data: activeCampaigns, error: campaignsError } = await supabase
       .from('campaigns')
       .select('id, name')
       .eq('status', 'Active')
+    
+    console.log(`📋 Found ${activeCampaigns?.length || 0} active campaigns`)
+    if (campaignsError) {
+      console.error('❌ Error fetching campaigns:', campaignsError)
+    }
+    if (activeCampaigns) {
+      console.log('📝 Active campaigns:', activeCampaigns.map(c => `${c.name} (${c.id})`))
+    }
     
     let analyticsContacts: any[] = []
     
@@ -157,14 +166,30 @@ export async function GET(request: NextRequest) {
       for (const campaign of activeCampaigns) {
         try {
           // Get campaign sequences
-          const { data: campaignSequences } = await supabase
+          console.log(`🔍 Fetching sequences for campaign: ${campaign.name} (${campaign.id})`)
+          const { data: campaignSequences, error: sequencesError } = await supabase
             .from('campaign_sequences')
             .select('*')
             .eq('campaign_id', campaign.id)
             .order('step_number', { ascending: true })
           
+          if (sequencesError) {
+            console.error(`❌ Error fetching sequences for campaign ${campaign.id}:`, sequencesError)
+            continue
+          }
+          
+          console.log(`📋 Campaign "${campaign.name}": ${campaignSequences?.length || 0} sequences`)
+          if (campaignSequences?.length > 0) {
+            console.log(`📝 Sequences:`, campaignSequences.map(s => ({
+              step: s.step_number,
+              timing_days: s.timing_days,
+              subject: s.subject
+            })))
+          }
+          
           // Get contacts for this campaign
-          const { data: campaignContacts } = await supabase
+          console.log(`🔍 Fetching contacts for campaign: ${campaign.name} (${campaign.id})`)
+          const { data: campaignContacts, error: contactsError } = await supabase
             .from('contacts')
             .select('*')
             .eq('campaign_id', campaign.id)
@@ -173,7 +198,21 @@ export async function GET(request: NextRequest) {
             .neq('status', 'Unsubscribed')
             .neq('status', 'Bounced')
           
+          if (contactsError) {
+            console.error(`❌ Error fetching contacts for campaign ${campaign.id}:`, contactsError)
+            continue
+          }
+          
           console.log(`📋 Campaign "${campaign.name}": ${campaignContacts?.length || 0} total contacts`)
+          if (campaignContacts?.length > 0) {
+            console.log(`📝 Sample contacts:`, campaignContacts.slice(0, 3).map(c => ({
+              id: c.id,
+              email: c.email,
+              status: c.status,
+              location: c.location,
+              sequence_step: c.sequence_step
+            })))
+          }
           
           if (campaignContacts && campaignSequences) {
             // Apply the same "Due next" logic from analytics
