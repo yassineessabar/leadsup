@@ -247,10 +247,10 @@ export async function GET(request: NextRequest) {
       
       // For now, let's simplify and just set the time to be due NOW for testing
       // This bypasses the complex timezone conversion while we debug
-      if (contact.first_name === 'John' && contact.last_name === 'Doe') {
-        // Force John Doe to be due now for testing
+      if ((contact.first_name === 'John' && contact.last_name === 'Doe') || contact.id === '267' || contact.id === 267) {
+        // Force John Doe contacts (both 267 and 268) to be due now for testing
         scheduledDate = new Date(Date.now() - 60000) // 1 minute ago
-        console.log(`🧪 TEST MODE: Forcing John Doe to be due now: ${scheduledDate.toISOString()}`)
+        console.log(`🧪 TEST MODE: Forcing John Doe (ID: ${contact.id}) to be due now: ${scheduledDate.toISOString()}`)
       } else {
         // Use regular scheduling for other contacts
         scheduledDate.setHours(hour, minute, 0, 0)
