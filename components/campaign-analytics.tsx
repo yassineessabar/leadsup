@@ -617,6 +617,19 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             
             nextEmailIn = isDue ? "Due next" : "Ready to send"
             
+            // Debug logging for due next decision
+            if (contact.email?.includes('john') || contact.id === 276 || contact.id === 278 || contact.id === 279 || contact.id === 285) {
+              console.log(`🎯 DUE NEXT DECISION for ${contact.email} (ID: ${contact.id}):`)
+              console.log(`   Sequence Step: ${contact.sequence_step}`)
+              console.log(`   Next Email Data: timing=${nextEmailData?.timing_days}, relative=${nextEmailData?.relative}`)
+              console.log(`   Scheduled Date: ${scheduledDate?.toISOString()}`)
+              console.log(`   Current Time: ${now.toISOString()}`)
+              console.log(`   Time Reached: ${isTimeReached}`)
+              console.log(`   Business Hours: ${businessHoursStatus.isBusinessHours}`)
+              console.log(`   Final isDue: ${isDue}`)
+              console.log(`   Final Status: ${nextEmailIn}`)
+            }
+            
             // Debug log for due status decision
             if (contact.email === 'lukas.schmidt.berlin@example.com') {
               console.log(`🚨 FINAL STATUS for ${contact.email}:`, {
@@ -1190,6 +1203,18 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       
       const scheduledDate = new Date(baseDate)
       scheduledDate.setDate(baseDate.getDate() + timingDays)
+      
+      // Debug logging for contact sequence calculation
+      if (contact.email?.includes('john') || contact.id === 276 || contact.id === 278 || contact.id === 279 || contact.id === 285) {
+        console.log(`📅 NEXT EMAIL CALC for ${contact.email} (ID: ${contact.id}):`)
+        console.log(`   Current Step: ${currentStep}`)
+        console.log(`   Next Sequence Step: ${nextStepIndex + 1}`)
+        console.log(`   Timing Days: ${timingDays}`)
+        console.log(`   Base Date (${currentStep === 0 ? 'created_at' : 'updated_at'}): ${baseDate.toISOString()}`)
+        console.log(`   Scheduled Date: ${scheduledDate.toISOString()}`)
+        console.log(`   Now: ${new Date().toISOString()}`)
+        console.log(`   Is Due: ${scheduledDate <= new Date()}`)
+      }
       
       // Add consistent business hours (same logic as generateContactSchedule)
       const contactIdString = String(contact.id || '')
