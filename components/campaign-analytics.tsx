@@ -115,6 +115,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [sequenceModalContact, setSequenceModalContact] = useState<Contact | null>(null)
   const [emailPreviewModal, setEmailPreviewModal] = useState<{contact: Contact, step: any} | null>(null)
   const [contactDetailsModal, setContactDetailsModal] = useState<Contact | null>(null)
+  const [displayLimit, setDisplayLimit] = useState(20) // Track how many contacts to display
   const [campaignSenders, setCampaignSenders] = useState<string[]>([])
   const [campaignSequences, setCampaignSequences] = useState<any[]>([])
   const [sequencesLastUpdated, setSequencesLastUpdated] = useState<number>(Date.now())
@@ -862,6 +863,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     }
   }, [dateRange])
 
+  // Reset display limit when filters change
+  useEffect(() => {
+    setDisplayLimit(20)
+  }, [searchQuery, statusFilter])
+
   // Check for expandWarming URL parameter to expand warming details
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -971,13 +977,23 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     campaign.sent === metrics.emailsSent
   
   
-  // Calculate metrics - only show real data for campaigns with actual activity
-  const totalSent = hasBeenStarted && hasRealCampaignData ? metrics.emailsSent : 0
-  const totalDelivered = hasBeenStarted && hasRealCampaignData ? (metrics?.emailsDelivered || 0) : 0
-  const totalPlanned = campaign.totalPlanned || 0 // Only use real data from database
+  // Calculate actual progress from contact statuses
+  const completedContacts = contacts.filter(c => c.status === 'Completed').length
+  const repliedContacts = contacts.filter(c => c.status === 'Replied').length
+  const pendingContacts = contacts.filter(c => c.status === 'Pending').length
+  const inProgressContacts = contacts.filter(c => c.status === 'In Progress').length
+  
+  // Calculate total emails actually sent (completed + replied + in progress)
+  const actualEmailsSent = completedContacts + repliedContacts + inProgressContacts
+  
+  // Calculate metrics - use actual contact data when available, fallback to SendGrid metrics
+  const totalSent = hasBeenStarted ? (actualEmailsSent > 0 ? actualEmailsSent : (hasRealCampaignData ? metrics.emailsSent : 0)) : 0
+  const totalDelivered = hasBeenStarted && hasRealCampaignData ? (metrics?.emailsDelivered || 0) : totalSent
+  const totalPlanned = contacts.length > 0 ? contacts.length : (campaign.totalPlanned || 0)
+  const totalRemaining = totalPlanned - totalSent
   const openRate = hasBeenStarted && hasRealCampaignData ? (metrics?.openRate || 0) : 0
   const clickRate = hasBeenStarted && hasRealCampaignData ? (metrics?.clickRate || 0) : 0
-  const deliveryRate = hasBeenStarted && hasRealCampaignData ? (metrics?.deliveryRate || 0) : 0
+  const deliveryRate = hasBeenStarted && hasRealCampaignData ? (metrics?.deliveryRate || 0) : (totalSent > 0 ? 100 : 0)
   const bounceRate = hasBeenStarted && hasRealCampaignData ? (metrics?.bounceRate || 0) : 0
   const responseRate = hasBeenStarted && hasRealCampaignData ? (Math.floor(Math.random() * 10) + 5) : 0 // Keep this as fallback until we have reply tracking
   const progressPercentage = hasBeenStarted && totalPlanned > 0 ? Math.min(Math.round((totalSent / totalPlanned) * 100), 100) : 0
@@ -2319,7 +2335,7 @@ Sequence Info:
                         </td>
                       </tr>
                     ) : (
-                      filteredContacts.slice(0, 20).map((contact) => (
+                      filteredContacts.slice(0, displayLimit).map((contact) => (
                         <tr key={contact.id} className="hover:bg-gray-50/50 transition-colors">
                           <td className="p-4">
                             <Checkbox
@@ -2500,10 +2516,14 @@ Sequence Info:
                 </table>
               </div>
               
-              {!loading && filteredContacts.length > 20 && (
+              {!loading && filteredContacts.length > displayLimit && (
                 <div className="p-6 border-t border-gray-200/60 text-center bg-gray-50">
-                  <Button variant="outline" className="border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-2.5 font-medium transition-all duration-300 rounded-2xl">
-                    Load More ({filteredContacts.length - 20} remaining)
+                  <Button 
+                    variant="outline" 
+                    className="border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+                    onClick={() => setDisplayLimit(prev => prev + 20)}
+                  >
+                    Load More ({filteredContacts.length - displayLimit} remaining)
                   </Button>
                 </div>
               )}
@@ -2535,22 +2555,54 @@ Sequence Info:
                 <div className="grid grid-cols-2 gap-4 pt-4">
                   <div className="text-center p-4 bg-gray-50 rounded-2xl">
                     <p className="text-2xl font-light text-gray-900">
-                      {hasBeenStarted ? totalSent : '—'}
+                      {totalSent}
                     </p>
                     <p className="text-sm text-gray-500 mt-1">
-                      {hasBeenStarted ? 'Sent' : 'Not started'}
+                      Sent
                     </p>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-2xl">
                     <p className="text-2xl font-light text-gray-900">
-                      {hasBeenStarted && totalPlanned > 0 ? (totalPlanned - totalSent) : 
-                       hasBeenStarted ? '0' : '—'}
+                      {totalRemaining > 0 ? totalRemaining : 0}
                     </p>
                     <p className="text-sm text-gray-500 mt-1">
-                      {hasBeenStarted ? 'Remaining' : 'No contacts'}
+                      Remaining
                     </p>
                   </div>
                 </div>
+                
+                {/* Detailed status breakdown */}
+                {contacts.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 mb-2 font-medium">Contact Status:</p>
+                    <div className="space-y-1">
+                      {completedContacts > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-600">Completed:</span>
+                          <span className="font-medium text-green-600">{completedContacts}</span>
+                        </div>
+                      )}
+                      {inProgressContacts > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-600">In Progress:</span>
+                          <span className="font-medium text-blue-600">{inProgressContacts}</span>
+                        </div>
+                      )}
+                      {pendingContacts > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-600">Pending:</span>
+                          <span className="font-medium text-yellow-600">{pendingContacts}</span>
+                        </div>
+                      )}
+                      {repliedContacts > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-600">Replied:</span>
+                          <span className="font-medium text-purple-600">{repliedContacts}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
