@@ -617,6 +617,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             
             nextEmailIn = isDue ? "Due next" : "Pending Start"
             
+            // Debug logging for due next decision - PATH 1 (immediate emails)
+            if (contact.sequence_step >= 1) {
+              console.log(`🔍 DUE CHECK PATH 1 for ${contact.email} (Step ${contact.sequence_step}/6):`)
+              console.log(`   nextEmailData: ${nextEmailData ? JSON.stringify(nextEmailData) : 'null'}`)
+              console.log(`   isDue: ${isDue}`)
+              console.log(`   nextEmailIn: ${nextEmailIn}`)
+            }
+            
             // Debug logging for due next decision
             if (contact.email?.includes('john') || contact.id === 276 || contact.id === 278 || contact.id === 279 || contact.id === 285) {
               console.log(`🎯 DUE NEXT DECISION for ${contact.email} (ID: ${contact.id}):`)
@@ -692,6 +700,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 }
                 
                 nextEmailIn = isDue ? "Due next" : "Pending Start"
+                
+                // Debug logging for due next decision - PATH 2 (main sequence logic)
+                if (contact.sequence_step >= 1) {
+                  console.log(`🔍 DUE CHECK PATH 2 for ${contact.email} (Step ${contact.sequence_step}/6):`)
+                  console.log(`   nextEmailData: ${nextEmailData ? JSON.stringify(nextEmailData) : 'null'}`)
+                  console.log(`   isDue: ${isDue}`)
+                  console.log(`   nextEmailIn: ${nextEmailIn}`)
+                }
               }
             } else {
               // Fallback to mock subjects
@@ -762,6 +778,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             }
             
             nextEmailIn = isDue ? "Due next" : "Pending Start"
+            
+            // Debug logging for due next decision - PATH 3 (fallback logic)
+            if (contact.sequence_step >= 1) {
+              console.log(`🔍 DUE CHECK PATH 3 for ${contact.email} (Step ${contact.sequence_step}/6):`)
+              console.log(`   nextEmailData: ${nextEmailData ? JSON.stringify(nextEmailData) : 'null'}`)
+              console.log(`   isDue: ${isDue}`)
+              console.log(`   nextEmailIn: ${nextEmailIn}`)
+            }
           }
           
           // Calculate next scheduled time for the old format (fallback)
