@@ -255,12 +255,25 @@ export async function GET(request: NextRequest) {
     const campaignId = searchParams.get('campaignId')
     
     console.log('🔄 SYNCING DUE CONTACTS FOR AUTOMATION')
+    console.log(`📋 Campaign ID: ${campaignId}`)
     console.log('─'.repeat(50))
     
     if (!campaignId) {
       return NextResponse.json({ error: 'Campaign ID required' }, { status: 400 })
     }
     
+    
+    // Get campaign details
+    const { data: campaignDetails } = await supabase
+      .from('campaigns')
+      .select('id, name, status')
+      .eq('id', campaignId)
+      .single()
+    
+    if (campaignDetails) {
+      console.log(`📌 Campaign Name: ${campaignDetails.name}`)
+      console.log(`📊 Campaign Status: ${campaignDetails.status}`)
+    }
     
     // Get campaign sequences
     const { data: campaignSequences, error: sequencesError } = await supabase

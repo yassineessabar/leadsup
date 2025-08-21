@@ -8,74 +8,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Direct analytics logic function - EXACT match with analytics page logic
-function isContactDueDirectly(contact: any, campaignSequences: any[]) {
-  try {
-    // Get the contact's timezone
-    const timezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
-    const businessHoursStatus = getBusinessHoursStatus(timezone)
-    
-    // Calculate the intended scheduled time (same logic as analytics)
-    const contactIdString = String(contact.id || '')
-    const contactHash = contactIdString.split('').reduce((hash: number, char: string) => {
-      return ((hash << 5) - hash) + char.charCodeAt(0)
-    }, 0)
-    
-    // Get the next sequence for this contact
-    const currentStep = contact.sequence_step || 0
-    const nextSequence = campaignSequences.find(seq => seq.step_number === currentStep + 1)
-    
-    if (!nextSequence) {
-      return false // No next sequence
-    }
-    
-    // For immediate emails (timing: 0), use the timezone-aware logic
-    if (nextSequence.timing_days === 0) {
-      const seedValue = (contactHash + 1) % 1000
-      const intendedHour = 9 + (seedValue % 8) // 9 AM - 5 PM in contact's timezone
-      const intendedMinute = (seedValue * 7) % 60
-      
-      // Get current time in contact's timezone
-      const now = new Date()
-      const currentHourInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
-        timeZone: timezone,
-        hour: 'numeric',
-        hour12: false
-      }).format(now))
-      const currentMinuteInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
-        timeZone: timezone,
-        minute: 'numeric'
-      }).format(now))
-      
-      // Compare intended time with current time
-      const currentTimeInMinutes = currentHourInContactTz * 60 + currentMinuteInContactTz
-      const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
-      
-      // Time is reached AND we're in business hours (exact analytics logic)
-      const isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
-      
-      console.log(`    📅 IMMEDIATE EMAIL CHECK for contact ${contact.id}:`)
-      console.log(`       Timezone: ${timezone}`)
-      console.log(`       Intended time: ${intendedHour}:${intendedMinute.toString().padStart(2, '0')}`)
-      console.log(`       Current time in ${timezone}: ${currentHourInContactTz}:${currentMinuteInContactTz.toString().padStart(2, '0')}`)
-      console.log(`       Time reached: ${isTimeReached}`)
-      console.log(`       In business hours: ${businessHoursStatus.isBusinessHours}`)
-      console.log(`       Final result: ${isTimeReached && businessHoursStatus.isBusinessHours}`)
-      
-      return isTimeReached && businessHoursStatus.isBusinessHours
-    } else {
-      // For non-immediate emails, check if timing has passed
-      const contactDate = new Date(contact.created_at)
-      const scheduledDate = new Date(contactDate)
-      scheduledDate.setDate(contactDate.getDate() + nextSequence.timing_days)
-      
-      return new Date() >= scheduledDate
-    }
-  } catch (error) {
-    console.error('Error checking if contact is due directly:', error)
-    return false
-  }
-}
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
@@ -144,9 +76,13 @@ export async function GET(request: NextRequest) {
             const syncResult = await response.json()
             console.log(`📊 Sync result for campaign ${campaign.id}:`, JSON.stringify(syncResult, null, 2))
             if (syncResult.success && syncResult.dueContacts) {
-              console.log(`  📋 Campaign "${campaign.name}": ${syncResult.dueContacts.length} due contacts`)
+              console.log(`  📋 Campaign "${campaign.name}" (${campaign.id}): ${syncResult.dueContacts.length} due contacts`)
+              if (syncResult.dueContacts.length > 0) {
+                console.log(`     Contact IDs: ${syncResult.dueContacts.map((c: any) => c.id).join(', ')}`)
+              }
               analyticsContacts.push(...syncResult.dueContacts.map((c: any) => ({
                 ...c,
+                campaign_id: campaign.id,
                 campaign_name: campaign.name,
                 source: 'analytics'
               })))
@@ -167,162 +103,10 @@ export async function GET(request: NextRequest) {
     console.log(`📊 Total analytics due contacts: ${analyticsContacts.length}`)
     console.log('─'.repeat(40))
     
-    // STEP 2: Always implement analytics logic directly (ignore sync API completely)
-    console.log('🎯 STEP 2: Implementing analytics logic directly (FORCING ANALYTICS ONLY)...')
+    // STEP 2: Use analytics results from sync-due-contacts (TRUST THE CORRECTED SYNC API)
+    console.log('🎯 STEP 2: Using analytics results from corrected sync-due-contacts endpoint...')
     
-    // Clear any analytics contacts from API and force direct implementation
-    analyticsContacts = []
-    
-    // Store debug info for test mode
-    const debugInfo: any = {
-      campaigns: [],
-      contactEvaluations: []
-    }
-    
-    if (activeCampaigns && activeCampaigns.length > 0) {
-      for (const campaign of activeCampaigns) {
-        try {
-          // Get campaign sequences
-          console.log(`🔍 Fetching sequences for campaign: ${campaign.name} (${campaign.id})`)
-          const { data: campaignSequences, error: sequencesError } = await supabase
-            .from('campaign_sequences')
-            .select('*')
-            .eq('campaign_id', campaign.id)
-            .order('step_number', { ascending: true })
-          
-          if (sequencesError) {
-            console.error(`❌ Error fetching sequences for campaign ${campaign.id}:`, sequencesError)
-            if (testMode) {
-              debugInfo.campaigns.push({
-                name: campaign.name,
-                id: campaign.id,
-                error: 'Failed to fetch sequences',
-                errorDetails: sequencesError
-              })
-            }
-            continue
-          }
-          
-          console.log(`📋 Campaign "${campaign.name}": ${campaignSequences?.length || 0} sequences`)
-          if (campaignSequences?.length > 0) {
-            console.log(`📝 Sequences:`, campaignSequences.map(s => ({
-              step: s.step_number,
-              timing_days: s.timing_days,
-              subject: s.subject
-            })))
-          } else {
-            console.log(`⚠️ No sequences found for campaign "${campaign.name}"`)
-            if (testMode) {
-              debugInfo.campaigns.push({
-                name: campaign.name,
-                id: campaign.id,
-                sequenceCount: 0,
-                contactCount: 0,
-                error: 'No sequences configured'
-              })
-            }
-            continue
-          }
-          
-          // Get contacts for this campaign
-          console.log(`🔍 Fetching contacts for campaign: ${campaign.name} (${campaign.id})`)
-          const { data: campaignContacts, error: contactsError } = await supabase
-            .from('contacts')
-            .select('*')
-            .eq('campaign_id', campaign.id)
-          
-          if (contactsError) {
-            console.error(`❌ Error fetching contacts for campaign ${campaign.id}:`, contactsError)
-            if (testMode) {
-              debugInfo.campaigns.push({
-                name: campaign.name,
-                id: campaign.id,
-                sequenceCount: campaignSequences?.length || 0,
-                contactCount: 0,
-                error: 'Failed to fetch contacts',
-                errorDetails: contactsError
-              })
-            }
-            continue
-          }
-          
-          console.log(`📋 Campaign "${campaign.name}": ${campaignContacts?.length || 0} total contacts`)
-          if (campaignContacts?.length > 0) {
-            console.log(`📝 Sample contacts:`, campaignContacts.slice(0, 3).map(c => ({
-              id: c.id,
-              email: c.email,
-              status: c.status,
-              location: c.location,
-              sequence_step: c.sequence_step
-            })))
-          } else {
-            console.log(`⚠️ No contacts found for campaign "${campaign.name}"`)
-            if (testMode) {
-              debugInfo.campaigns.push({
-                name: campaign.name,
-                id: campaign.id,
-                sequenceCount: campaignSequences?.length || 0,
-                contactCount: 0,
-                error: 'No contacts found'
-              })
-            }
-            continue
-          }
-          
-          if (campaignContacts && campaignSequences) {
-            // Store campaign debug info
-            const campaignDebug = {
-              name: campaign.name,
-              id: campaign.id,
-              contactCount: campaignContacts.length,
-              sequenceCount: campaignSequences.length,
-              contacts: []
-            }
-            
-            // Apply the same "Due next" logic from analytics
-            let campaignDueCount = 0
-            for (const contact of campaignContacts) {
-              console.log(`\n🔍 Checking contact ${contact.id} (${contact.email})`)
-              const isDue = isContactDueDirectly(contact, campaignSequences)
-              console.log(`├─ Location: ${contact.location}`)
-              console.log(`├─ Sequence Step: ${contact.sequence_step || 0}`)
-              console.log(`└─ Is Due: ${isDue ? '✅ YES' : '❌ NO'}`)
-              
-              // Store contact evaluation for debug
-              if (testMode) {
-                campaignDebug.contacts.push({
-                  id: contact.id,
-                  email: contact.email,
-                  location: contact.location,
-                  sequence_step: contact.sequence_step || 0,
-                  email_status: contact.email_status || 'Unknown',
-                  isDue: isDue
-                })
-              }
-              
-              if (isDue) {
-                console.log(`✅ Contact ${contact.id} (${contact.email}) is due for next email`)
-                analyticsContacts.push({
-                  ...contact,
-                  email: contact.email,
-                  campaign_name: campaign.name,
-                  source: 'analytics-direct'
-                })
-                campaignDueCount++
-              }
-            }
-            console.log(`📊 Campaign "${campaign.name}": ${campaignDueCount} contacts are due`)
-            
-            if (testMode) {
-              debugInfo.campaigns.push(campaignDebug)
-            }
-          }
-        } catch (directError) {
-          console.error(`Error in direct analytics logic for campaign ${campaign.id}:`, directError)
-        }
-      }
-    }
-    
+    // Keep the analytics contacts from the sync API - they're already correctly determined
     console.log(`🎯 TOTAL ANALYTICS DUE CONTACTS: ${analyticsContacts.length}`)
 
     // Use ONLY analytics contacts
@@ -343,8 +127,7 @@ export async function GET(request: NextRequest) {
           activeCampaignsFound: activeCampaigns?.map(c => ({ name: c.name, id: c.id })) || [],
           analyticsContactsFound: analyticsContacts.length,
           testMode: true,
-          campaignDetails: debugInfo.campaigns,
-          note: "See campaignDetails for contact evaluation results"
+          note: "Used corrected sync-due-contacts endpoint results"
         }
       } : {
         success: true,
@@ -444,60 +227,6 @@ export async function GET(request: NextRequest) {
       
       console.log(`✅ ${message}`)
       
-      // Include debug info in test mode
-      const debugInfo = testMode && dueContacts.length > 0 ? {
-        contactsFound: dueContacts.length,
-        firstContact: {
-          email: dueContacts[0].email_address,
-          id: dueContacts[0].id,
-          timezone: dueContacts[0].timezone || 'not set',
-          created_at: dueContacts[0].created_at,
-          status: dueContacts[0].status
-        },
-        contactsWithTimezone: dueContacts.filter(c => c.timezone).map(c => ({
-          email: c.email_address,
-          timezone: c.timezone
-        })),
-        sydneyContacts: dueContacts.filter(c => c.timezone === 'Australia/Sydney').map(c => ({
-          email: c.email_address,
-          created_at: c.created_at
-        })),
-        johnDoeContact: dueContacts.find(c => 
-          c.first_name?.toLowerCase() === 'john' && c.last_name?.toLowerCase() === 'doe' ||
-          c.email_address?.toLowerCase().includes('john') ||
-          c.email?.toLowerCase().includes('john') ||
-          c.email_address?.toLowerCase().includes('doe') ||
-          c.email?.toLowerCase().includes('doe')
-        ),
-        johnDoeScheduleInfo: (() => {
-          const john = dueContacts.find(c => 
-            c.first_name?.toLowerCase() === 'john' && c.last_name?.toLowerCase() === 'doe'
-          );
-          if (!john) return null;
-          
-          // For John Doe, use the simplified scheduling (due 1 minute ago)
-          const now = new Date();
-          const scheduledDate = new Date(Date.now() - 60000); // 1 minute ago
-          
-          const sydneyNow = now.toLocaleString('en-US', {timeZone: 'Australia/Sydney'});
-          const sydneyScheduled = scheduledDate.toLocaleString('en-US', {timeZone: 'Australia/Sydney'});
-          
-          return {
-            createdAt: john.created_at,
-            scheduledUTC: scheduledDate.toISOString(),
-            scheduledSydney: sydneyScheduled,
-            currentUTC: now.toISOString(),
-            currentSydney: sydneyNow,
-            isDue: true, // Always true for John Doe
-            minutesDiff: Math.round((now - scheduledDate) / (1000 * 60)),
-            hash: 'forced',
-            seed: 'forced',
-            calcHour: 'forced',
-            calcMinute: 'due_now'
-          };
-        })()
-      } : undefined
-      
       return NextResponse.json({
         success: true,
         message,
@@ -506,7 +235,6 @@ export async function GET(request: NextRequest) {
           inactiveCampaigns: skippedInactiveCampaigns,
           completedContacts: skippedCompletedContacts
         },
-        debugInfo,
         timestamp: new Date().toISOString()
       })
     }
@@ -659,6 +387,7 @@ export async function GET(request: NextRequest) {
           results.push({
             contactId: contact.id,
             contactEmail: contact.email_address,
+            campaignName: contact.campaign_name,
             sequenceStep: currentStep,
             status: 'sent',
             messageId: sendResult.messageId,
@@ -782,7 +511,38 @@ export async function GET(request: NextRequest) {
       results
     }
     
-    console.log(`🎯 Processing complete: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors (${executionTime}ms)`)
+    console.log('═'.repeat(80))
+    console.log('📊 AUTOMATION SUMMARY')
+    console.log('─'.repeat(80))
+    console.log(`⏱️ Execution Time: ${executionTime}ms`)
+    console.log(`📧 Emails Sent: ${sentCount}`)
+    console.log(`⏭️ Emails Skipped: ${skippedCount}`)
+    console.log(`❌ Errors: ${errorCount}`)
+    
+    // Group results by campaign for summary
+    const campaignSummary: any = {}
+    results.forEach((result: any) => {
+      const campaignName = result.campaignName || 'Unknown'
+      if (!campaignSummary[campaignName]) {
+        campaignSummary[campaignName] = { sent: [], skipped: [], failed: [] }
+      }
+      if (result.status === 'sent') {
+        campaignSummary[campaignName].sent.push(result.contactId)
+      } else if (result.status === 'skipped') {
+        campaignSummary[campaignName].skipped.push(result.contactId)
+      } else {
+        campaignSummary[campaignName].failed.push(result.contactId)
+      }
+    })
+    
+    console.log('\n📋 Results by Campaign:')
+    Object.entries(campaignSummary).forEach(([campaign, stats]: any) => {
+      console.log(`   ${campaign}:`)
+      if (stats.sent.length > 0) console.log(`      ✅ Sent: ${stats.sent.join(', ')}`)
+      if (stats.skipped.length > 0) console.log(`      ⏭️ Skipped: ${stats.skipped.join(', ')}`)
+      if (stats.failed.length > 0) console.log(`      ❌ Failed: ${stats.failed.join(', ')}`)
+    })
+    console.log('═'.repeat(80))
     
     return NextResponse.json(summary)
     
