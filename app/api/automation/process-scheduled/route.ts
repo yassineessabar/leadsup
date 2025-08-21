@@ -192,6 +192,14 @@ export async function GET(request: NextRequest) {
           
           if (sequencesError) {
             console.error(`❌ Error fetching sequences for campaign ${campaign.id}:`, sequencesError)
+            if (testMode) {
+              debugInfo.campaigns.push({
+                name: campaign.name,
+                id: campaign.id,
+                error: 'Failed to fetch sequences',
+                errorDetails: sequencesError
+              })
+            }
             continue
           }
           
@@ -202,6 +210,18 @@ export async function GET(request: NextRequest) {
               timing_days: s.timing_days,
               subject: s.subject
             })))
+          } else {
+            console.log(`⚠️ No sequences found for campaign "${campaign.name}"`)
+            if (testMode) {
+              debugInfo.campaigns.push({
+                name: campaign.name,
+                id: campaign.id,
+                sequenceCount: 0,
+                contactCount: 0,
+                error: 'No sequences configured'
+              })
+            }
+            continue
           }
           
           // Get contacts for this campaign
@@ -217,6 +237,16 @@ export async function GET(request: NextRequest) {
           
           if (contactsError) {
             console.error(`❌ Error fetching contacts for campaign ${campaign.id}:`, contactsError)
+            if (testMode) {
+              debugInfo.campaigns.push({
+                name: campaign.name,
+                id: campaign.id,
+                sequenceCount: campaignSequences?.length || 0,
+                contactCount: 0,
+                error: 'Failed to fetch contacts',
+                errorDetails: contactsError
+              })
+            }
             continue
           }
           
@@ -229,6 +259,18 @@ export async function GET(request: NextRequest) {
               location: c.location,
               sequence_step: c.sequence_step
             })))
+          } else {
+            console.log(`⚠️ No contacts found for campaign "${campaign.name}"`)
+            if (testMode) {
+              debugInfo.campaigns.push({
+                name: campaign.name,
+                id: campaign.id,
+                sequenceCount: campaignSequences?.length || 0,
+                contactCount: 0,
+                error: 'No contacts found'
+              })
+            }
+            continue
           }
           
           if (campaignContacts && campaignSequences) {
