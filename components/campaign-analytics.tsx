@@ -615,7 +615,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               
             }
             
-            nextEmailIn = isDue ? "Due next" : "Ready to send"
+            nextEmailIn = isDue ? "Due next" : "Pending Start"
             
             // Debug logging for due next decision
             if (contact.email?.includes('john') || contact.id === 276 || contact.id === 278 || contact.id === 279 || contact.id === 285) {
@@ -688,7 +688,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                   }
                 }
                 
-                nextEmailIn = isDue ? "Due next" : "Ready to send"
+                nextEmailIn = isDue ? "Due next" : "Pending Start"
               }
             } else {
               // Fallback to mock subjects
@@ -758,7 +758,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               }
             }
             
-            nextEmailIn = isDue ? "Due next" : "Ready to send"
+            nextEmailIn = isDue ? "Due next" : "Pending Start"
           }
           
           // Calculate next scheduled time for the old format (fallback)
@@ -1205,7 +1205,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       scheduledDate.setDate(baseDate.getDate() + timingDays)
       
       // Debug logging for contact sequence calculation
-      if (contact.email?.includes('john') || contact.id === 276 || contact.id === 278 || contact.id === 279 || contact.id === 285) {
+      if (contact.sequence_step >= 1) { // Show debug for any contact that has completed Step 1
         console.log(`📅 NEXT EMAIL CALC for ${contact.email} (ID: ${contact.id}):`)
         console.log(`   Current Step: ${currentStep}`)
         console.log(`   Next Sequence Step: ${nextStepIndex + 1}`)
