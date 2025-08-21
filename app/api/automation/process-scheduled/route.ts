@@ -141,185 +141,107 @@ export async function GET(request: NextRequest) {
     console.log(`📊 Total analytics due contacts: ${analyticsContacts.length}`)
     console.log('─'.repeat(40))
     
-    // STEP 2: Get legacy contacts (original logic as fallback)
-    console.log('📋 STEP 2: Getting legacy contacts (fallback)...')
+    // STEP 2: Always implement analytics logic directly (ignore sync API completely)
+    console.log('🎯 STEP 2: Implementing analytics logic directly (FORCING ANALYTICS ONLY)...')
     
-    // Get emails that are due within the next 15 minutes (or specified lookahead)
-    const now = new Date()
-    const lookAheadTime = new Date(now.getTime() + (lookAheadMinutes * 60 * 1000))
+    // Clear any analytics contacts from API and force direct implementation
+    analyticsContacts = []
     
-    // Try to get prospects first (new table with UUID IDs)
-    let { data: dueContacts, error: fetchError } = await supabase
-      .from('prospects')
-      .select('*')
-      .order('created_at', { ascending: true })
-      .limit(50)
-
-    // Also check contacts table for additional contacts
-    console.log('📋 Checking contacts table for additional contacts...')
-    
-    // Try contacts table (legacy with integer IDs)
-    const { data: legacyContacts, error: legacyError } = await supabase
-      .from('contacts')
-      .select('*')
-      .order('created_at', { ascending: true })
-      .limit(50)
-    
-    if (!legacyError && legacyContacts && legacyContacts.length > 0) {
-      console.log(`📋 Found ${legacyContacts.length} additional contacts in legacy table`)
-      // Convert contacts to prospect format and add to the list
-      const convertedContacts = legacyContacts.map(contact => ({
-        ...contact,
-        email_address: contact.email, // Contacts table uses 'email' field
-        id: contact.id.toString(), // Convert integer ID to string
-        current_step: contact.sequence_step || 0
-      }))
-      
-      // Merge with existing prospects (avoid duplicates by email)
-      if (dueContacts && dueContacts.length > 0) {
-        const existingEmails = new Set(dueContacts.map(c => c.email_address))
-        const newContacts = convertedContacts.filter(c => !existingEmails.has(c.email_address))
-        dueContacts = [...dueContacts, ...newContacts]
-        console.log(`📋 Added ${newContacts.length} new contacts from legacy table`)
-      } else {
-        dueContacts = convertedContacts
-      }
-    }
-
-    // STEP 3: Combine analytics contacts with legacy contacts
-    console.log('🔄 STEP 3: Combining contact sources...')
-    
-    // Update allContacts after direct analytics processing
-    let allContacts = [...analyticsContacts]
-    
-    // Only use legacy contacts if we have no analytics contacts at all
-    if (analyticsContacts.length === 0) {
-      if (!dueContacts || dueContacts.length === 0) {
-        console.log('📭 No legacy contacts found')
-      } else {
-        console.log(`📧 Found ${dueContacts.length} legacy contacts (using as fallback)`)
-        // Convert legacy contacts to consistent format and add them
-        const legacyContacts = dueContacts.map(c => ({
-          ...c,
-          email: c.email_address || c.email,
-          source: 'legacy'
-        }))
-        allContacts.push(...legacyContacts)
-      }
-    } else {
-      console.log(`🎯 Using analytics contacts only (found ${analyticsContacts.length})`)
-    }
-
-    console.log(`🔍 DEBUGGING ANALYTICS INTEGRATION:`)
-    console.log(`  📊 Analytics contacts: ${analyticsContacts.length}`)
-    console.log(`  📋 Legacy contacts: ${allContacts.length - analyticsContacts.length}`)
-    console.log(`  🎯 Total contacts: ${allContacts.length}`)
-    
-    if (analyticsContacts.length === 0) {
-      console.log('⚠️ WARNING: No analytics contacts found! This suggests the sync API is failing.')
-      console.log('💡 Implementing analytics logic directly as fallback...')
-      
-      // Implement analytics logic directly as fallback
-      if (activeCampaigns && activeCampaigns.length > 0) {
-        for (const campaign of activeCampaigns) {
-          try {
-            // Get campaign sequences
-            const { data: campaignSequences } = await supabase
-              .from('campaign_sequences')
-              .select('*')
-              .eq('campaign_id', campaign.id)
-              .order('step_number', { ascending: true })
-            
-            // Get contacts for this campaign
-            const { data: campaignContacts } = await supabase
-              .from('contacts')
-              .select('*')
-              .eq('campaign_id', campaign.id)
-              .neq('status', 'Completed')
-              .neq('status', 'Replied')
-              .neq('status', 'Unsubscribed')
-              .neq('status', 'Bounced')
-            
-            console.log(`📋 Direct check - Campaign "${campaign.name}": ${campaignContacts?.length || 0} contacts`)
-            
-            if (campaignContacts && campaignSequences) {
-              // Apply the same "Due next" logic from analytics
-              for (const contact of campaignContacts) {
-                if (isContactDueDirectly(contact, campaignSequences)) {
-                  console.log(`✅ Direct analytics logic: Contact ${contact.id} is due`)
-                  analyticsContacts.push({
-                    ...contact,
-                    email: contact.email,
-                    campaign_name: campaign.name,
-                    source: 'analytics-direct'
-                  })
-                }
+    if (activeCampaigns && activeCampaigns.length > 0) {
+      for (const campaign of activeCampaigns) {
+        try {
+          // Get campaign sequences
+          const { data: campaignSequences } = await supabase
+            .from('campaign_sequences')
+            .select('*')
+            .eq('campaign_id', campaign.id)
+            .order('step_number', { ascending: true })
+          
+          // Get contacts for this campaign
+          const { data: campaignContacts } = await supabase
+            .from('contacts')
+            .select('*')
+            .eq('campaign_id', campaign.id)
+            .neq('status', 'Completed')
+            .neq('status', 'Replied')
+            .neq('status', 'Unsubscribed')
+            .neq('status', 'Bounced')
+          
+          console.log(`📋 Campaign "${campaign.name}": ${campaignContacts?.length || 0} total contacts`)
+          
+          if (campaignContacts && campaignSequences) {
+            // Apply the same "Due next" logic from analytics
+            let campaignDueCount = 0
+            for (const contact of campaignContacts) {
+              if (isContactDueDirectly(contact, campaignSequences)) {
+                console.log(`✅ Contact ${contact.id} (${contact.email}) is due for next email`)
+                analyticsContacts.push({
+                  ...contact,
+                  email: contact.email,
+                  campaign_name: campaign.name,
+                  source: 'analytics-direct'
+                })
+                campaignDueCount++
               }
             }
-          } catch (directError) {
-            console.error(`Error in direct analytics logic for campaign ${campaign.id}:`, directError)
+            console.log(`📊 Campaign "${campaign.name}": ${campaignDueCount} contacts are due`)
           }
+        } catch (directError) {
+          console.error(`Error in direct analytics logic for campaign ${campaign.id}:`, directError)
         }
-        
-        console.log(`📊 Direct analytics found ${analyticsContacts.length} due contacts`)
       }
     }
+    
+    console.log(`🎯 TOTAL ANALYTICS DUE CONTACTS: ${analyticsContacts.length}`)
 
+    // Use ONLY analytics contacts
+    let allContacts = [...analyticsContacts]
+    
     if (allContacts.length === 0) {
-      console.log('📭 No contacts found from any source')
+      console.log('📭 No analytics due contacts found')
       return NextResponse.json({
         success: true,
-        message: 'No contacts found',
+        message: 'No analytics due contacts found',
         processed: 0,
         timestamp: new Date().toISOString()
       })
     }
 
-    console.log(`📧 Processing ${allContacts.length} total contacts`)
-    console.log(`  📊 Analytics: ${analyticsContacts.length}`)
-    console.log(`  📋 Legacy: ${allContacts.length - analyticsContacts.length}`)
+    console.log(`🎯 Processing ${allContacts.length} ANALYTICS-ONLY contacts`)
+    console.log(`  📊 All contacts are from analytics logic`)
+    console.log(`  🚫 Legacy processing disabled`)
     
-    // Filter contacts who are actually due for their next email
+    // Since all contacts are already determined to be "due" by analytics logic, process them directly
     const emailsDue = []
     let skippedInactiveCampaigns = 0
     let skippedCompletedContacts = 0
-    let skippedNotDue = 0
-    let skippedTimezone = 0
-    let skippedDateCondition = 0
     
     for (const contact of allContacts) {
       const contactEmail = contact.email || contact.email_address
       if (!contactEmail || !contact.campaign_id) continue
       
-      console.log(`\n🔍 EVALUATING CONTACT: ${contactEmail} (${contact.source || 'unknown'})`)
+      console.log(`\n🎯 PROCESSING ANALYTICS DUE CONTACT: ${contactEmail}`)
       console.log(`├─ Contact ID: ${contact.id}`)
-      console.log(`├─ Campaign ID: ${contact.campaign_id}`)
+      console.log(`├─ Campaign: ${contact.campaign_name}`)
       console.log(`├─ Status: ${contact.status}`)
-      console.log(`├─ Created At: ${contact.created_at}`)
-      console.log(`├─ Timezone: ${contact.timezone || 'not set'}`)
-      console.log(`├─ Location: ${contact.location || 'not set'}`)
+      console.log(`├─ Source: ${contact.source}`)
       
-      // Skip contacts with completed status early
+      // Skip contacts with completed status (shouldn't happen with analytics logic but safety check)
       if (['Completed', 'Replied', 'Unsubscribed', 'Bounced'].includes(contact.status)) {
         console.log(`└─ ⏭️ SKIPPED: Contact has status ${contact.status}`)
         skippedCompletedContacts++
         continue
       }
       
-      // Get campaign details and ensure it's active
+      // Get basic campaign info (already validated by analytics logic)
       const { data: campaign } = await supabase
         .from('campaigns')
         .select('id, name, status, user_id')
         .eq('id', contact.campaign_id)
         .single()
       
-      if (!campaign) {
-        console.log(`❌ Campaign ${contact.campaign_id} not found for ${contact.email_address}`)
-        continue
-      }
-      
-      if (campaign.status !== 'Active') {
-        console.log(`⏸️ SKIPPED: Campaign "${campaign.name}" is ${campaign.status}, not Active - Contact: ${contact.email_address}`)
+      if (!campaign || campaign.status !== 'Active') {
+        console.log(`⏸️ SKIPPED: Campaign not found or inactive`)
         skippedInactiveCampaigns++
         continue
       }
@@ -331,258 +253,45 @@ export async function GET(request: NextRequest) {
         .eq('campaign_id', contact.campaign_id)
         .order('step_number', { ascending: true })
       
-      if (!campaignSequences || campaignSequences.length === 0) continue
-      
-      // Determine current step based on sent emails from progression records
-      let currentStep = 0
-      let lastSentAt = null
-      const isUUID = contact.id.includes('-')
-      
-      console.log(`├─ Contact ID Type: ${isUUID ? 'UUID (prospects table)' : 'Integer (contacts table)'}`)
-      
-      if (isUUID) {
-        // For UUID contacts (prospects table), read from progression records
-        const { data: sentProgress } = await supabase
-          .from('prospect_sequence_progress')
-          .select('*')
-          .eq('prospect_id', contact.id)
-          .eq('status', 'sent')
-          .order('sent_at', { ascending: false })
-        
-        currentStep = sentProgress?.length || 0
-        lastSentAt = sentProgress?.[0]?.sent_at || null
-        console.log(`├─ 📊 Progress Records: Found ${currentStep} sent emails`)
-        console.log(`├─ Last Sent At: ${lastSentAt || 'Never sent'}`)
-      } else {
-        // For integer contacts (legacy table), check email_tracking for actual sent emails
-        const { data: emailTracking } = await supabase
-          .from('email_tracking')
-          .select('*')
-          .eq('contact_id', contact.id.toString())
-          .eq('campaign_id', contact.campaign_id)
-          .eq('status', 'sent')
-          .order('sent_at', { ascending: false })
-        
-        currentStep = emailTracking?.length || 0
-        lastSentAt = emailTracking?.[0]?.sent_at || null
-        console.log(`├─ 📊 Email Tracking: Found ${currentStep} sent emails`)
-        console.log(`├─ Last Sent At: ${lastSentAt || 'Never sent'}`)
-      }
-      
-      // Check if sequence is complete
-      if (currentStep >= campaignSequences.length) {
-        console.log(`✅ Contact ${contact.email_address}: Sequence complete (${currentStep}/${campaignSequences.length})`)
+      if (!campaignSequences || campaignSequences.length === 0) {
+        console.log(`❌ No sequences found for campaign`)
         continue
       }
       
-      // Get the next sequence to send
+      // Use sequence_step from contact record (analytics already determined this correctly)
+      const currentStep = contact.sequence_step || 0
       const nextSequence = campaignSequences[currentStep]
+      
       if (!nextSequence) {
         console.log(`❌ No sequence found for step ${currentStep + 1}`)
         continue
       }
       
-      // Calculate when this specific email should be sent
-      let scheduledDate
-      const nextSequenceTiming = nextSequence.timing_days || 0
-      
       console.log(`├─ Next Sequence: Step ${currentStep + 1} - "${nextSequence.subject}"`)
-      console.log(`├─ Timing Days: ${nextSequenceTiming}`)
+      console.log(`└─ ✅ ANALYTICS DETERMINED: Contact is DUE - Adding to email queue`)
       
-      if (currentStep === 0) {
-        // First email: schedule based on contact creation + timing_days
-        scheduledDate = new Date(contact.created_at)
-        scheduledDate.setDate(scheduledDate.getDate() + nextSequenceTiming)
-        console.log(`├─ First Email: Base date is contact creation (${contact.created_at})`)
-        console.log(`├─ Initial Scheduled Date: ${scheduledDate.toISOString()}`)
-      } else if (lastSentAt) {
-        // Subsequent emails: schedule based on last email sent + timing_days
-        scheduledDate = new Date(lastSentAt)
-        scheduledDate.setDate(scheduledDate.getDate() + nextSequenceTiming)
-        console.log(`├─ Follow-up Email: Base date is last sent (${lastSentAt})`)
-        console.log(`├─ Initial Scheduled Date: ${scheduledDate.toISOString()}`)
-      } else {
-        console.log(`└─ ⚠️ No last sent date found, cannot calculate timing`)
-        continue
-      }
+      // Analytics already determined this contact is due - add directly to queue
+      emailsDue.push({
+        contact,
+        campaign,
+        sequence: nextSequence,
+        scheduledFor: new Date().toISOString(), // Use current time since analytics says it's due
+        currentStep: currentStep + 1, // Next step number
+        totalSequences: campaignSequences.length
+      })
       
-      // Determine contact timezone first
-      let contactTimezone = contact.timezone
-      
-      // If no timezone but has location, try to derive timezone from location
-      if (!contactTimezone && contact.location) {
-        const locationTimezoneMap = {
-          'Sydney': 'Australia/Sydney',
-          'Melbourne': 'Australia/Melbourne', 
-          'Brisbane': 'Australia/Brisbane',
-          'Perth': 'Australia/Perth',
-          'Adelaide': 'Australia/Adelaide',
-          'Tokyo': 'Asia/Tokyo',
-          'London': 'Europe/London',
-          'New York': 'America/New_York',
-          'Los Angeles': 'America/Los_Angeles',
-          'Chicago': 'America/Chicago',
-          'Boston': 'America/New_York',
-          'Seattle': 'America/Los_Angeles',
-          'Miami': 'America/New_York',
-          'Denver': 'America/Denver',
-          'Phoenix': 'America/Phoenix'
-        }
-        
-        for (const [city, timezone] of Object.entries(locationTimezoneMap)) {
-          if (contact.location.includes(city)) {
-            contactTimezone = timezone
-            break
-          }
-        }
-      }
-      
-      // Add business hours (9-17, avoid weekends) with timezone awareness
-      const contactHash = String(contact.id).split('').reduce((hash, char) => {
-        return ((hash << 5) - hash) + char.charCodeAt(0)
-      }, 0)
-      const seedValue = (contactHash + (currentStep + 1)) % 1000
-      const hour = 9 + (seedValue % 8) // 9-16
-      const minute = (seedValue * 7) % 60
-      
-      // Apply business hours timing to the scheduled date
-      scheduledDate.setHours(hour, minute, 0, 0)
-      console.log(`🕐 Scheduled for: ${hour}:${minute.toString().padStart(2, '0')} on ${scheduledDate.toDateString()} = ${scheduledDate.toISOString()}`)
-      
-      // Check if contact is in a timezone where it's currently outside business hours
-      let skipForTimezone = false
-      let timezoneReason = ''
-      const now = new Date()
-      
-      if (contactTimezone) {
-        try {
-          // Get current time in contact's timezone
-          const contactTime = new Date(now.toLocaleString("en-US", {timeZone: contactTimezone}))
-          const contactHour = contactTime.getHours()
-          
-          timezoneReason = `${contactTimezone}: ${contactHour}:${contactTime.getMinutes().toString().padStart(2, '0')} (business hours: 8-18)`
-          
-          if (contactHour < 8 || contactHour >= 18) {
-            skipForTimezone = true
-            console.log(`🌏 TIMEZONE BLOCK: ${contact.email_address} - ${timezoneReason} - OUTSIDE business hours`)
-          } else {
-            console.log(`🌏 TIMEZONE OK: ${contact.email_address} - ${timezoneReason} - INSIDE business hours`)
-          }
-        } catch (error) {
-          // Invalid timezone, fall back to UTC
-          console.log(`⚠️ Invalid timezone ${contactTimezone} for ${contact.email_address}, using UTC`)
-          timezoneReason = `Invalid timezone ${contactTimezone}, using UTC: ${now.getUTCHours()}:${now.getUTCMinutes().toString().padStart(2, '0')}`
-          
-          const utcHour = now.getUTCHours()
-          if (utcHour < 8 || utcHour >= 18) {
-            skipForTimezone = true
-            console.log(`🌏 TIMEZONE BLOCK: ${contact.email_address} - ${timezoneReason} - OUTSIDE business hours`)
-          } else {
-            console.log(`🌏 TIMEZONE OK: ${contact.email_address} - ${timezoneReason} - INSIDE business hours`)
-          }
-        }
-      } else {
-        // No timezone info, use UTC with permissive hours (assume always in business hours)
-        timezoneReason = `No timezone info (location: ${contact.location || 'Unknown'}) - using UTC: ${now.getUTCHours()}:${now.getUTCMinutes().toString().padStart(2, '0')} - ALLOWING`
-        skipForTimezone = false // Be permissive when no timezone info
-        console.log(`🌍 TIMEZONE DEFAULT: ${contact.email_address} - ${timezoneReason}`)
-      }
-      
-      // Skip weekends
-      const dayOfWeek = scheduledDate.getDay()
-      if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1)
-      if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2)
-      
-      // Check if email is due (scheduled date/time has passed)
-      const today = new Date()
-      today.setHours(0, 0, 0, 0) // Start of today
-      const emailDate = new Date(scheduledDate)
-      emailDate.setHours(0, 0, 0, 0) // Start of email date
-      const emailDateIsDueOrPast = emailDate <= today // Email is due if scheduled date is today or in the past
-      
-      // Check if it's time to send this email - timezone aware
-      let shouldProcess = false
-      
-      if (!skipForTimezone && emailDateIsDueOrPast) {
-        if (contactTimezone) {
-          // Convert scheduled time to contact's timezone for comparison
-          try {
-            const contactNow = new Date(now.toLocaleString("en-US", {timeZone: contactTimezone}))
-            const contactScheduledTime = new Date(scheduledDate.toLocaleString("en-US", {timeZone: contactTimezone}))
-            shouldProcess = contactScheduledTime <= contactNow
-          } catch (error) {
-            // Fallback to UTC comparison if timezone conversion fails
-            shouldProcess = scheduledDate <= now
-          }
-        } else {
-          // No timezone info, use standard UTC comparison
-          shouldProcess = scheduledDate <= now
-        }
-      }
-      
-      console.log(`\n📋 PROCESSING DECISION FOR: ${contact.email_address}`)
-      console.log(`├─ Current Step: ${currentStep + 1}/${campaignSequences.length}`)
-      const totalSequences = campaignSequences.length
-      console.log(`├─ Timing Days: ${nextSequenceTiming} days`)
-      console.log(`├─ Scheduled Date: ${scheduledDate.toISOString()}`)
-      console.log(`├─ Current Time: ${now.toISOString()}`)
-      
-      // Show timezone-aware time comparison
-      if (contactTimezone) {
-        try {
-          const contactNow = new Date(now.toLocaleString("en-US", {timeZone: contactTimezone}))
-          const contactScheduledTime = new Date(scheduledDate.toLocaleString("en-US", {timeZone: contactTimezone}))
-          console.log(`├─ Contact Timezone: ${contactTimezone}`)
-          console.log(`├─ Contact Current Time: ${contactNow.toLocaleString()}`)
-          console.log(`├─ Contact Scheduled Time: ${contactScheduledTime.toLocaleString()}`)
-          console.log(`├─ Is Due (Timezone-aware): ${contactScheduledTime <= contactNow ? '✅ YES' : '❌ NO'} (${Math.round((contactNow - contactScheduledTime) / (1000 * 60))} minutes ${contactScheduledTime <= contactNow ? 'overdue' : 'remaining'})`)
-        } catch (error) {
-          console.log(`├─ Timezone Conversion Error: ${error.message}`)
-          console.log(`├─ Is Due (UTC fallback): ${scheduledDate <= now ? '✅ YES' : '❌ NO'} (${Math.round((now - scheduledDate) / (1000 * 60))} minutes ${scheduledDate <= now ? 'overdue' : 'remaining'})`)
-        }
-      } else {
-        console.log(`├─ Is Due (UTC): ${scheduledDate <= now ? '✅ YES' : '❌ NO'} (${Math.round((now - scheduledDate) / (1000 * 60))} minutes ${scheduledDate <= now ? 'overdue' : 'remaining'})`)
-      }
-      
-      console.log(`├─ Email Date Check: ${emailDateIsDueOrPast ? '✅ DUE OR PAST' : '❌ NOT DUE YET'} (${emailDate.toDateString()} vs ${today.toDateString()})`)
-      console.log(`├─ Timezone Check: ${skipForTimezone ? '❌ BLOCKED' : '✅ OK'} (${timezoneReason})`)
-      console.log(`├─ Weekend Check: ${dayOfWeek === 0 || dayOfWeek === 6 ? '⚠️ WEEKEND' : '✅ WEEKDAY'}`)
-      console.log(`└─ FINAL DECISION: ${shouldProcess ? '✅ PROCESS (ADD TO QUEUE)' : '❌ SKIP'}`)
-      
-      if (shouldProcess) {
-        emailsDue.push({
-          contact,
-          campaign,
-          sequence: nextSequence,
-          scheduledFor: scheduledDate.toISOString(),
-          currentStep: currentStep + 1, // Next step number
-          totalSequences: totalSequences
-        })
-        console.log(`📧 Added to queue: ${contact.email_address} - Step ${currentStep + 1} (${nextSequence.subject}) - Timing: ${nextSequenceTiming} days`)
-      } else {
-        if (skipForTimezone) {
-          skippedTimezone++
-        } else if (!emailDateIsDueOrPast) {
-          console.log(`📅 DATE CONDITION FAILED: ${contact.email_address} - Email date ${emailDate.toDateString()} is scheduled for future (after today ${today.toDateString()})`)
-          skippedDateCondition++
-        } else {
-          console.log(`⏰ NOT DUE: ${contact.email_address} - Step ${currentStep + 1} scheduled for ${scheduledDate.toISOString()} (${nextSequenceTiming} days after ${lastSentAt || contact.created_at})`)
-          skippedNotDue++
-        }
-      }
+      console.log(`📧 Added to queue: ${contactEmail} - Step ${currentStep + 1} (${nextSequence.subject})`)
     }
     
+    // Check if we have emails to process
     if (emailsDue.length === 0) {
       let skipSummary = []
       if (skippedInactiveCampaigns > 0) skipSummary.push(`${skippedInactiveCampaigns} inactive campaigns`)
       if (skippedCompletedContacts > 0) skipSummary.push(`${skippedCompletedContacts} completed contacts`)
-      if (skippedTimezone > 0) skipSummary.push(`${skippedTimezone} timezone restrictions`)
-      if (skippedDateCondition > 0) skipSummary.push(`${skippedDateCondition} date condition failed`)
-      if (skippedNotDue > 0) skipSummary.push(`${skippedNotDue} not due yet`)
       
       const message = skipSummary.length > 0 
-        ? `No emails due for processing (skipped: ${skipSummary.join(', ')})`
-        : 'No emails due for processing'
+        ? `No analytics due contacts ready for processing (skipped: ${skipSummary.join(', ')})`
+        : 'No analytics due contacts ready for processing'
       
       console.log(`✅ ${message}`)
       
@@ -646,10 +355,7 @@ export async function GET(request: NextRequest) {
         processed: 0,
         skipped: {
           inactiveCampaigns: skippedInactiveCampaigns,
-          completedContacts: skippedCompletedContacts,
-          timezone: skippedTimezone,
-          dateCondition: skippedDateCondition,
-          notDue: skippedNotDue
+          completedContacts: skippedCompletedContacts
         },
         debugInfo,
         timestamp: new Date().toISOString()
