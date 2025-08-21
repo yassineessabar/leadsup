@@ -91,9 +91,17 @@ export async function GET(request: NextRequest) {
     for (const contact of dueContacts) {
       if (!contact.email_address || !contact.campaign_id) continue
       
+      console.log(`\n🔍 EVALUATING CONTACT: ${contact.email_address}`)
+      console.log(`├─ Contact ID: ${contact.id}`)
+      console.log(`├─ Campaign ID: ${contact.campaign_id}`)
+      console.log(`├─ Status: ${contact.status}`)
+      console.log(`├─ Created At: ${contact.created_at}`)
+      console.log(`├─ Timezone: ${contact.timezone || 'not set'}`)
+      console.log(`├─ Location: ${contact.location || 'not set'}`)
+      
       // Skip contacts with completed status early
       if (['Completed', 'Replied', 'Unsubscribed', 'Bounced'].includes(contact.status)) {
-        console.log(`⏭️ SKIPPED: ${contact.email_address} has status ${contact.status}`)
+        console.log(`└─ ⏭️ SKIPPED: Contact has status ${contact.status}`)
         skippedCompletedContacts++
         continue
       }
@@ -130,6 +138,8 @@ export async function GET(request: NextRequest) {
       let lastSentAt = null
       const isUUID = contact.id.includes('-')
       
+      console.log(`├─ Contact ID Type: ${isUUID ? 'UUID (prospects table)' : 'Integer (contacts table)'}`)
+      
       if (isUUID) {
         // For UUID contacts (prospects table), read from progression records
         const { data: sentProgress } = await supabase
@@ -141,7 +151,8 @@ export async function GET(request: NextRequest) {
         
         currentStep = sentProgress?.length || 0
         lastSentAt = sentProgress?.[0]?.sent_at || null
-        console.log(`📊 Contact ${contact.email_address}: Found ${currentStep} sent emails, last sent: ${lastSentAt}`)
+        console.log(`├─ 📊 Progress Records: Found ${currentStep} sent emails`)
+        console.log(`├─ Last Sent At: ${lastSentAt || 'Never sent'}`)
       } else {
         // For integer contacts (legacy table), check email_tracking for actual sent emails
         const { data: emailTracking } = await supabase
@@ -154,7 +165,8 @@ export async function GET(request: NextRequest) {
         
         currentStep = emailTracking?.length || 0
         lastSentAt = emailTracking?.[0]?.sent_at || null
-        console.log(`📊 Contact ${contact.email_address}: Found ${currentStep} sent emails in tracking, last sent: ${lastSentAt}`)
+        console.log(`├─ 📊 Email Tracking: Found ${currentStep} sent emails`)
+        console.log(`├─ Last Sent At: ${lastSentAt || 'Never sent'}`)
       }
       
       // Check if sequence is complete
@@ -174,16 +186,23 @@ export async function GET(request: NextRequest) {
       let scheduledDate
       const nextSequenceTiming = nextSequence.timing_days || 0
       
+      console.log(`├─ Next Sequence: Step ${currentStep + 1} - "${nextSequence.subject}"`)
+      console.log(`├─ Timing Days: ${nextSequenceTiming}`)
+      
       if (currentStep === 0) {
         // First email: schedule based on contact creation + timing_days
         scheduledDate = new Date(contact.created_at)
         scheduledDate.setDate(scheduledDate.getDate() + nextSequenceTiming)
+        console.log(`├─ First Email: Base date is contact creation (${contact.created_at})`)
+        console.log(`├─ Initial Scheduled Date: ${scheduledDate.toISOString()}`)
       } else if (lastSentAt) {
         // Subsequent emails: schedule based on last email sent + timing_days
         scheduledDate = new Date(lastSentAt)
         scheduledDate.setDate(scheduledDate.getDate() + nextSequenceTiming)
+        console.log(`├─ Follow-up Email: Base date is last sent (${lastSentAt})`)
+        console.log(`├─ Initial Scheduled Date: ${scheduledDate.toISOString()}`)
       } else {
-        console.log(`⚠️ No last sent date found for ${contact.email_address}, cannot calculate timing`)
+        console.log(`└─ ⚠️ No last sent date found, cannot calculate timing`)
         continue
       }
       
@@ -397,6 +416,32 @@ export async function GET(request: NextRequest) {
         : 'No emails due for processing'
       
       console.log(`✅ ${message}`)
+      
+      // Include debug info in test mode
+      const debugInfo = testMode && dueContacts.length > 0 ? {
+        contactsFound: dueContacts.length,
+        firstContact: {
+          email: dueContacts[0].email_address,
+          id: dueContacts[0].id,
+          timezone: dueContacts[0].timezone || 'not set',
+          created_at: dueContacts[0].created_at,
+          status: dueContacts[0].status
+        },
+        contactsWithTimezone: dueContacts.filter(c => c.timezone).map(c => ({
+          email: c.email_address,
+          timezone: c.timezone
+        })),
+        sydneyContacts: dueContacts.filter(c => c.timezone === 'Australia/Sydney').map(c => ({
+          email: c.email_address,
+          created_at: c.created_at
+        })),
+        johnDoeContact: dueContacts.find(c => 
+          c.first_name?.toLowerCase() === 'john' && c.last_name?.toLowerCase() === 'doe' ||
+          c.email_address?.toLowerCase().includes('john') ||
+          c.email_address?.toLowerCase().includes('doe')
+        )
+      } : undefined
+      
       return NextResponse.json({
         success: true,
         message,
@@ -408,6 +453,7 @@ export async function GET(request: NextRequest) {
           dateCondition: skippedDateCondition,
           notDue: skippedNotDue
         },
+        debugInfo,
         timestamp: new Date().toISOString()
       })
     }
