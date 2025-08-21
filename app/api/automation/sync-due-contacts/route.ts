@@ -145,27 +145,23 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
 // Calculate if contact's next email is due (matching analytics logic)
 async function isContactDue(contact: any, campaignSequences: any[]) {
   try {
-    // Get sequence status to determine actual progress (same as analytics)
-    const { data: sequenceStatus } = await supabase
+    // Get count of emails actually sent to this contact
+    const { data: emailsSent, count } = await supabase
       .from('email_tracking')
-      .select('*')
+      .select('id', { count: 'exact' })
       .eq('contact_id', contact.id)
       .eq('campaign_id', contact.campaign_id)
-      .order('sent_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+      .eq('status', 'sent')
     
-    // Determine actual sequence step based on sent emails (same logic as analytics)
+    // Determine actual sequence step based on sent emails
     let actualSequenceStep = contact.sequence_step || 0
     
-    // If we have sequence status, use it to determine the real step
-    if (sequenceStatus && sequenceStatus.sequences_sent > 0) {
-      actualSequenceStep = sequenceStatus.sequences_sent
-    } else if (!sequenceStatus || sequenceStatus.sequences_sent === 0) {
-      // Only treat as Step 0 if BOTH database shows Step 0 AND no emails have been sent
-      if (contact.sequence_step === 0 || !contact.sequence_step) {
-        actualSequenceStep = 0
-      }
+    // If emails have been sent, use that count as the actual step
+    if (count && count > 0) {
+      actualSequenceStep = count
+    } else {
+      // No emails sent yet - use the database step (should be 0)
+      actualSequenceStep = contact.sequence_step || 0
     }
     
     // Create contact with corrected sequence step
@@ -309,6 +305,14 @@ export async function GET(request: NextRequest) {
     
     console.log(`📋 Found ${contacts?.length || 0} active contacts`)
     
+    // Log first few contacts for debugging
+    if (contacts && contacts.length > 0) {
+      console.log(`📝 Sample contacts (first 5):`)
+      contacts.slice(0, 5).forEach(c => {
+        console.log(`   - ${c.email} (${c.first_name} ${c.last_name}) - Step: ${c.sequence_step || 0}, Status: ${c.email_status || 'Pending'}`)
+      })
+    }
+    
     if (!contacts || contacts.length === 0) {
       return NextResponse.json({ 
         success: true, 
@@ -400,6 +404,21 @@ export async function GET(request: NextRequest) {
     }
     
     console.log(`✅ Found ${dueContacts.length} contacts due for email sending`)
+    
+    // Log summary of what emails were checked
+    console.log(`📊 Summary:`)
+    console.log(`   Total contacts checked: ${contacts.length}`)
+    console.log(`   Contacts due (Due next): ${dueContacts.length}`)
+    console.log(`   Contacts not due (Pending Start): ${contacts.length - dueContacts.length}`)
+    
+    // List all contacts that were NOT due (for debugging)
+    if (contacts.length - dueContacts.length > 0) {
+      console.log(`📝 Contacts NOT due (showing first 10):`)
+      const notDueContacts = contacts.filter(c => !dueContacts.find(dc => dc.id === c.id))
+      notDueContacts.slice(0, 10).forEach(c => {
+        console.log(`   - ${c.email} (${c.first_name} ${c.last_name}) - Location: ${c.location}`)
+      })
+    }
     
     return NextResponse.json({
       success: true,
