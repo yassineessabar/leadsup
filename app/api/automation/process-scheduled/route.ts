@@ -230,10 +230,6 @@ export async function GET(request: NextRequest) {
             .from('contacts')
             .select('*')
             .eq('campaign_id', campaign.id)
-            .neq('status', 'Completed')
-            .neq('status', 'Replied')
-            .neq('status', 'Unsubscribed')
-            .neq('status', 'Bounced')
           
           if (contactsError) {
             console.error(`❌ Error fetching contacts for campaign ${campaign.id}:`, contactsError)
@@ -299,7 +295,7 @@ export async function GET(request: NextRequest) {
                   email: contact.email,
                   location: contact.location,
                   sequence_step: contact.sequence_step || 0,
-                  status: contact.status,
+                  email_status: contact.email_status || 'Unknown',
                   isDue: isDue
                 })
               }
@@ -376,12 +372,12 @@ export async function GET(request: NextRequest) {
       console.log(`\n🎯 PROCESSING ANALYTICS DUE CONTACT: ${contactEmail}`)
       console.log(`├─ Contact ID: ${contact.id}`)
       console.log(`├─ Campaign: ${contact.campaign_name}`)
-      console.log(`├─ Status: ${contact.status}`)
+      console.log(`├─ Email Status: ${contact.email_status || 'Unknown'}`)
       console.log(`├─ Source: ${contact.source}`)
       
-      // Skip contacts with completed status (shouldn't happen with analytics logic but safety check)
-      if (['Completed', 'Replied', 'Unsubscribed', 'Bounced'].includes(contact.status)) {
-        console.log(`└─ ⏭️ SKIPPED: Contact has status ${contact.status}`)
+      // Skip contacts with completed email status (shouldn't happen with analytics logic but safety check)
+      if (['Completed', 'Replied', 'Unsubscribed', 'Bounced'].includes(contact.email_status)) {
+        console.log(`└─ ⏭️ SKIPPED: Contact has email_status ${contact.email_status}`)
         skippedCompletedContacts++
         continue
       }
@@ -537,19 +533,19 @@ export async function GET(request: NextRequest) {
         console.log(`📊 Sequence Step: ${currentStep} of ${totalSequences || 'unknown'}`)
         console.log(`📝 Email Subject: "${sequence.subject}"`)
         console.log(`⏰ Originally Scheduled: ${scheduledFor}`)
-        console.log(`🏷️  Contact Status: ${contact.status || 'Active'}`)
+        console.log(`🏷️  Contact Email Status: ${contact.email_status || 'Active'}`)
         console.log(`🧪 Test Mode: ${testMode}`)
         
-        // Skip if contact has final status
-        if (['Completed', 'Replied', 'Unsubscribed', 'Bounced'].includes(contact.status)) {
-          console.log(`🚫 STATUS BLOCK: Contact status is "${contact.status}" - SKIPPING EMAIL`)
+        // Skip if contact has final email status
+        if (['Completed', 'Replied', 'Unsubscribed', 'Bounced'].includes(contact.email_status)) {
+          console.log(`🚫 STATUS BLOCK: Contact email_status is "${contact.email_status}" - SKIPPING EMAIL`)
           console.log(`📝 Reason: Final status prevents further emails`)
           skippedCount++
           results.push({
             contactId: contact.id,
             contactEmail: contact.email_address,
             status: 'skipped',
-            reason: `Contact status: ${contact.status}`
+            reason: `Contact email_status: ${contact.email_status}`
           })
           continue
         }
