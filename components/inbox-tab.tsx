@@ -219,10 +219,13 @@ export default function InboxPage() {
           isOutOfOffice: email.isOutOfOffice ?? email.is_out_of_office ?? false,
           statusLabel: email.statusLabel ?? email.status_label,
           date: email.date || new Date(email.created_at || Date.now()).toLocaleDateString(),
-          // Fix sender/recipient mapping based on actual data structure
-          // In inbox_messages: contact_email = who sent TO us, sender_email = our email that received it
-          sender: email.sender || email.contact_email,  // External person who sent the email
-          to_email: email.to_email || email.sender_email || email.recipient_email,  // Our email address that received it
+          // Fix sender/recipient mapping based on direction and actual data structure
+          sender: email.direction === 'outbound' 
+            ? (email.sender_email || email.sender)  // For outbound: our sending account
+            : (email.contact_email || email.sender),  // For inbound: external person
+          to_email: email.direction === 'outbound'
+            ? (email.contact_email || email.to_email)  // For outbound: recipient contact
+            : (email.sender_email || email.to_email || email.recipient_email),  // For inbound: our receiving account
           // Also ensure we have content/preview fields
           content: email.content || email.body_text || email.body_html,
           preview: email.preview || (email.body_text ? email.body_text.substring(0, 100) + '...' : '')
