@@ -563,14 +563,14 @@ export async function GET(request: NextRequest) {
           continue
         }
         
-        // Get a sender for this campaign (simple round-robin for now)
+        // Get all active senders for this campaign and rotate them
         const { data: senders } = await supabase
           .from('campaign_senders')
-          .select('email')
+          .select('id, email, name')
           .eq('campaign_id', contact.campaign_id)
           .eq('is_active', true)
           .eq('is_selected', true)
-          .limit(1)
+          .order('email', { ascending: true }) // Consistent ordering for rotation
         
         if (!senders || senders.length === 0) {
           errorCount++
@@ -583,11 +583,25 @@ export async function GET(request: NextRequest) {
           continue
         }
         
+        // Rotate senders based on contact ID for better distribution
+        // This ensures consistent but varied sender selection
+        let selectedSender = senders[0] // fallback
+        if (senders.length > 1) {
+          // Use contact ID to create consistent but distributed sender rotation
+          const contactIdNum = parseInt(String(contact.id)) || 0
+          const senderIndex = contactIdNum % senders.length
+          selectedSender = senders[senderIndex]
+          
+          console.log(`📧 Sender rotation: Contact ${contact.id} -> Sender ${senderIndex + 1}/${senders.length} (${selectedSender.email})`)
+        } else {
+          console.log(`📧 Single sender: ${selectedSender.email}`)
+        }
+        
         // Send the email
         const sendResult = await sendSequenceEmail({
           contact,
           sequence,
-          senderEmail: senders[0].email,
+          senderEmail: selectedSender.email,
           testMode
         })
         
@@ -648,7 +662,7 @@ export async function GET(request: NextRequest) {
             sequenceId: sequence.id,
             sequenceStep: currentStep,
             messageId: sendResult.messageId,
-            senderEmail: senders[0].email,
+            senderEmail: selectedSender.email,
             status: 'sent',
             testMode: testMode || sendResult.simulation
           })
@@ -659,7 +673,7 @@ export async function GET(request: NextRequest) {
             messageId: sendResult.messageId,
             contactEmail: contact.email_address,
             contactName: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email_address,
-            senderEmail: senders[0].email,
+            senderEmail: selectedSender.email,
             subject: sequence.subject || `Email ${currentStep}`,
             bodyText: sequence.content || '',
             bodyHtml: sequence.content || '',
@@ -709,7 +723,7 @@ export async function GET(request: NextRequest) {
           }
           
           console.log(`   ✅ ${testMode ? '[TEST] ' : ''}EMAIL SENT successfully!`)
-          console.log(`      From: ${senders[0].email}`)
+          console.log(`      From: ${selectedSender.email}`)
           console.log(`      To: ${contact.email_address}`)
           console.log(`      Step: ${currentStep}`)
           console.log(`      Subject: ${sequence.subject}`)
@@ -724,7 +738,7 @@ export async function GET(request: NextRequest) {
             sequenceId: sequence.id,
             sequenceStep: currentStep,
             messageId: null,
-            senderEmail: senders[0].email,
+            senderEmail: selectedSender.email,
             status: 'failed',
             errorMessage: sendResult.error,
             testMode: testMode
