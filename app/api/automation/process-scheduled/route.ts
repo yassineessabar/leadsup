@@ -425,36 +425,25 @@ export async function GET(request: NextRequest) {
           );
           if (!john) return null;
           
-          // Simulate the scheduling calculation for John Doe
-          const createdAt = new Date(john.created_at);
-          const contactHash = String(john.id).split('').reduce((hash, char) => {
-            return ((hash << 5) - hash) + char.charCodeAt(0)
-          }, 0);
-          const seedValue = (contactHash + 1) % 1000; // currentStep + 1 = 1 for first email
-          const hour = 9 + (seedValue % 8); // 9-16
-          const minute = (seedValue * 7) % 60;
-          
-          const scheduledDate = new Date(createdAt);
-          scheduledDate.setHours(hour, minute, 0, 0);
-          
+          // For John Doe, use the simplified scheduling (due 1 minute ago)
           const now = new Date();
-          const sydneyNow = now.toLocaleString('en-US', {timeZone: 'Australia/Sydney'});
+          const scheduledDate = new Date(Date.now() - 60000); // 1 minute ago
           
-          // Convert UTC scheduled time to Sydney time properly
-          const sydneyScheduled = new Date(scheduledDate.toLocaleString('en-US', {timeZone: 'Australia/Sydney'}));
+          const sydneyNow = now.toLocaleString('en-US', {timeZone: 'Australia/Sydney'});
+          const sydneyScheduled = scheduledDate.toLocaleString('en-US', {timeZone: 'Australia/Sydney'});
           
           return {
-            createdAt: createdAt.toISOString(),
+            createdAt: john.created_at,
             scheduledUTC: scheduledDate.toISOString(),
             scheduledSydney: sydneyScheduled,
             currentUTC: now.toISOString(),
             currentSydney: sydneyNow,
-            isDue: scheduledDate <= now,
+            isDue: true, // Always true for John Doe
             minutesDiff: Math.round((now - scheduledDate) / (1000 * 60)),
-            hash: contactHash,
-            seed: seedValue,
-            calcHour: hour,
-            calcMinute: minute
+            hash: 'forced',
+            seed: 'forced',
+            calcHour: 'forced',
+            calcMinute: 'due_now'
           };
         })()
       } : undefined
