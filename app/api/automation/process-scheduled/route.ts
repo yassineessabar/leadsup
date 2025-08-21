@@ -173,6 +173,12 @@ export async function GET(request: NextRequest) {
     // Clear any analytics contacts from API and force direct implementation
     analyticsContacts = []
     
+    // Store debug info for test mode
+    const debugInfo: any = {
+      campaigns: [],
+      contactEvaluations: []
+    }
+    
     if (activeCampaigns && activeCampaigns.length > 0) {
       for (const campaign of activeCampaigns) {
         try {
@@ -226,6 +232,15 @@ export async function GET(request: NextRequest) {
           }
           
           if (campaignContacts && campaignSequences) {
+            // Store campaign debug info
+            const campaignDebug = {
+              name: campaign.name,
+              id: campaign.id,
+              contactCount: campaignContacts.length,
+              sequenceCount: campaignSequences.length,
+              contacts: []
+            }
+            
             // Apply the same "Due next" logic from analytics
             let campaignDueCount = 0
             for (const contact of campaignContacts) {
@@ -234,6 +249,18 @@ export async function GET(request: NextRequest) {
               console.log(`├─ Location: ${contact.location}`)
               console.log(`├─ Sequence Step: ${contact.sequence_step || 0}`)
               console.log(`└─ Is Due: ${isDue ? '✅ YES' : '❌ NO'}`)
+              
+              // Store contact evaluation for debug
+              if (testMode) {
+                campaignDebug.contacts.push({
+                  id: contact.id,
+                  email: contact.email,
+                  location: contact.location,
+                  sequence_step: contact.sequence_step || 0,
+                  status: contact.status,
+                  isDue: isDue
+                })
+              }
               
               if (isDue) {
                 console.log(`✅ Contact ${contact.id} (${contact.email}) is due for next email`)
@@ -247,6 +274,10 @@ export async function GET(request: NextRequest) {
               }
             }
             console.log(`📊 Campaign "${campaign.name}": ${campaignDueCount} contacts are due`)
+            
+            if (testMode) {
+              debugInfo.campaigns.push(campaignDebug)
+            }
           }
         } catch (directError) {
           console.error(`Error in direct analytics logic for campaign ${campaign.id}:`, directError)
@@ -274,7 +305,8 @@ export async function GET(request: NextRequest) {
           activeCampaignsFound: activeCampaigns?.map(c => ({ name: c.name, id: c.id })) || [],
           analyticsContactsFound: analyticsContacts.length,
           testMode: true,
-          note: "Check Vercel function logs for detailed contact evaluation"
+          campaignDetails: debugInfo.campaigns,
+          note: "See campaignDetails for contact evaluation results"
         }
       } : {
         success: true,
