@@ -1,11 +1,75 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { deriveTimezoneFromLocation, getBusinessHoursStatus } from '@/lib/timezone-utils'
 
 // Use service role key for scheduled processing
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+// Direct analytics logic function - same as in analytics page
+function isContactDueDirectly(contact: any, campaignSequences: any[]) {
+  try {
+    // Get the contact's timezone
+    const timezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
+    const businessHoursStatus = getBusinessHoursStatus(timezone)
+    
+    // If not in business hours, not due
+    if (!businessHoursStatus.isBusinessHours) {
+      return false
+    }
+    
+    // Calculate the intended scheduled time (same logic as analytics)
+    const contactIdString = String(contact.id || '')
+    const contactHash = contactIdString.split('').reduce((hash: number, char: string) => {
+      return ((hash << 5) - hash) + char.charCodeAt(0)
+    }, 0)
+    
+    // Get the next sequence for this contact
+    const currentStep = contact.sequence_step || 0
+    const nextSequence = campaignSequences.find(seq => seq.step_number === currentStep + 1)
+    
+    if (!nextSequence) {
+      return false // No next sequence
+    }
+    
+    // For immediate emails (timing: 0), use the timezone-aware logic
+    if (nextSequence.timing_days === 0) {
+      const seedValue = (contactHash + 1) % 1000
+      const intendedHour = 9 + (seedValue % 8) // 9 AM - 5 PM in contact's timezone
+      const intendedMinute = (seedValue * 7) % 60
+      
+      // Get current time in contact's timezone
+      const now = new Date()
+      const currentHourInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        hour: 'numeric',
+        hour12: false
+      }).format(now))
+      const currentMinuteInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        minute: 'numeric'
+      }).format(now))
+      
+      // Compare intended time with current time
+      const currentTimeInMinutes = currentHourInContactTz * 60 + currentMinuteInContactTz
+      const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
+      
+      return currentTimeInMinutes >= intendedTimeInMinutes
+    } else {
+      // For non-immediate emails, check if timing has passed
+      const contactDate = new Date(contact.created_at)
+      const scheduledDate = new Date(contactDate)
+      scheduledDate.setDate(contactDate.getDate() + nextSequence.timing_days)
+      
+      return new Date() >= scheduledDate
+    }
+  } catch (error) {
+    console.error('Error checking if contact is due directly:', error)
+    return false
+  }
+}
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
@@ -125,20 +189,80 @@ export async function GET(request: NextRequest) {
     // STEP 3: Combine analytics contacts with legacy contacts
     console.log('🔄 STEP 3: Combining contact sources...')
     
-    // Priority: Analytics contacts first, then legacy contacts
+    // Update allContacts after direct analytics processing
     let allContacts = [...analyticsContacts]
     
-    if (!dueContacts || dueContacts.length === 0) {
-      console.log('📭 No legacy contacts found')
+    // Only use legacy contacts if we have no analytics contacts at all
+    if (analyticsContacts.length === 0) {
+      if (!dueContacts || dueContacts.length === 0) {
+        console.log('📭 No legacy contacts found')
+      } else {
+        console.log(`📧 Found ${dueContacts.length} legacy contacts (using as fallback)`)
+        // Convert legacy contacts to consistent format and add them
+        const legacyContacts = dueContacts.map(c => ({
+          ...c,
+          email: c.email_address || c.email,
+          source: 'legacy'
+        }))
+        allContacts.push(...legacyContacts)
+      }
     } else {
-      console.log(`📧 Found ${dueContacts.length} legacy contacts`)
-      // Convert legacy contacts to consistent format and add them
-      const legacyContacts = dueContacts.map(c => ({
-        ...c,
-        email: c.email_address || c.email,
-        source: 'legacy'
-      }))
-      allContacts.push(...legacyContacts)
+      console.log(`🎯 Using analytics contacts only (found ${analyticsContacts.length})`)
+    }
+
+    console.log(`🔍 DEBUGGING ANALYTICS INTEGRATION:`)
+    console.log(`  📊 Analytics contacts: ${analyticsContacts.length}`)
+    console.log(`  📋 Legacy contacts: ${allContacts.length - analyticsContacts.length}`)
+    console.log(`  🎯 Total contacts: ${allContacts.length}`)
+    
+    if (analyticsContacts.length === 0) {
+      console.log('⚠️ WARNING: No analytics contacts found! This suggests the sync API is failing.')
+      console.log('💡 Implementing analytics logic directly as fallback...')
+      
+      // Implement analytics logic directly as fallback
+      if (activeCampaigns && activeCampaigns.length > 0) {
+        for (const campaign of activeCampaigns) {
+          try {
+            // Get campaign sequences
+            const { data: campaignSequences } = await supabase
+              .from('campaign_sequences')
+              .select('*')
+              .eq('campaign_id', campaign.id)
+              .order('step_number', { ascending: true })
+            
+            // Get contacts for this campaign
+            const { data: campaignContacts } = await supabase
+              .from('contacts')
+              .select('*')
+              .eq('campaign_id', campaign.id)
+              .neq('status', 'Completed')
+              .neq('status', 'Replied')
+              .neq('status', 'Unsubscribed')
+              .neq('status', 'Bounced')
+            
+            console.log(`📋 Direct check - Campaign "${campaign.name}": ${campaignContacts?.length || 0} contacts`)
+            
+            if (campaignContacts && campaignSequences) {
+              // Apply the same "Due next" logic from analytics
+              for (const contact of campaignContacts) {
+                if (isContactDueDirectly(contact, campaignSequences)) {
+                  console.log(`✅ Direct analytics logic: Contact ${contact.id} is due`)
+                  analyticsContacts.push({
+                    ...contact,
+                    email: contact.email,
+                    campaign_name: campaign.name,
+                    source: 'analytics-direct'
+                  })
+                }
+              }
+            }
+          } catch (directError) {
+            console.error(`Error in direct analytics logic for campaign ${campaign.id}:`, directError)
+          }
+        }
+        
+        console.log(`📊 Direct analytics found ${analyticsContacts.length} due contacts`)
+      }
     }
 
     if (allContacts.length === 0) {
