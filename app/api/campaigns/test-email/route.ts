@@ -263,18 +263,37 @@ export async function POST(request: NextRequest) {
       let replyToEmail = senderEmail // fallback to sender email
       
       try {
-        const { data: domainConfig } = await supabaseServer
+        console.log(`🔍 Looking up domain config for: ${senderDomain}`)
+        const { data: domainConfig, error: domainError } = await supabaseServer
           .from('domains')
-          .select('reply_hostname, reply_subdomain, domain')
+          .select('reply_to_email, domain, dns_records')
           .eq('domain', senderDomain)
           .eq('status', 'verified')
           .single()
           
-        if (domainConfig) {
-          replyToEmail = domainConfig.reply_hostname || `${domainConfig.reply_subdomain || 'reply'}.${domainConfig.domain}`
-          console.log(`📧 Test email using dynamic Reply-To: ${replyToEmail} for domain: ${senderDomain}`)
+        console.log(`🔍 Domain query result:`, { domainConfig, domainError })
+        
+        if (domainConfig && !domainError) {
+          const oldReplyTo = replyToEmail
+          
+          // Use reply_to_email if set, otherwise construct from DNS records
+          if (domainConfig.reply_to_email) {
+            replyToEmail = domainConfig.reply_to_email
+          } else {
+            // Look for reply subdomain in DNS records (MX record for reply routing)
+            const replyMxRecord = domainConfig.dns_records?.find(record => 
+              record.host === 'reply' && record.type === 'MX'
+            )
+            if (replyMxRecord) {
+              replyToEmail = `reply@${domainConfig.domain}`
+            }
+          }
+          
+          console.log(`📧 Dynamic Reply-To: ${oldReplyTo} → ${replyToEmail} for domain: ${senderDomain}`)
+          console.log(`📧 Domain config:`, domainConfig)
         } else {
-          console.log(`⚠️ No verified domain config found for ${senderDomain}, using sender email as Reply-To`)
+          console.log(`⚠️ No verified domain config found for ${senderDomain}, using sender email as Reply-To: ${replyToEmail}`)
+          console.log(`⚠️ Domain error:`, domainError)
         }
       } catch (error) {
         console.log(`⚠️ Error fetching domain config for ${senderDomain}:`, error.message)

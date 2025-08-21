@@ -370,7 +370,7 @@ export function LeadsTab() {
         return
       }
 
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''))
       const contacts = []
 
       for (let i = 1; i < lines.length; i++) {

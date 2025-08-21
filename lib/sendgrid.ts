@@ -28,6 +28,7 @@ export interface SendGridEmailOptions {
 export async function sendEmailWithSendGrid(options: SendGridEmailOptions) {
   try {
     console.log(`📧 Sending email via SendGrid from ${options.from} to ${options.to}`)
+    console.log(`📧 Reply-To address: ${options.replyTo || 'not specified (will use sender)'}`)
     
     // Use the actual sender email from the campaign sender
     // This should be one of the verified emails like contact@leadsup.io, hello@leadsup.io, etc.
