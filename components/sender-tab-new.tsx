@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 // Modern Sender Tab Component
 export const SenderTabContent = ({
@@ -16,11 +16,31 @@ export const SenderTabContent = ({
   const [testModalEmail, setTestModalEmail] = useState('')
   const [testModalSender, setTestModalSender] = useState(null)
   const [testModalLoading, setTestModalLoading] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+
+  // Load user email
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      try {
+        const response = await fetch("/api/auth/me", {
+          credentials: "include",
+          cache: "no-cache"
+        })
+        const result = await response.json()
+        if (result.success && result.user?.email) {
+          setUserEmail(result.user.email)
+        }
+      } catch (error) {
+        console.log('Could not fetch user email:', error)
+      }
+    }
+    fetchUserEmail()
+  }, [])
 
   // Handle test button click
   const handleTestClick = (account) => {
     setTestModalSender(account)
-    setTestModalEmail('essabar.yassine@gmail.com') // Pre-fill with your email
+    setTestModalEmail(userEmail || 'essabar.yassine@gmail.com') // Pre-fill with logged-in user's email
     setShowTestModal(true)
   }
 

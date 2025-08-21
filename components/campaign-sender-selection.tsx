@@ -68,6 +68,26 @@ export default function CampaignSenderSelection({
   const [testModalEmail, setTestModalEmail] = useState('')
   const [testModalSender, setTestModalSender] = useState<Sender | null>(null)
   const [testModalLoading, setTestModalLoading] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+
+  // Load user email
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      try {
+        const response = await fetch("/api/auth/me", {
+          credentials: "include",
+          cache: "no-cache"
+        })
+        const result = await response.json()
+        if (result.success && result.user?.email) {
+          setUserEmail(result.user.email)
+        }
+      } catch (error) {
+        console.log('Could not fetch user email:', error)
+      }
+    }
+    fetchUserEmail()
+  }, [])
 
   // Load domains and their sender accounts
   useEffect(() => {
@@ -573,7 +593,7 @@ export default function CampaignSenderSelection({
   // Handle test email button click
   const handleTestClick = (sender: Sender) => {
     setTestModalSender(sender)
-    setTestModalEmail('essabar.yassine@gmail.com') // Pre-fill with your email
+    setTestModalEmail(userEmail || 'essabar.yassine@gmail.com') // Pre-fill with logged-in user's email
     setShowTestModal(true)
   }
 
