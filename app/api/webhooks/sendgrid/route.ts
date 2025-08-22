@@ -383,7 +383,7 @@ export async function POST(request: NextRequest) {
     
     // Log the webhook call to track all incoming emails
     try {
-      await supabaseServer
+      const { data: logData, error: logError } = await supabaseServer
         .from('webhook_logs')
         .insert({
           webhook_type: 'sendgrid_inbound',
@@ -397,11 +397,19 @@ export async function POST(request: NextRequest) {
             has_html: !!emailData.html,
             attachments: emailData.attachments
           },
-          received_at: new Date().toISOString()
+          received_at: new Date().toISOString(),
+          created_at: new Date().toISOString()
         })
-      console.log('📝 Webhook call logged')
+        .select()
+      
+      if (logError) {
+        console.error('❌ Webhook logging error:', logError)
+        console.error('❌ Attempted to log:', { from: emailData.from, to: emailData.to, subject: emailData.subject })
+      } else {
+        console.log('📝 Webhook call logged successfully:', logData?.[0]?.id)
+      }
     } catch (logError) {
-      console.log('⚠️ Could not log webhook call:', logError)
+      console.error('❌ Webhook logging exception:', logError)
       // Continue processing even if logging fails
     }
     
