@@ -13,7 +13,7 @@ function generateReplyToEmail(senderEmail: string): string {
   const domain = senderEmail.split('@')[1]
   if (!domain) return senderEmail
   
-  return `reply@${domain}`
+  return `reply@reply.${domain}`
 }
 
 export interface SendGridEmailOptions {

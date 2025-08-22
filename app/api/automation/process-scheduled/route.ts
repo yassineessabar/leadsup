@@ -888,11 +888,11 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, testMode }: a
       const sgMail = require('@sendgrid/mail')
       sgMail.setApiKey(process.env.SENDGRID_API_KEY)
       
-      // Force reply@domain format for webhook capture
+      // Force reply@reply.domain format for webhook capture
       const senderDomain = senderEmail.split('@')[1]
-      const replyToEmail = `reply@${senderDomain}`
+      const replyToEmail = `reply@reply.${senderDomain}`
       
-      console.log(`📧 Using reply@domain format: ${senderEmail} → Reply-To: ${replyToEmail}`)
+      console.log(`📧 Using reply@reply.domain format: ${senderEmail} → Reply-To: ${replyToEmail}`)
       
       // Personalize content
       const personalizedSubject = sequence.subject
