@@ -1005,11 +1005,31 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               // Also update the selected campaign
               setSelectedCampaign(prev => prev ? { ...prev, status: newStatus } : prev)
               
-              toast({
-                title: "Campaign Updated",
-                description: `Campaign status changed to ${newStatus}`,
-                variant: "default"
-              })
+              // If campaign was launched (Draft -> Active), redirect to analytics
+              if (newStatus === 'Active') {
+                // Update URL to show analytics view
+                const url = new URL(window.location.href)
+                url.searchParams.set('campaignId', campaignId.toString())
+                url.searchParams.set('campaign', campaignId.toString())
+                url.searchParams.set('openCampaign', 'true')
+                url.searchParams.set('tab', 'analytics')
+                window.history.pushState({}, '', url.toString())
+                
+                // Switch to analytics view
+                setCurrentView("analytics")
+                
+                toast({
+                  title: "Campaign Launched! 🚀",
+                  description: "Your campaign is now active and running. View analytics for real-time performance.",
+                  variant: "default"
+                })
+              } else {
+                toast({
+                  title: "Campaign Updated",
+                  description: `Campaign status changed to ${newStatus}`,
+                  variant: "default"
+                })
+              }
             } else {
               toast({
                 title: "Update Failed",
