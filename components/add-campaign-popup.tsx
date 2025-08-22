@@ -413,6 +413,46 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     }
   }
 
+  const generateAllRemaining = async () => {
+    try {
+      setIsProcessing(true);
+      setError(null);
+
+      const response = await fetch('/api/campaigns/create-progressive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          step: 'generate-all-remaining',
+          campaignId: campaignId,
+          formData: formData,
+          aiAssets: aiAssets
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setAiAssets(prev => ({ 
+          ...prev, 
+          pain_points: result.pain_points,
+          value_propositions: result.value_propositions,
+          email_sequences: result.email_sequences
+        }));
+        return result;
+      } else {
+        throw new Error(result.error || 'Failed to generate remaining content');
+      }
+    } catch (error) {
+      console.error('Error generating remaining content:', error);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      throw error;
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
   const updateAIAssets = async (updatedAssets: any) => {
     try {
       const response = await fetch('/api/campaigns/create-progressive', {
@@ -561,9 +601,10 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       if (nextStep === "pain-value") {
         setIsProcessing(true);
         try {
-          await generatePainPointsAndValueProps();
-          setCompletedSteps(prev => [...prev, currentStep])
-          setCurrentStep(nextStep)
+          // NEW: Generate both pain points and email sequence in parallel for speed
+          await generateAllRemaining();
+          setCompletedSteps(prev => [...prev, currentStep, "pain-value"])
+          setCurrentStep("sequence") // Skip directly to sequence since we generated both
         } catch (error) {
           // Error handling is done in the function
           return;

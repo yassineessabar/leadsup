@@ -55,6 +55,48 @@ interface CampaignFormData {
   targetAudience?: string
 }
 
+// Cache for website content to avoid re-fetching
+const websiteContentCache = new Map<string, { content: string, timestamp: number }>()
+const CACHE_DURATION = 10 * 60 * 1000 // 10 minutes
+
+async function fetchWebsiteContent(url: string): Promise<string> {
+  try {
+    // Check cache first
+    const cached = websiteContentCache.get(url)
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log(`🎯 Using cached website content for: ${url}`)
+      return cached.content
+    }
+
+    console.log(`🌐 Fetching website content from: ${url}`)
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; LeadsUp/1.0; +https://app.leadsup.io/)'
+      },
+      timeout: 8000 // Reduced timeout for speed
+    })
+    
+    if (response.ok) {
+      const html = await response.text()
+      const textContent = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 2000) // Reduced from 3000 for speed
+      
+      // Cache the result
+      websiteContentCache.set(url, { content: textContent, timestamp: Date.now() })
+      console.log(`✅ Fetched and cached website content (${textContent.length} characters)`)
+      return textContent
+    }
+  } catch (error) {
+    console.warn(`⚠️ Error fetching website content: ${error}`)
+  }
+  return ''
+}
+
 // Step 1: Create campaign and generate ICPs & Personas
 export async function POST(request: NextRequest) {
   try {
@@ -75,6 +117,19 @@ export async function POST(request: NextRequest) {
       case 'generate-sequence': {
         const result = await generateEmailSequence(campaignId, formData, aiAssets)
         return NextResponse.json({ success: true, ...result })
+      }
+      case 'generate-all-remaining': {
+        // NEW: Generate pain points and email sequence in parallel for speed
+        const [painValueResult, sequenceResult] = await Promise.all([
+          generatePainPointsAndValueProps(campaignId, aiAssets),
+          generateEmailSequence(campaignId, formData, aiAssets)
+        ])
+        return NextResponse.json({ 
+          success: true, 
+          pain_points: painValueResult.pain_points,
+          value_propositions: painValueResult.value_propositions,
+          email_sequences: sequenceResult.email_sequences
+        })
       }
       case 'update-assets': {
         await updateCampaignAssets(campaignId, aiAssets)
@@ -184,34 +239,7 @@ async function generateICPsAndPersonas(formData: CampaignFormData) {
     // Fetch website content if URL is provided
     let websiteContent = ''
     if (formData.website && !formData.noWebsite) {
-      try {
-        console.log(`🌐 Fetching website content from: ${formData.website}`)
-        const websiteResponse = await fetch(formData.website, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; LeadsUp/1.0; +https://app.leadsup.io/)'
-          },
-          timeout: 10000 // 10 second timeout
-        })
-        
-        if (websiteResponse.ok) {
-          const html = await websiteResponse.text()
-          // Extract text content from HTML (basic extraction)
-          const textContent = html
-            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove scripts
-            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '') // Remove styles
-            .replace(/<[^>]*>/g, ' ') // Remove HTML tags
-            .replace(/\s+/g, ' ') // Normalize whitespace
-            .trim()
-            .substring(0, 3000) // Limit to first 3000 characters
-          
-          websiteContent = textContent
-          console.log(`✅ Successfully fetched website content (${textContent.length} characters)`)
-        } else {
-          console.warn(`⚠️ Failed to fetch website: ${websiteResponse.status} ${websiteResponse.statusText}`)
-        }
-      } catch (error) {
-        console.warn(`⚠️ Error fetching website content: ${error}`)
-      }
+      websiteContent = await fetchWebsiteContent(formData.website)
     }
 
     const companyContext = `
@@ -268,8 +296,8 @@ Return JSON in this exact format:
 }`
         }
       ],
-      temperature: 0.7,
-      max_tokens: 1000
+      temperature: 0.5, // Reduced for faster, more focused responses
+      max_tokens: 600 // Reduced for speed
     })
 
     const result = JSON.parse(response.choices[0].message.content || '{}')
@@ -298,34 +326,10 @@ async function generatePainPointsAndValueProps(campaignId: number, aiAssets: any
       .eq('id', campaignId)
       .single()
 
-    // Fetch website content if available
+    // Fetch website content if available (using cache)
     let websiteContent = ''
     if (campaign?.website) {
-      try {
-        console.log(`🌐 Fetching website content for pain points: ${campaign.website}`)
-        const websiteResponse = await fetch(campaign.website, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; LeadsUp/1.0; +https://app.leadsup.io/)'
-          },
-          timeout: 10000
-        })
-        
-        if (websiteResponse.ok) {
-          const html = await websiteResponse.text()
-          const textContent = html
-            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-            .replace(/<[^>]*>/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .substring(0, 2000) // Smaller limit for pain points
-          
-          websiteContent = textContent
-          console.log(`✅ Fetched website content for pain points (${textContent.length} characters)`)
-        }
-      } catch (error) {
-        console.warn(`⚠️ Error fetching website for pain points: ${error}`)
-      }
+      websiteContent = await fetchWebsiteContent(campaign.website)
     }
 
     const response = await openai.chat.completions.create({
@@ -368,8 +372,8 @@ Return JSON in this exact format:
 }`
         }
       ],
-      temperature: 0.7,
-      max_tokens: 800
+      temperature: 0.5,
+      max_tokens: 400 // Reduced for speed
     })
 
     const result = JSON.parse(response.choices[0].message.content || '{}')
@@ -405,34 +409,10 @@ async function generateEmailSequence(campaignId: number, formData: CampaignFormD
       .eq('id', campaignId)
       .single()
 
-    // Fetch website content if available
+    // Fetch website content if available (using cache)
     let websiteContent = ''
     if (campaign?.website) {
-      try {
-        console.log(`🌐 Fetching website content for email sequence: ${campaign.website}`)
-        const websiteResponse = await fetch(campaign.website, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; LeadsUp/1.0; +https://app.leadsup.io/)'
-          },
-          timeout: 10000
-        })
-        
-        if (websiteResponse.ok) {
-          const html = await websiteResponse.text()
-          const textContent = html
-            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-            .replace(/<[^>]*>/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .substring(0, 2500) // Medium limit for email sequence
-          
-          websiteContent = textContent
-          console.log(`✅ Fetched website content for email sequence (${textContent.length} characters)`)
-        }
-      } catch (error) {
-        console.warn(`⚠️ Error fetching website for email sequence: ${error}`)
-      }
+      websiteContent = await fetchWebsiteContent(campaign.website)
     }
 
     const companyContext = `
@@ -512,8 +492,8 @@ Return JSON in this exact format:
 }`
         }
       ],
-      temperature: 0.7,
-      max_tokens: 1500
+      temperature: 0.5,
+      max_tokens: 800 // Reduced for speed
     })
 
     const result = JSON.parse(response.choices[0].message.content || '{}')
