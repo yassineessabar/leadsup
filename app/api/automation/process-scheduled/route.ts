@@ -526,11 +526,12 @@ export async function GET(request: NextRequest) {
           continue
         }
         
-        console.log(`📧 Available senders for ${contact.campaign_id}: ${senders.map(s => s.email).join(', ')}`)
+        console.log(`📧 Available senders for ${contact.campaign_id}: ${senders.map(s => `${s.email}(limit:${s.daily_limit})`).join(', ')}`)
         
         let selectedSender = null
+        let selectionReason = ''
         
-        // Check if this contact already has emails - maintain consistency
+        // Check if this contact already has emails - maintain consistency  
         const { data: existingEmails } = await supabase
           .from('inbox_messages')
           .select('sender_email')
@@ -540,13 +541,18 @@ export async function GET(request: NextRequest) {
           .order('created_at', { ascending: false })
           .limit(1)
         
+        console.log(`🔍 Contact ${contact.id} (${contact.email_address}) existing emails:`, existingEmails?.map(e => e.sender_email) || 'none')
+        
         if (existingEmails && existingEmails.length > 0) {
           // Use same sender as previous emails for conversation continuity
           const previousSender = existingEmails[0].sender_email
           const matchingSender = senders.find(s => s.email === previousSender)
           if (matchingSender) {
             selectedSender = matchingSender
+            selectionReason = `conversation-continuity-from-${previousSender}`
             console.log(`🔄 Maintaining conversation continuity: ${selectedSender.email} for contact ${contact.id}`)
+          } else {
+            console.log(`⚠️ Previous sender ${previousSender} not found in active senders, will use rotation`)
           }
         }
         
@@ -557,9 +563,13 @@ export async function GET(request: NextRequest) {
           const rotationSeed = Math.floor(Date.now() / (1000 * 60 * 60)) + (contact.id || 0)
           const rotationIndex = rotationSeed % senders.length
           selectedSender = senders[rotationIndex]
+          selectionReason = `time-rotation-seed-${rotationSeed}-index-${rotationIndex}`
           
-          console.log(`🎯 Time-based rotation: Assigned ${selectedSender.email} to contact ${contact.id} (index ${rotationIndex}/${senders.length})`)
+          console.log(`🎯 Time-based rotation: Assigned ${selectedSender.email} to contact ${contact.id} (seed:${rotationSeed}, index:${rotationIndex}/${senders.length})`)
         }
+        
+        console.log(`✅ FINAL SENDER SELECTION: ${selectedSender.email} for contact ${contact.id} (reason: ${selectionReason})`)
+        console.log(`📊 Sender Distribution Summary: ${senders.length} total active senders available`)
         
         // Send the email
         const sendResult = await sendSequenceEmail({
