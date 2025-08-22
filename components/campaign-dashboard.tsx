@@ -4204,33 +4204,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="text-sm text-gray-500">
                     {guidedFlowSteps[guidedFlowStep]?.description}
                   </div>
-                  
-                  {/* Requirements indicators */}
-                  <div className="flex items-center justify-center gap-4 mt-3">
-                    {/* Contacts/Auto-scraping indicator */}
-                    <div className="flex items-center gap-1.5">
-                      {hasContacts || hasAutoScraping ? (
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-gray-400" />
-                      )}
-                      <span className={`text-xs ${hasContacts || hasAutoScraping ? 'text-green-600' : 'text-gray-400'}`}>
-                        Contacts/Scraping
-                      </span>
-                    </div>
-                    
-                    {/* Domains indicator */}
-                    <div className="flex items-center gap-1.5">
-                      {hasDomains ? (
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-gray-400" />
-                      )}
-                      <span className={`text-xs ${hasDomains ? 'text-green-600' : 'text-gray-400'}`}>
-                        Domains
-                      </span>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Navigation buttons */}
