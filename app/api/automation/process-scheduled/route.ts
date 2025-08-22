@@ -536,43 +536,16 @@ export async function GET(request: NextRequest) {
         let selectedSender = null
         let selectionReason = ''
         
-        // Check if this contact already has emails - maintain consistency  
-        const { data: existingEmails } = await supabase
-          .from('inbox_messages')
-          .select('sender_email')
-          .eq('contact_email', contact.email_address)
-          .eq('direction', 'outbound')
-          .eq('campaign_id', campaign.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
+        // Timeline uses: const senderIndex = contactIdNum % campaignSenders.length
+        // Match this exactly for consistency (no conversation continuity override)
+        const contactIdNum = parseInt(String(contact.id)) || 0
+        const rotationIndex = senders.length > 0 ? contactIdNum % senders.length : 0
+        selectedSender = senders[rotationIndex]
+        selectionReason = `timeline-matching-rotation-contact-${contactIdNum}-index-${rotationIndex}`
         
-        console.log(`🔍 Contact ${contact.id} (${contact.email_address}) existing emails:`, existingEmails?.map(e => e.sender_email) || 'none')
-        
-        if (existingEmails && existingEmails.length > 0) {
-          // Use same sender as previous emails for conversation continuity
-          const previousSender = existingEmails[0].sender_email
-          const matchingSender = senders.find(s => s.email === previousSender)
-          if (matchingSender) {
-            selectedSender = matchingSender
-            selectionReason = `conversation-continuity-from-${previousSender}`
-            console.log(`🔄 Maintaining conversation continuity: ${selectedSender.email} for contact ${contact.id}`)
-          } else {
-            console.log(`⚠️ Previous sender ${previousSender} not found in active senders, will use rotation`)
-          }
-        }
-        
-        // If no previous emails or sender not available, use SAME rotation logic as timeline
-        if (!selectedSender) {
-          // Timeline uses: const senderIndex = contactIdNum % campaignSenders.length
-          // Match this exactly for consistency
-          const contactIdNum = parseInt(String(contact.id)) || 0
-          const rotationIndex = senders.length > 0 ? contactIdNum % senders.length : 0
-          selectedSender = senders[rotationIndex]
-          selectionReason = `timeline-matching-rotation-contact-${contactIdNum}-index-${rotationIndex}`
-          
-          console.log(`🎯 Timeline-matching rotation: Contact ${contact.id} assigned to sender ${selectedSender.email} (index ${rotationIndex}/${senders.length})`)
-          console.log(`📊 Rotation logic: ${contactIdNum} % ${senders.length} = ${rotationIndex}`)
-        }
+        console.log(`🎯 Timeline-matching rotation: Contact ${contact.id} assigned to sender ${selectedSender.email} (index ${rotationIndex}/${senders.length})`)
+        console.log(`📊 Rotation logic: ${contactIdNum} % ${senders.length} = ${rotationIndex}`)
+        console.log(`📧 REMOVED conversation continuity - always match timeline assignment`)
         
         // Final check: ensure selected sender is active before sending
         if (!selectedSender.is_active) {
