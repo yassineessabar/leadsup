@@ -87,33 +87,38 @@ export function ComprehensiveDashboard() {
     try {
       setMetricsLoading(true)
       
-      // TEMPORARY FIX: Completely disable SendGrid metrics until fake data is resolved
-      console.log('🚫 SendGrid metrics temporarily disabled to prevent fake data')
-      setSendGridMetrics(null)
-      setMetricsLoading(false)
-      return
+      console.log('🔍 Checking for real email activity in inbox...')
       
-      console.log('🔍 Checking if user has any email activity...')
-      
-      // First, check if user has any active campaigns or email accounts
-      const campaignsResponse = await fetch('/api/campaigns', {
+      // First, check if user has any real emails in their inbox
+      const inboxResponse = await fetch('/api/inbox/stats', {
         credentials: 'include'
       })
       
-      if (!campaignsResponse.ok) {
-        console.warn("Failed to fetch campaigns for metrics validation")
+      if (!inboxResponse.ok) {
+        console.warn('Failed to fetch inbox stats, skipping email metrics')
         setSendGridMetrics(null)
+        setMetricsLoading(false)
         return
       }
       
-      const campaignsData = await campaignsResponse.json()
-      const hasActiveCampaigns = campaignsData.success && campaignsData.data && campaignsData.data.length > 0
+      const inboxData = await inboxResponse.json()
+      const hasRealEmails = inboxData.success && 
+        inboxData.data?.summary?.total_messages > 0
       
-      if (!hasActiveCampaigns) {
-        console.log('⚠️ No campaigns found - skipping SendGrid metrics fetch')
+      console.log('📊 Inbox stats:', {
+        hasRealEmails,
+        totalMessages: inboxData.data?.summary?.total_messages || 0,
+        unreadMessages: inboxData.data?.summary?.unread_messages || 0
+      })
+      
+      if (!hasRealEmails) {
+        console.log('⚠️ No real emails found in inbox - showing no metrics')
         setSendGridMetrics(null)
+        setMetricsLoading(false)
         return
       }
+      
+      console.log('✅ Real emails found - fetching SendGrid metrics...')
       
       // Build query parameters for last 30 days
       const params = new URLSearchParams({
@@ -145,10 +150,8 @@ export function ComprehensiveDashboard() {
         
         console.log('📊 Metrics data received:', metrics)
         
-        // Only set metrics if there's actual email activity
+        // Only set metrics if there's actual email activity that matches inbox data
         if (metrics.emailsSent > 0) {
-          console.log('⚠️ WARNING: Setting SendGrid metrics despite no campaigns!')
-          setSendGridMetrics(metrics)
           console.log('✅ Real SendGrid metrics loaded:', {
             source: result.data.source,
             period: result.data.period,
@@ -157,8 +160,9 @@ export function ComprehensiveDashboard() {
             clickRate: metrics.clickRate,
             deliveryRate: metrics.deliveryRate
           })
+          setSendGridMetrics(metrics)
         } else {
-          console.log('⚠️ No email activity found - showing no metrics')
+          console.log('⚠️ SendGrid reports no emails sent - showing no metrics')
           setSendGridMetrics(null)
         }
       } else {
@@ -504,6 +508,7 @@ export function ComprehensiveDashboard() {
           ) : metricsLoading ? (
             <div className="mb-8">
               <div className="flex items-center justify-center py-8">
+                <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mr-3"></div>
                 <div className="text-slate-500">Loading email metrics...</div>
               </div>
             </div>
@@ -514,9 +519,9 @@ export function ComprehensiveDashboard() {
                   <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Mail className="w-6 h-6 text-slate-400" />
                   </div>
-                  <h3 className="text-lg font-medium text-slate-900 mb-2">No Email Activity Yet</h3>
+                  <h3 className="text-lg font-medium text-slate-900 mb-2">No Email Performance Data</h3>
                   <p className="text-slate-500 text-sm mb-4">
-                    Email performance metrics will appear here once you start sending campaigns.
+                    Campaign analytics will appear here once you launch your first campaign.
                   </p>
                   <Button 
                     className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-4 py-2 text-sm"

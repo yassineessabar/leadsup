@@ -625,7 +625,11 @@ export function TargetTab({
                       <Button
                         onClick={handleSaveScrapingClick}
                         disabled={!scrappingIndustry || scrappingKeywords.length === 0 || !scrappingLocation}
-                        className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
+                        className={`bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3 transition-all duration-200 ${
+                          scrappingIndustry && scrappingKeywords.length > 0 && scrappingLocation 
+                            ? 'animate-bounce hover:animate-none' 
+                            : ''
+                        }`}
                       >
                         <Play className="w-4 h-4 mr-2" />
                         Start Scraping

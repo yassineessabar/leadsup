@@ -23,14 +23,25 @@ import { CampaignAnalytics } from "@/components/campaign-analytics"
 // import { SupportChatbot } from "@/components/support-chatbot"
 
 // Wrapper component to fetch campaign data and render analytics
-function CampaignAnalyticsWrapper({ campaignId, onBack }: { campaignId: string | null, onBack: () => void }) {
-  const [campaign, setCampaign] = useState(null)
-  const [loading, setLoading] = useState(true)
+function CampaignAnalyticsWrapper({ campaignId, campaignData, onBack }: { 
+  campaignId: string | null, 
+  campaignData?: any,
+  onBack: () => void 
+}) {
+  const [campaign, setCampaign] = useState(campaignData || null)
+  const [loading, setLoading] = useState(!campaignData)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // If campaign data is already provided, don't fetch again
+    if (campaignData) {
+      setCampaign(campaignData)
+      setLoading(false)
+      return
+    }
+
     const fetchCampaign = async () => {
-      console.log('📊 CampaignAnalyticsWrapper received campaignId:', campaignId)
+      console.log('📊 CampaignAnalyticsWrapper fetching campaign:', campaignId)
       
       if (!campaignId) {
         console.error('❌ No campaign ID provided to analytics wrapper')
@@ -59,7 +70,7 @@ function CampaignAnalyticsWrapper({ campaignId, onBack }: { campaignId: string |
     }
 
     fetchCampaign()
-  }, [campaignId])
+  }, [campaignId, campaignData])
 
   if (loading) {
     return (
@@ -137,6 +148,7 @@ export default function Home() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("dashboard")
+  const [campaignCache, setCampaignCache] = useState<Record<string, any>>({})
 
   // Enhanced setActiveTab that dispatches custom event for data refetching
   const handleTabChange = (newTab: string) => {
@@ -147,6 +159,25 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+
+  // Listen for campaign data updates from the campaigns tab
+  useEffect(() => {
+    const handleCampaignUpdate = (event: CustomEvent) => {
+      const { campaigns } = event.detail
+      if (campaigns && Array.isArray(campaigns)) {
+        const newCache: Record<string, any> = {}
+        campaigns.forEach((campaign: any) => {
+          if (campaign.id) {
+            newCache[campaign.id.toString()] = campaign
+          }
+        })
+        setCampaignCache(newCache)
+      }
+    }
+
+    window.addEventListener('campaigns-updated', handleCampaignUpdate as EventListener)
+    return () => window.removeEventListener('campaigns-updated', handleCampaignUpdate as EventListener)
+  }, [])
 
   // Check for tab parameter in URL
   useEffect(() => {
@@ -300,9 +331,14 @@ export default function Home() {
         return <DomainTab />
       case "analytics":
         const campaignId = searchParams.get("campaign")
+        const cachedCampaign = campaignId ? campaignCache[campaignId] : null
         console.log('📊 Analytics tab - campaignId from URL:', campaignId)
-        console.log('📊 Current URL search params:', Array.from(searchParams.entries()))
-        return <CampaignAnalyticsWrapper campaignId={campaignId} onBack={() => handleTabChange("campaigns-email")} />
+        console.log('📊 Using cached campaign data:', !!cachedCampaign)
+        return <CampaignAnalyticsWrapper 
+          campaignId={campaignId} 
+          campaignData={cachedCampaign}
+          onBack={() => handleTabChange("campaigns-email")} 
+        />
       case "billing":
         return <BillingSubscriptionPage />
       case "settings":

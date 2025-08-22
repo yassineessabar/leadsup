@@ -243,13 +243,33 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       const result = await response.json()
       
       if (result.success) {
-        // Map the campaigns and fetch SendGrid metrics for each
-        const campaignsWithMetrics = await Promise.all(
-          result.data.map(async (campaign: any) => {
-            let sendgridMetrics = undefined
-            
+        // First set campaigns without metrics for immediate UI response
+        const campaignsWithoutMetrics = result.data.map((campaign: any) => ({
+          ...campaign,
+          outreachStrategy: campaign.outreach_strategy || campaign.outreachStrategy,
+          totalPlanned: campaign.total_planned || 0,
+          sendgridMetrics: undefined
+        }))
+        
+        setCampaigns(campaignsWithoutMetrics)
+        setLoading(false) // Show campaigns immediately
+        
+        // Dispatch event to share campaign data with other components
+        window.dispatchEvent(new CustomEvent('campaigns-updated', { 
+          detail: { campaigns: campaignsWithoutMetrics } 
+        }))
+        
+        // Then fetch metrics in batches for better performance
+        const batchSize = 5
+        const campaignBatches = []
+        for (let i = 0; i < result.data.length; i += batchSize) {
+          campaignBatches.push(result.data.slice(i, i + batchSize))
+        }
+        
+        // Process batches sequentially to avoid overwhelming the server
+        for (const batch of campaignBatches) {
+          const batchPromises = batch.map(async (campaign: any) => {
             try {
-              // Fetch SendGrid metrics for this campaign
               const metricsResponse = await fetch(`/api/analytics/campaign?campaign_id=${campaign.id}&start_date=${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}&end_date=${new Date().toISOString().split('T')[0]}`, {
                 credentials: "include"
               })
@@ -258,29 +278,50 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                 const metricsResult = await metricsResponse.json()
                 if (metricsResult.success && metricsResult.data?.metrics) {
                   const metrics = metricsResult.data.metrics
-                  sendgridMetrics = {
-                    openRate: metrics.openRate || 0,
-                    clickRate: metrics.clickRate || 0,
-                    deliveryRate: metrics.deliveryRate || 0,
-                    emailsSent: metrics.emailsSent || 0,
-                    emailsDelivered: metrics.emailsDelivered || 0
+                  return {
+                    campaignId: campaign.id,
+                    sendgridMetrics: {
+                      openRate: metrics.openRate || 0,
+                      clickRate: metrics.clickRate || 0,
+                      deliveryRate: metrics.deliveryRate || 0,
+                      emailsSent: metrics.emailsSent || 0,
+                      emailsDelivered: metrics.emailsDelivered || 0
+                    }
                   }
                 }
               }
             } catch (error) {
               console.warn(`Failed to fetch metrics for campaign ${campaign.id}:`, error)
             }
-            
-            return {
-              ...campaign,
-              outreachStrategy: campaign.outreach_strategy || campaign.outreachStrategy,
-              totalPlanned: campaign.total_planned || 0, // Only use real data from database
-              sendgridMetrics
-            }
+            return null
           })
-        )
-        
-        setCampaigns(campaignsWithMetrics)
+          
+          const batchResults = await Promise.all(batchPromises)
+          
+          // Update campaigns with metrics as they become available
+          setCampaigns(prevCampaigns => {
+            const updatedCampaigns = prevCampaigns.map(campaign => {
+              const metricsResult = batchResults.find(result => 
+                result && result.campaignId === campaign.id
+              )
+              return metricsResult 
+                ? { ...campaign, sendgridMetrics: metricsResult.sendgridMetrics }
+                : campaign
+            })
+            
+            // Share updated campaign data
+            window.dispatchEvent(new CustomEvent('campaigns-updated', { 
+              detail: { campaigns: updatedCampaigns } 
+            }))
+            
+            return updatedCampaigns
+          })
+          
+          // Small delay between batches to avoid overwhelming the API
+          if (campaignBatches.indexOf(batch) < campaignBatches.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 100))
+          }
+        }
       } else {
         console.error("Failed to fetch campaigns:", result.error)
         toast({
@@ -288,6 +329,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           description: "Failed to load campaigns",
           variant: "destructive"
         })
+        setLoading(false)
       }
     } catch (error) {
       console.error("Error fetching campaigns:", error)
@@ -296,14 +338,17 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         description: "Failed to load campaigns",
         variant: "destructive"
       })
-    } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
     fetchCampaigns()
-    fetchWarmingProgress()
+    
+    // Delay warmup progress fetch to not block initial loading
+    setTimeout(() => {
+      fetchWarmingProgress()
+    }, 2000)
     
     // Auto-refresh warming progress every 2 minutes
     const warmingInterval = setInterval(() => {
