@@ -255,11 +255,34 @@ export async function GET(request: NextRequest) {
       console.warn('⚠️ Webhook aggregation failed:', webhookAggError)
     }
 
-    // Skip problematic SendGrid API fallbacks that return fake data
-    console.log('⚠️ Skipping SendGrid API fallbacks to ensure data accuracy')
+    // Method 3: Direct SendGrid API calls as fallback
+    try {
+      console.log('📡 Method 3: Trying direct SendGrid API calls...')
+      
+      const { SendGridDirectAPI } = await import('@/lib/sendgrid-direct-api')
+      const directMetrics = await SendGridDirectAPI.getAccountMetrics(startDate, endDate)
+      
+      if (directMetrics && directMetrics.emailsSent > 0) {
+        console.log('✅ Got real metrics from SendGrid direct API:', directMetrics)
+        
+        return NextResponse.json({
+          success: true,
+          data: {
+            metrics: directMetrics,
+            source: 'sendgrid_direct_api',
+            period: `${startDate} to ${endDate}`,
+            debug: 'Real SendGrid API data - no webhook events needed'
+          }
+        })
+      } else {
+        console.log('⚠️ SendGrid direct API returned no data')
+      }
+    } catch (directApiError) {
+      console.warn('⚠️ SendGrid direct API failed:', directApiError)
+    }
 
-    // If no webhook data found, return empty metrics (no fake fallbacks)
-    console.log('⚠️ No real email activity found, returning empty metrics')
+    // If no real data found anywhere, return empty metrics
+    console.log('⚠️ No real email activity found from any source, returning empty metrics')
     
     return NextResponse.json({
       success: true,
