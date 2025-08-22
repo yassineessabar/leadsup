@@ -32,13 +32,13 @@ export async function GET(request: NextRequest) {
     
     console.log('🔍 Recent webhook errors:', webhookErrors?.length || 0)
     
-    // Check inbox_messages table for any messages involving Yassine or sigmatic (multiple email variants)
+    // Check inbox_messages table for any messages involving Yassine, sigmatic, or mouai (multiple email variants)
     const { data: messages, error: messagesError } = await supabase
       .from('inbox_messages')
       .select('*')
-      .or('contact_email.eq.essabar.yassine@gmail.com,contact_email.eq.ya.essabarry@gmail.com,contact_email.eq.sigmaticinvestments@gmail.com,sender_email.eq.essabar.yassine@gmail.com,sender_email.eq.ya.essabarry@gmail.com,sender_email.eq.sigmaticinvestments@gmail.com')
+      .or('contact_email.eq.essabar.yassine@gmail.com,contact_email.eq.ya.essabarry@gmail.com,contact_email.eq.sigmaticinvestments@gmail.com,contact_email.eq.mouai.tax@gmail.com,sender_email.eq.essabar.yassine@gmail.com,sender_email.eq.ya.essabarry@gmail.com,sender_email.eq.sigmaticinvestments@gmail.com,sender_email.eq.mouai.tax@gmail.com')
       .order('created_at', { ascending: false })
-      .limit(30)
+      .limit(50)
     
     if (messagesError) {
       console.error('Messages query error:', messagesError)
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     const { data: threads, error: threadsError } = await supabase
       .from('inbox_threads')
       .select('*')
-      .or('contact_email.eq.essabar.yassine@gmail.com,contact_email.eq.ya.essabarry@gmail.com,contact_email.eq.sigmaticinvestments@gmail.com')
+      .or('contact_email.eq.essabar.yassine@gmail.com,contact_email.eq.ya.essabarry@gmail.com,contact_email.eq.sigmaticinvestments@gmail.com,contact_email.eq.mouai.tax@gmail.com')
       .order('last_message_at', { ascending: false })
     
     if (threadsError) {
