@@ -565,8 +565,8 @@ export function ComprehensiveDashboard() {
           {/* Main Dashboard Layout - Full Width Focus */}
           <div className="space-y-8">
             
-            {/* Response and Meeting Chart - Only show if user has email activity */}
-            {sendGridMetrics && (
+            {/* Response and Meeting Chart - HIDDEN per user request */}
+            {false && sendGridMetrics && (
               <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
                 <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-green-500 to-blue-600 rounded-full opacity-5 transform translate-x-20 -translate-y-20"></div>
                 <CardContent className="p-8">
