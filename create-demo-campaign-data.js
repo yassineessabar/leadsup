@@ -29,7 +29,12 @@ async function sendWebhookEvent(events) {
 }
 
 async function createDemoCampaignData() {
-  console.log('🚀 Creating demo campaign analytics data...\n');
+  console.log('🚫 DISABLED: This script creates fake analytics data.')
+  console.log('📊 Use real SendGrid webhook events for accurate analytics.')
+  console.log('🧹 Run "node clear-fake-analytics.js" to remove fake data.')
+  console.log('')
+  console.log('⚠️ If you need to re-enable this script for testing, edit this file.')
+  return // Exit early - script is disabled
   
   // Use a realistic campaign ID that could exist in your database
   const campaignId = 'ac2fa28f-5360-4fa2-80c6-0c3cc217785b'; // The one from your logs

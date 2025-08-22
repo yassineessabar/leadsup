@@ -111,6 +111,30 @@ export function ComprehensiveDashboard() {
         unreadMessages: inboxData.data?.summary?.unread_messages || 0
       })
       
+      // EXTRA PROTECTION: If inbox has emails but they're all from example.com/demo, don't show metrics
+      if (hasRealEmails) {
+        try {
+          const inboxSample = await fetch('/api/inbox?limit=5', { credentials: 'include' })
+          const inboxSampleData = await inboxSample.json()
+          if (inboxSampleData.success && inboxSampleData.emails) {
+            const hasOnlyFakeEmails = inboxSampleData.emails.every((email: any) => 
+              email.sender?.includes('example.com') || 
+              email.to_email?.includes('example.com') ||
+              email.sender?.includes('demo') ||
+              email.to_email?.includes('demo')
+            )
+            if (hasOnlyFakeEmails) {
+              console.log('⚠️ Inbox contains only fake/demo emails, skipping metrics')
+              setSendGridMetrics(null)
+              setMetricsLoading(false)
+              return
+            }
+          }
+        } catch (error) {
+          console.warn('Could not verify inbox email authenticity:', error)
+        }
+      }
+      
       if (!hasRealEmails) {
         console.log('⚠️ No real emails found in inbox - showing no metrics')
         setSendGridMetrics(null)
