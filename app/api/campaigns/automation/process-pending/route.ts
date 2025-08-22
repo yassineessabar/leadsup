@@ -205,7 +205,14 @@ export async function GET(request: NextRequest) {
 
       const contactsToProcess = []
       const senderUsage = new Map() // Track daily usage per sender
-      let senderRotationIndex = 0 // Round-robin rotation index
+      
+      // Create persistent rotation index based on current time and campaign
+      // This ensures rotation continues across API calls instead of resetting to 0
+      const rotationSeed = Math.floor(Date.now() / (1000 * 60 * 60)) + campaign.id.split('-')[0].charCodeAt(0)
+      let senderRotationIndex = rotationSeed % senders.length // Start rotation from time-based position
+      
+      console.log(`🔄 Campaign ${campaign.name}: Rotation starting at index ${senderRotationIndex} (seed: ${rotationSeed})`)
+      console.log(`📧 Available senders: ${senders.map((s, i) => `${i}:${s.email}`).join(', ')}`)
 
       // Check each contact for due sequences
       for (const contact of contactsData || []) {
