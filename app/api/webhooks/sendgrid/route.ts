@@ -381,6 +381,30 @@ export async function POST(request: NextRequest) {
     // Parse the form data from SendGrid
     const emailData = await parseFormData(request)
     
+    // Log the webhook call to track all incoming emails
+    try {
+      await supabaseServer
+        .from('webhook_logs')
+        .insert({
+          webhook_type: 'sendgrid_inbound',
+          from_email: emailData.from,
+          to_email: emailData.to,
+          subject: emailData.subject,
+          raw_data: {
+            envelope: emailData.envelope,
+            spam_score: emailData.spam_score,
+            has_text: !!emailData.text,
+            has_html: !!emailData.html,
+            attachments: emailData.attachments
+          },
+          received_at: new Date().toISOString()
+        })
+      console.log('📝 Webhook call logged')
+    } catch (logError) {
+      console.log('⚠️ Could not log webhook call:', logError)
+      // Continue processing even if logging fails
+    }
+    
     console.log('📧 SendGrid parsed data:', {
       from: emailData.from,
       to: emailData.to,
@@ -647,6 +671,22 @@ export async function POST(request: NextRequest) {
     }
     
     console.log(`✅ Message stored successfully: ${message.id}`)
+    
+    // Update webhook log as processed
+    try {
+      await supabaseServer
+        .from('webhook_logs')
+        .update({ 
+          processed: true,
+          error: null 
+        })
+        .eq('from_email', emailData.from)
+        .eq('to_email', emailData.to)
+        .eq('subject', emailData.subject)
+        .gte('created_at', new Date(Date.now() - 60000).toISOString()) // Within last minute
+    } catch (updateError) {
+      console.log('⚠️ Could not update webhook log:', updateError)
+    }
     
     // Update thread with latest message info
     await supabaseServer
