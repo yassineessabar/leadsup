@@ -506,13 +506,13 @@ export async function GET(request: NextRequest) {
           continue
         }
         
-        // Get all active senders for this campaign
+        // Get all selected senders for this campaign (match timeline logic exactly)
+        // Timeline uses: WHERE campaign_id = ? AND is_selected = true
         const { data: senders, error: sendersError } = await supabase
           .from('campaign_senders')
-          .select('id, email, name, daily_limit')
+          .select('id, email, name, daily_limit, is_active, is_selected')
           .eq('campaign_id', contact.campaign_id)
-          .eq('is_active', true)
-          .eq('is_selected', true)
+          .eq('is_selected', true)  // Match timeline query exactly
           .order('email', { ascending: true }) // Consistent ordering
         
         if (sendersError || !senders || senders.length === 0) {
@@ -521,12 +521,30 @@ export async function GET(request: NextRequest) {
             contactId: contact.id,
             contactEmail: contact.email_address || contact.email,
             status: 'failed',
-            reason: 'No active senders available for campaign'
+            reason: 'No selected senders found for campaign (timeline shows no senders)'
           })
           continue
         }
         
-        console.log(`📧 Available senders for ${contact.campaign_id}: ${senders.map(s => `${s.email}(limit:${s.daily_limit})`).join(', ')}`)
+        console.log(`📧 Timeline senders for ${contact.campaign_id}: ${senders.map(s => `${s.email}(active:${s.is_active},selected:${s.is_selected},limit:${s.daily_limit})`).join(', ')}`)
+        
+        // Filter to only active senders for actual sending (but log what timeline shows)
+        const activeSenders = senders.filter(s => s.is_active === true)
+        console.log(`🎯 Active senders for sending: ${activeSenders.map(s => s.email).join(', ')}`)
+        
+        if (activeSenders.length === 0) {
+          errorCount++
+          results.push({
+            contactId: contact.id,
+            contactEmail: contact.email_address || contact.email,
+            status: 'failed',
+            reason: `No active senders available (${senders.length} selected but ${activeSenders.length} active)`
+          })
+          continue
+        }
+        
+        // Use active senders for rotation
+        senders = activeSenders
         
         let selectedSender = null
         let selectionReason = ''
