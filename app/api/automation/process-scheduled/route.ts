@@ -574,16 +574,17 @@ export async function GET(request: NextRequest) {
           }
         }
         
-        // If no previous emails or sender not available, use time-based rotation
+        // If no previous emails or sender not available, use SAME rotation logic as timeline
         if (!selectedSender) {
-          // Create persistent rotation index using time + contact ID
-          // This ensures different contacts get different senders but stays consistent per contact
-          const rotationSeed = Math.floor(Date.now() / (1000 * 60 * 60)) + (contact.id || 0)
-          const rotationIndex = rotationSeed % senders.length
+          // Timeline uses: const senderIndex = contactIdNum % campaignSenders.length
+          // Match this exactly for consistency
+          const contactIdNum = parseInt(String(contact.id)) || 0
+          const rotationIndex = senders.length > 0 ? contactIdNum % senders.length : 0
           selectedSender = senders[rotationIndex]
-          selectionReason = `time-rotation-seed-${rotationSeed}-index-${rotationIndex}`
+          selectionReason = `timeline-matching-rotation-contact-${contactIdNum}-index-${rotationIndex}`
           
-          console.log(`🎯 Time-based rotation: Assigned ${selectedSender.email} to contact ${contact.id} (seed:${rotationSeed}, index:${rotationIndex}/${senders.length})`)
+          console.log(`🎯 Timeline-matching rotation: Contact ${contact.id} assigned to sender ${selectedSender.email} (index ${rotationIndex}/${senders.length})`)
+          console.log(`📊 Rotation logic: ${contactIdNum} % ${senders.length} = ${rotationIndex}`)
         }
         
         console.log(`✅ FINAL SENDER SELECTION: ${selectedSender.email} for contact ${contact.id} (reason: ${selectionReason})`)
