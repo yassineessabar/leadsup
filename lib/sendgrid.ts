@@ -8,6 +8,14 @@ if (!SENDGRID_API_KEY) {
 }
 sgMail.setApiKey(SENDGRID_API_KEY)
 
+// Helper function to generate reply-to email address
+function generateReplyToEmail(senderEmail: string): string {
+  const domain = senderEmail.split('@')[1]
+  if (!domain) return senderEmail
+  
+  return `reply@${domain}`
+}
+
 export interface SendGridEmailOptions {
   to: string
   from: string
@@ -47,7 +55,7 @@ export async function sendEmailWithSendGrid(options: SendGridEmailOptions) {
       subject: options.subject,
       text: options.text || '',
       html: options.html || options.text || '',
-      replyTo: options.replyTo || senderEmail,
+      replyTo: options.replyTo || generateReplyToEmail(senderEmail),
       attachments: options.attachments || []
     }
 
