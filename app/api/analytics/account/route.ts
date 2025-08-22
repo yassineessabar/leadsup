@@ -57,30 +57,42 @@ export async function GET(request: NextRequest) {
     // Skip campaign verification - we want to show SendGrid data regardless
     console.log('📊 Attempting to fetch real SendGrid metrics...')
 
-    // Method 1: Direct SendGrid API (PRIORITY - we know this has real data)
+    // Method 1: User-specific analytics (PRIORITY - calculate for this user only)
     try {
-      console.log('📡 Method 1: Trying direct SendGrid API calls first...')
+      console.log('📡 Method 1: Calculating user-specific metrics...')
       
-      const { SendGridDirectAPI } = await import('@/lib/sendgrid-direct-api')
-      const directMetrics = await SendGridDirectAPI.getAccountMetrics(startDate, endDate)
+      const { UserSpecificAnalytics } = await import('@/lib/user-specific-analytics')
+      const userMetrics = await UserSpecificAnalytics.getUserMetrics(userId, startDate, endDate)
       
-      if (directMetrics && directMetrics.emailsSent > 0) {
-        console.log('✅ SUCCESS! Got real metrics from SendGrid direct API:', directMetrics)
+      if (userMetrics && userMetrics.emailsSent > 0) {
+        console.log('✅ SUCCESS! Got user-specific metrics:', userMetrics)
         
         return NextResponse.json({
           success: true,
           data: {
-            metrics: directMetrics,
-            source: 'sendgrid_direct_api',
+            metrics: userMetrics,
+            source: 'user_specific_analytics',
             period: `${startDate} to ${endDate}`,
-            debug: 'Real SendGrid API data retrieved successfully'
+            debug: `Real user-specific data for user ${userId}`
+          }
+        })
+      } else if (userMetrics) {
+        console.log('⚠️ User has no email activity in this period')
+        
+        return NextResponse.json({
+          success: true,
+          data: {
+            metrics: userMetrics,
+            source: 'user_specific_analytics',
+            period: `${startDate} to ${endDate}`,
+            debug: `No email activity for user ${userId} in this period`
           }
         })
       } else {
-        console.log('⚠️ SendGrid direct API returned no data')
+        console.log('⚠️ Could not calculate user metrics')
       }
-    } catch (directApiError) {
-      console.error('❌ SendGrid direct API failed:', directApiError)
+    } catch (userAnalyticsError) {
+      console.error('❌ User-specific analytics failed:', userAnalyticsError)
     }
 
     // Fallback: Initialize empty metrics for other methods
