@@ -563,57 +563,78 @@ export async function GET(request: NextRequest) {
           continue
         }
         
-        // Get all active senders for this campaign and rotate them
-        const { data: senders } = await supabase
+        // Use the sender already assigned by the timeline scheduler
+        // The scheduler handles rotation and assigns specific senders to contacts
+        let selectedSenderEmail = null
+        
+        // Check if the contact has a sender_email already assigned by the scheduler
+        if (contact.sender_email) {
+          selectedSenderEmail = contact.sender_email
+          console.log(`📧 Using scheduler-assigned sender: ${selectedSenderEmail} for contact ${contact.id}`)
+        } else if (contact.sender && contact.sender.email) {
+          selectedSenderEmail = contact.sender.email
+          console.log(`📧 Using scheduler-assigned sender (from sender object): ${selectedSenderEmail} for contact ${contact.id}`)
+        } else {
+          // Fallback: Check previous emails to maintain consistency
+          const { data: existingEmails } = await supabase
+            .from('inbox_messages')
+            .select('sender_email')
+            .eq('contact_email', contact.email_address)
+            .eq('direction', 'outbound')
+            .eq('campaign_id', campaign.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+          
+          if (existingEmails && existingEmails.length > 0) {
+            selectedSenderEmail = existingEmails[0].sender_email
+            console.log(`📧 Fallback: Using previous email sender ${selectedSenderEmail} for contact ${contact.id}`)
+          } else {
+            // Final fallback: Get first active sender
+            const { data: senders } = await supabase
+              .from('campaign_senders')
+              .select('email')
+              .eq('campaign_id', contact.campaign_id)
+              .eq('is_active', true)
+              .eq('is_selected', true)
+              .order('email', { ascending: true })
+              .limit(1)
+            
+            if (senders && senders.length > 0) {
+              selectedSenderEmail = senders[0].email
+              console.log(`📧 Final fallback: Using first active sender ${selectedSenderEmail} for contact ${contact.id}`)
+            } else {
+              errorCount++
+              results.push({
+                contactId: contact.id,
+                contactEmail: contact.email_address || contact.email,
+                status: 'failed',
+                reason: 'No sender assigned by scheduler and no active senders available'
+              })
+              continue
+            }
+          }
+        }
+        
+        // Get sender details for the selected email
+        const { data: senderDetails } = await supabase
           .from('campaign_senders')
           .select('id, email, name')
+          .eq('email', selectedSenderEmail)
           .eq('campaign_id', contact.campaign_id)
-          .eq('is_active', true)
-          .eq('is_selected', true)
-          .order('email', { ascending: true }) // Consistent ordering for rotation
+          .single()
         
-        if (!senders || senders.length === 0) {
+        if (!senderDetails) {
           errorCount++
           results.push({
             contactId: contact.id,
-            contactEmail: contact.email,
+            contactEmail: contact.email_address || contact.email,
             status: 'failed',
-            reason: 'No active senders'
+            reason: `Scheduler-assigned sender ${selectedSenderEmail} not found in campaign_senders`
           })
           continue
         }
         
-        // Use the same sender logic as timeline: first sender alphabetically (consistent with frontend)
-        // This ensures automation matches what's shown in the timeline/analytics
-        const sortedSenders = [...senders].sort((a, b) => a.email.localeCompare(b.email))
-        let selectedSender = sortedSenders[0] // Use first alphabetically (matches timeline logic)
-        
-        // Check if this contact already has emails sent - maintain consistency
-        const { data: existingEmails } = await supabase
-          .from('inbox_messages')
-          .select('sender_email')
-          .eq('contact_email', contact.email_address)
-          .eq('direction', 'outbound')
-          .eq('campaign_id', campaign.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-        
-        if (existingEmails && existingEmails.length > 0) {
-          // Use the same sender as previous emails to maintain conversation continuity
-          const previousSender = existingEmails[0].sender_email
-          const matchingSender = senders.find(s => s.email === previousSender)
-          if (matchingSender) {
-            selectedSender = matchingSender
-            console.log(`📧 Maintaining sender consistency: Contact ${contact.id} continues with ${selectedSender.email}`)
-          } else {
-            // Previous sender no longer available, use timeline default (first alphabetically)
-            selectedSender = sortedSenders[0]
-            console.log(`📧 Previous sender unavailable, using timeline default: ${selectedSender.email}`)
-          }
-        } else {
-          // First email - use timeline default (first alphabetically) to match frontend display
-          console.log(`📧 First email to contact ${contact.id} -> Using timeline sender: ${selectedSender.email}`)
-        }
+        const selectedSender = senderDetails
         
         // Send the email
         const sendResult = await sendSequenceEmail({
