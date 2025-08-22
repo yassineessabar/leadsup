@@ -583,10 +583,12 @@ export async function GET(request: NextRequest) {
           continue
         }
         
-        // Ensure consistent sender per contact throughout their entire sequence
-        let selectedSender = senders[0] // fallback
+        // Use the same sender logic as timeline: first sender alphabetically (consistent with frontend)
+        // This ensures automation matches what's shown in the timeline/analytics
+        const sortedSenders = [...senders].sort((a, b) => a.email.localeCompare(b.email))
+        let selectedSender = sortedSenders[0] // Use first alphabetically (matches timeline logic)
         
-        // First, check if this contact already has emails sent - use the same sender for consistency
+        // Check if this contact already has emails sent - maintain consistency
         const { data: existingEmails } = await supabase
           .from('inbox_messages')
           .select('sender_email')
@@ -603,16 +605,14 @@ export async function GET(request: NextRequest) {
           if (matchingSender) {
             selectedSender = matchingSender
             console.log(`📧 Maintaining sender consistency: Contact ${contact.id} continues with ${selectedSender.email}`)
+          } else {
+            // Previous sender no longer available, use timeline default (first alphabetically)
+            selectedSender = sortedSenders[0]
+            console.log(`📧 Previous sender unavailable, using timeline default: ${selectedSender.email}`)
           }
-        } else if (senders.length > 1) {
-          // First email to this contact - assign sender based on contact ID for distribution
-          const contactIdNum = parseInt(String(contact.id)) || 0
-          const senderIndex = contactIdNum % senders.length
-          selectedSender = senders[senderIndex]
-          
-          console.log(`📧 First email to contact ${contact.id} -> Assigned sender ${senderIndex + 1}/${senders.length} (${selectedSender.email})`)
         } else {
-          console.log(`📧 Single sender: ${selectedSender.email}`)
+          // First email - use timeline default (first alphabetically) to match frontend display
+          console.log(`📧 First email to contact ${contact.id} -> Using timeline sender: ${selectedSender.email}`)
         }
         
         // Send the email
