@@ -528,23 +528,10 @@ export async function GET(request: NextRequest) {
         
         console.log(`📧 Timeline senders for ${contact.campaign_id}: ${senders.map(s => `${s.email}(active:${s.is_active},selected:${s.is_selected},limit:${s.daily_limit})`).join(', ')}`)
         
-        // Filter to only active senders for actual sending (but log what timeline shows)
-        const activeSenders = senders.filter(s => s.is_active === true)
-        console.log(`🎯 Active senders for sending: ${activeSenders.map(s => s.email).join(', ')}`)
-        
-        if (activeSenders.length === 0) {
-          errorCount++
-          results.push({
-            contactId: contact.id,
-            contactEmail: contact.email_address || contact.email,
-            status: 'failed',
-            reason: `No active senders available (${senders.length} selected but ${activeSenders.length} active)`
-          })
-          continue
-        }
-        
-        // Use active senders for rotation
-        senders = activeSenders
+        // Timeline uses ALL selected senders, so automation should match exactly
+        // Do NOT filter by is_active - use same array as timeline for consistent rotation
+        console.log(`🎯 Using same sender array as timeline: ${senders.map(s => s.email).join(', ')}`)
+        console.log(`📊 IMPORTANT: Timeline rotation uses ALL selected senders, automation must match exactly`)
         
         let selectedSender = null
         let selectionReason = ''
@@ -587,8 +574,22 @@ export async function GET(request: NextRequest) {
           console.log(`📊 Rotation logic: ${contactIdNum} % ${senders.length} = ${rotationIndex}`)
         }
         
+        // Final check: ensure selected sender is active before sending
+        if (!selectedSender.is_active) {
+          console.log(`⚠️ Selected sender ${selectedSender.email} is not active - skipping contact ${contact.id}`)
+          errorCount++
+          results.push({
+            contactId: contact.id,
+            contactEmail: contact.email_address || contact.email,
+            status: 'failed',
+            reason: `Timeline-assigned sender ${selectedSender.email} is not active`
+          })
+          continue
+        }
+        
         console.log(`✅ FINAL SENDER SELECTION: ${selectedSender.email} for contact ${contact.id} (reason: ${selectionReason})`)
-        console.log(`📊 Sender Distribution Summary: ${senders.length} total active senders available`)
+        console.log(`📊 Sender Distribution Summary: ${senders.length} total selected senders available`)
+        console.log(`✅ Selected sender is active: ${selectedSender.is_active}, can send email`)
         
         // Send the email
         const sendResult = await sendSequenceEmail({
