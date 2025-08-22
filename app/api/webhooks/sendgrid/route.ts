@@ -449,10 +449,28 @@ export async function POST(request: NextRequest) {
         
       if (!originalError && originalMessage) {
         console.log(`✅ Found original message from user: ${originalMessage.user_id}`)
+        
+        // Handle legacy emails with null campaign_id by looking up a fallback campaign
+        let finalCampaignId = originalMessage.campaign_id
+        if (!finalCampaignId) {
+          console.log(`⚠️ Original message has null campaign_id, looking up fallback...`)
+          const { data: fallbackCampaign } = await supabaseServer
+            .from('campaigns')
+            .select('id')
+            .eq('status', 'Active')
+            .limit(1)
+            .single()
+          
+          if (fallbackCampaign) {
+            finalCampaignId = fallbackCampaign.id
+            console.log(`✅ Using fallback campaign: ${finalCampaignId}`)
+          }
+        }
+        
         campaignSenders = [{
           id: null,
           user_id: originalMessage.user_id,
-          campaign_id: originalMessage.campaign_id
+          campaign_id: finalCampaignId
         }]
       }
     }
