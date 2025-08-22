@@ -613,7 +613,7 @@ export async function GET(request: NextRequest) {
           if (isUUID) {
             // Use prospect sequence progression for UUID IDs
             await updateSequenceProgression({
-              campaignId: contact.campaign_id,
+              campaignId: campaign.id, // Use campaign.id instead of contact.campaign_id
               contactId: contact.id,
               sequenceId: sequence.id,
               status: 'sent',
@@ -635,7 +635,7 @@ export async function GET(request: NextRequest) {
             const { error: progressError } = await supabase
               .from('prospect_sequence_progress')
               .upsert({
-                campaign_id: contact.campaign_id,
+                campaign_id: campaign.id, // Use campaign.id instead of contact.campaign_id
                 prospect_id: contact.id, // Use string ID
                 sequence_id: sequence.id,
                 status: 'sent',
@@ -658,7 +658,7 @@ export async function GET(request: NextRequest) {
           await logEmailTracking({
             contactId: isUUID ? contact.id : parseInt(String(contact.id)),
             contactEmail: contact.email_address,
-            campaignId: contact.campaign_id,
+            campaignId: campaign.id, // Use campaign.id instead of contact.campaign_id
             sequenceId: sequence.id,
             sequenceStep: currentStep,
             messageId: sendResult.messageId,
@@ -677,7 +677,7 @@ export async function GET(request: NextRequest) {
             subject: sequence.subject || `Email ${currentStep}`,
             bodyText: sequence.content || '',
             bodyHtml: sequence.content || '',
-            campaignId: contact.campaign_id,
+            campaignId: campaign.id, // Use campaign.id instead of contact.campaign_id
             sequenceStep: currentStep,
             testMode: testMode || sendResult.simulation
           })
@@ -706,7 +706,7 @@ export async function GET(request: NextRequest) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   contactId: contact.id,
-                  campaignId: contact.campaign_id,
+                  campaignId: campaign.id, // Use campaign.id instead of contact.campaign_id
                   sequenceStep: currentStep - 1, // Current step before increment
                   success: true
                 })
@@ -734,7 +734,7 @@ export async function GET(request: NextRequest) {
           await logEmailTracking({
             contactId: isUUID ? contact.id : parseInt(String(contact.id)),
             contactEmail: contact.email_address,
-            campaignId: contact.campaign_id,
+            campaignId: campaign.id, // Use campaign.id instead of contact.campaign_id
             sequenceId: sequence.id,
             sequenceStep: currentStep,
             messageId: null,
@@ -764,7 +764,7 @@ export async function GET(request: NextRequest) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   contactId: contact.id,
-                  campaignId: contact.campaign_id,
+                  campaignId: campaign.id, // Use campaign.id instead of contact.campaign_id
                   sequenceStep: currentStep - 1, // Current step before increment
                   success: false,
                   errorMessage: sendResult.error
@@ -938,10 +938,10 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, testMode }: a
         const conversationId = generateConversationId(contact.email || contact.email_address, senderEmail)
         
         await supabase.from('inbox_messages').insert({
-          user_id: 'd155d4c2-2f06-45b7-9c90-905e3648e8df', // TODO: Get from campaign or context
+          user_id: campaign.user_id, // Use campaign's user_id instead of hardcoded value
           message_id: messageId,
           conversation_id: conversationId,
-          campaign_id: contact.campaign_id,
+          campaign_id: campaign.id, // Use campaign.id instead of contact.campaign_id
           contact_id: String(contact.id),
           contact_email: contact.email || contact.email_address,
           contact_name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown',
@@ -970,9 +970,9 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, testMode }: a
         await supabase
           .from('inbox_threads')
           .upsert({
-            user_id: 'd155d4c2-2f06-45b7-9c90-905e3648e8df',
+            user_id: campaign.user_id, // Use campaign's user_id instead of hardcoded value
             conversation_id: conversationId,
-            campaign_id: contact.campaign_id,
+            campaign_id: campaign.id, // Use campaign.id instead of contact.campaign_id
             contact_id: String(contact.id),
             contact_email: contact.email || contact.email_address,
             contact_name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown',
