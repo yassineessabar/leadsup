@@ -489,46 +489,38 @@ export function ComprehensiveDashboard() {
             </Card>
           </div>
 
-          {/* Email Performance Metrics - Only show if user has email activity */}
+          {/* Email Performance Metrics - Matching main dashboard card design */}
           {sendGridMetrics ? (
-            <div className="mb-8">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                  <Mail className="w-4 h-4 text-slate-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Email Performance</h3>
-                  <p className="text-slate-500 text-sm">SendGrid analytics from real campaigns</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {performanceMetrics.map((metric, index) => {
-                  const Icon = metric.icon
-                  return (
-                    <Card 
-                      key={metric.title}
-                      className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden"
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center space-x-3 mb-3">
-                          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                            <Icon className="w-4 h-4 text-slate-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-slate-600">{metric.title}</p>
-                          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {performanceMetrics.map((metric, index) => {
+                const Icon = metric.icon
+                return (
+                  <Card 
+                    key={metric.title}
+                    className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden"
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-4 mb-6">
+                        <div className={`w-12 h-12 ${metric.bgColor} rounded-2xl flex items-center justify-center`}>
+                          <Icon className={`w-6 h-6 ${metric.iconColor}`} />
                         </div>
-                        <div className="flex items-end justify-between">
-                          <p className="text-xl font-semibold text-slate-900">{metric.value}</p>
-                          <span className="text-xs text-slate-500">
-                            {metric.change}
-                          </span>
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900">{metric.title}</h3>
+                          <p className="text-gray-500 text-sm">Last 30 days</p>
                         </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
+                      </div>
+                      <div className="flex items-end justify-between">
+                        <p className="text-3xl font-light text-gray-900">
+                          {metric.value}
+                        </p>
+                        <span className="text-sm text-gray-400 font-medium">
+                          {metric.change}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           ) : metricsLoading ? (
             <div className="mb-8">
