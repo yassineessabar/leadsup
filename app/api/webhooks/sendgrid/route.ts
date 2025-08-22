@@ -563,7 +563,7 @@ export async function POST(request: NextRequest) {
     console.log(`   toEmail: ${toEmail}`) 
     console.log(`   campaignId: ${campaignSender.campaign_id} (type: ${typeof campaignSender.campaign_id})`)
     
-    const conversationId = generateConversationId(fromEmail, toEmail, campaignSender.campaign_id.toString())
+    const conversationId = generateConversationId(fromEmail, toEmail, campaignSender.campaign_id?.toString() || 'unknown')
     const messageId = `sendgrid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     
     console.log(`🔗 Generated Conversation ID: "${conversationId}" (type: ${typeof conversationId}, length: ${conversationId?.length})`)
@@ -577,7 +577,7 @@ export async function POST(request: NextRequest) {
     // Create or update thread FIRST (required for foreign key constraint)
     // Ensure all UUIDs are strings and valid
     const safeUserId = String(campaignSender.user_id)
-    const safeCampaignId = String(campaignSender.campaign_id)
+    const safeCampaignId = campaignSender.campaign_id ? String(campaignSender.campaign_id) : null
     const safeContactId = contactId ? String(contactId) : null
     
     const threadInsertData = {
@@ -630,7 +630,7 @@ export async function POST(request: NextRequest) {
       campaign_id: safeCampaignId,
       contact_id: safeContactId,
       contact_email: String(fromEmail),
-      sender_id: String(campaignSender.id),
+      sender_id: campaignSender.id ? String(campaignSender.id) : null,
       sender_email: String(toEmail),
       subject: String(emailData.subject || ''),
       body_text: String(extractActualReply(emailData.text) || emailData.text || ''),
