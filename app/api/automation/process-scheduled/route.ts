@@ -266,116 +266,109 @@ export async function GET(request: NextRequest) {
     console.log(`📡 Vercel URL: ${process.env.VERCEL_URL || 'not set'}`)
     console.log('─'.repeat(80))
     
-    // STEP 1: Get contacts that are due from analytics logic
-    console.log('📊 STEP 1: Syncing with analytics "Due next" contacts...')
-    
-    // Get all active campaigns
-    console.log('🔍 STEP 1.1: Fetching active campaigns from database...')
-    console.log(`   📊 Supabase URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`)
-    console.log(`   🔑 Has Service Key: ${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`)
-    
-    const { data: activeCampaigns, error: campaignsError } = await supabase
-      .from('campaigns')
-      .select('id, name, status, created_at, updated_at')
-      .eq('status', 'Active')
-    
-    console.log(`   ✅ Query executed: SELECT * FROM campaigns WHERE status = 'Active'`)
-    
-    console.log(`📋 Found ${activeCampaigns?.length || 0} active campaigns`)
-    if (campaignsError) {
-      console.error('❌ Error fetching campaigns:', campaignsError)
-    }
-    if (activeCampaigns) {
-      console.log('📝 Active campaigns found:')
-      activeCampaigns.forEach((c, i) => {
-        console.log(`   ${i + 1}. Campaign: "${c.name}"`)
-        console.log(`      ID: ${c.id}`)
-        console.log(`      Status: ${c.status}`)
-        console.log(`      Created: ${c.created_at}`)
-        console.log(`      Updated: ${c.updated_at}`)
-      })
-    }
+    // STEP 1: Get contacts with sender assignments from the timeline scheduler API
+    console.log('📊 STEP 1: Using timeline scheduler API to get contacts with assigned senders...')
     
     let analyticsContacts: any[] = []
     
-    if (!campaignsError && activeCampaigns) {
-      console.log('🔄 STEP 1.2: Processing each campaign for due contacts...')
-      for (const [index, campaign] of activeCampaigns.entries()) {
-        console.log(`\n📌 Processing Campaign ${index + 1}/${activeCampaigns.length}: "${campaign.name}"`)
-        console.log('─'.repeat(60))
+    try {
+      // Call the proper timeline scheduler API that handles sender rotation and assignments
+      const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+                     process.env.NODE_ENV === 'production' ? `https://${request.headers.get('host')}` : 
+                     'https://app.leadsup.io'
+      
+      const username = process.env.N8N_API_USERNAME || 'admin'
+      const password = process.env.N8N_API_PASSWORD || 'password'
+      
+      console.log(`🔍 Calling timeline scheduler API: ${baseUrl}/api/campaigns/automation/process-pending`)
+      
+      const response = await fetch(`${baseUrl}/api/campaigns/automation/process-pending`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Timeline scheduler API returned ${response.status}: ${response.statusText}`)
+      }
+      
+      const schedulerData = await response.json()
+      console.log(`✅ Timeline scheduler API response: ${schedulerData.success ? 'Success' : 'Failed'}`)
+      
+      if (schedulerData.success && schedulerData.data) {
+        console.log(`📋 Found ${schedulerData.data.length} campaigns from timeline scheduler`)
         
-        try {
-          // BYPASS CACHED ENDPOINT - QUERY DATABASE DIRECTLY
-          console.log(`🔍 BYPASSING sync-due-contacts endpoint due to cache issues`)
-          console.log(`📊 Querying database directly for campaign ${campaign.id}`)
+        // Extract contacts with their assigned senders from all campaigns
+        for (const campaign of schedulerData.data) {
+          console.log(`📌 Campaign: ${campaign.name} has ${campaign.contacts?.length || 0} contacts ready`)
           
-          // Query contacts table directly
-          const { data: contactsData, error: contactsError } = await supabase
+          if (campaign.contacts && campaign.contacts.length > 0) {
+            // Add each contact to the processing queue with sender assignments
+            campaign.contacts.forEach((contact: any) => {
+              analyticsContacts.push({
+                ...contact,
+                email_address: contact.email || contact.email_address,
+                campaign_id: campaign.id,
+                campaign_name: campaign.name,
+                // Timeline scheduler already assigned the sender - use it!
+                assigned_sender: contact.sender,
+                source: 'timeline-scheduler-api'
+              })
+            })
+          }
+        }
+        
+        console.log(`📊 Total contacts with assigned senders from timeline scheduler: ${analyticsContacts.length}`)
+        
+        if (analyticsContacts.length > 0) {
+          console.log('📧 Sender distribution from timeline scheduler:')
+          const senderDistribution = analyticsContacts.reduce((acc: any, contact: any) => {
+            const senderEmail = contact.assigned_sender?.email || contact.sender_email || 'Unknown'
+            acc[senderEmail] = (acc[senderEmail] || 0) + 1
+            return acc
+          }, {})
+          
+          Object.entries(senderDistribution).forEach(([sender, count]) => {
+            console.log(`   ${sender}: ${count} contacts`)
+          })
+        }
+      } else {
+        console.log('⚠️ Timeline scheduler API returned no data')
+      }
+    } catch (error) {
+      console.error('❌ Error calling timeline scheduler API:', error)
+      console.log('⚠️ Falling back to direct database query (without sender assignments)')
+      
+      // Fallback to direct database query (legacy behavior)
+      const { data: activeCampaigns } = await supabase
+        .from('campaigns')
+        .select('id, name')
+        .eq('status', 'Active')
+      
+      if (activeCampaigns) {
+        for (const campaign of activeCampaigns) {
+          const { data: contactsData } = await supabase
             .from('contacts')
             .select('*')
             .eq('campaign_id', campaign.id)
             .neq('email_status', 'Completed')
-            .neq('email_status', 'Replied') 
+            .neq('email_status', 'Replied')
             .neq('email_status', 'Unsubscribed')
             .neq('email_status', 'Bounced')
           
-          console.log(`   ✅ Direct query result: ${contactsData?.length || 0} contacts found`)
-          
-          if (contactsError) {
-            console.error(`   ❌ Query error:`, contactsError)
-            continue
-          }
-          
-          if (contactsData && contactsData.length > 0) {
-            console.log(`   📝 Sample contacts found:`)
-            contactsData.slice(0, 3).forEach(c => {
-              console.log(`      - ${c.email} (${c.first_name} ${c.last_name}) - Location: ${c.location}`)
+          if (contactsData) {
+            contactsData.forEach(contact => {
+              analyticsContacts.push({
+                ...contact,
+                email_address: contact.email || contact.email_address,
+                campaign_id: campaign.id,
+                campaign_name: campaign.name,
+                source: 'fallback-direct-db'
+              })
             })
-            
-            // Get campaign sequences for due checking
-            const { data: campaignSequences } = await supabase
-              .from('campaign_sequences')
-              .select('*')
-              .eq('campaign_id', campaign.id)
-              .order('step_number', { ascending: true })
-            
-            if (!campaignSequences) {
-              console.log(`   ⚠️ No sequences found for campaign ${campaign.name}`)
-              continue
-            }
-            
-            // CHECK EACH CONTACT FOR "DUE NEXT" STATUS (same logic as sync-due-contacts)
-            console.log(`   🔍 Checking ${contactsData.length} contacts for "Due Next" status...`)
-            const dueContacts = []
-            
-            for (const [idx, contact] of contactsData.entries()) {
-              console.log(`   📍 Contact ${idx + 1}/${contactsData.length}: ${contact.email}`)
-              
-              // Apply the same "isContactDue" logic from sync-due-contacts
-              if (await isContactDue(contact, campaignSequences)) {
-                console.log(`     ✅ STATUS: DUE NEXT - Adding to queue`)
-                dueContacts.push({
-                  ...contact,
-                  email_address: contact.email || contact.email_address,
-                  campaign_id: campaign.id,
-                  campaign_name: campaign.name,
-                  source: 'direct-db-due-checked'
-                })
-              } else {
-                console.log(`     ❌ STATUS: PENDING START - Skipping`)
-              }
-            }
-            
-            analyticsContacts.push(...dueContacts)
-            
-            console.log(`  📋 Campaign "${campaign.name}": Found ${contactsData.length} total, ${dueContacts.length} DUE NEXT`)
-            console.log(`     Due contact emails: ${dueContacts.map((c: any) => c.email).slice(0, 5).join(', ')}${dueContacts.length > 5 ? '...' : ''}`)
-          } else {
-            console.log(`  ⚠️ Campaign "${campaign.name}": No contacts found in database`)
           }
-          
-        } catch (directError) {
-          console.error(`❌ Direct database query failed for campaign ${campaign.id}:`, directError)
         }
       }
     }
@@ -563,19 +556,34 @@ export async function GET(request: NextRequest) {
           continue
         }
         
-        // Use the sender already assigned by the timeline scheduler
-        // The scheduler handles rotation and assigns specific senders to contacts
-        let selectedSenderEmail = null
+        // Use the sender already assigned by the timeline scheduler API
+        let selectedSender = null
         
-        // Check if the contact has a sender_email already assigned by the scheduler
-        if (contact.sender_email) {
-          selectedSenderEmail = contact.sender_email
-          console.log(`📧 Using scheduler-assigned sender: ${selectedSenderEmail} for contact ${contact.id}`)
-        } else if (contact.sender && contact.sender.email) {
-          selectedSenderEmail = contact.sender.email
-          console.log(`📧 Using scheduler-assigned sender (from sender object): ${selectedSenderEmail} for contact ${contact.id}`)
-        } else {
-          // Fallback: Check previous emails to maintain consistency
+        // Priority 1: Use sender assigned by timeline scheduler API (most reliable)
+        if (contact.assigned_sender && contact.assigned_sender.email) {
+          selectedSender = contact.assigned_sender
+          console.log(`📧 Using timeline scheduler assigned sender: ${selectedSender.email} for contact ${contact.id}`)
+        }
+        // Priority 2: Use sender_email field (from prospects table)
+        else if (contact.sender_email) {
+          // Get full sender details from campaign_senders table
+          const { data: senderDetails } = await supabase
+            .from('campaign_senders')
+            .select('id, email, name')
+            .eq('email', contact.sender_email)
+            .eq('campaign_id', contact.campaign_id)
+            .single()
+          
+          if (senderDetails) {
+            selectedSender = senderDetails
+            console.log(`📧 Using prospects.sender_email: ${selectedSender.email} for contact ${contact.id}`)
+          } else {
+            console.log(`⚠️ sender_email ${contact.sender_email} not found in campaign_senders for contact ${contact.id}`)
+          }
+        }
+        
+        // Priority 3: Fallback to previous email sender for consistency
+        if (!selectedSender) {
           const { data: existingEmails } = await supabase
             .from('inbox_messages')
             .select('sender_email')
@@ -586,55 +594,45 @@ export async function GET(request: NextRequest) {
             .limit(1)
           
           if (existingEmails && existingEmails.length > 0) {
-            selectedSenderEmail = existingEmails[0].sender_email
-            console.log(`📧 Fallback: Using previous email sender ${selectedSenderEmail} for contact ${contact.id}`)
-          } else {
-            // Final fallback: Get first active sender
-            const { data: senders } = await supabase
+            const { data: senderDetails } = await supabase
               .from('campaign_senders')
-              .select('email')
+              .select('id, email, name')
+              .eq('email', existingEmails[0].sender_email)
               .eq('campaign_id', contact.campaign_id)
-              .eq('is_active', true)
-              .eq('is_selected', true)
-              .order('email', { ascending: true })
-              .limit(1)
+              .single()
             
-            if (senders && senders.length > 0) {
-              selectedSenderEmail = senders[0].email
-              console.log(`📧 Final fallback: Using first active sender ${selectedSenderEmail} for contact ${contact.id}`)
-            } else {
-              errorCount++
-              results.push({
-                contactId: contact.id,
-                contactEmail: contact.email_address || contact.email,
-                status: 'failed',
-                reason: 'No sender assigned by scheduler and no active senders available'
-              })
-              continue
+            if (senderDetails) {
+              selectedSender = senderDetails
+              console.log(`📧 Fallback: Using previous email sender ${selectedSender.email} for contact ${contact.id}`)
             }
           }
         }
         
-        // Get sender details for the selected email
-        const { data: senderDetails } = await supabase
-          .from('campaign_senders')
-          .select('id, email, name')
-          .eq('email', selectedSenderEmail)
-          .eq('campaign_id', contact.campaign_id)
-          .single()
-        
-        if (!senderDetails) {
-          errorCount++
-          results.push({
-            contactId: contact.id,
-            contactEmail: contact.email_address || contact.email,
-            status: 'failed',
-            reason: `Scheduler-assigned sender ${selectedSenderEmail} not found in campaign_senders`
-          })
-          continue
+        // Priority 4: Final fallback - first active sender (should rarely happen)
+        if (!selectedSender) {
+          const { data: senders } = await supabase
+            .from('campaign_senders')
+            .select('id, email, name')
+            .eq('campaign_id', contact.campaign_id)
+            .eq('is_active', true)
+            .eq('is_selected', true)
+            .order('email', { ascending: true })
+            .limit(1)
+          
+          if (senders && senders.length > 0) {
+            selectedSender = senders[0]
+            console.log(`📧 Final fallback: Using first active sender ${selectedSender.email} for contact ${contact.id}`)
+          } else {
+            errorCount++
+            results.push({
+              contactId: contact.id,
+              contactEmail: contact.email_address || contact.email,
+              status: 'failed',
+              reason: 'No sender assigned by timeline scheduler and no active senders available'
+            })
+            continue
+          }
         }
-        
-        const selectedSender = senderDetails
         
         // Send the email
         const sendResult = await sendSequenceEmail({
