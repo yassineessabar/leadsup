@@ -576,7 +576,7 @@ export async function POST(request: NextRequest) {
     
     // Create or update thread FIRST (required for foreign key constraint)
     // Ensure all UUIDs are strings and valid
-    const safeUserId = String(campaignSender.user_id)
+    const safeUserId = campaignSender.user_id ? String(campaignSender.user_id) : null
     const safeCampaignId = campaignSender.campaign_id ? String(campaignSender.campaign_id) : null
     const safeContactId = contactId ? String(contactId) : null
     
