@@ -1535,13 +1535,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Generate full email schedule for a contact with real sequence progression data
   const generateContactSchedule = (contact: Contact) => {
     // Assign one sender for the entire sequence for this contact
-    // Use contact ID hash to ensure consistency across renders
-    const contactIdString = String(contact.id || '')
-    const contactHash = contactIdString.split('').reduce((hash, char) => {
-      return ((hash << 5) - hash) + char.charCodeAt(0)
-    }, 0)
-    const senderIndex = Math.abs(contactHash) % Math.max(campaignSenders.length, 1)
-    const assignedSender = campaignSenders[senderIndex] || contact.sender_email || 'hello@leadsup.io'
+    // Use EXACT same logic as automation backend for consistency
+    const contactIdNum = parseInt(String(contact.id)) || 0
+    const senderIndex = campaignSenders.length > 0 ? contactIdNum % campaignSenders.length : 0
+    const assignedSender = campaignSenders[senderIndex]?.email || 'Unknown sender'
     
     console.log(`🎯 SEQUENCE ASSIGNMENT: Contact ${contact.email} assigned to sender:`, assignedSender)
     console.log(`📧 Available campaign senders for assignment:`, campaignSenders)
