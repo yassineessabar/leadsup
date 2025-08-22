@@ -73,6 +73,7 @@ export async function GET(
       .select('*')
       .eq('campaign_id', campaignId)
       .eq('is_selected', true)
+      .order('email', { ascending: true })
 
     if (assignmentsError) {
       console.error('Error fetching campaign senders:', assignmentsError)
