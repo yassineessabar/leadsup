@@ -181,9 +181,43 @@ async function generateICPsAndPersonas(formData: CampaignFormData) {
       return getFallbackICPsAndPersonas()
     }
 
+    // Fetch website content if URL is provided
+    let websiteContent = ''
+    if (formData.website && !formData.noWebsite) {
+      try {
+        console.log(`🌐 Fetching website content from: ${formData.website}`)
+        const websiteResponse = await fetch(formData.website, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; LeadsUp/1.0; +https://app.leadsup.io/)'
+          },
+          timeout: 10000 // 10 second timeout
+        })
+        
+        if (websiteResponse.ok) {
+          const html = await websiteResponse.text()
+          // Extract text content from HTML (basic extraction)
+          const textContent = html
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove scripts
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '') // Remove styles
+            .replace(/<[^>]*>/g, ' ') // Remove HTML tags
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .trim()
+            .substring(0, 3000) // Limit to first 3000 characters
+          
+          websiteContent = textContent
+          console.log(`✅ Successfully fetched website content (${textContent.length} characters)`)
+        } else {
+          console.warn(`⚠️ Failed to fetch website: ${websiteResponse.status} ${websiteResponse.statusText}`)
+        }
+      } catch (error) {
+        console.warn(`⚠️ Error fetching website content: ${error}`)
+      }
+    }
+
     const companyContext = `
 Company: ${formData.companyName}
 ${formData.website ? `Website: ${formData.website}` : 'No website provided'}
+${websiteContent ? `Website Content: ${websiteContent}` : ''}
 Location: ${formData.location || 'Not specified'}
 Industry: ${formData.industry || 'Not specified'}
 Main Activity: ${formData.mainActivity}
@@ -199,13 +233,15 @@ Language: ${formData.language || 'English'}
       messages: [
         {
           role: "system",
-          content: `You are an expert marketing strategist. Generate 1 detailed Ideal Customer Profile (ICP) and 1 target persona for the given company. Respond in ${formData.language || 'English'}. Return only valid JSON without code blocks or markdown.`
+          content: `You are an expert marketing strategist. Generate 1 detailed Ideal Customer Profile (ICP) and 1 target persona for the given company. ${websiteContent ? 'Use the website content to understand their business model, target market, and value proposition.' : ''} Respond in ${formData.language || 'English'}. Return only valid JSON without code blocks or markdown.`
         },
         {
           role: "user",
           content: `Based on this company information, generate 1 ICP and 1 persona in ${formData.language || 'English'}:
 
 ${companyContext}
+
+${websiteContent ? 'Analyze the website content to understand what this company does, who they serve, and how they create value. Use this context to create relevant ICPs and personas.' : 'Generate ICPs and personas based on the company information provided.'}
 
 Return JSON in this exact format:
 {
@@ -255,12 +291,49 @@ async function generatePainPointsAndValueProps(campaignId: number, aiAssets: any
       return getFallbackPainPointsAndValueProps()
     }
 
+    // Fetch campaign data to get website context
+    const { data: campaign } = await supabaseServer
+      .from('campaigns')
+      .select('company_name, website, industry, main_activity, product_service')
+      .eq('id', campaignId)
+      .single()
+
+    // Fetch website content if available
+    let websiteContent = ''
+    if (campaign?.website) {
+      try {
+        console.log(`🌐 Fetching website content for pain points: ${campaign.website}`)
+        const websiteResponse = await fetch(campaign.website, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; LeadsUp/1.0; +https://app.leadsup.io/)'
+          },
+          timeout: 10000
+        })
+        
+        if (websiteResponse.ok) {
+          const html = await websiteResponse.text()
+          const textContent = html
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .substring(0, 2000) // Smaller limit for pain points
+          
+          websiteContent = textContent
+          console.log(`✅ Fetched website content for pain points (${textContent.length} characters)`)
+        }
+      } catch (error) {
+        console.warn(`⚠️ Error fetching website for pain points: ${error}`)
+      }
+    }
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: `You are an expert sales strategist. Generate 1 specific pain point and 1 value proposition based on the ICP and persona. Return only valid JSON without code blocks or markdown.`
+          content: `You are an expert sales strategist. Generate 1 specific pain point and 1 value proposition based on the ICP and persona. ${websiteContent ? 'Use the company website content to understand their solution and create relevant pain points they can solve.' : ''} Return only valid JSON without code blocks or markdown.`
         },
         {
           role: "user",
@@ -268,6 +341,11 @@ async function generatePainPointsAndValueProps(campaignId: number, aiAssets: any
 
 ICP: ${JSON.stringify(aiAssets.icps?.[0])}
 Persona: ${JSON.stringify(aiAssets.personas?.[0])}
+
+${campaign ? `Company Context: ${campaign.company_name} - ${campaign.industry || 'Industry not specified'} - ${campaign.main_activity || 'Activity not specified'}` : ''}
+${websiteContent ? `Website Content: ${websiteContent}` : ''}
+
+${websiteContent ? 'Use the website content to understand what problems this company solves and create pain points that align with their solutions.' : ''}
 
 Return JSON in this exact format:
 {
@@ -320,10 +398,48 @@ async function generateEmailSequence(campaignId: number, formData: CampaignFormD
       return getFallbackEmailSequence()
     }
 
+    // Fetch campaign data to get website context
+    const { data: campaign } = await supabaseServer
+      .from('campaigns')
+      .select('company_name, website, industry, main_activity, product_service')
+      .eq('id', campaignId)
+      .single()
+
+    // Fetch website content if available
+    let websiteContent = ''
+    if (campaign?.website) {
+      try {
+        console.log(`🌐 Fetching website content for email sequence: ${campaign.website}`)
+        const websiteResponse = await fetch(campaign.website, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; LeadsUp/1.0; +https://app.leadsup.io/)'
+          },
+          timeout: 10000
+        })
+        
+        if (websiteResponse.ok) {
+          const html = await websiteResponse.text()
+          const textContent = html
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .substring(0, 2500) // Medium limit for email sequence
+          
+          websiteContent = textContent
+          console.log(`✅ Fetched website content for email sequence (${textContent.length} characters)`)
+        }
+      } catch (error) {
+        console.warn(`⚠️ Error fetching website for email sequence: ${error}`)
+      }
+    }
+
     const companyContext = `
 Company: ${formData.companyName}
 Industry: ${formData.industry || 'Not specified'}
 Main Activity: ${formData.mainActivity}
+${websiteContent ? `Website Content: ${websiteContent}` : ''}
 Language: ${formData.language || 'English'}
     `.trim()
 
@@ -332,7 +448,7 @@ Language: ${formData.language || 'English'}
       messages: [
         {
           role: "system",
-          content: `You are an expert email marketing copywriter. Generate 6 compelling emails for a 2-sequence campaign. IMPORTANT: All emails in the same sequence must have the SAME subject line for email threading. First 3 emails (sequence 1) share one subject, last 3 emails (sequence 2 after 60 days) share a different subject. Write in ${formData.language || 'English'}. Return only valid JSON without code blocks or markdown.`
+          content: `You are an expert email marketing copywriter. Generate 6 compelling emails for a 2-sequence campaign. IMPORTANT: All emails in the same sequence must have the SAME subject line for email threading. First 3 emails (sequence 1) share one subject, last 3 emails (sequence 2 after 60 days) share a different subject. ${websiteContent ? 'Use the website content to understand the company\'s tone, services, and unique value proposition.' : ''} Write in ${formData.language || 'English'}. Return only valid JSON without code blocks or markdown.`
         },
         {
           role: "user",
@@ -342,6 +458,8 @@ ${companyContext}
 
 ICP: ${JSON.stringify(aiAssets.icps?.[0])}
 Value Proposition: ${JSON.stringify(aiAssets.value_propositions?.[0])}
+
+${websiteContent ? 'Use the website content to write emails that reflect the company\'s actual services, tone, and value proposition. Make the emails authentic to their brand.' : ''}
 
 IMPORTANT: Use the SAME subject for emails 1-3 (initial sequence), and the SAME subject for emails 4-6 (re-engagement sequence).
 

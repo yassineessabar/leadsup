@@ -31,9 +31,9 @@ const steps = [
 const sampleICPs = [
   {
     id: 1,
-    title: "Advertising Agencies - Hyperlocal Campaigns",
-    description: "Agencies focused on innovative advertising solutions need dynamic platforms to enhance campaign reach and engagement. Uboard's targeted, location-based advertising on rideshare vehicles offers a unique channel to deliver impactful campaigns and measure effectiveness through advanced analytics.",
-    targetDescription: "Advertising agency specializing in creating and managing advertising campaigns for clients across various industries.",
+    title: "Technology Companies - Digital Marketing Solutions",
+    description: "Companies focused on innovative digital marketing solutions need platforms to enhance campaign reach and engagement. Our targeted advertising solutions offer unique channels to deliver impactful campaigns and measure effectiveness through advanced analytics.",
+    targetDescription: "Technology company specializing in creating and managing digital marketing campaigns for clients across various industries.",
     companySize: "11-50"
   }
 ]
@@ -146,7 +146,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     noWebsite: false,
     language: "",
     keywords: [] as string[],
-    mainActivity: "Uboard is a company specializing in revolutionizing car advertising through the deployment of smart rooftop screens on rideshare vehicles. Their technology enhances ad visibility by displaying targeted advertisements at optimal moments and locations, leveraging a proprietary targeting algorithm that considers the vehicle's exact location and time to ensure ads are shown when and where they are most effective. Their rooftop screens measure 37.8 inches wide by 12.6 inches tall and support various media formats including MP4, MOV, GIF, PNG, JPG, and HEIC, displaying 6–8 second full-motion creatives with auto-brightness for visibility even under direct sunlight. Uboard offers programmatic advertising capabilities, dashboard reporting, and ads are shown on both sides of the screen for maximum exposure.\n\nThe company has demonstrated advanced measurement techniques by collecting device IDs of users within viewing distance during ad play and comparing them with control groups to evaluate campaign effectiveness. They have executed hyper-targeted campaigns in specific urban neighborhoods such as Manhattan and",
+    mainActivity: "",
     location: "Australia",
     industry: ""
   })
@@ -1192,7 +1192,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="space-y-3">
         <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-          ICPs found for uboard
+          ICPs found for {campaignFormData.companyName || 'your company'}
         </h2>
         <p className="text-gray-600">Select your ideal customer profile</p>
       </div>
@@ -1345,7 +1345,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="space-y-3">
         <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-          Personas for uboard
+          Personas for {campaignFormData.companyName || 'your company'}
         </h2>
         <p className="text-gray-600">Choose your target persona</p>
       </div>
