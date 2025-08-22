@@ -1005,8 +1005,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               // Also update the selected campaign
               setSelectedCampaign(prev => prev ? { ...prev, status: newStatus } : prev)
               
-              // If campaign was launched (Draft -> Active), redirect to analytics
-              if (newStatus === 'Active') {
+              // If campaign was launched (Draft -> Active or Warming), redirect to analytics
+              if (newStatus === 'Active' || newStatus === 'Warming') {
                 // Update URL to show analytics view
                 const url = new URL(window.location.href)
                 url.searchParams.set('campaignId', campaignId.toString())
@@ -1018,11 +1018,19 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                 // Switch to analytics view
                 setCurrentView("analytics")
                 
-                toast({
-                  title: "Campaign Launched! 🚀",
-                  description: "Your campaign is now active and running. View analytics for real-time performance.",
-                  variant: "default"
-                })
+                if (newStatus === 'Active') {
+                  toast({
+                    title: "Campaign Launched! 🚀",
+                    description: "Your campaign is now active and running. View analytics for real-time performance.",
+                    variant: "default"
+                  })
+                } else if (newStatus === 'Warming') {
+                  toast({
+                    title: "Campaign Warmup Started! 🔥",
+                    description: "Your campaign is warming up to improve deliverability. View progress in analytics.",
+                    variant: "default"
+                  })
+                }
               } else {
                 toast({
                   title: "Campaign Updated",
