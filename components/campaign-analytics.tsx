@@ -1538,7 +1538,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     // Use EXACT same logic as automation backend for consistency
     const contactIdNum = parseInt(String(contact.id)) || 0
     const senderIndex = campaignSenders.length > 0 ? contactIdNum % campaignSenders.length : 0
-    const assignedSender = campaignSenders[senderIndex]?.email || 'Unknown sender'
+    const assignedSender = campaignSenders[senderIndex] || 'Unknown sender'
     
     console.log(`🎯 SEQUENCE ASSIGNMENT: Contact ${contact.email} assigned to sender:`, assignedSender)
     console.log(`📧 Available campaign senders for assignment:`, campaignSenders)
@@ -1688,6 +1688,10 @@ Sequence Info:
         
         if (businessHoursStatus.isBusinessHours) {
           // If within business hours, schedule for a consistent time today (not current time)
+          const contactIdString = String(contact.id || '')
+          const contactHash = contactIdString.split('').reduce((hash, char) => {
+            return ((hash << 5) - hash) + char.charCodeAt(0)
+          }, 0)
           const seedValue = (contactHash + email.step) % 1000
           const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM
           const consistentMinute = (seedValue * 7) % 60
@@ -1719,6 +1723,10 @@ Sequence Info:
         
         // Add consistent business hours based on contact and step (not random)
         // Use contact ID and step to generate consistent but varied times
+        const contactIdString = String(contact.id || '')
+        const contactHash = contactIdString.split('').reduce((hash, char) => {
+          return ((hash << 5) - hash) + char.charCodeAt(0)
+        }, 0)
         const seedValue = (contactHash + email.step) % 1000
         const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM (consistent for this contact+step)
         const consistentMinute = (seedValue * 7) % 60 // Consistent minute based on seed

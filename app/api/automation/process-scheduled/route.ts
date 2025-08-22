@@ -960,6 +960,71 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, testMode }: a
       
       const result = await sgMail.send(msg)
       
+      // Log sent email to inbox system for unified email management
+      try {
+        const messageId = result[0]?.headers?.['x-message-id'] || `sg_${Date.now()}_${contact.id}`
+        
+        // Generate conversation ID for threading
+        const generateConversationId = (contactEmail: string, senderEmail: string) => {
+          const participants = [contactEmail, senderEmail].sort().join('|')
+          return Buffer.from(participants).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 32)
+        }
+        
+        const conversationId = generateConversationId(contact.email || contact.email_address, senderEmail)
+        
+        await supabase.from('inbox_messages').insert({
+          user_id: 'd155d4c2-2f06-45b7-9c90-905e3648e8df', // TODO: Get from campaign or context
+          message_id: messageId,
+          conversation_id: conversationId,
+          campaign_id: contact.campaign_id,
+          contact_id: String(contact.id),
+          contact_email: contact.email || contact.email_address,
+          contact_name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown',
+          sender_email: senderEmail,
+          subject: personalizedSubject,
+          body_text: personalizedContent.replace(/<[^>]*>/g, ''),
+          body_html: personalizedContent,
+          direction: 'outbound',
+          channel: 'email',
+          message_type: 'email',
+          status: 'read', // Outbound emails are 'read' by definition
+          folder: 'sent',
+          provider: 'sendgrid',
+          provider_data: {
+            automation: true,
+            sequence_id: sequence.id,
+            sequence_step: sequence.step_number,
+            reply_to: replyToEmail
+          },
+          sent_at: new Date().toISOString(),
+          received_at: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        })
+        
+        // Update or create inbox thread
+        await supabase
+          .from('inbox_threads')
+          .upsert({
+            user_id: 'd155d4c2-2f06-45b7-9c90-905e3648e8df',
+            conversation_id: conversationId,
+            campaign_id: contact.campaign_id,
+            contact_id: String(contact.id),
+            contact_email: contact.email || contact.email_address,
+            contact_name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown',
+            subject: personalizedSubject,
+            last_message_at: new Date().toISOString(),
+            last_message_preview: personalizedContent.replace(/<[^>]*>/g, '').substring(0, 150),
+            status: 'active'
+          }, {
+            onConflict: 'conversation_id,user_id'
+          })
+        
+        console.log(`📥 Logged automation email to inbox system: ${messageId}`)
+      } catch (inboxError) {
+        console.error('⚠️ Failed to log automation email to inbox:', inboxError)
+        // Don't fail the email send if inbox logging fails
+      }
+      
       return {
         success: true,
         messageId: result[0]?.headers?.['x-message-id'] || `sg_${Date.now()}_${contact.id}`,
