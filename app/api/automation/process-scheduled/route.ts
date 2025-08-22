@@ -602,6 +602,7 @@ export async function GET(request: NextRequest) {
           contact,
           sequence,
           senderEmail: selectedSender.email,
+          campaign,
           testMode
         })
         
@@ -855,7 +856,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function sendSequenceEmail({ contact, sequence, senderEmail, testMode }: any) {
+async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, testMode }: any) {
   try {
     if (testMode) {
       // Simulate email sending
