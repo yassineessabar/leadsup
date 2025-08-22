@@ -118,12 +118,20 @@ export async function GET(request: NextRequest) {
       console.log('📡 Method 2: Using webhook data aggregation...')
       
       // Query sendgrid_events table directly for account metrics
+      // STRICT: Exclude fake/demo/test events
       const { data: webhookEvents, error: webhookError } = await supabase
         .from('sendgrid_events')
-        .select('event_type, timestamp, email')
+        .select('event_type, timestamp, email, sg_event_id')
         .eq('user_id', userId)
         .gte('timestamp', startDate + 'T00:00:00Z')
         .lte('timestamp', endDate + 'T23:59:59Z')
+        // Exclude demo/test/fake events
+        .not('email', 'like', '%example.com%')
+        .not('email', 'like', '%demo%')
+        .not('email', 'like', '%test%')
+        .not('sg_event_id', 'like', '%demo%')
+        .not('sg_event_id', 'like', '%fix%')
+        .not('sg_event_id', 'like', '%fake%')
 
       console.log(`🔍 Webhook events query result:`, { 
         error: webhookError, 
