@@ -135,14 +135,15 @@ export function ComprehensiveDashboard() {
         }
       }
       
-      if (!hasRealEmails) {
-        console.log('⚠️ No real emails found in inbox - showing no metrics')
-        setSendGridMetrics(null)
-        setMetricsLoading(false)
-        return
-      }
+      // Always try to fetch SendGrid metrics, even if inbox appears empty
+      // The inbox might be empty but SendGrid could still have sent emails
+      console.log('📡 Attempting to fetch SendGrid metrics...')
       
-      console.log('✅ Real emails found - fetching SendGrid metrics...')
+      if (!hasRealEmails) {
+        console.log('⚠️ No emails in inbox, but checking SendGrid API anyway...')
+      } else {
+        console.log('✅ Real emails found in inbox - fetching SendGrid metrics...')
+      }
       
       // Build query parameters for last 30 days
       const params = new URLSearchParams({

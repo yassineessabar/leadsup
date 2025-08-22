@@ -52,43 +52,38 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Fetching account-level SendGrid analytics...')
     console.log(`📅 Date range: ${startDate} to ${endDate}`)
     console.log(`👤 User ID: ${userId}`)
+    console.log('🔑 SendGrid API Key available:', !!process.env.SENDGRID_API_KEY)
 
-    // First, verify the user has actual campaigns and email accounts
-    const { data: userCampaigns, error: campaignsError } = await supabase
-      .from('campaigns')
-      .select('id')
-      .eq('user_id', userId)
+    // Skip campaign verification - we want to show SendGrid data regardless
+    console.log('📊 Attempting to fetch real SendGrid metrics...')
 
-    if (campaignsError || !userCampaigns || userCampaigns.length === 0) {
-      console.log('⚠️ No campaigns found for user - returning empty metrics')
-      return NextResponse.json({
-        success: true,
-        data: {
-          metrics: {
-            emailsSent: 0,
-            emailsDelivered: 0,
-            emailsBounced: 0,
-            emailsBlocked: 0,
-            uniqueOpens: 0,
-            totalOpens: 0,
-            uniqueClicks: 0,
-            totalClicks: 0,
-            unsubscribes: 0,
-            spamReports: 0,
-            deliveryRate: 0,
-            bounceRate: 0,
-            openRate: 0,
-            clickRate: 0,
-            unsubscribeRate: 0
-          },
-          source: 'no_campaigns',
-          period: `${startDate} to ${endDate}`,
-          message: 'No campaigns found for this user'
-        }
-      })
+    // Method 1: Direct SendGrid API (PRIORITY - we know this has real data)
+    try {
+      console.log('📡 Method 1: Trying direct SendGrid API calls first...')
+      
+      const { SendGridDirectAPI } = await import('@/lib/sendgrid-direct-api')
+      const directMetrics = await SendGridDirectAPI.getAccountMetrics(startDate, endDate)
+      
+      if (directMetrics && directMetrics.emailsSent > 0) {
+        console.log('✅ SUCCESS! Got real metrics from SendGrid direct API:', directMetrics)
+        
+        return NextResponse.json({
+          success: true,
+          data: {
+            metrics: directMetrics,
+            source: 'sendgrid_direct_api',
+            period: `${startDate} to ${endDate}`,
+            debug: 'Real SendGrid API data retrieved successfully'
+          }
+        })
+      } else {
+        console.log('⚠️ SendGrid direct API returned no data')
+      }
+    } catch (directApiError) {
+      console.error('❌ SendGrid direct API failed:', directApiError)
     }
 
-    // Strategy: Only get real metrics from webhook events or database
+    // Fallback: Initialize empty metrics for other methods
     let accountMetrics = {
       emailsSent: 0,
       emailsDelivered: 0,
@@ -106,12 +101,6 @@ export async function GET(request: NextRequest) {
       clickRate: 0,
       unsubscribeRate: 0
     }
-
-    // Method 1: Aggregate from our database (webhook data) - DISABLED 
-    // This RPC function might be returning fake data, so we'll skip it
-    console.log('📊 Skipping database RPC function to avoid fake data')
-    
-    // Skip the problematic database RPC call that might return fake metrics
 
     // Method 2: Use direct webhook data aggregation from sendgrid_events
     try {
@@ -255,31 +244,7 @@ export async function GET(request: NextRequest) {
       console.warn('⚠️ Webhook aggregation failed:', webhookAggError)
     }
 
-    // Method 3: Direct SendGrid API calls as fallback
-    try {
-      console.log('📡 Method 3: Trying direct SendGrid API calls...')
-      
-      const { SendGridDirectAPI } = await import('@/lib/sendgrid-direct-api')
-      const directMetrics = await SendGridDirectAPI.getAccountMetrics(startDate, endDate)
-      
-      if (directMetrics && directMetrics.emailsSent > 0) {
-        console.log('✅ Got real metrics from SendGrid direct API:', directMetrics)
-        
-        return NextResponse.json({
-          success: true,
-          data: {
-            metrics: directMetrics,
-            source: 'sendgrid_direct_api',
-            period: `${startDate} to ${endDate}`,
-            debug: 'Real SendGrid API data - no webhook events needed'
-          }
-        })
-      } else {
-        console.log('⚠️ SendGrid direct API returned no data')
-      }
-    } catch (directApiError) {
-      console.warn('⚠️ SendGrid direct API failed:', directApiError)
-    }
+    // All methods failed - SendGrid API should have worked
 
     // If no real data found anywhere, return empty metrics
     console.log('⚠️ No real email activity found from any source, returning empty metrics')
