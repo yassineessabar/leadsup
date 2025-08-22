@@ -69,27 +69,39 @@ async function fetchWebsiteContent(url: string): Promise<string> {
     }
 
     console.log(`🌐 Fetching website content from: ${url}`)
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; LeadsUp/1.0; +https://app.leadsup.io/)'
-      },
-      timeout: 8000 // Reduced timeout for speed
-    })
     
-    if (response.ok) {
-      const html = await response.text()
-      const textContent = html
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .substring(0, 2000) // Reduced from 3000 for speed
+    // Use Promise.race for aggressive timeout + abort controller
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 4000) // Reduced to 4s
+    
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; LeadsUp/1.0; +https://app.leadsup.io/)'
+        },
+        signal: controller.signal
+      })
       
-      // Cache the result
-      websiteContentCache.set(url, { content: textContent, timestamp: Date.now() })
-      console.log(`✅ Fetched and cached website content (${textContent.length} characters)`)
-      return textContent
+      clearTimeout(timeoutId)
+      
+      if (response.ok) {
+        const html = await response.text()
+        // Aggressive content extraction - just get first 1000 chars of visible text
+        const textContent = html
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+          .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .substring(0, 1000) // Further reduced for speed
+        
+        // Cache the result
+        websiteContentCache.set(url, { content: textContent, timestamp: Date.now() })
+        console.log(`✅ Fetched and cached website content (${textContent.length} characters)`)
+        return textContent
+      }
+    } finally {
+      clearTimeout(timeoutId)
     }
   } catch (error) {
     console.warn(`⚠️ Error fetching website content: ${error}`)
@@ -204,6 +216,13 @@ async function createCampaignAndICPs(userId: string, formData: CampaignFormData)
       console.warn('⚠️ [API] No keywords were saved to database!')
     }
 
+    // Start background website fetch (don't wait for it)
+    if (formData.website && !formData.noWebsite) {
+      fetchWebsiteContent(formData.website).catch(err => 
+        console.warn('Background website fetch failed:', err)
+      )
+    }
+
     // Generate ICPs & Personas
     const icpsAndPersonas = await generateICPsAndPersonas(formData)
 
@@ -228,6 +247,7 @@ async function createCampaignAndICPs(userId: string, formData: CampaignFormData)
 }
 
 async function generateICPsAndPersonas(formData: CampaignFormData) {
+  const startTime = Date.now()
   try {
     console.log("🎯 Generating ICPs & Personas...")
 
@@ -236,10 +256,19 @@ async function generateICPsAndPersonas(formData: CampaignFormData) {
       return getFallbackICPsAndPersonas()
     }
 
-    // Fetch website content if URL is provided
+    // Fetch website content if URL is provided (with timeout fallback)
     let websiteContent = ''
     if (formData.website && !formData.noWebsite) {
-      websiteContent = await fetchWebsiteContent(formData.website)
+      try {
+        // Race against a 2-second timeout for ultra-fast response
+        websiteContent = await Promise.race([
+          fetchWebsiteContent(formData.website),
+          new Promise<string>((resolve) => setTimeout(() => resolve(''), 2000))
+        ])
+      } catch (error) {
+        console.warn('Website fetch timeout, proceeding without content')
+        websiteContent = ''
+      }
     }
 
     const companyContext = `
@@ -261,7 +290,7 @@ Language: ${formData.language || 'English'}
       messages: [
         {
           role: "system",
-          content: `You are an expert marketing strategist. Generate 1 detailed Ideal Customer Profile (ICP) and 1 target persona for the given company. ${websiteContent ? 'Use the website content to understand their business model, target market, and value proposition.' : ''} Respond in ${formData.language || 'English'}. Return only valid JSON without code blocks or markdown.`
+          content: `Generate 1 ICP and 1 persona. ${websiteContent ? 'Use website content.' : ''} Return JSON only.`
         },
         {
           role: "user",
@@ -296,12 +325,13 @@ Return JSON in this exact format:
 }`
         }
       ],
-      temperature: 0.5, // Reduced for faster, more focused responses
-      max_tokens: 600 // Reduced for speed
+      temperature: 0.3, // Even lower for fastest response
+      max_tokens: 400 // Further reduced for speed
     })
 
     const result = JSON.parse(response.choices[0].message.content || '{}')
-    console.log("✅ ICPs & Personas generated successfully")
+    const duration = Date.now() - startTime
+    console.log(`✅ ICPs & Personas generated successfully in ${duration}ms`)
     return result
 
   } catch (error) {
@@ -337,7 +367,7 @@ async function generatePainPointsAndValueProps(campaignId: number, aiAssets: any
       messages: [
         {
           role: "system",
-          content: `You are an expert sales strategist. Generate 1 specific pain point and 1 value proposition based on the ICP and persona. ${websiteContent ? 'Use the company website content to understand their solution and create relevant pain points they can solve.' : ''} Return only valid JSON without code blocks or markdown.`
+          content: `Generate 1 pain point and 1 value proposition. ${websiteContent ? 'Use website content.' : ''} Return JSON only.`
         },
         {
           role: "user",
@@ -372,8 +402,8 @@ Return JSON in this exact format:
 }`
         }
       ],
-      temperature: 0.5,
-      max_tokens: 400 // Reduced for speed
+      temperature: 0.3,
+      max_tokens: 300 // Further reduced for speed
     })
 
     const result = JSON.parse(response.choices[0].message.content || '{}')
@@ -428,7 +458,7 @@ Language: ${formData.language || 'English'}
       messages: [
         {
           role: "system",
-          content: `You are an expert email marketing copywriter. Generate 6 compelling emails for a 2-sequence campaign. IMPORTANT: All emails in the same sequence must have the SAME subject line for email threading. First 3 emails (sequence 1) share one subject, last 3 emails (sequence 2 after 60 days) share a different subject. ${websiteContent ? 'Use the website content to understand the company\'s tone, services, and unique value proposition.' : ''} Write in ${formData.language || 'English'}. Return only valid JSON without code blocks or markdown.`
+          content: `Generate 6 emails: 3 with same subject (initial), 3 with different subject (re-engagement). ${websiteContent ? 'Use website content.' : ''} Return JSON only.`
         },
         {
           role: "user",
@@ -492,8 +522,8 @@ Return JSON in this exact format:
 }`
         }
       ],
-      temperature: 0.5,
-      max_tokens: 800 // Reduced for speed
+      temperature: 0.3,
+      max_tokens: 500 // Further reduced for speed
     })
 
     const result = JSON.parse(response.choices[0].message.content || '{}')
