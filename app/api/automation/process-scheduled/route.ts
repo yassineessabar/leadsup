@@ -888,46 +888,11 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, testMode }: a
       const sgMail = require('@sendgrid/mail')
       sgMail.setApiKey(process.env.SENDGRID_API_KEY)
       
-      // Get dynamic Reply-To address based on sender domain
+      // Force reply@domain format for webhook capture
       const senderDomain = senderEmail.split('@')[1]
-      let replyToEmail = senderEmail // fallback to sender email
+      const replyToEmail = `reply@${senderDomain}`
       
-      try {
-        console.log(`🔍 Looking up domain config for: ${senderDomain}`)
-        const { data: domainConfig, error: domainError } = await supabaseServer
-          .from('domains')
-          .select('reply_to_email, domain, dns_records')
-          .eq('domain', senderDomain)
-          .eq('status', 'verified')
-          .single()
-          
-        console.log(`🔍 Domain query result:`, { domainConfig, domainError })
-        
-        if (domainConfig && !domainError) {
-          const oldReplyTo = replyToEmail
-          
-          // Use reply_to_email if set, otherwise construct from DNS records
-          if (domainConfig.reply_to_email) {
-            replyToEmail = domainConfig.reply_to_email
-          } else {
-            // Look for reply subdomain in DNS records (MX record for reply routing)
-            const replyMxRecord = domainConfig.dns_records?.find(record => 
-              record.host === 'reply' && record.type === 'MX'
-            )
-            if (replyMxRecord) {
-              replyToEmail = `reply@${domainConfig.domain}`
-            }
-          }
-          
-          console.log(`📧 Dynamic Reply-To: ${oldReplyTo} → ${replyToEmail} for domain: ${senderDomain}`)
-          console.log(`📧 Domain config:`, domainConfig)
-        } else {
-          console.log(`⚠️ No verified domain config found for ${senderDomain}, using sender email as Reply-To: ${replyToEmail}`)
-          console.log(`⚠️ Domain error:`, domainError)
-        }
-      } catch (error) {
-        console.log(`⚠️ Error fetching domain config for ${senderDomain}:`, error.message)
-      }
+      console.log(`📧 Using reply@domain format: ${senderEmail} → Reply-To: ${replyToEmail}`)
       
       // Personalize content
       const personalizedSubject = sequence.subject
