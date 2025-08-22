@@ -583,16 +583,34 @@ export async function GET(request: NextRequest) {
           continue
         }
         
-        // Rotate senders based on contact ID for better distribution
-        // This ensures consistent but varied sender selection
+        // Ensure consistent sender per contact throughout their entire sequence
         let selectedSender = senders[0] // fallback
-        if (senders.length > 1) {
-          // Use contact ID to create consistent but distributed sender rotation
+        
+        // First, check if this contact already has emails sent - use the same sender for consistency
+        const { data: existingEmails } = await supabase
+          .from('inbox_messages')
+          .select('sender_email')
+          .eq('contact_email', contact.email_address)
+          .eq('direction', 'outbound')
+          .eq('campaign_id', campaign.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+        
+        if (existingEmails && existingEmails.length > 0) {
+          // Use the same sender as previous emails to maintain conversation continuity
+          const previousSender = existingEmails[0].sender_email
+          const matchingSender = senders.find(s => s.email === previousSender)
+          if (matchingSender) {
+            selectedSender = matchingSender
+            console.log(`📧 Maintaining sender consistency: Contact ${contact.id} continues with ${selectedSender.email}`)
+          }
+        } else if (senders.length > 1) {
+          // First email to this contact - assign sender based on contact ID for distribution
           const contactIdNum = parseInt(String(contact.id)) || 0
           const senderIndex = contactIdNum % senders.length
           selectedSender = senders[senderIndex]
           
-          console.log(`📧 Sender rotation: Contact ${contact.id} -> Sender ${senderIndex + 1}/${senders.length} (${selectedSender.email})`)
+          console.log(`📧 First email to contact ${contact.id} -> Assigned sender ${senderIndex + 1}/${senders.length} (${selectedSender.email})`)
         } else {
           console.log(`📧 Single sender: ${selectedSender.email}`)
         }
