@@ -112,21 +112,22 @@ const outreachStrategies = [
 
 // Helper function to get suggested roles based on campaign objective
 const getSuggestedRoles = (objective: string): string[] => {
+  // Return broad, industry-agnostic prospect roles that work across all sectors
   switch (objective) {
     case 'sell-service':
-      return ['CEO', 'CTO', 'VP Sales', 'Head of Sales', 'Sales Director', 'Business Development Manager']
+      return ['CEO', 'Founder', 'President', 'Director', 'VP', 'Manager']
     case 'raise-money':
-      return ['Partner', 'Investment Director', 'Managing Director', 'Principal', 'Venture Partner', 'Investment Manager']
+      return ['CEO', 'Founder', 'CFO', 'President', 'Director', 'Partner']
     case 'book-meetings':
-      return ['Decision Maker', 'Head of Department', 'Director', 'VP', 'C-Suite Executive', 'Manager']
+      return ['CEO', 'Director', 'VP', 'Manager', 'Head of Department', 'Executive']
     case 'grow-brand':
-      return ['CMO', 'VP Marketing', 'Head of Marketing', 'Marketing Director', 'Brand Manager', 'Content Manager']
+      return ['CEO', 'Director', 'VP', 'Manager', 'Head of Department', 'Executive']
     case 'collect-reviews':
-      return ['Customer Success Manager', 'Account Manager', 'Product Manager', 'Operations Manager', 'Client Director']
+      return ['CEO', 'Director', 'VP', 'Manager', 'Head of Department', 'Executive']
     case 'recruit':
-      return ['Software Engineer', 'Senior Developer', 'Product Designer', 'Data Scientist', 'DevOps Engineer', 'Engineering Manager']
+      return ['CEO', 'Director', 'VP', 'Manager', 'Head of Department', 'Executive']
     default:
-      return ['CEO', 'Director', 'Manager', 'Head of Department', 'VP']
+      return ['CEO', 'Founder', 'Director', 'VP', 'Manager', 'Executive']
   }
 }
 
@@ -899,7 +900,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             <p className="text-sm text-gray-600">
               {formData.keywords.length > 0 
                 ? "AI-generated prospect roles based on your campaign objective and company info. You can add more or remove any." 
-                : "Add job titles and roles of your ideal prospects (e.g., \"Head of Marketing\", \"CMO\", \"Growth Manager\")"
+                : "Add job titles and roles of your ideal prospects (e.g., \"CEO\", \"Director\", \"VP\", \"Manager\")"
               }
             </p>
             <p className="text-xs text-gray-500">These will help us identify the right decision-makers to reach out to</p>
@@ -911,7 +912,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
               onChange={(e) => setNewKeyword(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && addKeyword()}
               className="flex-1 h-10 border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 transition-colors rounded-xl text-sm"
-              placeholder="e.g., Head of Marketing, CMO, VP Sales"
+              placeholder="e.g., CEO, Director, VP, Manager"
             />
             <Button 
               type="button"
@@ -1119,7 +1120,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
             <p className="text-sm text-gray-600">
               {formData.keywords.length > 0 
                 ? "AI-generated prospect roles based on your campaign objective and company info. You can add more or remove any." 
-                : "Add job titles and roles of your ideal prospects (e.g., \"Head of Marketing\", \"CMO\", \"Growth Manager\")"
+                : "Add job titles and roles of your ideal prospects (e.g., \"CEO\", \"Director\", \"VP\", \"Manager\")"
               }
             </p>
             <p className="text-xs text-gray-500">These will help us identify the right decision-makers to reach out to</p>
@@ -1131,7 +1132,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
               onChange={(e) => setNewKeyword(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && addKeyword()}
               className="flex-1 h-10 border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 transition-colors rounded-xl text-sm"
-              placeholder="e.g., Head of Marketing, CMO, VP Sales"
+              placeholder="e.g., CEO, Director, VP, Manager"
             />
             <Button 
               type="button"
