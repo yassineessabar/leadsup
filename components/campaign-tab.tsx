@@ -1176,16 +1176,24 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                   className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden cursor-pointer group"
                   onClick={() => {
                     setSelectedCampaign(campaign)
+                    
                     // Add openCampaign parameter to URL to indicate explicit campaign opening
                     const url = new URL(window.location.href)
                     url.searchParams.set('campaignId', campaign.id.toString())
                     url.searchParams.set('campaign', campaign.id.toString()) // For analytics wrapper
                     url.searchParams.set('openCampaign', 'true')
-                    url.searchParams.set('tab', 'analytics')
-                    window.history.pushState({}, '', url.toString())
                     
-                    // Always go to analytics view when clicking on campaign
-                    setCurrentView("analytics")
+                    // Draft campaigns go to management (dashboard), others go to analytics
+                    if (campaign.status === 'Draft') {
+                      url.searchParams.set('subtab', 'target') // Open target tab for draft campaign setup
+                      setDashboardInitialTab("target")
+                      setCurrentView("dashboard")
+                    } else {
+                      url.searchParams.set('tab', 'analytics')
+                      setCurrentView("analytics")
+                    }
+                    
+                    window.history.pushState({}, '', url.toString())
                   }}
                 >
                   <div className="p-8">
