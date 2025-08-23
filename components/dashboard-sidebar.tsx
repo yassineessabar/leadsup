@@ -164,8 +164,12 @@ export function DashboardSidebar({
         isCollapsed ? "max-w-[60px]" : "max-w-[240px]"
       )}>
         <div className="flex items-center px-2 py-3 mb-6 relative">
-          <div className="h-10 w-10 bg-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm">
-            <span className="text-white font-bold text-xl">L</span>
+          <div className="h-10 w-10 flex items-center justify-center flex-shrink-0">
+            <img 
+              src="https://framerusercontent.com/images/yar0HFd2Ii54LrLgUJ1sPLmjoS0.svg" 
+              alt="LeadsUp Logo" 
+              className="h-8 w-8"
+            />
           </div>
           {!isCollapsed && (
             <span className="font-light text-xl ml-3 truncate tracking-tight text-gray-900">LeadsUp</span>
@@ -383,8 +387,12 @@ export function DashboardSidebar({
     >
       <div className="p-6 border-b border-gray-100/50">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm">
-            <span className="text-white font-bold text-xl">L</span>
+          <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+            <img 
+              src="https://framerusercontent.com/images/yar0HFd2Ii54LrLgUJ1sPLmjoS0.svg" 
+              alt="LeadsUp Logo" 
+              className="h-8 w-8"
+            />
           </div>
           <div className="min-w-0">
             <h1 className="font-light text-xl tracking-tight text-gray-900">LeadsUp</h1>
