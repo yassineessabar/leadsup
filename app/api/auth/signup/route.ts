@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "User already exists with this email" }, { status: 409 })
     }
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 10)
+    // Hash password with reduced rounds for faster signup (8 rounds is still secure)
+    const passwordHash = await bcrypt.hash(password, 8)
 
     // Create new user in Supabase
     const { data: newUser, error: userError } = await supabase
@@ -81,61 +81,62 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Failed to create session" }, { status: 500 })
     }
 
-    // Create review_link record for the new user in parallel (non-blocking)
-    const generateRandomId = () => Math.random().toString(36).substring(2, 10)
-    const baseUrl = process.env.NODE_ENV === 'development'
-      ? 'http://localhost:3000'
-      : 'https://app.loopreview.io'
-    const reviewUrl = `${baseUrl}/r/${generateRandomId()}`
-    const qrCode = generateRandomId().toUpperCase()
+    // Create review_link record asynchronously after responding to user (don't await)
+    // This reduces signup response time significantly
+    setImmediate(() => {
+      const generateRandomId = () => Math.random().toString(36).substring(2, 10)
+      const baseUrl = process.env.NODE_ENV === 'development'
+        ? 'http://localhost:3000'
+        : 'https://app.loopreview.io'
+      const reviewUrl = `${baseUrl}/r/${generateRandomId()}`
+      const qrCode = generateRandomId().toUpperCase()
 
-    // Create review link asynchronously (don't await)
-    supabase.from("review_link").insert({
-      user_id: newUser.id,
-      company_name: newUser.company || "Your Company",
-      review_url: reviewUrl,
-      review_qr_code: qrCode,
-      // Add default settings for new users
-      primary_color: "#000000",
-      secondary_color: "#000000",
-      show_badge: true,
-      rating_page_content: `How was your experience with ${newUser.company || "us"}?`,
-      redirect_message: "Thank you for your feedback! Please click the button below to leave a review.",
-      internal_notification_message: "Thank you for your feedback! We appreciate you taking the time to share your thoughts.",
-      video_upload_message: `Record a short video testimonial for ${newUser.company || "us"}!`,
-      google_review_link: "",
-      trustpilot_review_link: "",
-      facebook_review_link: "",
-      enabled_platforms: ["Google"],
-      background_color: "#F0F8FF",
-      text_color: "#1F2937",
-      button_text_color: "#FFFFFF",
-      font: "gothic-a1",
-      links: [],
-      header_settings: {
-        header: "Great to hear!",
-        text: "Thank you for your feedback! Please click the button below to leave a review."
-      },
-      initial_view_settings: {
-        header: "How was your experience at {{companyName}}?",
-        text: "We'd love to hear about your experience with our service."
-      },
-      negative_settings: {
-        header: "We're sorry to hear that.",
-        text: "Please tell us how we can improve:"
-      },
-      video_upload_settings: {
-        header: "Share your experience!",
-        text: "Record a short video testimonial to help others learn about our service."
-      },
-      success_settings: {
-        header: "Thank you!",
-        text: "Your feedback has been submitted successfully."
-      }
-    }).then(({ error }) => {
-      if (error) {
-        console.error("❌ Review link creation error:", error.message)
-      }
+      supabase.from("review_link").insert({
+        user_id: newUser.id,
+        company_name: newUser.company || "Your Company",
+        review_url: reviewUrl,
+        review_qr_code: qrCode,
+        primary_color: "#000000",
+        secondary_color: "#000000",
+        show_badge: true,
+        rating_page_content: `How was your experience with ${newUser.company || "us"}?`,
+        redirect_message: "Thank you for your feedback! Please click the button below to leave a review.",
+        internal_notification_message: "Thank you for your feedback! We appreciate you taking the time to share your thoughts.",
+        video_upload_message: `Record a short video testimonial for ${newUser.company || "us"}!`,
+        google_review_link: "",
+        trustpilot_review_link: "",
+        facebook_review_link: "",
+        enabled_platforms: ["Google"],
+        background_color: "#F0F8FF",
+        text_color: "#1F2937",
+        button_text_color: "#FFFFFF",
+        font: "gothic-a1",
+        links: [],
+        header_settings: {
+          header: "Great to hear!",
+          text: "Thank you for your feedback! Please click the button below to leave a review."
+        },
+        initial_view_settings: {
+          header: "How was your experience at {{companyName}}?",
+          text: "We'd love to hear about your experience with our service."
+        },
+        negative_settings: {
+          header: "We're sorry to hear that.",
+          text: "Please tell us how we can improve:"
+        },
+        video_upload_settings: {
+          header: "Share your experience!",
+          text: "Record a short video testimonial to help others learn about our service."
+        },
+        success_settings: {
+          header: "Thank you!",
+          text: "Your feedback has been submitted successfully."
+        }
+      }).then(({ error }) => {
+        if (error) {
+          console.error("❌ Review link creation error:", error.message)
+        }
+      })
     })
 
     // Set session cookie
