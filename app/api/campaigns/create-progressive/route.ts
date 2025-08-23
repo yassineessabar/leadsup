@@ -174,7 +174,7 @@ async function createCampaignAndICPs(userId: string, formData: CampaignFormData)
       no_website: formData.noWebsite || false,
       language: formData.language?.trim() || 'English',
       keywords: formData.keywords || [],
-      main_activity: formData.mainActivity.trim(),
+      main_activity: formData.mainActivity?.trim() || null,
       location: formData.location?.trim() || null,
       industry: formData.industry?.trim() || null,
       product_service: formData.productService?.trim() || null,
@@ -342,7 +342,7 @@ Return JSON in this exact format:
   }
 }
 
-async function generatePainPointsAndValueProps(campaignId: number, aiAssets: any) {
+async function generatePainPointsAndValueProps(campaignId: string | number, aiAssets: any) {
   try {
     console.log("💡 Generating Pain Points & Value Props...")
 
@@ -425,7 +425,7 @@ Return JSON in this exact format:
   }
 }
 
-async function generateEmailSequence(campaignId: number, formData: CampaignFormData, aiAssets: any) {
+async function generateEmailSequence(campaignId: string | number, formData: CampaignFormData, aiAssets: any) {
   try {
     console.log("📧 Generating Email Sequence...")
 
@@ -435,7 +435,19 @@ async function generateEmailSequence(campaignId: number, formData: CampaignFormD
       console.error("   OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? '✅ Set' : '❌ Missing')
       console.error("   OPENAI:", process.env.OPENAI ? '✅ Set' : '❌ Missing')
       console.warn("⚠️ Using fallback email sequences - these will be generic!")
-      return getFallbackEmailSequence()
+      
+      const fallbackResult = getFallbackEmailSequence()
+      
+      // Save fallback sequences to database
+      console.log('💾 Saving fallback sequences to database...')
+      try {
+        await saveAISequencesToCampaignSequences(campaignId, fallbackResult.email_sequences || [])
+        console.log('✅ Fallback sequences saved successfully')
+      } catch (saveError) {
+        console.error('❌ Failed to save fallback sequences:', saveError)
+      }
+      
+      return fallbackResult
     }
 
     // Fetch campaign data to get website context
@@ -557,21 +569,45 @@ Return JSON in this exact format:
     // Save AI-generated sequences to campaign_sequences table
     console.log('📧 About to save AI sequences to campaign_sequences table:', {
       campaignId,
+      campaignIdType: typeof campaignId,
       sequencesCount: result.email_sequences?.length || 0,
       sequences: result.email_sequences?.map(seq => ({ step: seq.step, subject: seq.subject?.substring(0, 30) })) || []
     })
-    await saveAISequencesToCampaignSequences(campaignId, result.email_sequences || [])
+    
+    if (result.email_sequences && result.email_sequences.length > 0) {
+      try {
+        await saveAISequencesToCampaignSequences(campaignId, result.email_sequences)
+        console.log('✅ AI sequences saved successfully to campaign_sequences table')
+      } catch (error) {
+        console.error('❌ CRITICAL: Failed to save AI sequences to campaign_sequences:', error)
+        // Don't fail the entire operation, but log it prominently
+        console.error('❌ This means sequences will not appear in the Email Sequence tab')
+      }
+    } else {
+      console.warn('⚠️ No AI sequences to save - result.email_sequences is empty or undefined')
+    }
 
     console.log("✅ Email Sequence generated successfully")
     return result
 
   } catch (error) {
     console.error("❌ Error generating email sequence:", error)
-    return getFallbackEmailSequence()
+    const fallbackResult = getFallbackEmailSequence()
+    
+    // Save fallback sequences to database too
+    console.log('💾 Saving fallback sequences to database...')
+    try {
+      await saveAISequencesToCampaignSequences(campaignId, fallbackResult.email_sequences || [])
+      console.log('✅ Fallback sequences saved successfully')
+    } catch (saveError) {
+      console.error('❌ Failed to save fallback sequences:', saveError)
+    }
+    
+    return fallbackResult
   }
 }
 
-async function updateCampaignAssets(campaignId: number, updatedAssets: any) {
+async function updateCampaignAssets(campaignId: string | number, updatedAssets: any) {
   try {
     await updateAIAssets(campaignId, updatedAssets)
   } catch (error) {
@@ -580,7 +616,7 @@ async function updateCampaignAssets(campaignId: number, updatedAssets: any) {
   }
 }
 
-async function saveAIAssets(campaignId: number, aiAssets: any) {
+async function saveAIAssets(campaignId: string | number, aiAssets: any) {
   try {
     console.log("💾 Saving AI assets to database...")
 
@@ -609,7 +645,7 @@ async function saveAIAssets(campaignId: number, aiAssets: any) {
   }
 }
 
-async function updateAIAssets(campaignId: number, updates: any) {
+async function updateAIAssets(campaignId: string | number, updates: any) {
   try {
     console.log("🔄 Updating AI assets in database...")
 
@@ -752,7 +788,7 @@ function getFallbackEmailSequence() {
   }
 }
 
-async function saveAISequencesToCampaignSequences(campaignId: number, aiSequences: any[]) {
+async function saveAISequencesToCampaignSequences(campaignId: string | number, aiSequences: any[]) {
   try {
     if (!aiSequences || aiSequences.length === 0) {
       console.log("ℹ️ No AI sequences to save to campaign_sequences")
@@ -760,17 +796,7 @@ async function saveAISequencesToCampaignSequences(campaignId: number, aiSequence
     }
 
     console.log(`📧 Saving ${aiSequences.length} AI sequences to campaign_sequences table...`)
-
-    // Delete existing sequences for this campaign
-    const { error: deleteError } = await supabaseServer
-      .from("campaign_sequences")
-      .delete()
-      .eq("campaign_id", campaignId)
-
-    if (deleteError) {
-      console.error("❌ Error deleting existing sequences:", deleteError)
-      throw new Error(`Failed to delete existing sequences: ${deleteError.message}`)
-    }
+    console.log('🆔 Campaign ID type and value:', typeof campaignId, campaignId)
 
     // Convert AI sequences to campaign_sequences format
     const sequenceData = aiSequences.map((aiSeq: any, index: number) => ({
@@ -778,11 +804,11 @@ async function saveAISequencesToCampaignSequences(campaignId: number, aiSequence
       step_number: aiSeq.step || (index + 1),
       subject: aiSeq.subject || `Email ${index + 1} Subject`,
       content: aiSeq.content || "",
-      timing_days: aiSeq.timing_days !== undefined ? aiSeq.timing_days : (aiSeq.step === 1 ? 0 : 3), // Use AI timing or fallback
+      timing_days: aiSeq.timing_days !== undefined ? aiSeq.timing_days : (aiSeq.step === 1 ? 0 : 3),
       variants: 1,
       outreach_method: "email",
-      sequence_number: aiSeq.step <= 3 ? 1 : 2, // First 3 emails are sequence 1, next 3 are sequence 2
-      sequence_step: aiSeq.step <= 3 ? aiSeq.step : (aiSeq.step - 3), // Reset step count for sequence 2
+      sequence_number: aiSeq.step <= 3 ? 1 : 2,
+      sequence_step: aiSeq.step <= 3 ? aiSeq.step : (aiSeq.step - 3),
       title: `Email ${aiSeq.step}`,
       is_active: true,
       created_at: new Date().toISOString(),
@@ -797,7 +823,19 @@ async function saveAISequencesToCampaignSequences(campaignId: number, aiSequence
       sequence_step: s.sequence_step
     })), null, 2))
 
-    // Insert sequences
+    // Delete existing sequences first to avoid conflicts
+    console.log('🗑️ Deleting existing sequences for campaign', campaignId)
+    const { error: deleteError } = await supabaseServer
+      .from("campaign_sequences")
+      .delete()
+      .eq("campaign_id", campaignId)
+
+    if (deleteError) {
+      console.error("❌ Error deleting existing AI sequences:", deleteError)
+      throw new Error(`Failed to delete existing sequences: ${deleteError.message}`)
+    }
+
+    // Insert new sequences
     const { data: insertedData, error: insertError } = await supabaseServer
       .from("campaign_sequences")
       .insert(sequenceData)
@@ -805,6 +843,9 @@ async function saveAISequencesToCampaignSequences(campaignId: number, aiSequence
 
     if (insertError) {
       console.error("❌ Error inserting AI sequences:", insertError)
+      console.error("❌ Insert error details:", JSON.stringify(insertError, null, 2))
+      console.error("❌ Campaign ID used in insert:", campaignId, typeof campaignId)
+      console.error("❌ Sequence data attempted to insert:", JSON.stringify(sequenceData.slice(0, 1), null, 2)) // Just first item
       throw new Error(`Failed to save AI sequences: ${insertError.message}`)
     }
 
@@ -837,9 +878,7 @@ async function saveAISequencesToCampaignSequences(campaignId: number, aiSequence
       console.error("❌ Failed at: Unknown operation")
     }
     
-    // Don't throw error to prevent campaign creation from failing
-    console.warn("⚠️ SEQUENCES WILL NOT BE SAVED - Continuing without saving AI sequences to campaign_sequences...")
-    console.warn("⚠️ This means the Email Sequences tab will show default sequences instead of AI-generated ones")
-    console.warn("⚠️ Users will need to manually create their sequences")
+    // Re-throw error to ensure sequences are saved
+    throw error
   }
 }

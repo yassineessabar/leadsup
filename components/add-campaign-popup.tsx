@@ -776,19 +776,26 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
 
           <div className="space-y-2">
             <Label htmlFor="campaign-objective" className="text-sm font-medium text-gray-700">Campaign objective</Label>
-            <Select value={formData.campaignObjective} onValueChange={(value) => setFormData(prev => ({ ...prev, campaignObjective: value }))}>
-              <SelectTrigger className="h-10 border-gray-200 focus:border-blue-600 focus:ring-blue-600 text-sm rounded-xl">
-                <SelectValue placeholder="Select your objective" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sell-service">💼 Sell your service</SelectItem>
-                <SelectItem value="raise-money">💰 Raise money</SelectItem>
-                <SelectItem value="book-meetings">📅 Book more meetings</SelectItem>
-                <SelectItem value="grow-brand">📢 Grow your brand awareness</SelectItem>
-                <SelectItem value="collect-reviews">⭐ Collect reviews/testimonials</SelectItem>
-                <SelectItem value="recruit">👥 Recruit candidates</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <select 
+                value={formData.campaignObjective} 
+                onChange={(e) => setFormData(prev => ({ ...prev, campaignObjective: e.target.value }))}
+                className="w-full h-10 border border-gray-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 text-sm rounded-xl px-3 bg-white appearance-none cursor-pointer"
+              >
+                <option value="">Select your objective</option>
+                <option value="sell-service">💼 Sell your service</option>
+                <option value="raise-money">💰 Raise money</option>
+                <option value="book-meetings">📅 Book more meetings</option>
+                <option value="grow-brand">📢 Grow your brand awareness</option>
+                <option value="collect-reviews">⭐ Collect reviews/testimonials</option>
+                <option value="recruit">👥 Recruit candidates</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
 

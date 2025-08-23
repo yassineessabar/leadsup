@@ -79,9 +79,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Company name is required" }, { status: 400 })
     }
 
-    if (!formData.mainActivity?.trim()) {
-      return NextResponse.json({ success: false, error: "Main activity description is required" }, { status: 400 })
-    }
 
     let campaign
     let isUpdating = false
@@ -98,7 +95,7 @@ export async function POST(request: NextRequest) {
       no_website: formData.noWebsite || false,
       language: formData.language?.trim() || 'English',
       keywords: formData.keywords || [],
-      main_activity: formData.mainActivity.trim(),
+      main_activity: formData.mainActivity?.trim() || null,
       location: formData.location?.trim() || null,
       industry: formData.industry?.trim() || null,
       product_service: formData.productService?.trim() || null,

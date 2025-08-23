@@ -188,7 +188,7 @@ async function saveSequences(campaignId: string, sequences: any[]) {
     timing: s.timing 
   })), null, 2))
 
-  // Delete existing sequences
+  // First delete existing sequences to avoid conflicts
   const { error: deleteError } = await supabaseServer
     .from("campaign_sequences")
     .delete()
@@ -199,24 +199,25 @@ async function saveSequences(campaignId: string, sequences: any[]) {
     throw new Error(`Failed to delete existing sequences: ${deleteError.message}`)
   }
 
-  // Insert new sequences
+  // Create unique sequence data with guaranteed unique step_numbers
   const sequenceData = sequences.map((seq: any, index: number) => ({
     campaign_id: campaignId,
-    step_number: index + 1,
-    subject: seq.subject || `Email ${seq.sequenceStep || index + 1} Subject`,
+    step_number: index + 1, // Use array index for guaranteed uniqueness
+    subject: seq.subject || `Email ${index + 1} Subject`,
     content: seq.content || "",
     timing_days: seq.timing || (index === 0 ? 0 : seq.timing || 1),
     variants: seq.variants || 1,
     outreach_method: seq.outreach_method || seq.type || "email",
     sequence_number: seq.sequence || 1,
-    sequence_step: seq.sequenceStep || (index + 1),
-    title: seq.title || `Email ${seq.sequenceStep || index + 1}`,
+    sequence_step: index + 1, // Use array index for guaranteed uniqueness
+    title: seq.title || `Email ${index + 1}`,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   }))
 
   console.log('💽 Data being inserted to database:', JSON.stringify(sequenceData, null, 2))
 
+  // Insert new sequences
   const { data: insertedData, error: insertError } = await supabaseServer
     .from("campaign_sequences")
     .insert(sequenceData)

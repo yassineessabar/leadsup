@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { getSupabaseServerClient } from "@/lib/supabase"
+import { supabaseServer } from "@/lib/supabase"
 
 async function getUserIdFromSession(): Promise<string | null> {
   try {
@@ -11,7 +11,7 @@ async function getUserIdFromSession(): Promise<string | null> {
       return null
     }
 
-    const { data: session, error } = await getSupabaseServerClient()
+    const { data: session, error } = await supabaseServer
       .from("user_sessions")
       .select("user_id, expires_at")
       .eq("session_token", sessionToken)
@@ -47,7 +47,7 @@ export async function GET(
     const campaignId = (await params).id
 
     // Verify campaign belongs to user
-    const { data: campaign, error: campaignError } = await getSupabaseServerClient()
+    const { data: campaign, error: campaignError } = await supabaseServer
       .from("campaigns")
       .select("id")
       .eq("id", campaignId)
@@ -59,7 +59,7 @@ export async function GET(
     }
 
     // Fetch sequences
-    const { data: sequences, error: sequenceError } = await getSupabaseServerClient()
+    const { data: sequences, error: sequenceError } = await supabaseServer
       .from("campaign_sequences")
       .select("*")
       .eq("campaign_id", campaignId)
@@ -129,7 +129,7 @@ export async function POST(
     const { sequences } = body
 
     // Verify campaign belongs to user
-    const { data: campaign, error: campaignError } = await getSupabaseServerClient()
+    const { data: campaign, error: campaignError } = await supabaseServer
       .from("campaigns")
       .select("id")
       .eq("id", campaignId)
@@ -140,20 +140,9 @@ export async function POST(
       return NextResponse.json({ success: false, error: "Campaign not found" }, { status: 404 })
     }
 
-    // Delete existing sequences
-    const { error: deleteError } = await getSupabaseServerClient()
-      .from("campaign_sequences")
-      .delete()
-      .eq("campaign_id", campaignId)
-
-    if (deleteError) {
-      console.error("❌ Error deleting sequences:", deleteError)
-      return NextResponse.json({ success: false, error: deleteError.message }, { status: 500 })
-    }
-
-    // Insert new sequences
+    // Process sequences for saving
     if (sequences && sequences.length > 0) {
-      console.log('💾 Processing sequences for database insert:', JSON.stringify(sequences.map(s => ({
+      console.log('💾 Processing sequences for database save:', JSON.stringify(sequences.map(s => ({
         id: s.id,
         title: s.title,
         subject: s.subject,
@@ -165,7 +154,6 @@ export async function POST(
 
       // Sort sequences by their intended order before saving
       const sortedSequences = sequences.sort((a: any, b: any) => {
-        // Sort by sequenceStep if available, otherwise by array index
         const aStep = a.sequenceStep || a.id || 1
         const bStep = b.sequenceStep || b.id || 1
         return aStep - bStep
@@ -179,24 +167,28 @@ export async function POST(
 
       const sequenceData = sortedSequences.map((seq: any, index: number) => ({
         campaign_id: campaignId,
-        step_number: index + 1, // Use sorted array index as step_number
+        step_number: index + 1,
         subject: seq.subject || `Email ${index + 1} Subject`,
         content: seq.content || "",
         timing_days: seq.timing || (index === 0 ? 0 : seq.timing || 1),
         variants: seq.variants || 1,
         outreach_method: seq.outreach_method || seq.type || "email",
         sequence_number: seq.sequence || 1,
-        sequence_step: index + 1, // Use sorted array index as sequence_step too
+        sequence_step: index + 1,
         title: seq.title || `Email ${index + 1}`,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }))
 
-      console.log('💽 Final data for database insert:', JSON.stringify(sequenceData, null, 2))
+      console.log('💽 Final data for database upsert:', JSON.stringify(sequenceData, null, 2))
 
-      const { data: newSequences, error: insertError } = await getSupabaseServerClient()
+      // Use upsert to handle conflicts gracefully
+      const { data: newSequences, error: insertError } = await supabaseServer
         .from("campaign_sequences")
-        .insert(sequenceData)
+        .upsert(sequenceData, { 
+          onConflict: 'campaign_id,step_number',
+          ignoreDuplicates: false 
+        })
         .select()
 
       if (insertError) {
