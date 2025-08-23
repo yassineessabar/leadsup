@@ -1,10 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { supabaseServer } from "@/lib/supabase"
+import { INDUSTRY_OPTIONS } from "@/lib/industry-options"
 import OpenAI from 'openai'
 
 // Initialize OpenAI client - always create it fresh when needed
 let openai: OpenAI | null = null
+
+// Use the shared industry options
+const VALID_INDUSTRIES = INDUSTRY_OPTIONS
 
 async function getUserIdFromSession(): Promise<string | null> {
   try {
@@ -256,8 +260,7 @@ async function createCampaignAndICPs(userId: string, formData: CampaignFormData)
         campaign,
         aiAssets: icpsAndPersonas,
         extractedKeywords: icpsAndPersonas.extracted_keywords || [],
-        aiGeneratedIndustries: icpsAndPersonas.target_industries || [],
-        aiGeneratedLocations: icpsAndPersonas.target_locations || []
+        aiGeneratedIndustries: icpsAndPersonas.target_industries || []
       }
     })
   } catch (error) {
@@ -313,7 +316,7 @@ Language: ${formData.language || 'English'}
       messages: [
         {
           role: "system",
-          content: `Generate 1 ICP and 1 persona. ${websiteContent ? 'Use website content.' : ''} Return JSON only.`
+          content: `Generate 1 ICP and 1 persona. ${websiteContent ? 'Use website content.' : ''} CRITICAL: For target_industries provide 3-5 different industries as an array. For target_locations provide 3-5 different locations as an array. Return JSON only.`
         },
         {
           role: "user",
@@ -325,8 +328,10 @@ ${websiteContent ? 'Analyze the website content to understand what this company 
 
 IMPORTANT: 
 1. For extracted_keywords, ONLY include broad, generic job titles like "CEO", "Director", "Manager", "VP", "President", "Founder", "Executive", "Head of Department". NEVER include specific task-oriented terms like "automate reviews", "online reputation", or "customer feedback".
-2. For target_industries, suggest 3-5 industries that would benefit most from this company's products/services based on the company's industry and main activity.
-3. For target_locations, suggest 3-5 locations/regions where the target customers are likely to be found, based on the company's location.
+2. For target_industries: YOU MUST select EXACTLY 1 industry from the following valid industries list. Choose the single most relevant industry that would benefit most from this company's products/services. ONLY use exact matches from this list, no variations.
+
+Valid Industries (select from these ONLY): ${VALID_INDUSTRIES.join(", ")}
+3. For target_locations: Not needed - will be set from company location.
 
 Return JSON in this exact format:
 {
@@ -349,19 +354,49 @@ Return JSON in this exact format:
     "challenges": ["Challenge 1", "Challenge 2"],
     "preferred_communication": "Communication style"
   }],
-  "extracted_keywords": ["CEO", "Director", "Manager"],
-  "target_industries": ["Software", "Technology", "E-commerce"],
-  "target_locations": ["United States", "Canada", "United Kingdom"]
+  "extracted_keywords": ["CEO", "Director", "Manager", "VP", "President"],
+  "target_industries": ["Software Development"],
+  "target_locations": []
 }`
         }
       ],
-      temperature: 0.3, // Even lower for fastest response
-      max_tokens: 500 // Slightly increased to accommodate industries and locations
+      temperature: 0.5, // Slightly higher to encourage variety in suggestions
+      max_tokens: 800 // Increased to accommodate full industry list in prompt
     })
 
     const result = JSON.parse(response.choices[0].message.content || '{}')
     const duration = Date.now() - startTime
     console.log(`✅ ICPs & Personas generated successfully in ${duration}ms`)
+    
+    // Debug logging for target industries and locations
+    console.log('🎯 AI Generated target_industries:', result.target_industries)
+    console.log('📍 AI Generated target_locations:', result.target_locations)
+    console.log('🔑 AI Generated extracted_keywords:', result.extracted_keywords)
+    
+    // Ensure arrays are returned even if AI returns single values
+    if (result.target_industries && !Array.isArray(result.target_industries)) {
+      result.target_industries = [result.target_industries]
+    }
+    if (result.target_locations && !Array.isArray(result.target_locations)) {
+      result.target_locations = [result.target_locations]
+    }
+    if (result.extracted_keywords && !Array.isArray(result.extracted_keywords)) {
+      result.extracted_keywords = [result.extracted_keywords]
+    }
+    
+    // Validate that industries are from the valid list
+    if (result.target_industries && Array.isArray(result.target_industries)) {
+      result.target_industries = result.target_industries.filter((industry: string) => 
+        VALID_INDUSTRIES.includes(industry)
+      )
+      
+      // If no valid industries after filtering, use fallback
+      if (result.target_industries.length === 0) {
+        console.warn("⚠️ AI returned invalid industries, using fallback")
+        result.target_industries = ["Software Development"]
+      }
+    }
+    
     return result
 
   } catch (error) {
@@ -804,8 +839,8 @@ function getFallbackICPsAndPersonas() {
       }
     ],
     extracted_keywords: ["CEO", "Director", "Manager", "VP", "President"],
-    target_industries: ["Software", "Technology", "Healthcare", "Financial Services", "E-commerce"],
-    target_locations: ["United States", "Canada", "United Kingdom", "Australia", "Germany"]
+    target_industries: ["Software Development"],
+    target_locations: []
   }
 }
 

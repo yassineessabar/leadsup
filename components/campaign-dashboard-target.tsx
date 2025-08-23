@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
+import { INDUSTRY_OPTIONS } from '@/lib/industry-options'
 
 interface TargetTabProps {
   campaignId: string | number
@@ -52,56 +53,7 @@ export function TargetTab({
   const [showIndustryError, setShowIndustryError] = useState(false)
   const [showLocationError, setShowLocationError] = useState(false)
 
-  // Industry and Location options (same as in add-campaign-popup)
-  const INDUSTRY_OPTIONS = [
-    "Accounting", "Advertising & Marketing", "Aerospace & Defense", "Agriculture", "Airlines", "Alternative Energy",
-    "Automotive", "Banking", "Biotechnology", "Broadcasting", "Business Services", "Chemicals", "Construction",
-    "Consumer Products", "Consulting", "Cosmetics", "E-commerce", "Education", "Electronics", "Energy",
-    "Entertainment", "Environmental", "Fashion", "Financial Services", "Food & Beverage", "Gaming",
-    "Government", "Healthcare", "Hospitality", "Human Resources", "Information Technology", "Insurance",
-    "Internet", "Investment Banking", "Legal", "Logistics", "Manufacturing", "Media", "Mining",
-    "Non-profit", "Oil & Gas", "Pharmaceuticals", "Real Estate", "Recruiting", "Retail", "Security",
-    "Software", "Sports", "Telecommunications", "Transportation", "Travel", "Utilities", "Venture Capital",
-    // Technology subcategories
-    "Artificial Intelligence", "Machine Learning", "Data Analytics", "Cloud Computing", "Cybersecurity",
-    "Mobile Development", "Web Development", "SaaS", "Enterprise Software", "Developer Tools", "API",
-    "Blockchain", "Cryptocurrency", "Fintech", "Healthtech", "Edtech", "Proptech", "Insurtech",
-    // Healthcare subcategories
-    "Medical Devices", "Digital Health", "Telemedicine", "Health Insurance", "Pharmaceuticals",
-    "Clinical Research", "Medical Equipment", "Dental", "Veterinary", "Mental Health",
-    // Financial Services subcategories
-    "Investment Management", "Private Equity", "Hedge Funds", "Asset Management", "Corporate Banking",
-    "Retail Banking", "Credit Cards", "Payments", "Lending", "Wealth Management", "Trading",
-    // Manufacturing subcategories
-    "Industrial Automation", "3D Printing", "Robotics", "Supply Chain", "Quality Assurance",
-    "Lean Manufacturing", "Industrial Design", "Materials Science", "Process Engineering",
-    // Retail & E-commerce subcategories
-    "Fashion Retail", "Electronics Retail", "Home & Garden", "Sporting Goods", "Luxury Goods",
-    "Marketplace", "Subscription Commerce", "Direct-to-Consumer", "B2B Commerce", "Wholesale",
-    // Professional Services
-    "Management Consulting", "Strategy Consulting", "Technology Consulting", "HR Consulting",
-    "Marketing Consulting", "Financial Consulting", "Legal Services", "Accounting Services",
-    "Public Relations", "Market Research", "Executive Search", "Training & Development",
-    // Media & Communications
-    "Digital Marketing", "Content Marketing", "Social Media", "SEO/SEM", "Video Production",
-    "Graphic Design", "Publishing", "Journalism", "Podcasting", "Influencer Marketing",
-    // Construction & Real Estate
-    "Commercial Real Estate", "Residential Real Estate", "Property Management", "Architecture",
-    "Interior Design", "General Contracting", "Electrical", "Plumbing", "HVAC", "Roofing",
-    // Transportation & Logistics
-    "Shipping", "Warehousing", "Last-Mile Delivery", "Fleet Management", "Freight", "Aviation",
-    "Maritime", "Rail Transport", "Trucking", "Supply Chain Management", "Courier Services",
-    // Energy & Environment
-    "Solar Energy", "Wind Energy", "Energy Storage", "Oil Refining", "Natural Gas", "Coal",
-    "Nuclear Energy", "Environmental Consulting", "Waste Management", "Water Treatment",
-    "Carbon Management", "Renewable Energy", "Energy Efficiency", "Smart Grid",
-    // Food & Agriculture
-    "Food Processing", "Organic Foods", "Restaurant", "Catering", "Food Delivery", "Grocery",
-    "Farming", "Livestock", "Aquaculture", "Food Safety", "Nutrition", "Beverages", "Wine",
-    // Entertainment & Sports
-    "Music", "Film & TV", "Gaming", "Sports Teams", "Sports Equipment", "Fitness", "Wellness",
-    "Event Management", "Theme Parks", "Casinos", "Streaming", "Live Events", "Talent Management"
-  ]
+  // Using shared industry options from lib
 
   const LOCATION_OPTIONS = [
     "United States", "Canada", "United Kingdom", "Germany", "France", "Italy", "Spain", "Netherlands",

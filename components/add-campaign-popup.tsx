@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Check, ChevronRight, MessageSquare, X, Globe, Search, BarChart3, MapPin, Tag, FolderOpen, Send, Users, Brain, Target, Filter, ExternalLink, FileText, ChevronLeft, Edit, Save, XCircle, Eye, Info, Plus } from 'lucide-react'
+import { INDUSTRY_OPTIONS } from "@/lib/industry-options"
 
 interface AddCampaignPopupProps {
   isOpen: boolean
@@ -50,56 +51,7 @@ const samplePersonas = [
   }
 ]
 
-// Comprehensive industry list for autocomplete dropdown
-const INDUSTRY_OPTIONS = [
-  "Accounting", "Advertising & Marketing", "Aerospace & Defense", "Agriculture", "Airlines", "Alternative Energy",
-  "Automotive", "Banking", "Biotechnology", "Broadcasting", "Business Services", "Chemicals", "Construction",
-  "Consumer Products", "Consulting", "Cosmetics", "E-commerce", "Education", "Electronics", "Energy",
-  "Entertainment", "Environmental", "Fashion", "Financial Services", "Food & Beverage", "Gaming",
-  "Government", "Healthcare", "Hospitality", "Human Resources", "Information Technology", "Insurance",
-  "Internet", "Investment Banking", "Legal", "Logistics", "Manufacturing", "Media", "Mining",
-  "Non-profit", "Oil & Gas", "Pharmaceuticals", "Real Estate", "Recruiting", "Retail", "Security",
-  "Software", "Sports", "Telecommunications", "Transportation", "Travel", "Utilities", "Venture Capital",
-  // Technology subcategories
-  "Artificial Intelligence", "Machine Learning", "Data Analytics", "Cloud Computing", "Cybersecurity",
-  "Mobile Development", "Web Development", "SaaS", "Enterprise Software", "Developer Tools", "API",
-  "Blockchain", "Cryptocurrency", "Fintech", "Healthtech", "Edtech", "Proptech", "Insurtech",
-  // Healthcare subcategories
-  "Medical Devices", "Digital Health", "Telemedicine", "Health Insurance", "Pharmaceuticals",
-  "Clinical Research", "Medical Equipment", "Dental", "Veterinary", "Mental Health",
-  // Financial Services subcategories
-  "Investment Management", "Private Equity", "Hedge Funds", "Asset Management", "Corporate Banking",
-  "Retail Banking", "Credit Cards", "Payments", "Lending", "Wealth Management", "Trading",
-  // Manufacturing subcategories
-  "Industrial Automation", "3D Printing", "Robotics", "Supply Chain", "Quality Assurance",
-  "Lean Manufacturing", "Industrial Design", "Materials Science", "Process Engineering",
-  // Retail & E-commerce subcategories
-  "Fashion Retail", "Electronics Retail", "Home & Garden", "Sporting Goods", "Luxury Goods",
-  "Marketplace", "Subscription Commerce", "Direct-to-Consumer", "B2B Commerce", "Wholesale",
-  // Professional Services
-  "Management Consulting", "Strategy Consulting", "Technology Consulting", "HR Consulting",
-  "Marketing Consulting", "Financial Consulting", "Legal Services", "Accounting Services",
-  "Public Relations", "Market Research", "Executive Search", "Training & Development",
-  // Media & Communications
-  "Digital Marketing", "Content Marketing", "Social Media", "SEO/SEM", "Video Production",
-  "Graphic Design", "Publishing", "Journalism", "Podcasting", "Influencer Marketing",
-  // Construction & Real Estate
-  "Commercial Real Estate", "Residential Real Estate", "Property Management", "Architecture",
-  "Interior Design", "General Contracting", "Electrical", "Plumbing", "HVAC", "Roofing",
-  // Transportation & Logistics
-  "Shipping", "Warehousing", "Last-Mile Delivery", "Fleet Management", "Freight", "Aviation",
-  "Maritime", "Rail Transport", "Trucking", "Supply Chain Management", "Courier Services",
-  // Energy & Environment
-  "Solar Energy", "Wind Energy", "Energy Storage", "Oil Refining", "Natural Gas", "Coal",
-  "Nuclear Energy", "Environmental Consulting", "Waste Management", "Water Treatment",
-  "Carbon Management", "Renewable Energy", "Energy Efficiency", "Smart Grid",
-  // Food & Agriculture
-  "Food Processing", "Organic Foods", "Restaurant", "Catering", "Food Delivery", "Grocery",
-  "Farming", "Livestock", "Aquaculture", "Food Safety", "Nutrition", "Beverages", "Wine",
-  // Entertainment & Sports
-  "Music", "Film & TV", "Gaming", "Sports Teams", "Sports Equipment", "Fitness", "Wellness",
-  "Event Management", "Theme Parks", "Casinos", "Streaming", "Live Events", "Talent Management"
-]
+// Using shared industry options from lib
 
 const LOCATION_OPTIONS = [
   "United States", "Canada", "United Kingdom", "Germany", "France", "Italy", "Spain", "Netherlands",
@@ -564,10 +516,10 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
           setMainICPIndustries(result.data.aiGeneratedIndustries);
         }
         
-        // Auto-fill AI-generated target locations based on company's base location
-        if (result.data.aiGeneratedLocations && result.data.aiGeneratedLocations.length > 0) {
-          console.log('📍 AI-generated target locations received:', result.data.aiGeneratedLocations);
-          setMainICPLocations(result.data.aiGeneratedLocations);
+        // Auto-fill target location with company's base location
+        if (formData.location) {
+          console.log('📍 Using company location as target location:', formData.location);
+          setMainICPLocations([formData.location]);
         }
         
         return result.data;
@@ -1383,7 +1335,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
               <SelectTrigger className="h-10 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] text-sm">
                 <SelectValue placeholder="Select location" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent style={{ zIndex: 10000 }}>
                 <SelectItem value="Australia">🇦🇺 Australia</SelectItem>
                 <SelectItem value="United States">🇺🇸 United States</SelectItem>
                 <SelectItem value="United Kingdom">🇬🇧 United Kingdom</SelectItem>
@@ -3269,6 +3221,7 @@ Best regards,
   if (!isOpen) return null
 
   const modalContent = (
+    <>
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" style={{zIndex: 9999}}>
       <div className="bg-white/90 backdrop-blur-xl border border-gray-100/20 rounded-3xl w-full max-w-7xl h-[85vh] max-h-[720px] overflow-hidden flex shadow-2xl relative">
         {/* Close button */}
@@ -3408,28 +3361,29 @@ Best regards,
           </div>
         </div>
       </div>
-
-      {/* Message Preview Modal */}
-      <Dialog open={showMessageModal} onOpenChange={setShowMessageModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-gray-900">
-              {selectedMessage.title}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="mt-4">
-            <div className="bg-gray-50 rounded-lg p-4 border">
-              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono">
-                {selectedMessage.content}
-              </pre>
-            </div>
-            <div className="mt-4 text-xs text-gray-500">
-              <strong>Note:</strong> Variables like {"{{firstName}}"}, {"{{companyName}}"}, and {"{{painPoint}}"} will be automatically replaced with actual values when the campaign runs.
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
+
+    {/* Message Preview Modal - now outside the main modal to avoid z-index issues */}
+    <Dialog open={showMessageModal} onOpenChange={setShowMessageModal}>
+      <DialogContent className="max-w-2xl" style={{ zIndex: 10000 }}>
+        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold text-gray-900">
+            {selectedMessage.title}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="mt-4">
+          <div className="bg-gray-50 rounded-lg p-4 border">
+            <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono">
+              {selectedMessage.content}
+            </pre>
+          </div>
+          <div className="mt-4 text-xs text-gray-500">
+            <strong>Note:</strong> Variables like {"{{firstName}}"}, {"{{companyName}}"}, and {"{{painPoint}}"} will be automatically replaced with actual values when the campaign runs.
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 
   return createPortal(modalContent, document.body)
