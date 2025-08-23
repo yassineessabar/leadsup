@@ -12,10 +12,12 @@ import { INDUSTRY_OPTIONS } from '@/lib/industry-options'
 
 interface TargetTabProps {
   campaignId: string | number
+  onContactsImported?: () => Promise<any>
 }
 
 export function TargetTab({
-  campaignId
+  campaignId,
+  onContactsImported
 }: TargetTabProps) {
   // CSV Upload state
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
@@ -477,24 +479,136 @@ export function TargetTab({
     setIsUploading(true)
     
     try {
-      const formData = new FormData()
-      formData.append('csvFile', uploadedFile)
+      // Get campaign name for tagging
+      const campaignResponse = await fetch(`/api/campaigns/${campaignId}/save`, {
+        method: 'GET',
+        credentials: 'include'
+      })
+      
+      if (!campaignResponse.ok) {
+        throw new Error(`Failed to fetch campaign data: ${campaignResponse.status}`)
+      }
+      
+      const campaignResult = await campaignResponse.json()
+      const campaignName = campaignResult.data?.campaign?.name || 'Unknown Campaign'
+      
+      const text = await uploadedFile.text()
+      const lines = text.split('\n').filter(line => line.trim())
+      
+      if (lines.length < 2) {
+        toast({
+          title: "Invalid CSV",
+          description: "CSV file must have at least a header and one data row",
+          variant: "destructive"
+        })
+        return
+      }
 
-      const response = await fetch(`/api/campaigns/${campaignId}/contacts/upload`, {
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''))
+      const contacts = []
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''))
+        
+        if (values.length !== headers.length) continue
+
+        const contact: any = {}
+        
+        headers.forEach((header, index) => {
+          const value = values[index]
+          if (!value) return
+
+          switch (header) {
+            case 'first_name':
+            case 'firstname':
+            case 'first name':
+              contact.first_name = value
+              break
+            case 'last_name':
+            case 'lastname':
+            case 'last name':
+              contact.last_name = value
+              break
+            case 'email':
+              contact.email = value
+              break
+            case 'title':
+            case 'job_title':
+            case 'position':
+              contact.title = value
+              break
+            case 'company':
+            case 'company_name':
+              contact.company = value
+              break
+            case 'industry':
+              contact.industry = value
+              break
+            case 'location':
+            case 'city':
+              contact.location = value
+              break
+            case 'linkedin':
+            case 'linkedin_url':
+              contact.linkedin = value
+              break
+            case 'website':
+              contact.website = value
+              break
+          }
+        })
+
+        if (contact.email || (contact.first_name && contact.last_name)) {
+          contact.campaign_id = campaignId
+          contact.tags = campaignName
+          contacts.push(contact)
+        }
+      }
+
+      if (contacts.length === 0) {
+        toast({
+          title: "No Valid Contacts",
+          description: "No valid contacts found in the CSV file",
+          variant: "destructive"
+        })
+        return
+      }
+
+
+      // Import contacts via API
+      const response = await fetch('/api/contacts/bulk-import', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ contacts })
       })
 
-      const result = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        console.error('❌ Failed to parse response as JSON:', jsonError)
+        throw new Error(`Server returned invalid response (status: ${response.status})`)
+      }
 
-      if (response.ok && result.success) {
+      if (response.ok && data.success) {
         setUploadSuccess(true)
         setUploadStats({
-          imported: result.importedCount,
-          duplicates: result.duplicateCount,
-          total: result.totalProcessed
+          imported: data.imported || contacts.length,
+          duplicates: data.duplicates || 0,
+          total: data.total || contacts.length
         })
-        toast.success(`Successfully imported ${result.importedCount} contacts!`)
+        toast({
+          title: "Import Successful",
+          description: `${data.imported || contacts.length} contacts imported successfully${data.scheduled > 0 ? `, ${data.scheduled} sequences scheduled` : ''}`
+        })
+        
+        // Refresh campaign validation after a short delay to ensure data is persisted
+        if (onContactsImported) {
+          setTimeout(async () => {
+            await onContactsImported()
+          }, 500)
+        }
         
         // Reset file input
         const fileInput = document.getElementById('csv-upload') as HTMLInputElement
@@ -503,11 +617,15 @@ export function TargetTab({
         }
         setUploadedFile(null)
       } else {
-        throw new Error(result.error || 'Upload failed')
+        throw new Error(data.error || 'Import failed')
       }
     } catch (error) {
-      console.error('CSV upload error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to upload CSV file')
+      console.error('Error importing CSV:', error)
+      toast({
+        title: "Import Failed",
+        description: error instanceof Error ? error.message : "Failed to import CSV file",
+        variant: "destructive"
+      })
     } finally {
       setIsUploading(false)
     }

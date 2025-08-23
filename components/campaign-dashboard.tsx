@@ -115,11 +115,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     
     try {
       // Check if campaign has contacts or auto-scraping is active
-      const contactsResponse = await fetch(`/api/campaigns/${campaign.id}/leads?limit=1`, {
+      const contactsResponse = await fetch(`/api/contacts?campaign_id=${campaign.id}&limit=1`, {
         credentials: 'include'
       })
       const contactsResult = await contactsResponse.json()
-      const hasContactsImported = contactsResult.success && contactsResult.data?.total > 0
+      const hasContactsImported = contactsResult.contacts && contactsResult.contacts.length > 0
       
       // Check if auto-scraping is configured and active
       const campaignResponse = await fetch(`/api/campaigns/${campaign.id}/save`, {
@@ -3086,6 +3086,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         return (
           <TargetTab
             campaignId={campaign?.id || 0}
+            onContactsImported={validateCampaignRequirements}
           />
         );
 
