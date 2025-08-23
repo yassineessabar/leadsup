@@ -265,22 +265,11 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
            'Add Domain'}
         </DialogTitle>
         <div className="relative p-6">
-          {/* Close button */}
-          <button
-            onClick={handleClose}
-            className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
           {/* Content */}
           {showManualSetup ? (
             <div className="space-y-6">
               {/* Header */}
               <div className="text-center space-y-3">
-                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto">
-                  <span className="text-xl">⚙️</span>
-                </div>
                 <h2 className="text-2xl font-light text-gray-900">Manual Setup</h2>
                 <p className="text-gray-500">
                   We'll guide you through setting up your domain manually
@@ -493,41 +482,54 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
               </div>
             </div>
           ) : isAnalyzing ? (
-            <div className="space-y-6">
-              {/* Header */}
-              <div className="text-center space-y-3">
-                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto">
-                  <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="space-y-8">
+              {/* Header with better spinner */}
+              <div className="text-center space-y-4">
+                <div className="relative mx-auto w-16 h-16">
+                  <div className="absolute inset-0 rounded-full border-4 border-blue-100"></div>
+                  <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-600 animate-spin"></div>
+                  <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-blue-400 animate-spin animate-reverse"></div>
                 </div>
-                <h2 className="text-2xl font-light text-gray-900">Analyzing Domain</h2>
-                <p className="text-gray-500">
-                  Checking your domain configuration
-                </p>
+                <div>
+                  <h2 className="text-2xl font-light text-gray-900 mb-2">Analyzing Domain</h2>
+                  <p className="text-gray-500">
+                    Checking your domain configuration
+                  </p>
+                </div>
               </div>
 
-              {/* Progress steps */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                    <Check className="w-3 h-3 text-white" />
+              {/* Enhanced progress steps */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <div className="space-y-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">Domain Validation</div>
+                      <div className="text-sm text-gray-500">Verified {domain}</div>
+                    </div>
                   </div>
-                  <span className="text-gray-900">Analyzed {domain}</span>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-gray-400 flex items-center justify-center animate-pulse flex-shrink-0">
-                    <div className="w-2 h-2 rounded-full bg-white animate-ping"></div>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                      <div className="w-3 h-3 rounded-full bg-white animate-pulse"></div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">Provider Detection</div>
+                      <div className="text-sm text-gray-500">Checking automated setup support...</div>
+                    </div>
                   </div>
-                  <span className="text-gray-900">
-                    Checking automated setup support...
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
-                    <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-500">Setup Preparation</div>
+                      <div className="text-sm text-gray-400">Preparing your configuration</div>
+                    </div>
                   </div>
-                  <span className="text-gray-500">Preparing your setup</span>
                 </div>
               </div>
             </div>
