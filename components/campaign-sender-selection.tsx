@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { fetchHealthScores, getHealthScoreColor, type HealthScoreResult } from "@/lib/health-score"
 import { SenderManagement } from "./sender-management"
@@ -103,6 +104,10 @@ export default function CampaignSenderSelection({
   const [verifying, setVerifying] = useState<string | null>(null)
   const [verificationResults, setVerificationResults] = useState<any>(null)
   const [showVerificationResults, setShowVerificationResults] = useState(false)
+  
+  // Delete confirmation dialog state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [domainToDelete, setDomainToDelete] = useState<DomainWithSenders | null>(null)
 
   // Fetch DNS records when domain instructions should be shown
   useEffect(() => {
@@ -864,25 +869,20 @@ export default function CampaignSenderSelection({
     }
   }
 
-  // Handle domain deletion
-  const handleDeleteDomain = async (domain: DomainWithSenders) => {
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete the domain "${domain.domain}"?\n\n` +
-      `This will permanently remove:\n` +
-      `• The domain and all its DNS settings\n` +
-      `• ${domain.senders.length} sender account(s)\n` +
-      `• All email history for this domain\n\n` +
-      `This action cannot be undone.`
-    )
+  // Handle domain deletion - show dialog instead of browser popup
+  const handleDeleteDomain = (domain: DomainWithSenders) => {
+    setDomainToDelete(domain)
+    setShowDeleteDialog(true)
+  }
 
-    if (!confirmDelete) {
-      return
-    }
+  // Confirm domain deletion
+  const confirmDeleteDomain = async () => {
+    if (!domainToDelete) return
 
     try {
-      console.log(`🗑️ Deleting domain: ${domain.domain}`)
+      console.log(`🗑️ Deleting domain: ${domainToDelete.domain}`)
       
-      const response = await fetch(`/api/domains?id=${domain.id}`, {
+      const response = await fetch(`/api/domains?id=${domainToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -892,14 +892,14 @@ export default function CampaignSenderSelection({
       const data = await response.json()
 
       if (response.ok && data.success) {
-        console.log(`✅ Domain ${domain.domain} deleted successfully`)
-        toast.success(`Domain ${domain.domain} deleted successfully`)
+        console.log(`✅ Domain ${domainToDelete.domain} deleted successfully`)
+        toast.success(`Domain ${domainToDelete.domain} deleted successfully`)
         
         // Remove the domain from local state
-        setDomainsWithSenders(prev => prev.filter(d => d.id !== domain.id))
+        setDomainsWithSenders(prev => prev.filter(d => d.id !== domainToDelete.id))
         
         // Remove any selected senders from this domain
-        const domainSenderIds = domain.senders.map(sender => sender.id)
+        const domainSenderIds = domainToDelete.senders.map(sender => sender.id)
         const newSelectedSenders = new Set(selectedSenders)
         domainSenderIds.forEach(id => newSelectedSenders.delete(id))
         setSelectedSenders(newSelectedSenders)
@@ -917,6 +917,9 @@ export default function CampaignSenderSelection({
       console.error('Error deleting domain:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       toast.error(`Failed to delete domain: ${errorMessage}`)
+    } finally {
+      setShowDeleteDialog(false)
+      setDomainToDelete(null)
     }
   }
 
@@ -970,28 +973,43 @@ export default function CampaignSenderSelection({
     if (showDomainInstructions && pendingDomainData) {
       console.log('✅ Showing domain setup instructions for:', pendingDomainData.domain)
       return (
-        <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100/50">
-              {/* Header */}
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Settings className="h-8 w-8 text-blue-600" />
-                </div>
-                <h3 className="text-2xl font-semibold text-gray-900 mb-2">
-                  Complete Domain Setup: {pendingDomainData.domain}
-                </h3>
-                <p className="text-gray-600">
-                  Add these DNS records to verify your domain and start sending emails
+        <div className="min-h-screen bg-[rgb(243,243,241)]">
+          <div className="max-w-7xl mx-auto p-6 md:p-8">
+            {/* Header - Exact same as domains page */}
+            <div className="mb-8">
+              <div className="mb-8">
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Setup {pendingDomainData.domain}</h1>
+                <p className="text-gray-500 font-light">
+                  Follow these steps to connect your domain
                 </p>
               </div>
 
-              {/* DNS Records Instructions - Exact same format as domains page */}
+              {/* Quick Steps Guide - Exact same as domains page */}
+              <div className="bg-gray-50 rounded-xl p-6 mb-8">
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="text-gray-600 font-medium text-sm">?</span>
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900 mb-3">Quick Steps</h3>
+                    <ol className="space-y-2 text-gray-700 text-sm">
+                      <li><span className="font-medium">1.</span> Go to your domain provider (GoDaddy, Namecheap, etc.)</li>
+                      <li><span className="font-medium">2.</span> Look for "DNS Settings" or "Domain Management"</li>
+                      <li><span className="font-medium">3.</span> Copy and paste each setting below</li>
+                      <li><span className="font-medium">4.</span> Save and come back to verify</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+              {/* DNS Settings - Exact same format as domains page */}
               <div className="space-y-6">
                 {loadingDnsRecords ? (
-                  <div className="text-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
-                    <p className="text-gray-600">Loading DNS records...</p>
+                  <div className="bg-white rounded-xl border p-8 mb-8">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                      <span className="ml-3 text-gray-600">Loading your settings...</span>
+                    </div>
                   </div>
                 ) : dnsRecords.length > 0 ? (
                   <>
@@ -1129,62 +1147,74 @@ export default function CampaignSenderSelection({
                       </div>
                     )}
 
-                    {/* Confirmation and Verification */}
-                    <div className="bg-gray-50 rounded-xl p-6">
-                      <div className="flex items-start gap-3 mb-6">
-                        <Checkbox 
-                          id="dns-added" 
-                          checked={dnsRecordsAdded} 
-                          onCheckedChange={(checked) => setDnsRecordsAdded(checked as boolean)}
-                          className="mt-1"
-                        />
-                        <label htmlFor="dns-added" className="text-gray-700 font-medium leading-relaxed">
-                          I've added all the settings above to my domain provider
-                        </label>
-                      </div>
+                  </>
+                ) : (
+                  <div className="bg-white rounded-xl border p-8 text-center mb-8">
+                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <AlertCircle className="h-6 w-6 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500">No settings available. Please try refreshing.</p>
+                  </div>
+                )}
 
-                      <div className="text-center">
-                        <Button 
-                          className="text-white px-8 py-3 rounded-lg font-medium transition-colors text-base disabled:opacity-50 disabled:bg-gray-300"
-                          style={{ backgroundColor: !dnsRecordsAdded || verifying !== null ? undefined : 'rgb(87, 140, 255)' }}
-                          onMouseEnter={(e) => {
-                            if (!(!dnsRecordsAdded || verifying !== null)) {
-                              e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!(!dnsRecordsAdded || verifying !== null)) {
-                              e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
-                            }
-                          }}
-                          disabled={!dnsRecordsAdded || verifying !== null}
-                          onClick={() => {
-                            if (pendingDomainData?.id) {
-                              handleVerifyDomain(pendingDomainData.id)
-                            }
-                          }}
-                        >
-                          {verifying ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Checking connection...
-                            </>
-                          ) : (
-                            'Check My Domain'
-                          )}
-                        </Button>
-                      </div>
-                      
-                      <div className="text-center mt-4">
-                        <p className="text-sm text-gray-500">
-                          Changes can take up to 24 hours to take effect
-                        </p>
-                      </div>
+                {/* Verification Actions - Exact same as domains page */}
+                <div className="bg-gray-50 rounded-xl p-6 mb-8">
+                  <div className="space-y-6">
+                    <div className="flex items-start gap-3">
+                      <Checkbox 
+                        id="dns-added" 
+                        checked={dnsRecordsAdded} 
+                        onCheckedChange={(checked) => setDnsRecordsAdded(checked as boolean)}
+                        className="mt-1"
+                      />
+                      <label htmlFor="dns-added" className="text-gray-700 font-medium leading-relaxed">
+                        I've added all the settings above to my domain provider
+                      </label>
                     </div>
 
-                    {/* Verification Results - Exact same as domains page */}
-                    {showVerificationResults && verificationResults && (
-                      <div className="mt-8">
+                    <div className="text-center">
+                      <Button 
+                        className="text-white px-8 py-3 rounded-lg font-medium transition-colors text-base disabled:opacity-50 disabled:bg-gray-300"
+                        style={{ backgroundColor: !dnsRecordsAdded || verifying !== null ? undefined : 'rgb(87, 140, 255)' }}
+                        onMouseEnter={(e) => {
+                          if (!(!dnsRecordsAdded || verifying !== null)) {
+                            e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!(!dnsRecordsAdded || verifying !== null)) {
+                            e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                          }
+                        }}
+                        disabled={!dnsRecordsAdded || verifying !== null}
+                        onClick={() => {
+                          if (pendingDomainData?.id) {
+                            handleVerifyDomain(pendingDomainData.id)
+                          }
+                        }}
+                      >
+                        {verifying ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Checking connection...
+                          </>
+                        ) : (
+                          'Check My Domain'
+                        )}
+                      </Button>
+                    </div>
+                    
+                    <div className="text-center">
+                      <p className="text-sm text-gray-500">
+                        Changes can take up to 24 hours to take effect
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Verification Results - Exact same as domains page */}
+                {showVerificationResults && verificationResults && (
+                  <div>
                         <div className="bg-white rounded-xl border p-6">
                           <div className="flex items-center justify-between mb-6">
                             <h3 className="text-lg font-medium text-gray-900">Connection Status</h3>
@@ -1318,27 +1348,21 @@ export default function CampaignSenderSelection({
                       </div>
                     )}
 
-                    {/* Back button - only show when not showing verification results */}
-                    {!showVerificationResults && (
-                      <div className="text-center">
-                        <Button
-                          onClick={() => {
-                            console.log('🔄 Going back to domain setup...')
-                            if (onShowDomainInstructions) {
-                              onShowDomainInstructions(false)
-                            }
-                          }}
-                          variant="outline"
-                          className="px-6 py-3"
-                        >
-                          ← Back to Setup
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-gray-600">No DNS records available</p>
+                {/* Back button - only show when not showing verification results */}
+                {!showVerificationResults && (
+                  <div className="text-center">
+                    <Button
+                      onClick={() => {
+                        console.log('🔄 Going back to domain setup...')
+                        if (onShowDomainInstructions) {
+                          onShowDomainInstructions(false)
+                        }
+                      }}
+                      variant="outline"
+                      className="px-6 py-3"
+                    >
+                      ← Back to Setup
+                    </Button>
                   </div>
                 )}
               </div>
@@ -1767,6 +1791,48 @@ export default function CampaignSenderSelection({
             </div>
           </div>
         )}
+
+        {/* Delete Domain Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-medium text-gray-900">Delete Domain</DialogTitle>
+              <DialogDescription className="text-gray-500 pt-2">
+                Are you sure you want to delete "{domainToDelete?.domain}"?
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4">
+              <div className="bg-red-50 rounded-lg p-4 mb-4">
+                <h4 className="font-medium text-red-900 mb-2">This will permanently remove:</h4>
+                <ul className="text-sm text-red-800 space-y-1">
+                  <li>• The domain and all its DNS settings</li>
+                  <li>• {domainToDelete?.senders.length || 0} sender account(s)</li>
+                  <li>• All email history for this domain</li>
+                </ul>
+              </div>
+              <p className="text-sm text-gray-600 font-medium">
+                This action cannot be undone.
+              </p>
+            </div>
+
+            <DialogFooter className="gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteDialog(false)}
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDeleteDomain}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete Domain
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Modal is now managed by parent component */}
       </div>
