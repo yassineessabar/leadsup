@@ -1,6 +1,6 @@
 // Target tab content component
 import React, { useState, KeyboardEvent, useEffect } from 'react'
-import { Upload, Check, Search, X, Plus, Bot, Zap, Pause, Play } from 'lucide-react'
+import { Upload, Check, Search, X, Plus, Bot, Zap, Pause, Play, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -26,11 +26,13 @@ export function TargetTab({
     total: number
   } | null>(null)
 
-  // Scraping state (UI only - non-functional)
-  const [scrappingIndustry, setScrappingIndustry] = useState("")
+  // Scraping state - now using ICP data
+  const [icpIndustries, setICPIndustries] = useState<string[]>([])
+  const [icpLocations, setICPLocations] = useState<string[]>([])
   const [scrappingKeywords, setScrappingKeywords] = useState<string[]>([])
   const [keywordInput, setKeywordInput] = useState("")
-  const [scrappingLocation, setScrappingLocation] = useState("")
+  const [newICPIndustry, setNewICPIndustry] = useState("")
+  const [newICPLocation, setNewICPLocation] = useState("")
   const [scrappingDailyLimit, setScrappingDailyLimit] = useState(100)
   const [scrapingStatus, setScrapingStatus] = useState<'idle' | 'running' | 'completed'>('idle')
   const [isStartingScraping, setIsStartingScraping] = useState(false)
@@ -38,30 +40,97 @@ export function TargetTab({
   const [showScrapingConfirmation, setShowScrapingConfirmation] = useState(false)
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false)
 
-  // Fetch saved scraping configuration
+  // Autocomplete state for industries
+  const [showIndustryDropdown, setShowIndustryDropdown] = useState(false)
+  const [filteredIndustries, setFilteredIndustries] = useState<string[]>([])
+  
+  // Autocomplete state for locations  
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false)
+  const [filteredLocations, setFilteredLocations] = useState<string[]>([])
+  
+  // Validation error states
+  const [showIndustryError, setShowIndustryError] = useState(false)
+  const [showLocationError, setShowLocationError] = useState(false)
+
+  // Industry and Location options (same as in add-campaign-popup)
+  const INDUSTRY_OPTIONS = [
+    "Accounting", "Advertising & Marketing", "Aerospace & Defense", "Agriculture", "Airlines", "Alternative Energy",
+    "Automotive", "Banking", "Biotechnology", "Broadcasting", "Business Services", "Chemicals", "Construction",
+    "Consumer Products", "Consulting", "Cosmetics", "E-commerce", "Education", "Electronics", "Energy",
+    "Entertainment", "Environmental", "Fashion", "Financial Services", "Food & Beverage", "Gaming",
+    "Government", "Healthcare", "Hospitality", "Human Resources", "Information Technology", "Insurance",
+    "Internet", "Investment Banking", "Legal", "Logistics", "Manufacturing", "Media", "Mining",
+    "Non-profit", "Oil & Gas", "Pharmaceuticals", "Real Estate", "Recruiting", "Retail", "Security",
+    "Software", "Sports", "Telecommunications", "Transportation", "Travel", "Utilities", "Venture Capital",
+    // Technology subcategories
+    "Artificial Intelligence", "Machine Learning", "Data Analytics", "Cloud Computing", "Cybersecurity",
+    "Mobile Development", "Web Development", "SaaS", "Enterprise Software", "Developer Tools", "API",
+    "Blockchain", "Cryptocurrency", "Fintech", "Healthtech", "Edtech", "Proptech", "Insurtech",
+    // Healthcare subcategories
+    "Medical Devices", "Digital Health", "Telemedicine", "Health Insurance", "Pharmaceuticals",
+    "Clinical Research", "Medical Equipment", "Dental", "Veterinary", "Mental Health",
+    // Financial Services subcategories
+    "Investment Management", "Private Equity", "Hedge Funds", "Asset Management", "Corporate Banking",
+    "Retail Banking", "Credit Cards", "Payments", "Lending", "Wealth Management", "Trading",
+    // Manufacturing subcategories
+    "Industrial Automation", "3D Printing", "Robotics", "Supply Chain", "Quality Assurance",
+    "Lean Manufacturing", "Industrial Design", "Materials Science", "Process Engineering",
+    // Retail & E-commerce subcategories
+    "Fashion Retail", "Electronics Retail", "Home & Garden", "Sporting Goods", "Luxury Goods",
+    "Marketplace", "Subscription Commerce", "Direct-to-Consumer", "B2B Commerce", "Wholesale",
+    // Professional Services
+    "Management Consulting", "Strategy Consulting", "Technology Consulting", "HR Consulting",
+    "Marketing Consulting", "Financial Consulting", "Legal Services", "Accounting Services",
+    "Public Relations", "Market Research", "Executive Search", "Training & Development",
+    // Media & Communications
+    "Digital Marketing", "Content Marketing", "Social Media", "SEO/SEM", "Video Production",
+    "Graphic Design", "Publishing", "Journalism", "Podcasting", "Influencer Marketing",
+    // Construction & Real Estate
+    "Commercial Real Estate", "Residential Real Estate", "Property Management", "Architecture",
+    "Interior Design", "General Contracting", "Electrical", "Plumbing", "HVAC", "Roofing",
+    // Transportation & Logistics
+    "Shipping", "Warehousing", "Last-Mile Delivery", "Fleet Management", "Freight", "Aviation",
+    "Maritime", "Rail Transport", "Trucking", "Supply Chain Management", "Courier Services",
+    // Energy & Environment
+    "Solar Energy", "Wind Energy", "Energy Storage", "Oil Refining", "Natural Gas", "Coal",
+    "Nuclear Energy", "Environmental Consulting", "Waste Management", "Water Treatment",
+    "Carbon Management", "Renewable Energy", "Energy Efficiency", "Smart Grid",
+    // Food & Agriculture
+    "Food Processing", "Organic Foods", "Restaurant", "Catering", "Food Delivery", "Grocery",
+    "Farming", "Livestock", "Aquaculture", "Food Safety", "Nutrition", "Beverages", "Wine",
+    // Entertainment & Sports
+    "Music", "Film & TV", "Gaming", "Sports Teams", "Sports Equipment", "Fitness", "Wellness",
+    "Event Management", "Theme Parks", "Casinos", "Streaming", "Live Events", "Talent Management"
+  ]
+
+  const LOCATION_OPTIONS = [
+    "United States", "Canada", "United Kingdom", "Germany", "France", "Italy", "Spain", "Netherlands",
+    "Belgium", "Switzerland", "Austria", "Sweden", "Norway", "Denmark", "Finland", "Poland",
+    "Australia", "New Zealand", "Japan", "South Korea", "Singapore", "Hong Kong", "India", "China",
+    "Brazil", "Mexico", "Argentina", "Chile", "Colombia", "Peru", "South Africa", "Nigeria",
+    "Israel", "United Arab Emirates", "Saudi Arabia", "Turkey", "Russia", "Ukraine", "Czech Republic",
+    "Europe", "North America", "Asia Pacific", "Latin America", "Middle East", "Africa", "Global"
+  ]
+
+  // Fetch saved scraping configuration and ICP data
   const fetchScrapingConfig = async () => {
     try {
       setIsLoadingConfig(true)
       
-      const response = await fetch(`/api/campaigns/${campaignId}/save`, {
+      // Fetch campaign data
+      const campaignResponse = await fetch(`/api/campaigns/${campaignId}/save`, {
         method: 'GET',
         credentials: 'include'
       })
 
-      const result = await response.json()
+      const campaignResult = await campaignResponse.json()
 
-      if (response.ok && result.success && result.data?.campaign) {
-        const campaign = result.data.campaign
+      if (campaignResponse.ok && campaignResult.success && campaignResult.data?.campaign) {
+        const campaign = campaignResult.data.campaign
         
-        // Populate form fields with saved data
-        if (campaign.industry) {
-          setScrappingIndustry(campaign.industry)
-        }
+        // Populate keywords from campaign (prospect roles)
         if (campaign.keywords && Array.isArray(campaign.keywords)) {
           setScrappingKeywords(campaign.keywords)
-        }
-        if (campaign.location) {
-          setScrappingLocation(campaign.location)
         }
         
         // Set scraping status based on database value
@@ -71,18 +140,36 @@ export function TargetTab({
           setScrapingStatus('idle')
         }
         
-        console.log('✅ Loaded scraping configuration:', {
-          industry: campaign.industry,
-          keywords: campaign.keywords,
-          location: campaign.location,
-          scrapping_status: campaign.scrapping_status
+        console.log('✅ Loaded campaign keywords:', campaign.keywords)
+      }
+
+      // Load ICP data from AI assets (now included in campaign response)
+      if (campaignResult.data?.aiAssets?.icps) {
+        const icps = campaignResult.data.aiAssets.icps
+        
+        // Extract industries and locations from all ICPs
+        const allIndustries: string[] = []
+        const allLocations: string[] = []
+        
+        icps.forEach((icp: any) => {
+          if (icp.industries && Array.isArray(icp.industries)) {
+            allIndustries.push(...icp.industries)
+          }
+          if (icp.locations && Array.isArray(icp.locations)) {
+            allLocations.push(...icp.locations)
+          }
         })
         
-        // Debug: Log if keywords are being populated from campaign creation
-        if (campaign.keywords && campaign.keywords.length > 0) {
-          console.log('🎯 Auto-populating Auto Scraping keywords from campaign creation:', campaign.keywords)
-        }
+        // Remove duplicates and set state
+        setICPIndustries([...new Set(allIndustries)])
+        setICPLocations([...new Set(allLocations)])
+        
+        console.log('✅ Loaded ICP data:', {
+          industries: [...new Set(allIndustries)],
+          locations: [...new Set(allLocations)]
+        })
       }
+      
     } catch (error) {
       console.error('Error fetching scraping configuration:', error)
       // Don't show error toast for this, just fail silently
@@ -141,7 +228,7 @@ export function TargetTab({
 
   // Show confirmation popup before saving
   const handleSaveScrapingClick = () => {
-    if (!scrappingIndustry || scrappingKeywords.length === 0 || !scrappingLocation) {
+    if (icpIndustries.length === 0 || scrappingKeywords.length === 0 || icpLocations.length === 0) {
       toast.error("Please fill in all required fields")
       return
     }
@@ -155,9 +242,9 @@ export function TargetTab({
     
     try {
       const scrapingData = {
-        industry: scrappingIndustry,
+        industries: icpIndustries, // Now using multiple industries from ICP
         keywords: scrappingKeywords,
-        location: scrappingLocation,
+        locations: icpLocations, // Now using multiple locations from ICP
         dailyLimit: scrappingDailyLimit,
         scrappingStatus: 'Active' // Set status to Active when starting scraping
       }
@@ -195,9 +282,9 @@ export function TargetTab({
   const handlePauseScraping = async () => {
     try {
       const scrapingData = {
-        industry: scrappingIndustry,
+        industries: icpIndustries, // Now using multiple industries from ICP
         keywords: scrappingKeywords,
-        location: scrappingLocation,
+        locations: icpLocations, // Now using multiple locations from ICP
         dailyLimit: scrappingDailyLimit,
         scrappingStatus: 'Inactive' // Set status to Inactive when pausing
       }
@@ -247,6 +334,114 @@ export function TargetTab({
 
   const removeKeyword = (keywordToRemove: string) => {
     setScrappingKeywords(scrappingKeywords.filter(keyword => keyword !== keywordToRemove))
+  }
+
+  // ICP Industry management functions
+  const addICPIndustry = () => {
+    const trimmedIndustry = newICPIndustry.trim()
+    
+    // Check if the industry exists in our predefined list (case-insensitive)
+    const isValidIndustry = INDUSTRY_OPTIONS.some(industry => 
+      industry.toLowerCase() === trimmedIndustry.toLowerCase()
+    )
+    
+    if (trimmedIndustry && isValidIndustry && !icpIndustries.includes(trimmedIndustry)) {
+      // Find the exact match from the list to maintain proper casing
+      const exactMatch = INDUSTRY_OPTIONS.find(industry => 
+        industry.toLowerCase() === trimmedIndustry.toLowerCase()
+      )
+      
+      setICPIndustries([...icpIndustries, exactMatch!])
+      setNewICPIndustry("")
+      setShowIndustryDropdown(false)
+    } else if (trimmedIndustry && !isValidIndustry) {
+      // Show error indicator for invalid industry
+      setShowIndustryError(true)
+      setTimeout(() => setShowIndustryError(false), 3000) // Hide after 3 seconds
+    }
+  }
+
+  const removeICPIndustry = (industryToRemove: string) => {
+    setICPIndustries(icpIndustries.filter(industry => industry !== industryToRemove))
+  }
+
+  // ICP Location management functions
+  const addICPLocation = () => {
+    const trimmedLocation = newICPLocation.trim()
+    
+    // Check if the location exists in our predefined list (case-insensitive)
+    const isValidLocation = LOCATION_OPTIONS.some(location => 
+      location.toLowerCase() === trimmedLocation.toLowerCase()
+    )
+    
+    if (trimmedLocation && isValidLocation && !icpLocations.includes(trimmedLocation)) {
+      // Find the exact match from the list to maintain proper casing
+      const exactMatch = LOCATION_OPTIONS.find(location => 
+        location.toLowerCase() === trimmedLocation.toLowerCase()
+      )
+      
+      setICPLocations([...icpLocations, exactMatch!])
+      setNewICPLocation("")
+      setShowLocationDropdown(false)
+    } else if (trimmedLocation && !isValidLocation) {
+      // Show error indicator for invalid location
+      setShowLocationError(true)
+      setTimeout(() => setShowLocationError(false), 3000) // Hide after 3 seconds
+    }
+  }
+
+  const removeICPLocation = (locationToRemove: string) => {
+    setICPLocations(icpLocations.filter(location => location !== locationToRemove))
+  }
+
+  // Autocomplete helper functions for industries
+  const handleIndustryInputChange = (value: string) => {
+    setNewICPIndustry(value)
+    
+    if (value.length > 0) {
+      const filtered = INDUSTRY_OPTIONS.filter(industry => 
+        industry.toLowerCase().includes(value.toLowerCase())
+      ).slice(0, 10) // Limit to 10 suggestions
+      setFilteredIndustries(filtered)
+      setShowIndustryDropdown(true)
+    } else {
+      setShowIndustryDropdown(false)
+      setFilteredIndustries([])
+    }
+  }
+
+  const selectIndustryFromDropdown = (industry: string) => {
+    if (!icpIndustries.includes(industry)) {
+      setICPIndustries([...icpIndustries, industry])
+    }
+    setNewICPIndustry("")
+    setShowIndustryDropdown(false)
+    setFilteredIndustries([])
+  }
+
+  // Autocomplete helper functions for locations
+  const handleLocationInputChange = (value: string) => {
+    setNewICPLocation(value)
+    
+    if (value.length > 0) {
+      const filtered = LOCATION_OPTIONS.filter(location => 
+        location.toLowerCase().includes(value.toLowerCase())
+      ).slice(0, 10) // Limit to 10 suggestions
+      setFilteredLocations(filtered)
+      setShowLocationDropdown(true)
+    } else {
+      setShowLocationDropdown(false)
+      setFilteredLocations([])
+    }
+  }
+
+  const selectLocationFromDropdown = (location: string) => {
+    if (!icpLocations.includes(location)) {
+      setICPLocations([...icpLocations, location])
+    }
+    setNewICPLocation("")
+    setShowLocationDropdown(false)
+    setFilteredLocations([])
   }
 
   const handleKeywordKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -494,13 +689,88 @@ export function TargetTab({
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-                      <Input
-                        placeholder="e.g., Technology, Marketing"
-                        value={scrappingIndustry}
-                        onChange={(e) => setScrappingIndustry(e.target.value)}
-                        disabled={isScrappingActive || isLoadingConfig}
-                      />
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className="block text-sm font-medium text-gray-700">Target Industries (from ICPs)</label>
+                        {showIndustryError && (
+                          <div className="relative group">
+                            <Info className="w-4 h-4 text-red-500 cursor-help" />
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-red-500 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                              Please select from dropdown options
+                              <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-red-500"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex gap-2 relative">
+                          <div className="flex-1 relative">
+                            <Input
+                              placeholder="Type to search industries..."
+                              value={newICPIndustry}
+                              onChange={(e) => handleIndustryInputChange(e.target.value)}
+                              onKeyPress={(e) => e.key === 'Enter' && addICPIndustry()}
+                              onFocus={() => {
+                                if (newICPIndustry.length > 0) {
+                                  setShowIndustryDropdown(true)
+                                }
+                              }}
+                              onBlur={() => {
+                                // Delay hiding to allow clicking on dropdown items
+                                setTimeout(() => setShowIndustryDropdown(false), 200)
+                              }}
+                              disabled={isScrappingActive || isLoadingConfig}
+                            />
+                            
+                            {/* Autocomplete dropdown */}
+                            {showIndustryDropdown && filteredIndustries.length > 0 && (
+                              <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
+                                {filteredIndustries.map((industry, index) => (
+                                  <button
+                                    key={index}
+                                    type="button"
+                                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault() // Prevent input blur
+                                      selectIndustryFromDropdown(industry)
+                                    }}
+                                  >
+                                    {industry}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={addICPIndustry}
+                            disabled={!newICPIndustry.trim() || isScrappingActive}
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-3"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        {icpIndustries.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {icpIndustries.map((industry, index) => (
+                              <Badge
+                                key={index}
+                                variant="secondary"
+                                className="bg-blue-100 text-blue-800 hover:bg-blue-200"
+                              >
+                                {industry}
+                                <button
+                                  onClick={() => removeICPIndustry(industry)}
+                                  disabled={isScrappingActive || isLoadingConfig}
+                                  className="ml-2 text-blue-600 hover:text-blue-800"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Keywords</label>
@@ -547,13 +817,88 @@ export function TargetTab({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                      <Input
-                        placeholder="e.g., San Francisco, CA"
-                        value={scrappingLocation}
-                        onChange={(e) => setScrappingLocation(e.target.value)}
-                        disabled={isScrappingActive || isLoadingConfig}
-                      />
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className="block text-sm font-medium text-gray-700">Target Locations (from ICPs)</label>
+                        {showLocationError && (
+                          <div className="relative group">
+                            <Info className="w-4 h-4 text-red-500 cursor-help" />
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-red-500 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                              Please select from dropdown options
+                              <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-red-500"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex gap-2 relative">
+                          <div className="flex-1 relative">
+                            <Input
+                              placeholder="Type to search locations..."
+                              value={newICPLocation}
+                              onChange={(e) => handleLocationInputChange(e.target.value)}
+                              onKeyPress={(e) => e.key === 'Enter' && addICPLocation()}
+                              onFocus={() => {
+                                if (newICPLocation.length > 0) {
+                                  setShowLocationDropdown(true)
+                                }
+                              }}
+                              onBlur={() => {
+                                // Delay hiding to allow clicking on dropdown items
+                                setTimeout(() => setShowLocationDropdown(false), 200)
+                              }}
+                              disabled={isScrappingActive || isLoadingConfig}
+                            />
+                            
+                            {/* Autocomplete dropdown */}
+                            {showLocationDropdown && filteredLocations.length > 0 && (
+                              <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
+                                {filteredLocations.map((location, index) => (
+                                  <button
+                                    key={index}
+                                    type="button"
+                                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault() // Prevent input blur
+                                      selectLocationFromDropdown(location)
+                                    }}
+                                  >
+                                    {location}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={addICPLocation}
+                            disabled={!newICPLocation.trim() || isScrappingActive}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white border-0 rounded-2xl px-3"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        {icpLocations.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {icpLocations.map((location, index) => (
+                              <Badge
+                                key={index}
+                                variant="secondary"
+                                className="bg-green-100 text-green-800 hover:bg-green-200"
+                              >
+                                {location}
+                                <button
+                                  onClick={() => removeICPLocation(location)}
+                                  disabled={isScrappingActive || isLoadingConfig}
+                                  className="ml-2 text-green-600 hover:text-green-800"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -615,7 +960,7 @@ export function TargetTab({
                     ) : scrapingStatus === 'completed' ? (
                       <Button
                         onClick={handleSaveScrapingClick}
-                        disabled={!scrappingIndustry || scrappingKeywords.length === 0 || !scrappingLocation}
+                        disabled={icpIndustries.length === 0 || scrappingKeywords.length === 0 || icpLocations.length === 0}
                         className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
                       >
                         <Play className="w-4 h-4 mr-2" />
@@ -624,9 +969,9 @@ export function TargetTab({
                     ) : (
                       <Button
                         onClick={handleSaveScrapingClick}
-                        disabled={!scrappingIndustry || scrappingKeywords.length === 0 || !scrappingLocation}
+                        disabled={icpIndustries.length === 0 || scrappingKeywords.length === 0 || icpLocations.length === 0}
                         className={`bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3 transition-all duration-200 ${
-                          scrappingIndustry && scrappingKeywords.length > 0 && scrappingLocation 
+                          icpIndustries.length > 0 && scrappingKeywords.length > 0 && icpLocations.length > 0 
                             ? 'animate-bounce hover:animate-none' 
                             : ''
                         }`}
@@ -660,7 +1005,7 @@ export function TargetTab({
               Start Scraping
             </DialogTitle>
             <DialogDescription className="text-gray-500 text-sm mt-2">
-              {scrappingIndustry} • {scrappingLocation} • {scrappingDailyLimit}/day
+              {icpIndustries.join(', ')} • {icpLocations.join(', ')} • {scrappingDailyLimit}/day
             </DialogDescription>
           </DialogHeader>
 

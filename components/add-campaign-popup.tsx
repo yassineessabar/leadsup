@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Check, ChevronRight, MessageSquare, X, Globe, Search, BarChart3, MapPin, Tag, FolderOpen, Send, Users, Brain, Target, Filter, ExternalLink, FileText, ChevronLeft, Edit, Save, XCircle, Eye } from 'lucide-react'
+import { Check, ChevronRight, MessageSquare, X, Globe, Search, BarChart3, MapPin, Tag, FolderOpen, Send, Users, Brain, Target, Filter, ExternalLink, FileText, ChevronLeft, Edit, Save, XCircle, Eye, Info } from 'lucide-react'
 
 interface AddCampaignPopupProps {
   isOpen: boolean
@@ -46,6 +46,66 @@ const samplePersonas = [
     description: "Responsible for planning, executing, and optimizing digital advertising campaigns. This includes identifying target audiences, selecting appropriate channels and platforms, negotiating ad placements, and monitoring campaign performance. They analyze data to improve ROI and ensure campaigns align with overall marketing objectives. They are also responsible for staying up-to-date with the latest trends and technologies in digital advertising.",
     equivalentTitles: "Digital Marketing Manager, Campaign Manager, Advertising Specialist"
   }
+]
+
+// Comprehensive industry list for autocomplete dropdown
+const INDUSTRY_OPTIONS = [
+  "Accounting", "Advertising & Marketing", "Aerospace & Defense", "Agriculture", "Airlines", "Alternative Energy",
+  "Automotive", "Banking", "Biotechnology", "Broadcasting", "Business Services", "Chemicals", "Construction",
+  "Consumer Products", "Consulting", "Cosmetics", "E-commerce", "Education", "Electronics", "Energy",
+  "Entertainment", "Environmental", "Fashion", "Financial Services", "Food & Beverage", "Gaming",
+  "Government", "Healthcare", "Hospitality", "Human Resources", "Information Technology", "Insurance",
+  "Internet", "Investment Banking", "Legal", "Logistics", "Manufacturing", "Media", "Mining",
+  "Non-profit", "Oil & Gas", "Pharmaceuticals", "Real Estate", "Recruiting", "Retail", "Security",
+  "Software", "Sports", "Telecommunications", "Transportation", "Travel", "Utilities", "Venture Capital",
+  // Technology subcategories
+  "Artificial Intelligence", "Machine Learning", "Data Analytics", "Cloud Computing", "Cybersecurity",
+  "Mobile Development", "Web Development", "SaaS", "Enterprise Software", "Developer Tools", "API",
+  "Blockchain", "Cryptocurrency", "Fintech", "Healthtech", "Edtech", "Proptech", "Insurtech",
+  // Healthcare subcategories
+  "Medical Devices", "Digital Health", "Telemedicine", "Health Insurance", "Pharmaceuticals",
+  "Clinical Research", "Medical Equipment", "Dental", "Veterinary", "Mental Health",
+  // Financial Services subcategories
+  "Investment Management", "Private Equity", "Hedge Funds", "Asset Management", "Corporate Banking",
+  "Retail Banking", "Credit Cards", "Payments", "Lending", "Wealth Management", "Trading",
+  // Manufacturing subcategories
+  "Industrial Automation", "3D Printing", "Robotics", "Supply Chain", "Quality Assurance",
+  "Lean Manufacturing", "Industrial Design", "Materials Science", "Process Engineering",
+  // Retail & E-commerce subcategories
+  "Fashion Retail", "Electronics Retail", "Home & Garden", "Sporting Goods", "Luxury Goods",
+  "Marketplace", "Subscription Commerce", "Direct-to-Consumer", "B2B Commerce", "Wholesale",
+  // Professional Services
+  "Management Consulting", "Strategy Consulting", "Technology Consulting", "HR Consulting",
+  "Marketing Consulting", "Financial Consulting", "Legal Services", "Accounting Services",
+  "Public Relations", "Market Research", "Executive Search", "Training & Development",
+  // Media & Communications
+  "Digital Marketing", "Content Marketing", "Social Media", "SEO/SEM", "Video Production",
+  "Graphic Design", "Publishing", "Journalism", "Podcasting", "Influencer Marketing",
+  // Construction & Real Estate
+  "Commercial Real Estate", "Residential Real Estate", "Property Management", "Architecture",
+  "Interior Design", "General Contracting", "Electrical", "Plumbing", "HVAC", "Roofing",
+  // Transportation & Logistics
+  "Shipping", "Warehousing", "Last-Mile Delivery", "Fleet Management", "Freight", "Aviation",
+  "Maritime", "Rail Transport", "Trucking", "Supply Chain Management", "Courier Services",
+  // Energy & Environment
+  "Solar Energy", "Wind Energy", "Energy Storage", "Oil Refining", "Natural Gas", "Coal",
+  "Nuclear Energy", "Environmental Consulting", "Waste Management", "Water Treatment",
+  "Carbon Management", "Renewable Energy", "Energy Efficiency", "Smart Grid",
+  // Food & Agriculture
+  "Food Processing", "Organic Foods", "Restaurant", "Catering", "Food Delivery", "Grocery",
+  "Farming", "Livestock", "Aquaculture", "Food Safety", "Nutrition", "Beverages", "Wine",
+  // Entertainment & Sports
+  "Music", "Film & TV", "Gaming", "Sports Teams", "Sports Equipment", "Fitness", "Wellness",
+  "Event Management", "Theme Parks", "Casinos", "Streaming", "Live Events", "Talent Management"
+]
+
+const LOCATION_OPTIONS = [
+  "United States", "Canada", "United Kingdom", "Germany", "France", "Italy", "Spain", "Netherlands",
+  "Belgium", "Switzerland", "Austria", "Sweden", "Norway", "Denmark", "Finland", "Poland",
+  "Australia", "New Zealand", "Japan", "South Korea", "Singapore", "Hong Kong", "India", "China",
+  "Brazil", "Mexico", "Argentina", "Chile", "Colombia", "Peru", "South Africa", "Nigeria",
+  "Israel", "United Arab Emirates", "Saudi Arabia", "Turkey", "Russia", "Ukraine", "Czech Republic",
+  "Europe", "North America", "Asia Pacific", "Latin America", "Middle East", "Africa", "Global"
 ]
 
 const samplePainPoints = [
@@ -538,6 +598,20 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   }
 
   const [newKeyword, setNewKeyword] = useState("")
+  const [newICPIndustry, setNewICPIndustry] = useState("")
+  const [newICPLocation, setNewICPLocation] = useState("")
+  
+  // Autocomplete state for industries
+  const [showIndustryDropdown, setShowIndustryDropdown] = useState(false)
+  const [filteredIndustries, setFilteredIndustries] = useState<string[]>([])
+  
+  // Autocomplete state for locations  
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false)
+  const [filteredLocations, setFilteredLocations] = useState<string[]>([])
+  
+  // Validation error states
+  const [showIndustryError, setShowIndustryError] = useState(false)
+  const [showLocationError, setShowLocationError] = useState(false)
 
   const addKeyword = () => {
     if (newKeyword.trim() && !formData.keywords.includes(newKeyword.trim())) {
@@ -566,6 +640,140 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     if (campaignId) {
       updateCampaignKeywords(newKeywords);
     }
+  }
+
+  const addICPIndustry = () => {
+    const trimmedIndustry = newICPIndustry.trim()
+    
+    // Check if the industry exists in our predefined list (case-insensitive)
+    const isValidIndustry = INDUSTRY_OPTIONS.some(industry => 
+      industry.toLowerCase() === trimmedIndustry.toLowerCase()
+    )
+    
+    if (trimmedIndustry && editedData.icp && isValidIndustry && (!editedData.icp.industries || !editedData.icp.industries.includes(trimmedIndustry))) {
+      // Find the exact match from the list to maintain proper casing
+      const exactMatch = INDUSTRY_OPTIONS.find(industry => 
+        industry.toLowerCase() === trimmedIndustry.toLowerCase()
+      )
+      
+      const newIndustries = [...(editedData.icp.industries || []), exactMatch!];
+      setEditedData(prev => ({ 
+        ...prev, 
+        icp: { ...prev.icp!, industries: newIndustries }
+      }))
+      setNewICPIndustry("")
+      setShowIndustryDropdown(false)
+    } else if (trimmedIndustry && !isValidIndustry) {
+      // Show error indicator for invalid industry
+      setShowIndustryError(true)
+      setTimeout(() => setShowIndustryError(false), 3000) // Hide after 3 seconds
+    }
+  }
+
+  const removeICPIndustry = (industryToRemove: string) => {
+    if (editedData.icp && editedData.icp.industries) {
+      const newIndustries = editedData.icp.industries.filter(industry => industry !== industryToRemove);
+      setEditedData(prev => ({ 
+        ...prev, 
+        icp: { ...prev.icp!, industries: newIndustries }
+      }))
+    }
+  }
+
+  const addICPLocation = () => {
+    const trimmedLocation = newICPLocation.trim()
+    
+    // Check if the location exists in our predefined list (case-insensitive)
+    const isValidLocation = LOCATION_OPTIONS.some(location => 
+      location.toLowerCase() === trimmedLocation.toLowerCase()
+    )
+    
+    if (trimmedLocation && editedData.icp && isValidLocation && (!editedData.icp.locations || !editedData.icp.locations.includes(trimmedLocation))) {
+      // Find the exact match from the list to maintain proper casing
+      const exactMatch = LOCATION_OPTIONS.find(location => 
+        location.toLowerCase() === trimmedLocation.toLowerCase()
+      )
+      
+      const newLocations = [...(editedData.icp.locations || []), exactMatch!];
+      setEditedData(prev => ({ 
+        ...prev, 
+        icp: { ...prev.icp!, locations: newLocations }
+      }))
+      setNewICPLocation("")
+      setShowLocationDropdown(false)
+    } else if (trimmedLocation && !isValidLocation) {
+      // Show error indicator for invalid location
+      setShowLocationError(true)
+      setTimeout(() => setShowLocationError(false), 3000) // Hide after 3 seconds
+    }
+  }
+
+  const removeICPLocation = (locationToRemove: string) => {
+    if (editedData.icp && editedData.icp.locations) {
+      const newLocations = editedData.icp.locations.filter(location => location !== locationToRemove);
+      setEditedData(prev => ({ 
+        ...prev, 
+        icp: { ...prev.icp!, locations: newLocations }
+      }))
+    }
+  }
+
+  // Autocomplete helper functions for industries
+  const handleIndustryInputChange = (value: string) => {
+    setNewICPIndustry(value)
+    
+    if (value.length > 0) {
+      const filtered = INDUSTRY_OPTIONS.filter(industry => 
+        industry.toLowerCase().includes(value.toLowerCase())
+      ).slice(0, 10) // Limit to 10 suggestions
+      setFilteredIndustries(filtered)
+      setShowIndustryDropdown(true)
+    } else {
+      setShowIndustryDropdown(false)
+      setFilteredIndustries([])
+    }
+  }
+
+  const selectIndustryFromDropdown = (industry: string) => {
+    if (editedData.icp && (!editedData.icp.industries || !editedData.icp.industries.includes(industry))) {
+      const newIndustries = [...(editedData.icp.industries || []), industry];
+      setEditedData(prev => ({ 
+        ...prev, 
+        icp: { ...prev.icp!, industries: newIndustries }
+      }))
+    }
+    setNewICPIndustry("")
+    setShowIndustryDropdown(false)
+    setFilteredIndustries([])
+  }
+
+  // Autocomplete helper functions for locations
+  const handleLocationInputChange = (value: string) => {
+    setNewICPLocation(value)
+    
+    if (value.length > 0) {
+      const filtered = LOCATION_OPTIONS.filter(location => 
+        location.toLowerCase().includes(value.toLowerCase())
+      ).slice(0, 10) // Limit to 10 suggestions
+      setFilteredLocations(filtered)
+      setShowLocationDropdown(true)
+    } else {
+      setShowLocationDropdown(false)
+      setFilteredLocations([])
+    }
+  }
+
+  const selectLocationFromDropdown = (location: string) => {
+    if (editedData.icp && (!editedData.icp.locations || !editedData.icp.locations.includes(location))) {
+      const newLocations = [...(editedData.icp.locations || []), location];
+      setEditedData(prev => ({ 
+        ...prev, 
+        icp: { ...prev.icp!, locations: newLocations }
+      }))
+    }
+    setNewICPLocation("")
+    setShowLocationDropdown(false)
+    setFilteredLocations([])
   }
 
   const handleContinue = async () => {
@@ -1086,8 +1294,43 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
                     <div className="flex-1 space-y-2">
                       <h4 className="text-sm font-medium text-gray-900">{icp.title}</h4>
                       <p className="text-xs text-gray-600 leading-relaxed">{icp.description.substring(0, 100)}...</p>
+                      
+                      {/* Display Industries */}
+                      {icp.industries && icp.industries.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-gray-700">Target Industries:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {icp.industries.map((industry: string, index: number) => (
+                              <span 
+                                key={index}
+                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"
+                              >
+                                {industry}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Display Locations */}
+                      {icp.locations && icp.locations.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-gray-700">Target Locations:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {icp.locations.map((location: string, index: number) => (
+                              <span 
+                                key={index}
+                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200"
+                              >
+                                {location}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
                       {icp.companySize && (
-                        <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                        <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-700">
                           {icp.companySize} employees
                         </div>
                       )}
@@ -1401,6 +1644,178 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
                     <SelectItem value="1000+">1000+ employees</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Prospect Industries Field */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-base font-semibold text-gray-800">Prospect Industries</Label>
+                  {showIndustryError && (
+                    <div className="relative group">
+                      <Info className="w-4 h-4 text-red-500 cursor-help" />
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-red-500 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                        Please select from dropdown options
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-red-500"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600">Industries of the prospects you want to target (can be different from your company industry)</p>
+                <div className="flex space-x-2 relative">
+                  <div className="flex-1 relative">
+                    <Input
+                      value={newICPIndustry}
+                      onChange={(e) => handleIndustryInputChange(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addICPIndustry()}
+                      onFocus={() => {
+                        if (newICPIndustry.length > 0) {
+                          setShowIndustryDropdown(true)
+                        }
+                      }}
+                      onBlur={() => {
+                        // Delay hiding to allow clicking on dropdown items
+                        setTimeout(() => setShowIndustryDropdown(false), 200)
+                      }}
+                      className="border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+                      placeholder="Type to search industries..."
+                    />
+                    
+                    {/* Autocomplete dropdown */}
+                    {showIndustryDropdown && filteredIndustries.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
+                        {filteredIndustries.map((industry, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                            onMouseDown={(e) => {
+                              e.preventDefault() // Prevent input blur
+                              selectIndustryFromDropdown(industry)
+                            }}
+                          >
+                            {industry}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <Button 
+                    type="button"
+                    onClick={addICPIndustry}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Add
+                  </Button>
+                </div>
+                
+                {editedData.icp?.industries && editedData.icp.industries.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-gray-700">Target Industries:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {editedData.icp.industries.map((industry, index) => (
+                        <span 
+                          key={index}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 border border-blue-200"
+                        >
+                          {industry}
+                          <button
+                            type="button"
+                            onClick={() => removeICPIndustry(industry)}
+                            className="text-blue-600 hover:text-blue-800 ml-1"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Prospect Locations Field */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-base font-semibold text-gray-800">Prospect Locations</Label>
+                  {showLocationError && (
+                    <div className="relative group">
+                      <Info className="w-4 h-4 text-red-500 cursor-help" />
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-red-500 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                        Please select from dropdown options
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-red-500"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600">Geographic locations where you want to find prospects</p>
+                <div className="flex space-x-2 relative">
+                  <div className="flex-1 relative">
+                    <Input
+                      value={newICPLocation}
+                      onChange={(e) => handleLocationInputChange(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addICPLocation()}
+                      onFocus={() => {
+                        if (newICPLocation.length > 0) {
+                          setShowLocationDropdown(true)
+                        }
+                      }}
+                      onBlur={() => {
+                        // Delay hiding to allow clicking on dropdown items
+                        setTimeout(() => setShowLocationDropdown(false), 200)
+                      }}
+                      className="border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+                      placeholder="Type to search locations..."
+                    />
+                    
+                    {/* Autocomplete dropdown */}
+                    {showLocationDropdown && filteredLocations.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
+                        {filteredLocations.map((location, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                            onMouseDown={(e) => {
+                              e.preventDefault() // Prevent input blur
+                              selectLocationFromDropdown(location)
+                            }}
+                          >
+                            {location}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <Button 
+                    type="button"
+                    onClick={addICPLocation}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Add
+                  </Button>
+                </div>
+                
+                {editedData.icp?.locations && editedData.icp.locations.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-gray-700">Target Locations:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {editedData.icp.locations.map((location, index) => (
+                        <span 
+                          key={index}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs bg-green-100 text-green-800 border border-green-200"
+                        >
+                          {location}
+                          <button
+                            type="button"
+                            onClick={() => removeICPLocation(location)}
+                            className="text-green-600 hover:text-green-800 ml-1"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
