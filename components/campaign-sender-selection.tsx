@@ -108,11 +108,18 @@ export default function CampaignSenderSelection({
   // Delete confirmation dialog state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [domainToDelete, setDomainToDelete] = useState<DomainWithSenders | null>(null)
+  
+  // Loading state for sender account creation
+  const [creatingSenderAccounts, setCreatingSenderAccounts] = useState(false)
 
   // Fetch DNS records when domain instructions should be shown
   useEffect(() => {
     if (showDomainInstructions && pendingDomainData?.id) {
       console.log('🔄 Fetching DNS records for pending domain:', pendingDomainData.id)
+      // Clear any previous verification results when showing DNS instructions
+      setVerificationResults(null)
+      setShowVerificationResults(false)
+      setCreatingSenderAccounts(false)
       fetchDnsRecords(pendingDomainData.id)
     }
   }, [showDomainInstructions, pendingDomainData?.id])
@@ -804,6 +811,8 @@ export default function CampaignSenderSelection({
     setVerifying(domainId)
     setVerificationResults(null)
     setShowVerificationResults(false)
+    // Show loading popup immediately when verification starts
+    setCreatingSenderAccounts(true)
     
     try {
       console.log('🔄 Verifying domain:', domainId)
@@ -822,22 +831,23 @@ export default function CampaignSenderSelection({
       if (response.ok && data.success) {
         console.log('✅ Domain verification successful')
         
-        // If domain is ready, auto-create preset senders in background
+        // If domain is ready, create accounts and redirect immediately
         if (data.domainReady) {
-          setTimeout(async () => {
-            // Auto-create preset sender accounts in background
-            if (pendingDomainData?.id && pendingDomainData?.domain) {
-              await createPresetSenders(pendingDomainData.id, pendingDomainData.domain)
-            }
-            
-            await fetchDomainsAndSenders()
-            if (onShowDomainInstructions) {
-              onShowDomainInstructions(false)
-            }
-          }, 2000) // Give user time to see success message
+          // Auto-create preset sender accounts immediately
+          if (pendingDomainData?.id && pendingDomainData?.domain) {
+            await createPresetSenders(pendingDomainData.id, pendingDomainData.domain)
+          }
+          
+          await fetchDomainsAndSenders()
+          if (onShowDomainInstructions) {
+            onShowDomainInstructions(false)
+          }
+          setCreatingSenderAccounts(false)
         }
       } else {
         console.log('❌ Domain verification failed:', data)
+        // Hide loading popup on failure
+        setCreatingSenderAccounts(false)
       }
     } catch (error) {
       console.error('Error verifying domain:', error)
@@ -847,6 +857,8 @@ export default function CampaignSenderSelection({
         domainReady: false
       })
       setShowVerificationResults(true)
+      // Hide loading popup on error
+      setCreatingSenderAccounts(false)
     } finally {
       setVerifying(null)
     }
@@ -1477,8 +1489,10 @@ export default function CampaignSenderSelection({
               )}
               <Button
                 onClick={() => {
-                  console.log('🔄 Opening domain setup modal...')
-                  setShowDomainSetupModal(true)
+                  console.log('🔄 Redirecting to domains tab...')
+                  const currentUrl = new URL(window.location.href)
+                  currentUrl.searchParams.set('tab', 'domain')
+                  window.location.href = currentUrl.toString()
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-5 py-2.5 font-medium"
               >
@@ -1831,6 +1845,27 @@ export default function CampaignSenderSelection({
                 Delete Domain
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Loading Popup for Sender Account Creation */}
+        <Dialog open={creatingSenderAccounts} onOpenChange={() => {}}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="sr-only">Creating Email Accounts</DialogTitle>
+            </DialogHeader>
+            
+            <div className="text-center py-8">
+              <div className="relative mx-auto w-16 h-16 mb-6">
+                <div className="absolute inset-0 rounded-full border-4 border-green-100"></div>
+                <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-green-600 animate-spin"></div>
+                <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-green-400 animate-spin animate-reverse"></div>
+              </div>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">Creating Email Accounts...</h3>
+              <p className="text-gray-600">
+                Setting up your sender accounts automatically
+              </p>
+            </div>
           </DialogContent>
         </Dialog>
 
