@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { useDebouncedAutoSave } from "@/hooks/useDebounce"
 import { useOptimizedPolling } from "@/hooks/useOptimizedPolling"
 
@@ -39,6 +40,7 @@ interface CampaignDashboardProps {
 }
 
 export default function CampaignDashboard({ campaign, onBack, onDelete, onStatusUpdate, onNameUpdate, initialTab = "target" }: CampaignDashboardProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState(initialTab)
   
   // Campaign name editing state
@@ -2092,94 +2094,20 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   const handleAdvancedCampaignComplete = async (campaignData: any) => {
     try {
-      // Use the correct API endpoint that supports advanced fields
-      console.log('🚀 Creating advanced campaign with data:', campaignData.formData)
+      // Campaign has already been created in the popup with ID: campaignData.campaignId
+      console.log('✅ Campaign creation completed. Campaign ID:', campaignData.campaignId)
       
-      const response = await fetch("/api/campaigns/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(campaignData.formData) // Send the full form data with keywords, location, industry
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        setShowAdvancedPopup(false)
-        
-        // Pre-fill target fields with campaign data
-        const locations = campaignData.formData.locations || campaignData.formData.location || []
-        const locationArray = Array.isArray(locations) ? locations : locations.split(',').map((l: string) => l.trim()).filter((l: string) => l)
-        const keywords = campaignData.formData.keywords || []
-        const keywordArray = Array.isArray(keywords) ? keywords : keywords.split(',').map((k: string) => k.trim()).filter((k: string) => k)
-        
-        // Populate email sequences with AI-generated content
-        if (campaignData.aiAssets && campaignData.aiAssets.email_sequences) {
-          const aiSequences = campaignData.aiAssets.email_sequences
-          const newSteps = []
-          
-          // First Sequence - 3 emails with 3-day intervals
-          for (let i = 0; i < 3 && i < aiSequences.length; i++) {
-            const aiEmail = aiSequences[i]
-            newSteps.push({
-              id: i + 1,
-              type: 'email',
-              sequence: 1,
-              sequenceStep: i + 1,
-              title: `Email ${i + 1}`,
-              subject: aiEmail.subject || `Email ${i + 1} Subject`,
-              content: (aiEmail.content || '').replace(/\n/g, '<br/>'),
-              timing: i * 3, // 0, 3, 6 days
-              variants: 1
-            })
-          }
-          
-          // Second Sequence - 3 more emails after 60 days, with 3-day intervals
-          for (let i = 0; i < 3; i++) {
-            const aiEmailIndex = Math.min(i + 3, aiSequences.length - 1)
-            const aiEmail = aiSequences[aiEmailIndex] || aiSequences[aiSequences.length - 1] || {}
-            
-            newSteps.push({
-              id: i + 4,
-              type: 'email',
-              sequence: 2,
-              sequenceStep: i + 1,
-              title: `Email ${i + 4}`,
-              subject: aiEmail.subject || `Follow-up ${i + 1}`,
-              content: (aiEmail.content || `Hi {{firstName}},<br/><br/>Following up on our previous conversation about {{companyName}}.<br/><br/>Best regards,<br/>{{senderName}}`).replace(/\n/g, '<br/>'),
-              timing: 60 + 6 + (i * 3), // 66, 69, 72 days from start
-              variants: 1
-            })
-          }
-          
-          setSteps(newSteps)
-        }
-        
-        
-        // Refresh the parent campaigns list
-        window.dispatchEvent(new CustomEvent('campaigns-changed'))
-        
-        // Store the keywords and location for immediate population in Target tab
-        if (keywords.length > 0 || locations.length > 0) {
-          console.log('🎯 Storing campaign keywords for auto-population:', keywords)
-          // Dispatch custom event to notify Target tab to refresh with new data
-          window.dispatchEvent(new CustomEvent('campaign-created-with-keywords', { 
-            detail: { 
-              campaignId: result.data.campaign.id,
-              keywords: keywordArray, 
-              location: locationArray,
-              industry: campaignData.formData.industry 
-            } 
-          }))
-        }
-        
-        // Navigate to the new campaign or back to list
-        if (onBack) {
-          onBack()
-        }
-      } else {
+      // Don't create a duplicate campaign - just close popup and refresh
+      setShowAdvancedPopup(false)
+      
+      // Refresh the parent campaigns list to show the new campaign
+      window.dispatchEvent(new CustomEvent('campaigns-changed'))
+      
+      // Navigate to the new campaign
+      if (campaignData.campaignId) {
+        router.push(`/campaigns/${campaignData.campaignId}`)
+      } else if (onBack) {
+        onBack()
       }
     } catch (error) {
       console.error("Error creating campaign:", error)

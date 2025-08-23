@@ -19,6 +19,7 @@ interface AddCampaignPopupProps {
   isOpen: boolean
   onClose: () => void
   onComplete: (campaignData: any) => void
+  existingCampaignId?: number
 }
 
 const steps = [
@@ -201,7 +202,7 @@ const getSuggestedRoles = (objective: string): string[] => {
   }
 }
 
-export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCampaignPopupProps) {
+export default function AddCampaignPopup({ isOpen, onClose, onComplete, existingCampaignId }: AddCampaignPopupProps) {
   const [currentStep, setCurrentStep] = useState("company")
   const [isProcessing, setIsProcessing] = useState(false)
   const [showForm, setShowForm] = useState(true)
@@ -240,23 +241,148 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     }
   }, [formData.companyName, formData.campaignName])
 
-  // Initialize AI-generated defaults when component mounts
+  // Reset component state when modal closes
   useEffect(() => {
-    // Set default industry if none selected
-    if (mainICPIndustries.length === 0) {
-      setMainICPIndustries(["Software"])
+    if (!isOpen) {
+      // Reset all state to initial values
+      setCurrentStep("company")
+      setIsProcessing(false)
+      setShowForm(true)
+      setCompletedSteps([])
+      setAiAssets(null)
+      setCampaignId(null)
+      setCampaignResult(null)
+      setError(null)
+      setIsCreatingCampaign(false)
+      setEditingICP(false)
+      setEditingPersona(false)
+      setEditingPainPoint(false)
+      setEditingValueProp(false)
+      setMainICPIndustries([])
+      setMainICPLocations([])
+      setFormData({
+        campaignName: "",
+        campaignObjective: "",
+        companyName: "",
+        website: "",
+        noWebsite: false,
+        language: "English",
+        mainActivity: "",
+        location: "Australia",
+        industry: "",
+        keywords: []
+      })
     }
-    
-    // Set default location if none selected  
-    if (mainICPLocations.length === 0) {
-      setMainICPLocations(["United States"])
+  }, [isOpen])
+
+  // Load existing campaign data when existingCampaignId is provided
+  useEffect(() => {
+    if (existingCampaignId && isOpen) {
+      console.log('🔍 Loading existing campaign:', existingCampaignId)
+      const loadCampaignData = async () => {
+        try {
+          setIsProcessing(true)
+          const response = await fetch(`/api/campaigns/${existingCampaignId}/save`, {
+            method: 'GET',
+            credentials: 'include',
+          })
+          
+          const result = await response.json()
+          if (result.success && result.data) {
+            const campaignData = result.data
+            console.log('📊 Loaded campaign data:', campaignData)
+            
+            setCampaignId(existingCampaignId)
+            
+            // Load form data from campaign
+            if (campaignData.campaign) {
+              setFormData(prev => ({
+                ...prev,
+                campaignName: campaignData.campaign.name || "",
+                companyName: campaignData.campaign.company_name || "",
+                website: campaignData.campaign.company_website || "",
+                mainActivity: campaignData.campaign.main_activity || "",
+                campaignObjective: campaignData.campaign.campaign_objective || "",
+                keywords: campaignData.campaign.keywords || []
+              }))
+              
+              // Load Target Audience data from dedicated campaign table fields
+              if (campaignData.campaign.target_industry) {
+                const industries = campaignData.campaign.target_industry.split(',').map((i: string) => i.trim()).filter((i: string) => i)
+                setMainICPIndustries(industries)
+                console.log('📍 Loaded Target Industries from campaign.target_industry:', industries)
+              }
+              
+              if (campaignData.campaign.target_location) {
+                const locations = campaignData.campaign.target_location.split(',').map((l: string) => l.trim()).filter((l: string) => l)
+                setMainICPLocations(locations)
+                console.log('🌍 Loaded Target Locations from campaign.target_location:', locations)
+              }
+              
+              // Set to show company info instead of form if we have data
+              if (campaignData.campaign.company_name || campaignData.campaign.main_activity) {
+                setShowForm(false)
+              }
+            }
+            
+            // Load AI assets
+            if (campaignData.aiAssets) {
+              console.log('🤖 Setting AI assets:', campaignData.aiAssets)
+              setAiAssets(campaignData.aiAssets)
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error loading campaign data:', error)
+        } finally {
+          setIsProcessing(false)
+        }
+      }
+      
+      loadCampaignData()
     }
-    
-    // Set default role if none selected
-    if (formData.keywords.length === 0) {
-      setFormData(prev => ({ ...prev, keywords: ["CEO"] }))
+  }, [existingCampaignId, isOpen])
+
+  // Note: Target Audience data (industries/locations) is now loaded from campaign table, not AI assets
+  // AI assets contain the AI-generated ICP data which is different from user-selected Target Audience
+
+  // Initialize AI-generated defaults when component mounts (only for new campaigns)
+  useEffect(() => {
+    // Only set defaults if we don't have an existing campaign
+    if (!existingCampaignId) {
+      // Set default industry if none selected
+      if (mainICPIndustries.length === 0) {
+        const defaultIndustries = ["Software"]
+        setMainICPIndustries(defaultIndustries)
+        
+        // Save to database if campaign exists
+        if (campaignId) {
+          updateCampaignIndustriesAndLocations(defaultIndustries, mainICPLocations);
+        }
+      }
+      
+      // Set default location if none selected  
+      if (mainICPLocations.length === 0) {
+        const defaultLocations = ["United States"]
+        setMainICPLocations(defaultLocations)
+        
+        // Save to database if campaign exists
+        if (campaignId) {
+          updateCampaignIndustriesAndLocations(mainICPIndustries, defaultLocations);
+        }
+      }
+      
+      // Set default role if none selected
+      if (formData.keywords.length === 0) {
+        const defaultKeywords = ["CEO"]
+        setFormData(prev => ({ ...prev, keywords: defaultKeywords }))
+        
+        // Save to database if campaign exists
+        if (campaignId) {
+          updateCampaignKeywords(defaultKeywords);
+        }
+      }
     }
-  }, [])
+  }, [campaignId, existingCampaignId])
   const [editingICP, setEditingICP] = useState(false)
   const [editingPersona, setEditingPersona] = useState(false)
   const [editingPainPoint, setEditingPainPoint] = useState(false)
@@ -617,6 +743,47 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     }
   }
 
+  const updateCampaignIndustriesAndLocations = async (industries: string[], locations: string[], targetCampaignId?: number) => {
+    const campaignIdToUse = targetCampaignId || campaignId;
+    if (!campaignIdToUse) {
+      console.warn('No campaign ID available to update industries/locations');
+      return;
+    }
+
+    try {
+      console.log('🔄 [Frontend] Updating campaign industries and locations:', { industries, locations });
+      console.log('🔄 [Frontend] Campaign ID:', campaignIdToUse);
+      console.log('💾 [Frontend] Saving to target_industry:', industries.join(", "));
+      console.log('💾 [Frontend] Saving to target_location:', locations.join(", "));
+      
+      // Save Target Audience data to the dedicated fields
+      const response = await fetch(`/api/campaigns/${campaignIdToUse}/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          campaignData: {
+            // Save Target Audience data to dedicated fields
+            target_industry: industries.length > 0 ? industries.join(", ") : "",
+            target_location: locations.length > 0 ? locations.join(", ") : ""
+          },
+          saveType: 'all'
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        console.log('✅ [Frontend] Successfully updated campaign industries/locations');
+      } else {
+        console.error('❌ [Frontend] Failed to update industries/locations:', result.error);
+      }
+    } catch (error) {
+      console.error('❌ [Frontend] Error updating campaign industries/locations:', error);
+    }
+  }
+
   const [newKeyword, setNewKeyword] = useState("")
   const [newICPIndustry, setNewICPIndustry] = useState("")
   const [newICPLocation, setNewICPLocation] = useState("")
@@ -648,9 +815,16 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       const exactMatch = INDUSTRY_OPTIONS.find(industry => 
         industry.toLowerCase() === trimmed.toLowerCase()
       )
-      setMainICPIndustries([...mainICPIndustries, exactMatch!])
+      const newIndustries = [...mainICPIndustries, exactMatch!]
+      setMainICPIndustries(newIndustries)
       setNewICPIndustry("")
       setShowIndustryDropdown(false)
+      
+      // Save to database if campaign exists
+      if (campaignId) {
+        console.log('💾 [Frontend] Saving new industries after add:', newIndustries);
+        updateCampaignIndustriesAndLocations(newIndustries, mainICPLocations);
+      }
     } else if (trimmed && !isValid) {
       setShowIndustryError(true)
       setTimeout(() => setShowIndustryError(false), 3000)
@@ -658,12 +832,18 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   }
   
   const removeMainICPIndustry = (industry: string) => {
-    setMainICPIndustries(mainICPIndustries.filter(i => i !== industry))
+    const newIndustries = mainICPIndustries.filter(i => i !== industry)
+    setMainICPIndustries(newIndustries)
+    
+    // Will be saved when moving to next step
   }
   
   const selectMainIndustry = (industry: string) => {
     if (!mainICPIndustries.includes(industry)) {
-      setMainICPIndustries([...mainICPIndustries, industry])
+      const newIndustries = [...mainICPIndustries, industry]
+      setMainICPIndustries(newIndustries)
+      
+      // Will be saved when moving to next step
     }
     setNewICPIndustry("")
     setShowIndustryDropdown(false)
@@ -680,9 +860,12 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       const exactMatch = LOCATION_OPTIONS.find(location => 
         location.toLowerCase() === trimmed.toLowerCase()
       )
-      setMainICPLocations([...mainICPLocations, exactMatch!])
+      const newLocations = [...mainICPLocations, exactMatch!]
+      setMainICPLocations(newLocations)
       setNewICPLocation("")
       setShowLocationDropdown(false)
+      
+      // Will be saved when moving to next step
     } else if (trimmed && !isValid) {
       setShowLocationError(true)
       setTimeout(() => setShowLocationError(false), 3000)
@@ -690,12 +873,18 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   }
   
   const removeMainICPLocation = (location: string) => {
-    setMainICPLocations(mainICPLocations.filter(l => l !== location))
+    const newLocations = mainICPLocations.filter(l => l !== location)
+    setMainICPLocations(newLocations)
+    
+    // Will be saved when moving to next step
   }
   
   const selectMainLocation = (location: string) => {
     if (!mainICPLocations.includes(location)) {
-      setMainICPLocations([...mainICPLocations, location])
+      const newLocations = [...mainICPLocations, location]
+      setMainICPLocations(newLocations)
+      
+      // Will be saved when moving to next step
     }
     setNewICPLocation("")
     setShowLocationDropdown(false)
@@ -920,6 +1109,25 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       if (nextStep === "pain-value") {
         setIsProcessing(true);
         try {
+          // Save target audience data before generating content
+          console.log('💾 [Frontend] Saving target audience data before next step:', {
+            industries: mainICPIndustries,
+            locations: mainICPLocations,
+            keywords: formData.keywords
+          });
+          
+          // Save industries, locations AND keywords to database
+          if (campaignId) {
+            // Save target industries and locations
+            if (mainICPIndustries.length > 0 || mainICPLocations.length > 0) {
+              await updateCampaignIndustriesAndLocations(mainICPIndustries, mainICPLocations);
+            }
+            // Save keywords
+            if (formData.keywords && formData.keywords.length > 0) {
+              await updateCampaignKeywords(formData.keywords);
+            }
+          }
+          
           // Generate pain points and value props for the next step
           await generateAllRemaining();
           setCompletedSteps(prev => [...prev, currentStep])
@@ -977,6 +1185,8 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         selectedOutreachStrategy,
         completedSteps: [...completedSteps, currentStep]
       }
+      // Close the popup after successful completion
+      onClose()
       onComplete(campaignData)
     }
   }
@@ -1224,7 +1434,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">{formData.companyName || "Company Name"}</h3>
-            <p className="text-sm text-gray-600">{formData.companyWebsite || "Website not provided"}</p>
+            <p className="text-sm text-gray-600">{formData.website || "Website not provided"}</p>
           </div>
           
           {formData.mainActivity && (

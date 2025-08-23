@@ -112,6 +112,13 @@ export function TargetTab({
     "Europe", "North America", "Asia Pacific", "Latin America", "Middle East", "Africa", "Global"
   ]
 
+  // Load campaign data when component mounts or campaignId changes
+  useEffect(() => {
+    if (campaignId) {
+      fetchScrapingConfig()
+    }
+  }, [campaignId])
+
   // Fetch saved scraping configuration and ICP data
   const fetchScrapingConfig = async () => {
     try {
@@ -124,13 +131,31 @@ export function TargetTab({
       })
 
       const campaignResult = await campaignResponse.json()
+      const campaign = campaignResult.data?.campaign
 
-      if (campaignResponse.ok && campaignResult.success && campaignResult.data?.campaign) {
-        const campaign = campaignResult.data.campaign
+      if (campaignResponse.ok && campaignResult.success && campaign) {
         
         // Populate keywords from campaign (prospect roles)
         if (campaign.keywords && Array.isArray(campaign.keywords)) {
           setScrappingKeywords(campaign.keywords)
+          console.log('✅ Loaded keywords from campaign:', campaign.keywords)
+        }
+        
+        // Load Target Audience data from dedicated campaign table fields
+        console.log('🔍 Campaign target_industry field:', campaign.target_industry)
+        console.log('🔍 Campaign target_location field:', campaign.target_location)
+        console.log('🔍 Campaign keywords field:', campaign.keywords)
+        
+        if (campaign.target_industry) {
+          const industries = campaign.target_industry.split(',').map((i: string) => i.trim()).filter((i: string) => i)
+          setICPIndustries(industries)
+          console.log('✅ Loaded target industries from campaign.target_industry:', industries)
+        }
+        
+        if (campaign.target_location) {
+          const locations = campaign.target_location.split(',').map((l: string) => l.trim()).filter((l: string) => l)
+          setICPLocations(locations)
+          console.log('✅ Loaded target locations from campaign.target_location:', locations)
         }
         
         // Set scraping status based on database value
@@ -140,11 +165,17 @@ export function TargetTab({
           setScrapingStatus('idle')
         }
         
-        console.log('✅ Loaded campaign keywords:', campaign.keywords)
+        console.log('✅ Loaded campaign data:', {
+          keywords: campaign.keywords,
+          industry: campaign.industry,
+          location: campaign.location,
+          target_industry: campaign.target_industry,
+          target_location: campaign.target_location
+        })
       }
 
-      // Load ICP data from AI assets (now included in campaign response)
-      if (campaignResult.data?.aiAssets?.icps) {
+      // Only load ICP data from AI assets if no Target Audience data exists
+      if (campaignResult.data?.aiAssets?.icps && !campaign?.target_industry && !campaign?.target_location) {
         const icps = campaignResult.data.aiAssets.icps
         
         // Extract industries and locations from all ICPs
@@ -152,11 +183,21 @@ export function TargetTab({
         const allLocations: string[] = []
         
         icps.forEach((icp: any) => {
+          // Handle both old format (arrays) and new format (comma-separated strings)
           if (icp.industries && Array.isArray(icp.industries)) {
             allIndustries.push(...icp.industries)
+          } else if (icp.industry && typeof icp.industry === 'string') {
+            // Split comma-separated string and clean up
+            const industries = icp.industry.split(',').map((i: string) => i.trim()).filter((i: string) => i)
+            allIndustries.push(...industries)
           }
+          
           if (icp.locations && Array.isArray(icp.locations)) {
             allLocations.push(...icp.locations)
+          } else if (icp.location && typeof icp.location === 'string') {
+            // Split comma-separated string and clean up
+            const locations = icp.location.split(',').map((l: string) => l.trim()).filter((l: string) => l)
+            allLocations.push(...locations)
           }
         })
         
@@ -164,10 +205,12 @@ export function TargetTab({
         setICPIndustries([...new Set(allIndustries)])
         setICPLocations([...new Set(allLocations)])
         
-        console.log('✅ Loaded ICP data:', {
+        console.log('✅ Loaded ICP data from AI assets (fallback):', {
           industries: [...new Set(allIndustries)],
           locations: [...new Set(allLocations)]
         })
+      } else if (campaign?.target_industry || campaign?.target_location) {
+        console.log('ℹ️ Skipping AI assets load - using Target Audience data instead')
       }
       
     } catch (error) {

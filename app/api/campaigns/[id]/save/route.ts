@@ -61,6 +61,12 @@ export async function GET(
     if (campaignError || !campaign) {
         return NextResponse.json({ success: false, error: "Campaign not found" }, { status: 404 })
     }
+    
+    // Log target audience data for debugging
+    console.log('📖 [API] GET - Loaded campaign target audience data:', {
+      target_industry: campaign.target_industry,
+      target_location: campaign.target_location
+    });
 
     // Only fetch essential data initially - lazy load the rest when needed
     const [
@@ -496,11 +502,32 @@ async function saveSenderAccounts(campaignId: string, senderAccounts: string[]) 
 
 // Helper function to save campaign basics
 async function saveCampaignBasics(campaignId: string, campaignData: any) {
+  console.log('💾 [API] saveCampaignBasics received data:', {
+    target_industry: campaignData.target_industry,
+    target_location: campaignData.target_location
+  });
+
   const updateData = {
     name: campaignData.name,
     status: campaignData.status,
+    industry: campaignData.industry,
+    location: campaignData.location,
+    target_industry: campaignData.target_industry,
+    target_location: campaignData.target_location,
     updated_at: new Date().toISOString()
   }
+
+  // Remove undefined fields
+  Object.keys(updateData).forEach(key => {
+    if (updateData[key] === undefined) {
+      delete updateData[key]
+    }
+  })
+  
+  console.log('💾 [API] Updating campaign with data:', {
+    target_industry: updateData.target_industry,
+    target_location: updateData.target_location
+  });
 
   const { error: updateError } = await supabaseServer
     .from("campaigns")
@@ -508,7 +535,10 @@ async function saveCampaignBasics(campaignId: string, campaignData: any) {
     .eq("id", campaignId)
 
   if (updateError) {
+    console.error('❌ [API] Failed to update campaign:', updateError);
     throw new Error(`Failed to update campaign: ${updateError.message}`)
+  } else {
+    console.log('✅ [API] Successfully updated campaign with target audience data');
   }
 }
 
@@ -807,17 +837,20 @@ async function updateICPIndustriesAndLocations(campaignId: string, industries: s
       if (updatedICPs.length > 0) {
         updatedICPs[0] = {
           ...updatedICPs[0],
-          industries: industries || [],
-          locations: locations || []
+          industry: industries.length > 0 ? industries.join(", ") : "",
+          location: locations.length > 0 ? locations.join(", ") : ""
         }
       } else {
-        // Create a default ICP with industries and locations
+        // Create a default ICP with industry and location
         updatedICPs.push({
           id: 1,
           title: "Primary ICP",
           description: "Main ideal customer profile",
-          industries: industries || [],
-          locations: locations || []
+          industry: industries.length > 0 ? industries.join(", ") : "",
+          location: locations.length > 0 ? locations.join(", ") : "",
+          budget_range: "$500 - $5000 annually",
+          company_size: "1-50 employees",
+          decision_makers: ["CEO", "Owner", "Director"]
         })
       }
 
@@ -842,8 +875,11 @@ async function updateICPIndustriesAndLocations(campaignId: string, industries: s
           id: 1,
           title: "Primary ICP",
           description: "Main ideal customer profile",
-          industries: industries || [],
-          locations: locations || []
+          industry: industries.length > 0 ? industries.join(", ") : "",
+          location: locations.length > 0 ? locations.join(", ") : "",
+          budget_range: "$500 - $5000 annually",
+          company_size: "1-50 employees",
+          decision_makers: ["CEO", "Owner", "Director"]
         }],
         personas: [],
         pain_points: [],
