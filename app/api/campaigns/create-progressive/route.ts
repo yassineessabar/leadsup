@@ -588,9 +588,10 @@ TONE & STYLE:
 - Reference specific challenges from the pain points
 
 SUBJECT LINE STRATEGY:
-- Use the SAME subject for emails 1-3 (initial sequence) 
-- Use a DIFFERENT subject for emails 4-6 (re-engagement sequence)
-- Make subjects specific to their industry/role, not generic
+- Use the SAME subject for emails 1-3 (initial sequence) - generate based on their pain point, short and intriguing
+- Use a DIFFERENT subject for emails 4-6 (re-engagement sequence) - also based on pain point/value prop, short and intriguing
+- Make subjects specific to their pain point and industry, NOT generic like "Quick question about {{companyName}}"
+- Examples: "Struggling with [PAIN POINT]?" or "[BENEFIT] for {{companyName}}" or "Fix [SPECIFIC PROBLEM] in 30 days"
 
 EMAIL STRATEGY - BE SPECIFIC WITH CONTEXT:
 - Email 1: Open with their EXACT pain point from the data, mention their role/industry, brief intro about how you solve it
@@ -609,43 +610,43 @@ Return JSON in this exact format:
   "email_sequences": [
     {
       "step": 1,
-      "subject": "Quick question about {{companyName}}",
-      "content": "Email body with {{firstName}} and {{companyName}} variables",
+      "subject": "Struggling with campaign measurement?",
+      "content": "Hi {{firstName}},\n\nI noticed {{companyName}} works in advertising, and most agencies struggle with accurately measuring campaign effectiveness.\n\nOur precision measurement solution helps agencies like yours make data-driven budget decisions.\n\nWorth a quick chat?",
       "purpose": "Introduction/awareness",
       "timing_days": 0
     },
     {
       "step": 2, 
-      "subject": "Quick question about {{companyName}}",
-      "content": "Follow-up email content (same subject for threading)",
+      "subject": "Struggling with campaign measurement?",
+      "content": "Hi {{firstName}},\n\nFollowing up on accurate campaign measurement for {{companyName}}.\n\nWe've helped agencies reduce measurement uncertainty by 90% using device ID tracking and control groups.\n\nInterested in seeing how this works?",
       "purpose": "Value demonstration",
       "timing_days": 3
     },
     {
       "step": 3,
-      "subject": "Quick question about {{companyName}}",
-      "content": "Final follow-up content (same subject for threading)",
+      "subject": "Struggling with campaign measurement?",
+      "content": "Hi {{firstName}},\n\nLast email about this - our measurement solution helped Agency X increase client satisfaction by 40% through precise campaign insights.\n\nQuick 15-min call to show you the same results?",
       "purpose": "Call to action",
       "timing_days": 6
     },
     {
       "step": 4,
-      "subject": "New updates for {{companyName}}",
-      "content": "Re-engagement email content (new subject for new thread)",
+      "subject": "Boost client satisfaction at {{companyName}}",
+      "content": "Hi {{firstName}},\n\nSaw some industry news and thought of {{companyName}} - agencies using our precision measurement are seeing 40% higher client retention.\n\nWorth exploring for your team?",
       "purpose": "Re-engagement",
       "timing_days": 66
     },
     {
       "step": 5,
-      "subject": "New updates for {{companyName}}",
-      "content": "Follow-up re-engagement content (same subject for threading)",
+      "subject": "Boost client satisfaction at {{companyName}}",
+      "content": "Hi {{firstName}},\n\nQuick follow-up - just helped another agency director reduce budget allocation uncertainty by 85%.\n\nSame challenges at {{companyName}}?",
       "purpose": "Renewed value proposition",
       "timing_days": 69
     },
     {
       "step": 6,
-      "subject": "New updates for {{companyName}}",
-      "content": "Final re-engagement content (same subject for threading)",
+      "subject": "Boost client satisfaction at {{companyName}}",
+      "content": "Hi {{firstName}},\n\nFinal note - if campaign measurement accuracy matters to {{companyName}}, I'm here to help.\n\nOtherwise, I'll leave you be.",
       "purpose": "Last call to action",
       "timing_days": 72
     }
@@ -874,42 +875,42 @@ function getFallbackEmailSequence() {
     email_sequences: [
       {
         step: 1,
-        subject: "Quick question about {{companyName}}",
+        subject: "Struggling with lead generation?",
         content: "Hi {{firstName}},\n\nI noticed {{companyName}} and thought you might be interested in how we've helped similar companies improve their operations.\n\nWould you be open to a brief conversation?",
         purpose: "Introduction",
         timing_days: 0
       },
       {
         step: 2,
-        subject: "Quick question about {{companyName}}",
+        subject: "Struggling with lead generation?",
         content: "Hi {{firstName}},\n\nI wanted to follow up on my previous email. I understand you're busy, but I believe we could really help {{companyName}} streamline operations.\n\nCould we schedule a quick 15-minute call?",
         purpose: "Value demonstration",
         timing_days: 3
       },
       {
         step: 3,
-        subject: "Quick question about {{companyName}}",
+        subject: "Struggling with lead generation?",
         content: "Hi {{firstName}},\n\nThis will be my last email in this sequence. I genuinely believe we can help {{companyName}} save significant time and resources.\n\nIf you're interested, I'm here. Otherwise, I won't bother you further.",
         purpose: "Call to action",
         timing_days: 6
       },
       {
         step: 4,
-        subject: "New updates for {{companyName}}",
+        subject: "Boost revenue at {{companyName}}",
         content: "Hi {{firstName}},\n\nIt's been a while since we last connected. We've recently launched some new features that I think would be perfect for {{companyName}}.\n\nWould you be interested in learning more?",
         purpose: "Re-engagement",
         timing_days: 66
       },
       {
         step: 5,
-        subject: "New updates for {{companyName}}",
+        subject: "Boost revenue at {{companyName}}",
         content: "Hi {{firstName}},\n\nI wanted to share an exclusive opportunity we're offering to companies like {{companyName}}. \n\nWe're seeing incredible results with similar businesses in your industry.",
         purpose: "Renewed value proposition",
         timing_days: 69
       },
       {
         step: 6,
-        subject: "New updates for {{companyName}}",
+        subject: "Boost revenue at {{companyName}}",
         content: "Hi {{firstName}},\n\nThis is my final outreach. We've helped dozens of companies similar to {{companyName}} achieve remarkable results.\n\nIf there's any interest, I'd love to connect. Otherwise, I'll close your file.",
         purpose: "Last call to action",
         timing_days: 72
