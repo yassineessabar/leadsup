@@ -119,7 +119,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         credentials: 'include'
       })
       const contactsResult = await contactsResponse.json()
+      console.log('🔍 Validation check for campaign', campaign.id, ':', contactsResult)
       const hasContactsImported = contactsResult.contacts && contactsResult.contacts.length > 0
+      console.log('📊 hasContactsImported:', hasContactsImported)
       
       // Check if auto-scraping is configured and active
       const campaignResponse = await fetch(`/api/campaigns/${campaign.id}/save`, {

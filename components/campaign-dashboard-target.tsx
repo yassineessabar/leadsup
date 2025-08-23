@@ -603,11 +603,17 @@ export function TargetTab({
           description: `${data.imported || contacts.length} contacts imported successfully${data.scheduled > 0 ? `, ${data.scheduled} sequences scheduled` : ''}`
         })
         
-        // Refresh campaign validation after a short delay to ensure data is persisted
+        // Refresh campaign validation
         if (onContactsImported) {
-          setTimeout(async () => {
+          console.log('🔄 Triggering validation refresh...')
+          try {
             await onContactsImported()
-          }, 500)
+            console.log('✅ Validation refresh completed')
+          } catch (error) {
+            console.error('❌ Validation refresh failed:', error)
+          }
+        } else {
+          console.log('⚠️ No onContactsImported callback provided')
         }
         
         // Reset file input
