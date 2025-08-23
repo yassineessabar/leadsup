@@ -79,12 +79,16 @@ export async function GET(
       smtp: []
     }
 
+    // Fetch AI assets if they exist
+    const aiAssets = await fetchAIAssets(campaignId)
+
     const campaignData = {
       campaign,
       sequences,
       settings,
       senders,
-      connectedAccounts
+      connectedAccounts,
+      aiAssets
     }
 
     return NextResponse.json({ success: true, data: campaignData })
@@ -621,6 +625,33 @@ async function fetchSenders(campaignId: string) {
   return data.map(sender => sender.id)
 }
 
+// Helper function to fetch AI assets
+async function fetchAIAssets(campaignId: string) {
+  try {
+    const { data, error } = await supabaseServer
+      .from("campaign_ai_assets")
+      .select("*")
+      .eq("campaign_id", campaignId)
+      .single()
+
+    if (error || !data) {
+      console.log("No AI assets found for campaign:", campaignId)
+      return null
+    }
+
+    return {
+      icps: data.icps,
+      personas: data.personas,
+      pain_points: data.pain_points,
+      value_propositions: data.value_propositions,
+      email_sequences: data.email_sequences
+    }
+  } catch (error) {
+    console.error("Error fetching AI assets:", error)
+    return null
+  }
+}
+
 
 // Helper function to fetch Gmail accounts from campaign_senders table for a specific campaign
 async function fetchGmailAccounts(userId: string, campaignId?: string) {
@@ -723,9 +754,14 @@ async function saveScrapingConfig(campaignId: string, scrapingConfig: any) {
 
   // Update campaign with scraping configuration using actual table columns
   const updateData = {
-    industry: scrapingConfig.industry || '',
+    // Legacy single fields for backward compatibility
+    industry: scrapingConfig.industries && scrapingConfig.industries.length > 0 
+      ? scrapingConfig.industries[0] 
+      : scrapingConfig.industry || '',
+    location: scrapingConfig.locations && scrapingConfig.locations.length > 0 
+      ? scrapingConfig.locations[0] 
+      : scrapingConfig.location || '',
     keywords: scrapingConfig.keywords || [],
-    location: scrapingConfig.location || '',
     scrapping_status: scrapingConfig.scrappingStatus || 'Active', // Set to Active when scraping is started
     updated_at: new Date().toISOString()
   }
@@ -740,5 +776,94 @@ async function saveScrapingConfig(campaignId: string, scrapingConfig: any) {
     throw new Error(`Failed to save scraping configuration: ${updateError.message}`)
   }
 
+  // Save the ICP industries and locations arrays to AI assets
+  await updateICPIndustriesAndLocations(campaignId, scrapingConfig.industries, scrapingConfig.locations)
+
   console.log(`✅ Successfully saved scraping config for campaign ${campaignId}`)
+}
+
+// Helper function to save ICP industries and locations to AI assets
+async function updateICPIndustriesAndLocations(campaignId: string, industries: string[], locations: string[]) {
+  try {
+    // First, try to get existing AI assets
+    const { data: existingAssets, error: fetchError } = await supabaseServer
+      .from("campaign_ai_assets")
+      .select("*")
+      .eq("campaign_id", campaignId)
+      .single()
+
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found"
+      console.error("❌ Error fetching existing AI assets:", fetchError)
+      return
+    }
+
+    const now = new Date().toISOString()
+
+    if (existingAssets) {
+      // Update existing record
+      const updatedICPs = existingAssets.icps || []
+      
+      // Update the first ICP or create one if none exists
+      if (updatedICPs.length > 0) {
+        updatedICPs[0] = {
+          ...updatedICPs[0],
+          industries: industries || [],
+          locations: locations || []
+        }
+      } else {
+        // Create a default ICP with industries and locations
+        updatedICPs.push({
+          id: 1,
+          title: "Primary ICP",
+          description: "Main ideal customer profile",
+          industries: industries || [],
+          locations: locations || []
+        })
+      }
+
+      const { error: updateError } = await supabaseServer
+        .from("campaign_ai_assets")
+        .update({
+          icps: updatedICPs,
+          updated_at: now
+        })
+        .eq("campaign_id", campaignId)
+
+      if (updateError) {
+        console.error("❌ Error updating ICP industries/locations:", updateError)
+      } else {
+        console.log(`✅ Updated ICP industries/locations for campaign ${campaignId}`)
+      }
+    } else {
+      // Create new AI assets record
+      const newAssets = {
+        campaign_id: campaignId,
+        icps: [{
+          id: 1,
+          title: "Primary ICP",
+          description: "Main ideal customer profile",
+          industries: industries || [],
+          locations: locations || []
+        }],
+        personas: [],
+        pain_points: [],
+        value_propositions: [],
+        email_sequences: [],
+        created_at: now,
+        updated_at: now
+      }
+
+      const { error: insertError } = await supabaseServer
+        .from("campaign_ai_assets")
+        .insert(newAssets)
+
+      if (insertError) {
+        console.error("❌ Error creating AI assets with ICP industries/locations:", insertError)
+      } else {
+        console.log(`✅ Created AI assets with ICP industries/locations for campaign ${campaignId}`)
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error in updateICPIndustriesAndLocations:", error)
+  }
 }
