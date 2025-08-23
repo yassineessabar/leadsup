@@ -44,13 +44,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch('/api/auth/me', {
         credentials: 'include',
-        cache: 'no-cache' // Changed from force-cache to no-cache to avoid issues
+        cache: 'no-cache',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       })
 
       if (response.ok) {
         // Check if response is JSON before parsing
         const contentType = response.headers.get('content-type')
         if (!contentType || !contentType.includes('application/json')) {
+          console.error('🔍 AuthProvider: Auth API returned non-JSON response:', contentType)
           throw new Error('Expected JSON response from auth endpoint')
         }
         
@@ -60,15 +64,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Update cache
           authCache = { user: data.user, timestamp: Date.now() }
         } else {
+          console.log('🔍 AuthProvider: Auth API returned unsuccessful response:', data)
           setUser(null)
           authCache = { user: null, timestamp: Date.now() }
         }
+      } else if (response.status === 401) {
+        // Unauthorized - user needs to login
+        console.log('🔍 AuthProvider: User not authenticated (401)')
+        setUser(null)
+        authCache = { user: null, timestamp: Date.now() }
       } else {
+        console.error('🔍 AuthProvider: Auth API error:', response.status, response.statusText)
         setUser(null)
         authCache = { user: null, timestamp: Date.now() }
       }
     } catch (error) {
-      console.error('🔍 AuthProvider: Fetch error:', error)
+      // Handle network errors, CORS issues, etc.
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        console.error('🔍 AuthProvider: Network error - API might be unavailable. Check if dev server is running.', error)
+        // Don't set loading to false immediately on network errors - keep trying
+        setTimeout(() => fetchUser(false), 2000) // Retry after 2 seconds
+        return
+      } else {
+        console.error('🔍 AuthProvider: Fetch error:', error)
+      }
       setUser(null)
       authCache = { user: null, timestamp: Date.now() }
     } finally {
