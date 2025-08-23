@@ -304,10 +304,12 @@ export default function Home() {
     checkIfNewUser()
   }, [isAuthenticated, user, searchParams, handleTabChange])
 
-  // Show landing page if not authenticated
-  if (!loading && !isAuthenticated) {
-    return <LandingPage />
-  }
+  // Handle redirect to login page if not authenticated
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push('/auth/login')
+    }
+  }, [loading, isAuthenticated, router])
 
   // Removed onboarding handlers
 
@@ -363,8 +365,16 @@ export default function Home() {
     )
   }
 
+  // Show loading or redirect for unauthenticated users
   if (!isAuthenticated) {
-    return <LandingPage />
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-gray-600 font-medium">Redirecting to login...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

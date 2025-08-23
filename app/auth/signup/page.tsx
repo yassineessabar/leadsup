@@ -115,9 +115,13 @@ export default function SignupPage() {
       <main className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <Link href="/" className="text-2xl font-semibold text-gray-900">
-              LeadsUp
+          <div className="flex justify-center mb-4">
+            <Link href="/" className="flex items-center">
+              <img 
+                src="https://framerusercontent.com/images/yar0HFd2Ii54LrLgUJ1sPLmjoS0.svg" 
+                alt="LeadsUp Logo" 
+                className="h-10 w-auto"
+              />
             </Link>
           </div>
 
