@@ -3,16 +3,16 @@
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import Image from "next/image"
+import Link from "next/link"
 
 export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    fullName: "",
     email: "",
     password: "",
-    company: "",
   })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,24 +24,28 @@ export default function SignupPage() {
     setLoading(true)
     setError("")
 
+    // Validate password length
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters long")
+      setLoading(false)
+      return
+    }
+
     try {
-      const response = await fetch("/api/auth/signup", {
+      const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
+          fullName: formData.fullName,
           email: formData.email,
           password: formData.password,
-          company: formData.company,
         }),
-        credentials: "include",
       })
 
       if (!response.ok) {
-        let errorMessage = "Signup failed"
+        let errorMessage = "Registration failed"
         try {
           const errorData = await response.json()
           errorMessage = errorData.error || errorMessage
@@ -55,114 +59,175 @@ export default function SignupPage() {
       const data = await response.json()
 
       if (data.success) {
-        localStorage.removeItem('auth_cache')
-        sessionStorage.removeItem('auth_cache')
-        // Set flag to indicate user just signed up
-        sessionStorage.setItem('just_signed_up', 'true')
-        setTimeout(() => {
-          window.location.href = "/?from=signup"
-        }, 100)
+        // Auto-login after successful registration
+        const loginResponse = await fetch("/api/auth/signin", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+          }),
+          credentials: "include",
+        })
+
+        if (loginResponse.ok) {
+          const loginData = await loginResponse.json()
+          if (loginData.success) {
+            localStorage.removeItem('auth_cache')
+            sessionStorage.removeItem('auth_cache')
+            setTimeout(() => {
+              window.location.href = "/"
+            }, 100)
+          }
+        } else {
+          // Registration successful but auto-login failed
+          window.location.href = "/auth/login"
+        }
       } else {
-        setError(data.error || "Signup failed")
+        setError(data.error || "Registration failed")
       }
     } catch (err) {
-      console.error("Signup error:", err)
+      console.error("Registration error:", err)
       setError("Network error. Please check your connection and try again.")
     } finally {
       setLoading(false)
     }
   }
 
+  const handleGoogleSignup = async () => {
+    setLoading(true)
+    setError("")
+    
+    try {
+      // TODO: Implement Google OAuth
+      setError("Google signup coming soon")
+    } catch (err) {
+      setError("Failed to sign up with Google")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
-          {/* Header */}
-          <div className="p-8 text-center">
-            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">LeadsUp</h1>
-            <p className="text-gray-600">Create your account</p>
+    <div className="min-h-screen bg-white">
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          {/* Logo */}
+          <div className="flex justify-center mb-8">
+            <Link href="/" className="text-2xl font-semibold text-gray-900">
+              LeadsUp
+            </Link>
           </div>
+
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+              Sign up for LeadsUp
+            </h1>
+            <p className="text-gray-600">Start your journey with us.</p>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-6">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
 
           {/* Form */}
-          <div className="px-8 pb-8">
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl">
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
-            )}
+          <form onSubmit={handleSubmit} className="space-y-4">
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  name="firstName"
-                  type="text"
-                  placeholder="First name"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  required
-                  className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
-                />
-                <Input
-                  name="lastName"
-                  type="text"
-                  placeholder="Last name"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  required
-                  className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
-                />
-              </div>
-              
+            {/* Full Name Field */}
+            <div>
+              <label htmlFor="fullName" className="block text-sm font-medium text-gray-900 mb-2">
+                Full Name
+              </label>
               <Input
+                id="fullName"
+                name="fullName"
+                type="text"
+                required
+                value={formData.fullName}
+                onChange={handleInputChange}
+                className="w-full h-11 bg-white text-gray-900 border border-gray-300 rounded-2xl px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Email Field */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
+                Email
+              </label>
+              <Input
+                id="email"
                 name="email"
                 type="email"
-                placeholder="Email"
+                required
                 value={formData.email}
                 onChange={handleInputChange}
-                required
-                className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
+                className="w-full h-11 bg-white text-gray-900 border border-gray-300 rounded-2xl px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
+            </div>
 
+            {/* Password Field */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
+                Password
+              </label>
               <Input
-                name="company"
-                type="text"
-                placeholder="Company"
-                value={formData.company}
-                onChange={handleInputChange}
-                required
-                className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
-              />
-              
-              <Input
+                id="password"
                 name="password"
                 type="password"
-                placeholder="Password"
+                required
+                minLength={8}
                 value={formData.password}
                 onChange={handleInputChange}
-                required
-                className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
+                className="w-full h-11 bg-white text-gray-900 border border-gray-300 rounded-2xl px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
+            </div>
 
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3 font-medium transition-all duration-300 mt-6"
-              >
-                {loading ? "Creating account..." : "Create Account"}
-              </Button>
-            </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-gray-600 text-sm">
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-4 py-2 font-medium transition-colors h-11"
+            >
+              {loading ? "Creating account..." : "Sign up"}
+            </Button>
+
+            {/* Login Link */}
+            <div>
+              <p className="text-sm text-gray-600 text-center">
                 Already have an account?{" "}
-                <a href="/auth/login" className="text-blue-600 hover:text-blue-700">
-                  Sign in
-                </a>
+                <Link href="/auth/login" className="text-blue-600 hover:text-blue-700 font-medium">
+                  Log in
+                </Link>
               </p>
             </div>
+
+            {/* Terms */}
+            <div>
+              <p className="text-xs text-gray-500 text-center">
+                By signing up, you agree to our{" "}
+                <Link href="/terms" className="text-blue-600 hover:text-blue-700">Terms of Service</Link>
+                {" "}and{" "}
+                <Link href="/privacy" className="text-blue-600 hover:text-blue-700">Privacy Policy</Link>
+              </p>
+            </div>
+          </form>
+
+          {/* Help Link */}
+          <div className="mt-8 text-center text-sm text-gray-500">
+            <p>Having issues with this page?</p>
+            <a href="mailto:support@leadsup.io" className="text-blue-600 hover:text-blue-700 font-medium">
+              Contact us
+            </a>
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   )
 }

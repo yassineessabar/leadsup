@@ -3,8 +3,10 @@
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import Image from "next/image"
+import Link from "next/link"
 
-export default function Component() {
+export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [formData, setFormData] = useState({
@@ -64,74 +66,121 @@ export default function Component() {
       setLoading(false)
     }
   }
+
+  const handleGoogleLogin = async () => {
+    setLoading(true)
+    setError("")
+    
+    try {
+      // TODO: Implement Google OAuth
+      setError("Google login coming soon")
+    } catch (err) {
+      setError("Failed to login with Google")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
-          {/* Header */}
-          <div className="p-8 text-center">
-            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">LeadsUp</h1>
-            <p className="text-gray-600">Welcome back</p>
+    <div className="min-h-screen bg-white">
+      <main className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          {/* Logo */}
+          <div className="flex justify-center mb-8">
+            <Link href="/" className="text-2xl font-semibold text-gray-900">
+              LeadsUp
+            </Link>
           </div>
+
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+              Log into LeadsUp
+            </h1>
+            <p className="text-gray-600">Welcome back.</p>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-6">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
 
           {/* Form */}
-          <div className="px-8 pb-8">
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl">
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
-            )}
+          <form onSubmit={handleSubmit} className="space-y-4">
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <Input
-                  name="email"
-                  type="email"
-                  placeholder="Email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
-                />
-              </div>
-              
-              <div>
-                <Input
-                  name="password"
-                  type="password"
-                  placeholder="Password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
-                />
-              </div>
+            {/* Email Field */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
+                Email
+              </label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                required
+                value={formData.email}
+                onChange={handleInputChange}
+                className="w-full h-11 bg-white text-gray-900 border border-gray-300 rounded-2xl px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
 
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3 font-medium transition-all duration-300"
-              >
-                {loading ? "Signing in..." : "Sign In"}
-              </Button>
-            </form>
+            {/* Password Field */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
+                Password
+              </label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                value={formData.password}
+                onChange={handleInputChange}
+                className="w-full h-11 bg-white text-gray-900 border border-gray-300 rounded-2xl px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
 
-            <div className="mt-6 text-center space-y-3">
-              <p>
-                <a href="/auth/forgot-password" className="text-blue-600 hover:text-blue-700 text-sm">
-                  Forgot password?
-                </a>
-              </p>
-              <p className="text-gray-600 text-sm">
-                Don&apos;t have an account?{" "}
-                <a href="/auth/signup" className="text-blue-600 hover:text-blue-700">
-                  Sign up
-                </a>
+            {/* Forgot Password Link */}
+            <div>
+              <p className="text-sm text-gray-600">
+                Forgot your password?{" "}
+                <Link href="/auth/forgot-password" className="text-blue-600 hover:text-blue-700 font-medium">
+                  Reset password
+                </Link>
               </p>
             </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-4 py-2 font-medium transition-colors h-11"
+            >
+              {loading ? "Signing in..." : "Log in"}
+            </Button>
+
+            {/* Signup Link */}
+            <div>
+              <p className="text-sm text-gray-600 text-center">
+                Don't have an account yet?{" "}
+                <Link href="/auth/signup" className="text-blue-600 hover:text-blue-700 font-medium">
+                  Sign up now
+                </Link>
+              </p>
+            </div>
+          </form>
+
+          {/* Help Link */}
+          <div className="mt-8 text-center text-sm text-gray-500">
+            <p>Having issues with this page?</p>
+            <a href="mailto:support@leadsup.io" className="text-blue-600 hover:text-blue-700 font-medium">
+              Contact us
+            </a>
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   )
 }
