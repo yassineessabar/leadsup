@@ -300,6 +300,8 @@ ${companyContext}
 
 ${websiteContent ? 'Analyze the website content to understand what this company does, who they serve, and how they create value. Use this context to create relevant ICPs and personas.' : 'Generate ICPs and personas based on the company information provided.'}
 
+IMPORTANT: For extracted_keywords, ONLY include broad, generic job titles like "CEO", "Director", "Manager", "VP", "President", "Founder", "Executive", "Head of Department". NEVER include specific task-oriented terms like "automate reviews", "online reputation", or "customer feedback".
+
 Return JSON in this exact format:
 {
   "icps": [{
@@ -321,7 +323,7 @@ Return JSON in this exact format:
     "challenges": ["Challenge 1", "Challenge 2"],
     "preferred_communication": "Communication style"
   }],
-  "extracted_keywords": ["keyword1", "keyword2", "keyword3"]
+  "extracted_keywords": ["CEO", "Director", "Manager"]
 }`
         }
       ],
@@ -648,7 +650,7 @@ function getFallbackICPsAndPersonas() {
         preferred_communication: "Email, direct approach"
       }
     ],
-    extracted_keywords: []
+    extracted_keywords: ["CEO", "Director", "Manager", "VP", "President"]
   }
 }
 
