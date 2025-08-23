@@ -401,7 +401,7 @@ export function ComprehensiveDashboard() {
                     )}
                   </p>
                   <span className="text-sm text-gray-400 font-medium">
-                    +12.5%
+                    Last 30 days
                   </span>
                 </div>
               </CardContent>
@@ -428,7 +428,7 @@ export function ComprehensiveDashboard() {
                     )}
                   </p>
                   <span className="text-sm text-gray-400 font-medium">
-                    +2.1%
+                    Last 30 days
                   </span>
                 </div>
               </CardContent>
@@ -455,7 +455,7 @@ export function ComprehensiveDashboard() {
                     )}
                   </p>
                   <span className="text-sm text-gray-400 font-medium">
-                    +2
+                    Active now
                   </span>
                 </div>
               </CardContent>
@@ -482,7 +482,7 @@ export function ComprehensiveDashboard() {
                     )}
                   </p>
                   <span className="text-sm text-gray-400 font-medium">
-                    +1.2%
+                    All-time
                   </span>
                 </div>
               </CardContent>

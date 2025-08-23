@@ -138,8 +138,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <p className="text-2xl md:text-3xl font-bold text-slate-900">{stats.totalLeads}</p>
                 <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-none">
-                  <ArrowUp className="w-3 h-3 mr-1" />
-                  +12.5%
+                  Last 30 days
                 </Badge>
               </div>
             </CardContent>
@@ -157,8 +156,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <p className="text-2xl md:text-3xl font-bold text-slate-900">{stats.contactedLeads}</p>
                 <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-none">
-                  <ArrowUp className="w-3 h-3 mr-1" />
-                  +2.1%
+                  Last 30 days
                 </Badge>
               </div>
             </CardContent>
@@ -176,8 +174,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <p className="text-2xl md:text-3xl font-bold text-slate-900">{stats.activeCampaigns}</p>
                 <Badge variant="secondary" className="bg-purple-50 text-purple-600 border-none">
-                  <ArrowUp className="w-3 h-3 mr-1" />
-                  +2
+                  Active now
                 </Badge>
               </div>
             </CardContent>
@@ -195,8 +192,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <p className="text-2xl md:text-3xl font-bold text-slate-900">{stats.responseRate}</p>
                 <Badge variant="secondary" className="bg-green-50 text-green-600 border-none">
-                  <ArrowUp className="w-3 h-3 mr-1" />
-                  +1.2%
+                  All-time
                 </Badge>
               </div>
             </CardContent>

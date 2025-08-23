@@ -134,7 +134,8 @@ export async function POST(
     }
 
     // Save different types of data based on saveType
-    if (saveType === 'all' || saveType === 'sequences') {
+    // Note: Skip sequences for 'all' to avoid conflicts with dedicated /sequences endpoint
+    if (saveType === 'sequences') {
       await saveSequences(campaignId, campaignData.sequences)
     }
 

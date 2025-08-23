@@ -106,6 +106,11 @@ interface CampaignAnalyticsProps {
 }
 
 export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: CampaignAnalyticsProps) {
+  console.log('🚨🚨🚨 CAMPAIGN ANALYTICS COMPONENT LOADED 🚨🚨🚨')
+  console.log('🚨 Campaign prop:', campaign)
+  console.log('🚨 Campaign ID:', campaign?.id)
+  console.log('🚨 Campaign Status:', campaign?.status)
+  
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
@@ -126,8 +131,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Sequence status state - stores real progression data from API
   const [contactSequenceStatus, setContactSequenceStatus] = useState<Map<string, any>>(new Map())
   
-  // Health score state
-  const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { score: number; breakdown: any; lastUpdated: string }>>({})
+  // Health score state - updated to match the actual data structure
+  const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { health_score: number; daily_limit: number; warmup_status: string; email: string; name: string }>>({})
   const [healthScoresLoading, setHealthScoresLoading] = useState(false)
   
   // Warming metrics state
@@ -242,110 +247,73 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         // Update debug state
         setDebugSenderAssignments(senderAssignments)
         
-        console.log('🔍 DEBUGGING CAMPAIGN SENDERS:')
+        console.log('🔍 DEBUGGING CAMPAIGN SENDERS - DETAILED:')
         console.log(`📋 Campaign ID: ${campaign.id}`)
+        console.log(`📋 API Response Status: ${sendersResponse.status}`)
         console.log('📋 Raw sender assignments from API:', senderAssignments)
         console.log('📋 Full senders API response:', sendersResult)
         console.log(`📊 Number of assignments returned: ${senderAssignments.length}`)
+        console.log(`📊 sendersResult.success: ${sendersResult.success}`)
+        console.log(`📊 Type of assignments: ${typeof senderAssignments}`)
+        console.log(`📊 Is assignments array: ${Array.isArray(senderAssignments)}`)
         
         if (senderAssignments.length > 0) {
-          // Check what fields are available and extract sender IDs from assignments
+          // The assignments already contain health scores - no need for additional API calls
           console.log('🔍 First assignment structure:', senderAssignments[0])
           
-          // Try to get sender_id first, but if that doesn't exist, get emails and look up sender accounts
-          let senderIds = senderAssignments.map((assignment: any) => assignment.sender_id).filter(Boolean)
+          // Extract health scores directly from assignments
+          const healthScoresFromAssignments: Record<string, any> = {}
+          const senderEmails = senderAssignments.map((assignment: any) => assignment.email).filter(Boolean)
           
-          if (senderIds.length === 0) {
-            // Fall back to using email addresses directly in health score API
-            const senderEmails = senderAssignments.map((assignment: any) => assignment.email).filter(Boolean)
-            setDebugSelectedEmails(senderEmails) // Update debug state
-            console.log('📧 Found sender emails instead of IDs:', senderEmails)
+          senderAssignments.forEach((assignment: any) => {
+            console.log('🔍 DEBUG: Processing assignment:', assignment)
+            console.log('🔍 DEBUG: assignment.health_score:', assignment.health_score)
+            console.log('🔍 DEBUG: assignment.health_score type:', typeof assignment.health_score)
             
-            if (senderEmails.length > 0) {
-              // Pass emails directly to health score API for resolution
-              console.log('🔍 Fetching health scores using emails:', senderEmails)
-              console.log(`📊 Campaign ${campaign.id} has ${senderEmails.length} selected senders:`, senderEmails)
+            if (assignment.email) {
+              // Use a default health score of 75 if not provided
+              const healthScore = assignment.health_score !== undefined && assignment.health_score !== null 
+                ? assignment.health_score 
+                : 75
               
-              const healthResponse = await fetch(`/api/sender-accounts/health-score?emails=${senderEmails.join(',')}&campaignId=${campaign.id}`, {
-                credentials: "include"
-              })
-              
-              if (healthResponse.ok) {
-                const healthResult = await healthResponse.json()
-                if (healthResult.success) {
-                  const allHealthScores = healthResult.healthScores || {}
-                  
-                  // SAFETY FILTER: Only keep health scores for emails that are in our selected senders
-                  const filteredHealthScores: Record<string, any> = {}
-                  senderEmails.forEach(email => {
-                    if (allHealthScores[email]) {
-                      filteredHealthScores[email] = allHealthScores[email]
-                    }
-                  })
-                  
-                  setSenderHealthScores(filteredHealthScores)
-                  console.log('✅ Loaded health scores from emails:', allHealthScores)
-                  console.log(`📊 All health scores count: ${Object.keys(allHealthScores).length}`)
-                  console.log(`🎯 Filtered health scores count: ${Object.keys(filteredHealthScores).length}`)
-                  console.log('📧 All health score email keys:', Object.keys(allHealthScores))
-                  console.log('🎯 Expected emails from assignments:', senderEmails)
-                  console.log('✅ Final filtered health scores:', filteredHealthScores)
-                  
-                  return // Exit early since we got the health scores
-                }
-              } else {
-                console.error('Failed to fetch health scores using emails:', healthResponse.statusText)
+              healthScoresFromAssignments[assignment.email] = {
+                health_score: healthScore,
+                daily_limit: assignment.daily_limit || 50,
+                warmup_status: assignment.warmup_status || 'inactive',
+                email: assignment.email,
+                name: assignment.name || assignment.email
               }
-            }
-          }
-          
-          console.log('📋 Final sender IDs for health scores:', senderIds)
-          
-          if (senderIds.length > 0) {
-            console.log('🔍 Fetching health scores for sender IDs:', senderIds)
-            console.log(`📊 Campaign ${campaign.id} has ${senderIds.length} selected sender IDs:`, senderIds)
-            
-            // Fetch health scores
-            const healthResponse = await fetch(`/api/sender-accounts/health-score?senderIds=${senderIds.join(',')}&campaignId=${campaign.id}`, {
-              credentials: "include"
-            })
-            
-            if (healthResponse.ok) {
-              const healthResult = await healthResponse.json()
-              if (healthResult.success) {
-                const allHealthScores = healthResult.healthScores || {}
-                
-                // SAFETY FILTER: Get emails from assignments to cross-check
-                const assignmentEmails = senderAssignments.map((a: any) => a.email).filter(Boolean)
-                const filteredHealthScores: Record<string, any> = {}
-                
-                // Filter by email keys that match our assignments
-                Object.keys(allHealthScores).forEach(key => {
-                  if (assignmentEmails.includes(key)) {
-                    filteredHealthScores[key] = allHealthScores[key]
-                  }
-                })
-                
-                setSenderHealthScores(filteredHealthScores)
-                console.log('✅ Loaded health scores from IDs:', allHealthScores)
-                console.log(`📊 All health scores count: ${Object.keys(allHealthScores).length}`)
-                console.log(`🎯 Filtered health scores count: ${Object.keys(filteredHealthScores).length}`)
-                console.log('📧 All health score keys:', Object.keys(allHealthScores))
-                console.log('🎯 Expected sender IDs:', senderIds)
-                console.log('📧 Assignment emails for filtering:', assignmentEmails)
-                console.log('✅ Final filtered health scores:', filteredHealthScores)
-              }
+              console.log(`✅ Added health score for ${assignment.email}:`, healthScoresFromAssignments[assignment.email])
             } else {
-              console.error('Failed to fetch health scores:', healthResponse.statusText)
+              console.log(`⚠️ Skipped assignment - no email: ${assignment}`)
             }
-          } else {
-            console.log('⚠️ No sender IDs found in assignments - cannot fetch health scores')
-          }
+          })
+          
+          console.log('✅ Extracted health scores from assignments:', healthScoresFromAssignments)
+          console.log(`📊 Found ${Object.keys(healthScoresFromAssignments).length} health scores`)
+          console.log('📧 Sender emails:', senderEmails)
+          
+          // Test the exact structure we're setting
+          console.log('🔥 CRITICAL DEBUG - Setting senderHealthScores to:', JSON.stringify(healthScoresFromAssignments, null, 2))
+          console.log('🔥 CRITICAL DEBUG - Keys being set:', Object.keys(healthScoresFromAssignments))
+          console.log('🔥 CRITICAL DEBUG - First value structure:', Object.values(healthScoresFromAssignments)[0])
+          
+          // Update states - use callback to ensure we're setting the right value
+          setSenderHealthScores((prev) => {
+            console.log('🔥 CRITICAL: Previous senderHealthScores state:', prev)
+            console.log('🔥 CRITICAL: New senderHealthScores being set:', healthScoresFromAssignments)
+            return healthScoresFromAssignments
+          })
+          setDebugSelectedEmails(senderEmails)
+          
+          console.log('🎯 Setting senderHealthScores state to:', healthScoresFromAssignments)
+          console.log(`📊 Health score count: ${Object.keys(healthScoresFromAssignments).length}`)
         } else {
           console.log('⚠️ No sender assignments found for campaign')
           console.log('📋 Senders response:', sendersResult)
           console.log('🚨 PROBLEM: Campaign has no sender assignments in database!')
           console.log('💡 This means sender selection was not saved properly in campaign settings')
+          console.log('🚨 CLEARING HEALTH SCORES - This is likely the cause of "No senders selected"!')
           setSenderHealthScores({}) // Clear health scores if no senders selected
           setDebugSenderAssignments([])
           setDebugSelectedEmails([])
@@ -1190,8 +1158,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     if ((campaign.status === "Warming" || campaign.status === "Paused") && newStatus === "Active") {
       // Check if health scores are low (below 90%)
       const lowScoreSenders = Object.entries(senderHealthScores)
-        .filter(([_, healthData]) => healthData.score < 90)
-        .map(([email, healthData]) => ({ email, score: healthData.score }))
+        .filter(([_, healthData]) => healthData.health_score < 90)
+        .map(([email, healthData]) => ({ email, score: healthData.health_score }))
       
       if (lowScoreSenders.length > 0) {
         // Show warmup warning popup
@@ -2112,7 +2080,7 @@ Sequence Info:
                   if (Object.keys(senderHealthScores).length > 0) {
                     // Use actual health scores
                     const validScores = senders
-                      .map((s: any) => senderHealthScores[s.sender_email]?.score)
+                      .map((s: any) => senderHealthScores[s.sender_email]?.health_score)
                       .filter((score: number | undefined) => score !== undefined)
                     if (validScores.length > 0) {
                       avgHealthScore = Math.round(validScores.reduce((a: number, b: number) => a + b, 0) / validScores.length)
@@ -2213,7 +2181,7 @@ Sequence Info:
                           {senders.map((sender: any, index: number) => {
                             const phase = sender.phase || 1
                             // Use actual health score from senderHealthScores if available, otherwise use warmup data
-                            const actualHealthScore = senderHealthScores[sender.sender_email]?.score
+                            const actualHealthScore = senderHealthScores[sender.sender_email]?.health_score
                             const healthScore = actualHealthScore !== undefined ? actualHealthScore : (sender.current_health_score || 0)
                             const dayInPhase = sender.day_in_phase || 1
                             const emailsToday = sender.emails_sent_today || 0
@@ -2353,12 +2321,50 @@ Sequence Info:
                   </div>
                 </div>
               )
-            ) : Object.keys(senderHealthScores).length > 0 ? (
+            ) : (() => {
+              console.log('🎯 RENDER DEBUG: Checking senderHealthScores for display')
+              console.log('🎯 senderHealthScores keys:', Object.keys(senderHealthScores))
+              console.log('🎯 senderHealthScores length:', Object.keys(senderHealthScores).length)
+              console.log('🎯 senderHealthScores value:', senderHealthScores)
+              console.log('🎯 senderHealthScores JSON:', JSON.stringify(senderHealthScores, null, 2))
+              console.log('🎯 First health score entry:', Object.entries(senderHealthScores)[0])
+              console.log('🎯 All entries:', Object.entries(senderHealthScores))
+              Object.entries(senderHealthScores).forEach(([key, value]) => {
+                console.log(`🎯 Entry ${key}:`, value)
+              })
+              return Object.keys(senderHealthScores).length > 0
+            })() ? (
               <>
                 {(() => {
-                  // Calculate average score
-                  const scores = Object.values(senderHealthScores).map(data => data.score)
-                  const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+                  // Debug health scores
+                  console.log('🔍 DEBUG: senderHealthScores object:', senderHealthScores)
+                  console.log('🔍 DEBUG: Object.values(senderHealthScores):', Object.values(senderHealthScores))
+                  console.log('🔍 DEBUG: typeof senderHealthScores:', typeof senderHealthScores)
+                  console.log('🔍 DEBUG: Is senderHealthScores an object?:', senderHealthScores && typeof senderHealthScores === 'object')
+                  
+                  // Calculate average score - handle potential undefined/null values
+                  const scores = Object.values(senderHealthScores || {})
+                    .map((data: any) => {
+                      console.log('🔍 DEBUG: Individual health data:', data)
+                      console.log('🔍 DEBUG: health_score value:', data.health_score)
+                      console.log('🔍 DEBUG: health_score type:', typeof data.health_score)
+                      return data.health_score
+                    })
+                    .filter((score): score is number => {
+                      const isValid = typeof score === 'number' && !isNaN(score)
+                      if (!isValid) {
+                        console.log('⚠️ DEBUG: Filtered out invalid score:', score)
+                      }
+                      return isValid
+                    })
+                  
+                  console.log('🔍 DEBUG: Extracted valid scores array:', scores)
+                  console.log('🔍 DEBUG: Valid scores count:', scores.length)
+                  
+                  const avgScore = scores.length > 0 
+                    ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) 
+                    : 75 // Default to 75 if no valid scores
+                  console.log('🔍 DEBUG: Calculated avgScore:', avgScore)
                   
                   const getScoreColor = (score: number) => {
                     if (score >= 80) return 'text-green-600 bg-green-50'
@@ -2386,7 +2392,7 @@ Sequence Info:
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2 flex-wrap">
                           <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getScoreColor(avgScore)}`}>
-                            Avg: {avgScore}/100
+                            Avg: {isNaN(avgScore) ? 75 : avgScore}/100
                           </div>
                           {avgScore < 90 && (
                             <Button
@@ -2419,7 +2425,7 @@ Sequence Info:
                       {healthScoresExpanded && (
                         <div className="mt-4 space-y-2 border-t pt-4">
                           {Object.entries(senderHealthScores).map(([emailOrId, healthData]) => {
-                            const score = healthData.score
+                            const score = healthData.health_score
                             const email = emailOrId
                             
                             return (
@@ -2468,10 +2474,11 @@ Sequence Info:
           <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
             <CardContent className="p-6">
               {(() => {
-                // Calculate total daily limit based on selected senders
+                // Calculate total daily limit based on actual sender daily limits
                 const selectedSenderCount = Object.keys(senderHealthScores).length
-                const dailyLimitPerSender = 50
-                const totalDailyLimit = selectedSenderCount * dailyLimitPerSender
+                const totalDailyLimit = Object.values(senderHealthScores).reduce((total: number, sender: any) => {
+                  return total + (sender.daily_limit || 50)
+                }, 0)
                 
                 return (
                   <>
@@ -2481,7 +2488,7 @@ Sequence Info:
                       </div>
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">Daily Limit</h3>
-                        <p className="text-gray-500 text-sm">{selectedSenderCount} selected sender{selectedSenderCount > 1 ? 's' : ''} • {dailyLimitPerSender} emails each</p>
+                        <p className="text-gray-500 text-sm">{selectedSenderCount} selected sender{selectedSenderCount > 1 ? 's' : ''} • Variable limits per sender</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
@@ -3586,8 +3593,8 @@ Sequence Info:
                   return (
                     <div key={email} className="flex items-center justify-between p-2 bg-white rounded-lg">
                       <span className="text-sm text-gray-700 truncate flex-1 mr-2">{email}</span>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getScoreColor(healthData.score)}`}>
-                        {healthData.score}%
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getScoreColor(healthData.health_score)}`}>
+                        {healthData.health_score}%
                       </span>
                     </div>
                   )

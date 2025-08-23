@@ -73,21 +73,30 @@ export async function GET() {
       .eq('user_id', userId)
       .eq('status', 'Active')
 
-    // Fetch responded leads (contacts with response/reply status)
-    const { count: respondedLeads } = await supabaseServer
-      .from('contacts')
-      .select('*', { count: 'exact', head: true })
+    // Fetch actual email metrics from inbox_messages table
+    const { data: sentEmails } = await supabaseServer
+      .from('inbox_messages')
+      .select('id')
       .eq('user_id', userId)
-      .in('email_status', ['Replied', 'Responded', 'Reply'])
+      .eq('direction', 'outbound')
+
+    const { data: repliesReceived } = await supabaseServer
+      .from('inbox_messages')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('direction', 'inbound')
+
+    const totalSent = sentEmails?.length || 0
+    const totalReplies = repliesReceived?.length || 0
 
     // Calculate contact rate (percentage of leads that have been contacted)
     const contactRate = allTimeLeads > 0 ? ((contactedLeads / allTimeLeads) * 100).toFixed(1) : '0'
 
-    // Calculate response rate (percentage of contacted leads that responded)
-    const responseRate = contactedLeads > 0 ? ((respondedLeads / contactedLeads) * 100).toFixed(1) : '0'
+    // Calculate response rate using actual inbox data (replies received / emails sent)
+    const responseRate = totalSent > 0 ? ((totalReplies / totalSent) * 100).toFixed(1) : '0'
 
     // Calculate growth rate (simplified - would need historical data for accurate calculation)
-    const growthRate = '+12.5%' // Placeholder - would need historical comparison
+    const growthRate = '' // Would need historical comparison
 
     return NextResponse.json({
       success: true,
@@ -95,12 +104,14 @@ export async function GET() {
         totalLeads: totalLeads || 0,
         contactedLeads: contactedLeads || 0,
         activeCampaigns: activeCampaigns || 0,
-        respondedLeads: respondedLeads || 0,
+        respondedLeads: totalReplies,
         contactRate: `${contactRate}%`,
         responseRate: `${responseRate}%`,
         growthRate: growthRate,
         period: 'Last 30 days',
-        allTimeLeads: allTimeLeads || 0
+        allTimeLeads: allTimeLeads || 0,
+        emailsSent: totalSent,
+        repliesReceived: totalReplies
       }
     })
 

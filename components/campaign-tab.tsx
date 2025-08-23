@@ -299,8 +299,9 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           const batchResults = await Promise.all(batchPromises)
           
           // Update campaigns with metrics as they become available
+          let updatedCampaigns: any[] = []
           setCampaigns(prevCampaigns => {
-            const updatedCampaigns = prevCampaigns.map(campaign => {
+            updatedCampaigns = prevCampaigns.map(campaign => {
               const metricsResult = batchResults.find(result => 
                 result && result.campaignId === campaign.id
               )
@@ -309,13 +310,15 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                 : campaign
             })
             
-            // Share updated campaign data
+            return updatedCampaigns
+          })
+          
+          // Dispatch event after state update, outside render cycle
+          setTimeout(() => {
             window.dispatchEvent(new CustomEvent('campaigns-updated', { 
               detail: { campaigns: updatedCampaigns } 
             }))
-            
-            return updatedCampaigns
-          })
+          }, 0)
           
           // Small delay between batches to avoid overwhelming the API
           if (campaignBatches.indexOf(batch) < campaignBatches.length - 1) {

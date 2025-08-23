@@ -57,25 +57,56 @@ export async function GET(request: NextRequest) {
     // Skip campaign verification - we want to show SendGrid data regardless
     console.log('📊 Attempting to fetch real SendGrid metrics...')
 
-    // Method 1: User-specific analytics (PRIORITY - calculate for this user only)
+    // Method 1: User-specific analytics with real SendGrid events (PRIORITY)
     try {
-      console.log('📡 Method 1: Calculating user-specific metrics...')
+      console.log('📡 Method 1: Calculating user-specific metrics with SendGrid events...')
       
       const { UserSpecificAnalytics } = await import('@/lib/user-specific-analytics')
+      const { fetchSendGridEventsForUser } = await import('@/lib/sendgrid-event-fetcher')
+      
       const userMetrics = await UserSpecificAnalytics.getUserMetrics(userId, startDate, endDate)
       
       if (userMetrics && userMetrics.emailsSent > 0) {
-        console.log('✅ SUCCESS! Got user-specific metrics:', userMetrics)
+        // Enhance with real SendGrid open/click events
+        console.log('📊 Fetching real SendGrid open/click events...')
+        const eventMetrics = await fetchSendGridEventsForUser(userId, startDate, endDate)
         
-        return NextResponse.json({
-          success: true,
-          data: {
-            metrics: userMetrics,
-            source: 'user_specific_analytics',
-            period: `${startDate} to ${endDate}`,
-            debug: `Real user-specific data for user ${userId}`
+        if (eventMetrics) {
+          // Merge user metrics with SendGrid event metrics
+          const enhancedMetrics = {
+            ...userMetrics,
+            openRate: eventMetrics.openRate,
+            clickRate: eventMetrics.clickRate,
+            totalOpens: eventMetrics.totalOpens,
+            uniqueOpens: eventMetrics.uniqueOpens,
+            totalClicks: eventMetrics.totalClicks,
+            uniqueClicks: eventMetrics.uniqueClicks
           }
-        })
+          
+          console.log('✅ SUCCESS! Enhanced metrics with real SendGrid events:', enhancedMetrics)
+          
+          return NextResponse.json({
+            success: true,
+            data: {
+              metrics: enhancedMetrics,
+              source: 'user_specific_analytics_with_sendgrid_events',
+              period: `${startDate} to ${endDate}`,
+              debug: `Real user-specific data with SendGrid events for user ${userId}`
+            }
+          })
+        } else {
+          console.log('⚠️ Could not fetch SendGrid events, using basic metrics')
+          
+          return NextResponse.json({
+            success: true,
+            data: {
+              metrics: userMetrics,
+              source: 'user_specific_analytics_only',
+              period: `${startDate} to ${endDate}`,
+              debug: `Real user-specific data (no SendGrid events) for user ${userId}`
+            }
+          })
+        }
       } else if (userMetrics) {
         console.log('⚠️ User has no email activity in this period')
         

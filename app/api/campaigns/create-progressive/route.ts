@@ -3,11 +3,8 @@ import { cookies } from "next/headers"
 import { supabaseServer } from "@/lib/supabase"
 import OpenAI from 'openai'
 
-// Initialize OpenAI client with error handling
-const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI
-const openai = apiKey ? new OpenAI({
-  apiKey: apiKey,
-}) : null
+// Initialize OpenAI client - always create it fresh when needed
+let openai: OpenAI | null = null
 
 async function getUserIdFromSession(): Promise<string | null> {
   try {
@@ -113,6 +110,14 @@ async function fetchWebsiteContent(url: string): Promise<string> {
 export async function POST(request: NextRequest) {
   try {
     const { step, campaignId, formData, aiAssets } = await request.json()
+    console.log('🚀 API /campaigns/create-progressive called with step:', step)
+    console.log('📊 Request data:', {
+      step,
+      hasCampaignId: !!campaignId,
+      hasFormData: !!formData,
+      hasAiAssets: !!aiAssets
+    })
+    
     const userId = await getUserIdFromSession()
 
     if (!userId) {
@@ -131,11 +136,24 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, ...result })
       }
       case 'generate-all-remaining': {
+        console.log('🎯 Step: generate-all-remaining - Starting parallel generation')
+        console.log('📝 Campaign ID:', campaignId)
+        console.log('📝 Form data provided:', !!formData)
+        console.log('📝 AI assets provided:', !!aiAssets)
+        
         // NEW: Generate pain points and email sequence in parallel for speed
         const [painValueResult, sequenceResult] = await Promise.all([
           generatePainPointsAndValueProps(campaignId, aiAssets),
           generateEmailSequence(campaignId, formData, aiAssets)
         ])
+        
+        console.log('✅ Both generations complete:', {
+          hasPainPoints: !!painValueResult?.pain_points,
+          hasValueProps: !!painValueResult?.value_propositions,
+          hasEmailSequences: !!sequenceResult?.email_sequences,
+          emailSequenceCount: sequenceResult?.email_sequences?.length || 0
+        })
+        
         return NextResponse.json({ 
           success: true, 
           pain_points: painValueResult.pain_points,
@@ -251,10 +269,13 @@ async function generateICPsAndPersonas(formData: CampaignFormData) {
   try {
     console.log("🎯 Generating ICPs & Personas...")
 
-    if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI
+    if (!apiKey) {
       console.warn("⚠️ OpenAI API key not configured, using fallback data")
       return getFallbackICPsAndPersonas()
     }
+    
+    const openaiClient = new OpenAI({ apiKey })
 
     // Fetch website content if URL is provided (with timeout fallback)
     let websiteContent = ''
@@ -285,7 +306,7 @@ Keywords: ${formData.keywords?.join(', ') || 'None'}
 Language: ${formData.language || 'English'}
     `.trim()
 
-    const response = await openai.chat.completions.create({
+    const response = await openaiClient.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
@@ -346,10 +367,13 @@ async function generatePainPointsAndValueProps(campaignId: string | number, aiAs
   try {
     console.log("💡 Generating Pain Points & Value Props...")
 
-    if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI
+    if (!apiKey) {
       console.warn("⚠️ OpenAI API key not configured, using fallback data")
       return getFallbackPainPointsAndValueProps()
     }
+    
+    const openaiClient = new OpenAI({ apiKey })
 
     // Fetch campaign data to get website context
     const { data: campaign } = await supabaseServer
@@ -364,7 +388,7 @@ async function generatePainPointsAndValueProps(campaignId: string | number, aiAs
       websiteContent = await fetchWebsiteContent(campaign.website)
     }
 
-    const response = await openai.chat.completions.create({
+    const response = await openaiClient.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
@@ -428,27 +452,23 @@ Return JSON in this exact format:
 async function generateEmailSequence(campaignId: string | number, formData: CampaignFormData, aiAssets: any) {
   try {
     console.log("📧 Generating Email Sequence...")
-
-    if (!openai) {
-      console.error("❌ CRITICAL: OpenAI API key not configured!")
-      console.error("❌ Environment variables check:")
-      console.error("   OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? '✅ Set' : '❌ Missing')
-      console.error("   OPENAI:", process.env.OPENAI ? '✅ Set' : '❌ Missing')
-      console.warn("⚠️ Using fallback email sequences - these will be generic!")
-      
+    
+    // Get API key at runtime
+    const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI
+    console.log('🔍 Checking OpenAI API key:', apiKey ? `Found (${apiKey.substring(0, 10)}...)` : 'NOT FOUND')
+    
+    if (!apiKey) {
+      console.error("❌ No OpenAI API key found in environment variables!")
       const fallbackResult = getFallbackEmailSequence()
-      
-      // Save fallback sequences to database
-      console.log('💾 Saving fallback sequences to database...')
-      try {
-        await saveAISequencesToCampaignSequences(campaignId, fallbackResult.email_sequences || [])
-        console.log('✅ Fallback sequences saved successfully')
-      } catch (saveError) {
-        console.error('❌ Failed to save fallback sequences:', saveError)
-      }
-      
+      await saveAISequencesToCampaignSequences(campaignId, fallbackResult.email_sequences || [])
       return fallbackResult
     }
+    
+    // Create OpenAI client with the API key
+    console.log('✅ Creating OpenAI client with API key...')
+    const openaiClient = new OpenAI({ 
+      apiKey: apiKey 
+    })
 
     // Fetch campaign data to get website context
     const { data: campaign } = await supabaseServer
@@ -471,25 +491,76 @@ ${websiteContent ? `Website Content: ${websiteContent}` : ''}
 Language: ${formData.language || 'English'}
     `.trim()
 
-    const response = await openai.chat.completions.create({
+    console.log('🤖 Making OpenAI API call with model gpt-4o-mini...')
+    console.log('📝 Sending context to OpenAI:', {
+      companyName: formData.companyName,
+      language: formData.language || 'English',
+      hasICPs: !!aiAssets?.icps,
+      hasPersonas: !!aiAssets?.personas,
+      hasPainPoints: !!aiAssets?.pain_points,
+      hasValueProps: !!aiAssets?.value_propositions
+    })
+    
+    // Log the actual prompt being sent
+    console.log('📜 First 500 chars of prompt:', companyContext.substring(0, 500))
+    
+    let response
+    try {
+      console.log('⏳ Calling OpenAI API...')
+      response = await openaiClient.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: `Generate 6 emails: 3 with same subject (initial), 3 with different subject (re-engagement). ${websiteContent ? 'Use website content.' : ''} Return JSON only.`
+          content: `You are an expert B2B sales copywriter. Your task is to create highly personalized, problem-solving email sequences. Use ALL the provided context data to create specific, relevant emails that directly address the target audience's pain points with concrete solutions. ${websiteContent ? 'Use website content to ensure authenticity.' : ''} Return JSON only.`
         },
         {
           role: "user",
-          content: `Create 6 emails in ${formData.language || 'English'} for this campaign:
+          content: `Create 6 highly personalized emails in ${formData.language || 'English'} for this B2B outreach campaign:
 
+COMPANY CONTEXT:
 ${companyContext}
 
+TARGET AUDIENCE:
 ICP: ${JSON.stringify(aiAssets.icps?.[0])}
+Persona: ${JSON.stringify(aiAssets.personas?.[0])}
+Pain Points: ${JSON.stringify(aiAssets.pain_points?.[0])}
 Value Proposition: ${JSON.stringify(aiAssets.value_propositions?.[0])}
 
-${websiteContent ? 'Use the website content to write emails that reflect the company\'s actual services, tone, and value proposition. Make the emails authentic to their brand.' : ''}
+CRITICAL PERSONALIZATION REQUIREMENTS - YOU MUST FOLLOW THESE:
+1. **ANALYZE THE PAIN POINT**: Take the exact pain point description and impact from the data above - reference it specifically in your emails, don't use generic problems
+2. **SOLVE WITH VALUE PROP**: Use the exact value proposition description and benefits to show HOW you solve their specific problem
+3. **SPEAK TO THE PERSONA**: Address the persona by their exact title/role, reference their specific goals and challenges from the data
+4. **USE ICP CONTEXT**: Mention their industry, company size, and decision-maker context from the ICP data
+5. **WEBSITE AUTHENTICITY**: ${websiteContent ? 'Extract key phrases, services, and tone from the website content to make emails sound authentic to this specific company' : 'Use professional language that matches the company context'}
+6. **SPECIFIC BENEFITS**: Don't say "improve efficiency" - use the EXACT benefits listed in the value proposition
+7. **PROBLEM-SOLUTION FIT**: Each email should clearly connect their specific problem to your specific solution
 
-IMPORTANT: Use the SAME subject for emails 1-3 (initial sequence), and the SAME subject for emails 4-6 (re-engagement sequence).
+**MANDATORY**: Every email MUST reference specific data from the context above. NO generic language allowed.
+
+TONE & STYLE:
+- Professional but conversational
+- Specific, not generic
+- Focus on business outcomes and ROI
+- Use industry-relevant terminology
+- Reference specific challenges from the pain points
+
+SUBJECT LINE STRATEGY:
+- Use the SAME subject for emails 1-3 (initial sequence) 
+- Use a DIFFERENT subject for emails 4-6 (re-engagement sequence)
+- Make subjects specific to their industry/role, not generic
+
+EMAIL STRATEGY - BE SPECIFIC WITH CONTEXT:
+- Email 1: Open with their EXACT pain point from the data, mention their role/industry, brief intro about how you solve it
+- Email 2: Deep dive into HOW your value proposition solves their pain point - use specific benefits and outcomes from the data
+- Email 3: Show proof/results for companies like theirs (same industry/size from ICP), strong CTA
+- Email 4: Re-engagement with a different benefit from your value proposition, new angle on their pain point
+- Email 5: Specific case study/results for their persona type and industry context
+- Email 6: Final offer with urgency, summarizing the exact problem-solution fit
+
+**EXAMPLE OF PERSONALIZATION**:
+Instead of: "I noticed {{companyName}} and thought you might be interested..."
+Write: "Hi {{firstName}}, I noticed [PERSONA TITLE] at [ICP INDUSTRY] companies like {{companyName}} often struggle with [EXACT PAIN POINT]. Our [VALUE PROP SOLUTION] helps [PERSONA GOALS] by [SPECIFIC BENEFITS]."
 
 Return JSON in this exact format:
 {
@@ -541,9 +612,24 @@ Return JSON in this exact format:
         }
       ],
       temperature: 0.3,
-      max_tokens: 500 // Further reduced for speed
+      max_tokens: 2000 // Increased to ensure full response
     })
+    } catch (openaiError: any) {
+      console.error('❌ OpenAI API call for sequences failed:', openaiError?.message || openaiError)
+      console.error('❌ OpenAI Error details:', {
+        status: openaiError?.status,
+        code: openaiError?.code,
+        type: openaiError?.type,
+        message: openaiError?.message
+      })
+      
+      // Return fallback and save it
+      const fallbackResult = getFallbackEmailSequence()
+      await saveAISequencesToCampaignSequences(campaignId, fallbackResult.email_sequences || [])
+      return fallbackResult
+    }
 
+    console.log('✅ OpenAI API call successful')
     const result = JSON.parse(response.choices[0].message.content || '{}')
     
     console.log('🤖 OpenAI raw response:', response.choices[0].message.content?.substring(0, 200) + '...')
