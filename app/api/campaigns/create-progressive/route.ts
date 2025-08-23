@@ -430,7 +430,11 @@ async function generateEmailSequence(campaignId: number, formData: CampaignFormD
     console.log("📧 Generating Email Sequence...")
 
     if (!openai) {
-      console.warn("⚠️ OpenAI API key not configured, using fallback data")
+      console.error("❌ CRITICAL: OpenAI API key not configured!")
+      console.error("❌ Environment variables check:")
+      console.error("   OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? '✅ Set' : '❌ Missing')
+      console.error("   OPENAI:", process.env.OPENAI ? '✅ Set' : '❌ Missing')
+      console.warn("⚠️ Using fallback email sequences - these will be generic!")
       return getFallbackEmailSequence()
     }
 
@@ -530,12 +534,32 @@ Return JSON in this exact format:
 
     const result = JSON.parse(response.choices[0].message.content || '{}')
     
+    console.log('🤖 OpenAI raw response:', response.choices[0].message.content?.substring(0, 200) + '...')
+    console.log('📧 Parsed email sequences:', JSON.stringify(result.email_sequences?.map(seq => ({
+      step: seq.step,
+      subject: seq.subject?.substring(0, 50),
+      timing_days: seq.timing_days
+    })), null, 2))
+    
+    if (!result.email_sequences || result.email_sequences.length === 0) {
+      console.error("❌ WARNING: OpenAI did not generate any email sequences!")
+      console.error("❌ Full OpenAI response:", response.choices[0].message.content)
+      console.warn("⚠️ Will fall back to default sequences")
+    } else {
+      console.log(`✅ OpenAI generated ${result.email_sequences.length} sequences successfully`)
+    }
+    
     // Update AI assets in database with complete sequence
     await updateAIAssets(campaignId, {
       email_sequences: result.email_sequences
     })
     
     // Save AI-generated sequences to campaign_sequences table
+    console.log('📧 About to save AI sequences to campaign_sequences table:', {
+      campaignId,
+      sequencesCount: result.email_sequences?.length || 0,
+      sequences: result.email_sequences?.map(seq => ({ step: seq.step, subject: seq.subject?.substring(0, 30) })) || []
+    })
     await saveAISequencesToCampaignSequences(campaignId, result.email_sequences || [])
 
     console.log("✅ Email Sequence generated successfully")
@@ -754,7 +778,7 @@ async function saveAISequencesToCampaignSequences(campaignId: number, aiSequence
       step_number: aiSeq.step || (index + 1),
       subject: aiSeq.subject || `Email ${index + 1} Subject`,
       content: aiSeq.content || "",
-      timing_days: aiSeq.timing_days || (aiSeq.step === 1 ? 0 : 3), // First email immediate, others 3 days apart
+      timing_days: aiSeq.timing_days !== undefined ? aiSeq.timing_days : (aiSeq.step === 1 ? 0 : 3), // Use AI timing or fallback
       variants: 1,
       outreach_method: "email",
       sequence_number: aiSeq.step <= 3 ? 1 : 2, // First 3 emails are sequence 1, next 3 are sequence 2
@@ -785,11 +809,37 @@ async function saveAISequencesToCampaignSequences(campaignId: number, aiSequence
     }
 
     console.log(`✅ Successfully saved ${sequenceData.length} AI sequences to campaign_sequences`)
+    console.log('🔍 Saved sequence IDs:', insertedData.map(seq => ({ id: seq.id, step_number: seq.step_number, subject: seq.subject?.substring(0, 30) })))
+    
+    // Verify sequences were saved by re-fetching
+    const { data: verifySequences } = await supabaseServer
+      .from("campaign_sequences")
+      .select("id, step_number, subject")
+      .eq("campaign_id", campaignId)
+      .order("step_number", { ascending: true })
+    
+    console.log('✅ Verification: Found', verifySequences?.length || 0, 'sequences in database for campaign', campaignId)
+    
     return insertedData
 
   } catch (error) {
-    console.error("❌ Error in saveAISequencesToCampaignSequences:", error)
+    console.error("❌ CRITICAL: Error in saveAISequencesToCampaignSequences:", error)
+    console.error("❌ Full error details:", JSON.stringify(error, null, 2))
+    console.error("❌ Error message:", error.message)
+    console.error("❌ Error stack:", error.stack)
+    
+    // Log the specific operation that failed
+    if (error.message?.includes('delete')) {
+      console.error("❌ Failed at: Deleting existing sequences")
+    } else if (error.message?.includes('insert')) {
+      console.error("❌ Failed at: Inserting new AI sequences")
+    } else {
+      console.error("❌ Failed at: Unknown operation")
+    }
+    
     // Don't throw error to prevent campaign creation from failing
-    console.warn("⚠️ Continuing without saving AI sequences to campaign_sequences...")
+    console.warn("⚠️ SEQUENCES WILL NOT BE SAVED - Continuing without saving AI sequences to campaign_sequences...")
+    console.warn("⚠️ This means the Email Sequences tab will show default sequences instead of AI-generated ones")
+    console.warn("⚠️ Users will need to manually create their sequences")
   }
 }

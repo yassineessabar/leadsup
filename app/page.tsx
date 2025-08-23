@@ -150,10 +150,12 @@ export default function Home() {
   const [campaignCache, setCampaignCache] = useState<Record<string, any>>({})
 
   // Enhanced setActiveTab that dispatches custom event for data refetching
-  const handleTabChange = (newTab: string) => {
+  const handleTabChange = (newTab: string, skipEvent = false) => {
     setActiveTab(newTab)
-    // Dispatch custom event to notify components about tab switch
-    window.dispatchEvent(new CustomEvent('tab-switched', { detail: newTab }))
+    // Only dispatch event if not triggered by an event listener (prevents infinite loop)
+    if (!skipEvent) {
+      window.dispatchEvent(new CustomEvent('tab-switched', { detail: newTab }))
+    }
   }
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)

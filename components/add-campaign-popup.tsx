@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -112,12 +113,19 @@ const outreachStrategies = [
 
 // Helper function to get suggested roles based on campaign objective
 const getSuggestedRoles = (objective: string): string[] => {
-  // Return broad, industry-agnostic prospect roles that work across all sectors
+  // IMPORTANT: Only return broad, generic, industry-agnostic prospect roles
+  // Never return specific roles like "automate reviews", "online reputation", "customer feedback"
+  // These roles must work across ALL industries and sectors
+  const broadRoles = [
+    'CEO', 'Founder', 'President', 'Director', 'VP', 'Manager', 
+    'Executive', 'Head of Department', 'Owner', 'Partner'
+  ]
+  
   switch (objective) {
     case 'sell-service':
-      return ['CEO', 'Founder', 'President', 'Director', 'VP', 'Manager']
+      return ['CEO', 'Founder', 'President', 'Director', 'VP', 'Manager', 'Owner']
     case 'raise-money':
-      return ['CEO', 'Founder', 'CFO', 'President', 'Director', 'Partner']
+      return ['CEO', 'Founder', 'CFO', 'President', 'Director', 'Partner', 'Owner']
     case 'book-meetings':
       return ['CEO', 'Director', 'VP', 'Manager', 'Head of Department', 'Executive']
     case 'grow-brand':
@@ -127,7 +135,7 @@ const getSuggestedRoles = (objective: string): string[] => {
     case 'recruit':
       return ['CEO', 'Director', 'VP', 'Manager', 'Head of Department', 'Executive']
     default:
-      return ['CEO', 'Founder', 'Director', 'VP', 'Manager', 'Executive']
+      return broadRoles.slice(0, 6) // Return first 6 broad roles
   }
 }
 
@@ -319,17 +327,29 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         
         // Auto-fill AI-generated target prospect roles based on campaign objective and company info
         if (result.data.aiGeneratedRoles && result.data.aiGeneratedRoles.length > 0) {
+          console.log('🎯 AI-generated roles received:', result.data.aiGeneratedRoles);
+          const newKeywords = [...new Set([...formData.keywords, ...result.data.aiGeneratedRoles])];
+          console.log('📝 Setting formData keywords to:', newKeywords);
           setFormData(prev => ({
             ...prev,
-            keywords: [...new Set([...prev.keywords, ...result.data.aiGeneratedRoles])]
+            keywords: newKeywords
           }));
+          // Save AI-generated keywords to database immediately
+          console.log('💾 Saving AI-generated keywords to database for campaign:', result.data.campaign.id);
+          updateCampaignKeywords(newKeywords, result.data.campaign.id);
         }
         // Fallback to extractedKeywords for backward compatibility
         else if (result.data.extractedKeywords && result.data.extractedKeywords.length > 0) {
+          console.log('🎯 Extracted keywords received (fallback):', result.data.extractedKeywords);
+          const newKeywords = [...new Set([...formData.keywords, ...result.data.extractedKeywords])];
+          console.log('📝 Setting formData keywords to:', newKeywords);
           setFormData(prev => ({
             ...prev,
-            keywords: [...new Set([...prev.keywords, ...result.data.extractedKeywords])]
+            keywords: newKeywords
           }));
+          // Save AI-generated keywords to database immediately
+          console.log('💾 Saving extracted keywords to database for campaign:', result.data.campaign.id);
+          updateCampaignKeywords(newKeywords, result.data.campaign.id);
         }
         
         return result.data;
@@ -481,8 +501,9 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     }
   }
 
-  const updateCampaignKeywords = async (keywords: string[]) => {
-    if (!campaignId) {
+  const updateCampaignKeywords = async (keywords: string[], targetCampaignId?: number) => {
+    const campaignIdToUse = targetCampaignId || campaignId;
+    if (!campaignIdToUse) {
       console.warn('No campaign ID available to update keywords');
       return;
     }
@@ -490,7 +511,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     try {
       console.log('🔄 [Frontend] Updating campaign keywords:', keywords);
       
-      const response = await fetch(`/api/campaigns/${campaignId}/save`, {
+      const response = await fetch(`/api/campaigns/${campaignIdToUse}/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -630,6 +651,22 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       setEditingPainPoint(false)
       setEditingValueProp(false)
     } else if (currentStep === "sequence") {
+      // Final step - ensure sequences are generated before completing campaign
+      if (!aiAssets?.email_sequences || aiAssets.email_sequences.length === 0) {
+        console.log('📧 No sequences found, generating before completing campaign...')
+        setIsProcessing(true);
+        try {
+          await generateEmailSequence();
+        } catch (error) {
+          console.error('❌ Failed to generate sequences:', error);
+          setError('Failed to generate email sequences. Please try again.');
+          setIsProcessing(false);
+          return;
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+      
       // Final step - complete the campaign creation
       const campaignData = {
         formData,
@@ -2200,20 +2237,14 @@ Best regards,
           </div>
         </div>
       </div>
-        
-        <div className="text-center">
-          <span className="text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-full">
-            36 leads will receive this sequence
-          </span>
-        </div>
       </div>
     )
   }
 
   if (!isOpen) return null
 
-  return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  const modalContent = (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" style={{zIndex: 9999}}>
       <div className="bg-white/90 backdrop-blur-xl border border-gray-100/20 rounded-3xl w-full max-w-7xl h-[85vh] max-h-[720px] overflow-hidden flex shadow-2xl relative">
         {/* Close button */}
         <button 
@@ -2383,4 +2414,6 @@ Best regards,
       </Dialog>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

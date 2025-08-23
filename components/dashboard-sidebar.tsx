@@ -19,7 +19,7 @@ interface MenuItem {
 
 interface DashboardSidebarProps {
   activeTab: string
-  onTabChange: (tab: string) => void
+  onTabChange: (tab: string, skipEvent?: boolean) => void
   isOpen: boolean
   onToggle: () => void
   isMobile?: boolean
@@ -100,7 +100,7 @@ export function DashboardSidebar({
       } else if (typeof e.detail === 'string' && e.detail.startsWith('campaigns-')) {
         // Handle campaign sub-tab navigation
         setCampaignsExpanded(true) // Ensure campaigns is expanded
-        onTabChange(e.detail)
+        onTabChange(e.detail, true) // Pass skipEvent=true to prevent infinite loop
       }
     }
 
