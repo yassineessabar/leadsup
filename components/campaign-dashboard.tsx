@@ -23,6 +23,7 @@ import { format } from "date-fns"
 import AutomationSettings from "@/components/automation-settings"
 import CampaignSenderSelection from "./campaign-sender-selection"
 import { TargetTab } from "./campaign-dashboard-target"
+import { DomainSetupModal } from "@/components/domain-setup-modal"
 import { toast } from "sonner"
 
 interface CampaignDashboardProps {
@@ -262,6 +263,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [validationLoading, setValidationLoading] = useState(false)
   const [showValidationDialog, setShowValidationDialog] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  
+  // Domain setup modal state (managed at parent level to prevent re-initialization)
+  const [showDomainSetupModal, setShowDomainSetupModal] = useState(false)
+  const [showDomainInstructions, setShowDomainInstructions] = useState(false)
+  const [pendingDomainData, setPendingDomainData] = useState<any>(null)
+  const [showSenderManagement, setShowSenderManagement] = useState(false)
+  const [selectedDomainForSenders, setSelectedDomainForSenders] = useState<string>('')
   
   // Deliverability popup state
   const [showDeliverabilityDialog, setShowDeliverabilityDialog] = useState(false)
@@ -3049,6 +3057,28 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             }}
             initialSelectedSenders={selectedSenderAccounts}
             isGuidedMode={isGuidedFlow}
+            showDomainSetupModal={showDomainSetupModal}
+            onShowDomainSetupModal={setShowDomainSetupModal}
+            showDomainInstructions={showDomainInstructions}
+            onShowDomainInstructions={setShowDomainInstructions}
+            pendingDomainData={pendingDomainData}
+            showSenderManagement={showSenderManagement}
+            onShowSenderManagement={setShowSenderManagement}
+            selectedDomainForSenders={selectedDomainForSenders}
+            onDomainSelected={(domainId) => {
+              setSelectedDomainForSenders(domainId)
+            }}
+            onDomainAdded={(newDomain) => {
+              console.log('✅ Domain added in campaign dashboard component handler:', newDomain)
+              console.log('🔄 Setting pending domain data and showing instructions...')
+              // Store domain data and show instructions
+              setPendingDomainData(newDomain)
+              setShowDomainInstructions(true)
+              setSelectedDomainForSenders(newDomain.id) // Set the domain for sender management
+              console.log('🔄 State updated - showDomainInstructions should now be true')
+              // Refresh validation to check if domains are now available
+              validateCampaignRequirements()
+            }}
           />
         );
 
@@ -4472,6 +4502,21 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Domain Setup Modal */}
+      <DomainSetupModal
+        isOpen={showDomainSetupModal}
+        onClose={() => setShowDomainSetupModal(false)}
+        onDomainAdded={(newDomain) => {
+          console.log('✅ Domain added in campaign dashboard modal handler:', newDomain)
+          // Store domain data and show instructions
+          setPendingDomainData(newDomain)
+          setShowDomainInstructions(true)
+          setShowDomainSetupModal(false)
+          // Refresh validation to check if domains are now available
+          validateCampaignRequirements()
+        }}
+      />
     </>
   )
 }

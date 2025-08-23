@@ -132,26 +132,6 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
       if (response.ok) {
         console.log('✅ Domain created successfully (createDomainManually):', data.domain);
         onDomainAdded(data.domain);
-        
-        // Redirect to domain verification view for the specific domain
-        if (typeof window !== 'undefined') {
-          console.log('🔄 Redirecting to verification page (createDomainManually) for domain:', domain);
-          
-          // Give a small delay to ensure domain is in the list
-          setTimeout(() => {
-            console.log('🔄 Dispatching domain-verification-redirect event (createDomainManually) for:', domain);
-            
-            // Dispatch custom event with domain verification details
-            window.dispatchEvent(new CustomEvent('domain-verification-redirect', { 
-              detail: { 
-                tab: 'domain',
-                view: 'verification',
-                domain: domain
-              } 
-            }));
-          }, 100);
-        }
-        
         handleClose();
       } else {
         console.error('Failed to add domain (createDomainManually) - API response not OK:', {
@@ -227,25 +207,6 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
       if (response.ok && data.success) {
         // Success! Domain has been configured
         onDomainAdded(data.domain);
-        
-        // Show success message and redirect to verification view
-        if (typeof window !== 'undefined') {
-          const url = new URL(window.location.href);
-          url.searchParams.set("tab", "domain");
-          url.searchParams.set("view", "verification");
-          url.searchParams.set("selectedDomain", domain.trim());
-          window.history.pushState({}, "", url.toString());
-          
-          // Dispatch custom event with domain verification details
-          window.dispatchEvent(new CustomEvent('domain-verification-redirect', { 
-            detail: { 
-              tab: 'domain',
-              view: 'verification',
-              domain: domain.trim()
-            } 
-          }));
-        }
-        
         handleClose();
       } else {
         // Authentication failed
@@ -381,26 +342,6 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                       if (response.ok) {
                         console.log('✅ Domain created successfully:', data.domain);
                         onDomainAdded(data.domain);
-                        
-                        // Redirect to domain verification view for the specific domain
-                        if (typeof window !== 'undefined') {
-                          console.log('🔄 Redirecting to verification page for domain:', domain);
-                          
-                          // Give a small delay to ensure domain is in the list
-                          setTimeout(() => {
-                            console.log('🔄 Dispatching domain-verification-redirect event for:', domain);
-                            
-                            // Dispatch custom event with domain verification details
-                            window.dispatchEvent(new CustomEvent('domain-verification-redirect', { 
-                              detail: { 
-                                tab: 'domain',
-                                view: 'verification',
-                                domain: domain
-                              } 
-                            }));
-                          }, 100);
-                        }
-                        
                         handleClose();
                         
                       } else {

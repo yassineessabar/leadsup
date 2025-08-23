@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe, Trash2, Save } from "lucide-react"
+import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe, Trash2, Save, Copy, Loader2, CheckCircle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { toast } from "sonner"
 import { fetchHealthScores, getHealthScoreColor, type HealthScoreResult } from "@/lib/health-score"
+import { SenderManagement } from "./sender-management"
 
 interface Domain {
   id: string
@@ -38,13 +39,33 @@ interface CampaignSenderSelectionProps {
   onSelectionChange: (selectedSenders: string[]) => void
   initialSelectedSenders?: string[]
   isGuidedMode?: boolean
+  showDomainSetupModal?: boolean
+  onShowDomainSetupModal?: (show: boolean) => void
+  onDomainAdded?: (domain: any) => void
+  showDomainInstructions?: boolean
+  onShowDomainInstructions?: (show: boolean) => void
+  pendingDomainData?: any
+  showSenderManagement?: boolean
+  onShowSenderManagement?: (show: boolean) => void
+  selectedDomainForSenders?: string
+  onDomainSelected?: (domainId: string) => void
 }
 
 export default function CampaignSenderSelection({ 
   campaignId, 
   onSelectionChange, 
   initialSelectedSenders = [],
-  isGuidedMode = false
+  isGuidedMode = false,
+  showDomainSetupModal: parentShowModal,
+  onShowDomainSetupModal: parentSetShowModal,
+  onDomainAdded: parentOnDomainAdded,
+  showDomainInstructions,
+  onShowDomainInstructions,
+  pendingDomainData,
+  showSenderManagement,
+  onShowSenderManagement,
+  selectedDomainForSenders,
+  onDomainSelected
 }: CampaignSenderSelectionProps) {
   console.log('🎯 CampaignSenderSelection props:', { campaignId, initialSelectedSenders });
   const [domainsWithSenders, setDomainsWithSenders] = useState<DomainWithSenders[]>([])
@@ -69,6 +90,27 @@ export default function CampaignSenderSelection({
   const [testModalSender, setTestModalSender] = useState<Sender | null>(null)
   const [testModalLoading, setTestModalLoading] = useState(false)
   const [userEmail, setUserEmail] = useState('')
+  
+  // Use parent modal state if provided, otherwise use local state
+  const showDomainSetupModal = parentShowModal ?? false
+  const setShowDomainSetupModal = parentSetShowModal ?? (() => {})
+  
+  // DNS records state for domain setup instructions
+  const [dnsRecords, setDnsRecords] = useState<any[]>([])
+  const [loadingDnsRecords, setLoadingDnsRecords] = useState(false)
+  const [dnsRecordsAdded, setDnsRecordsAdded] = useState(false)
+  const [copiedStates, setCopiedStates] = useState<{[key: string]: boolean}>({})
+  const [verifying, setVerifying] = useState<string | null>(null)
+  const [verificationResults, setVerificationResults] = useState<any>(null)
+  const [showVerificationResults, setShowVerificationResults] = useState(false)
+
+  // Fetch DNS records when domain instructions should be shown
+  useEffect(() => {
+    if (showDomainInstructions && pendingDomainData?.id) {
+      console.log('🔄 Fetching DNS records for pending domain:', pendingDomainData.id)
+      fetchDnsRecords(pendingDomainData.id)
+    }
+  }, [showDomainInstructions, pendingDomainData?.id])
 
   // Load user email
   useEffect(() => {
@@ -160,6 +202,41 @@ export default function CampaignSenderSelection({
       toast.error('Failed to load sender accounts')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const createPresetSenders = async (domainId: string, domainName: string) => {
+    const presetAccounts = [
+      { localPart: 'contact', displayName: 'Contact' },
+      { localPart: 'hello', displayName: 'Hello' },
+      { localPart: 'info', displayName: 'Info' }
+    ]
+
+    try {
+      console.log(`🚀 Creating preset sender accounts for ${domainName}`)
+      
+      // Create all preset accounts in parallel
+      const createPromises = presetAccounts.map((account, index) => 
+        fetch(`/api/domains/${domainId}/senders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: `${account.localPart}@${domainName}`,
+            display_name: account.displayName,
+            is_default: index === 0 // Make 'contact' the default
+          })
+        })
+      )
+
+      const responses = await Promise.all(createPromises)
+      const successCount = responses.filter(r => r.ok).length
+      
+      if (successCount > 0) {
+        toast.success(`Created ${successCount} preset email accounts`)
+        console.log(`✅ Created ${successCount} preset sender accounts for ${domainName}`)
+      }
+    } catch (error) {
+      console.error('Error creating preset senders:', error)
     }
   }
 
@@ -645,6 +722,148 @@ export default function CampaignSenderSelection({
     window.open(`/domains?domain=${encodeURIComponent(domain.domain)}`, '_blank')
   }
 
+  // Fetch DNS records for domain setup instructions
+  const fetchDnsRecords = async (domainId: string) => {
+    if (!domainId) return
+    
+    setLoadingDnsRecords(true)
+    try {
+      console.log('📡 Fetching DNS records for domain ID:', domainId)
+      const response = await fetch(`/api/domains/${domainId}/dns-records`, {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ DNS records fetched:', data)
+        if (data.success && data.records) {
+          setDnsRecords(data.records)
+        } else {
+          console.log('❌ DNS records not available, using fallback')
+          // Set fallback DNS records like the domains page does
+          setDnsRecords([
+            {
+              type: 'CNAME',
+              host: 'mail',
+              value: 'sendgrid.net',
+              description: 'Email routing'
+            },
+            {
+              type: 'TXT',
+              host: '@',
+              value: 'v=spf1 include:sendgrid.net ~all',
+              description: 'SPF record'
+            }
+          ])
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching DNS records:', error)
+      // Set fallback DNS records
+      setDnsRecords([
+        {
+          type: 'CNAME',
+          host: 'mail',
+          value: 'sendgrid.net',
+          description: 'Email routing'
+        },
+        {
+          type: 'TXT',
+          host: '@',
+          value: 'v=spf1 include:sendgrid.net ~all',
+          description: 'SPF record'
+        }
+      ])
+    } finally {
+      setLoadingDnsRecords(false)
+    }
+  }
+
+  // Copy to clipboard functionality
+  const copyToClipboard = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedStates(prev => ({ ...prev, [key]: true }))
+      setTimeout(() => {
+        setCopiedStates(prev => ({ ...prev, [key]: false }))
+      }, 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
+
+  // Verify domain functionality - exact same as domains page
+  const handleVerifyDomain = async (domainId: string) => {
+    if (!domainId) return
+    
+    setVerifying(domainId)
+    setVerificationResults(null)
+    setShowVerificationResults(false)
+    
+    try {
+      console.log('🔄 Verifying domain:', domainId)
+      const response = await fetch(`/api/domains/${domainId}/verify`, {
+        method: 'POST',
+        credentials: 'include'
+      })
+      
+      const data = await response.json()
+      console.log('📡 Verification response:', data)
+      
+      // Always show verification results
+      setVerificationResults(data)
+      setShowVerificationResults(true)
+      
+      if (response.ok && data.success) {
+        console.log('✅ Domain verification successful')
+        
+        // If domain is ready, auto-create preset senders in background
+        if (data.domainReady) {
+          setTimeout(async () => {
+            // Auto-create preset sender accounts in background
+            if (pendingDomainData?.id && pendingDomainData?.domain) {
+              await createPresetSenders(pendingDomainData.id, pendingDomainData.domain)
+            }
+            
+            await fetchDomainsAndSenders()
+            if (onShowDomainInstructions) {
+              onShowDomainInstructions(false)
+            }
+          }, 2000) // Give user time to see success message
+        }
+      } else {
+        console.log('❌ Domain verification failed:', data)
+      }
+    } catch (error) {
+      console.error('Error verifying domain:', error)
+      setVerificationResults({
+        success: false,
+        error: 'Failed to verify domain. Please try again.',
+        domainReady: false
+      })
+      setShowVerificationResults(true)
+    } finally {
+      setVerifying(null)
+    }
+  }
+
+  // Handle domain addition
+  const handleDomainAdded = (newDomain: any) => {
+    console.log('✅ Domain added successfully:', newDomain)
+    toast.success(`Domain ${newDomain.domain} added successfully!`)
+    
+    // Refresh the domains and senders list
+    fetchDomainsAndSenders()
+    
+    // Close the modal
+    setShowDomainSetupModal(false)
+    
+    // Call parent handler if provided
+    if (parentOnDomainAdded) {
+      parentOnDomainAdded(newDomain)
+    }
+  }
+
   // Handle domain deletion
   const handleDeleteDomain = async (domain: DomainWithSenders) => {
     const confirmDelete = window.confirm(
@@ -743,6 +962,393 @@ export default function CampaignSenderSelection({
   }
 
   if (domainsWithSenders.length === 0) {
+    console.log('🔍 Debug - No domains found, checking instruction state:')
+    console.log('🔍 showDomainInstructions:', showDomainInstructions)
+    console.log('🔍 pendingDomainData:', pendingDomainData)
+    
+    // Show domain setup instructions if we have pending domain data
+    if (showDomainInstructions && pendingDomainData) {
+      console.log('✅ Showing domain setup instructions for:', pendingDomainData.domain)
+      return (
+        <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100/50">
+              {/* Header */}
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Settings className="h-8 w-8 text-blue-600" />
+                </div>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-2">
+                  Complete Domain Setup: {pendingDomainData.domain}
+                </h3>
+                <p className="text-gray-600">
+                  Add these DNS records to verify your domain and start sending emails
+                </p>
+              </div>
+
+              {/* DNS Records Instructions - Exact same format as domains page */}
+              <div className="space-y-6">
+                {loadingDnsRecords ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
+                    <p className="text-gray-600">Loading DNS records...</p>
+                  </div>
+                ) : dnsRecords.length > 0 ? (
+                  <>
+                    {/* Regular DNS Records (non-MX) */}
+                    {dnsRecords.filter(r => r.type !== 'MX').length > 0 && (
+                      <div className="mb-6">
+                        <h3 className="text-lg font-medium text-gray-900 mb-3">DNS Records</h3>
+                        <div className="bg-white rounded-xl border overflow-hidden">
+                          <table className="w-full">
+                            <thead className="bg-gray-50 border-b">
+                              <tr>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Type</th>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Host</th>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Value</th>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {dnsRecords.filter(r => r.type !== 'MX').map((record, index) => (
+                                <tr key={`regular-${index}`} className="hover:bg-gray-50 transition-colors">
+                                  <td className="px-6 py-4">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                      {record.type}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                      <code className="text-sm font-mono text-gray-700">
+                                        {record.host}
+                                      </code>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => copyToClipboard(record.host, `host-${index}`)}
+                                        className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                                      >
+                                        {copiedStates[`host-${index}`] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                                      </Button>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                      <code className="text-sm font-mono text-gray-700 break-all">
+                                        {record.value}
+                                      </code>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => copyToClipboard(record.value, `value-${index}`)}
+                                        className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                                      >
+                                        {copiedStates[`value-${index}`] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                                      </Button>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    {record.description && (
+                                      <span className="text-xs text-gray-500">{record.description}</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* MX Records with Priority */}
+                    {dnsRecords.filter(r => r.type === 'MX').length > 0 && (
+                      <div className="mb-8">
+                        <h3 className="text-lg font-medium text-gray-900 mb-3">MX Records (Mail Exchange)</h3>
+                        <div className="bg-white rounded-xl border overflow-hidden">
+                          <table className="w-full">
+                            <thead className="bg-gray-50 border-b">
+                              <tr>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Type</th>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Host</th>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Priority</th>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Value</th>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {dnsRecords.filter(r => r.type === 'MX').map((record, index) => (
+                                <tr key={`mx-${index}`} className="hover:bg-gray-50 transition-colors">
+                                  <td className="px-6 py-4">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                      {record.type}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                      <code className="text-sm font-mono text-gray-700">
+                                        {record.host}
+                                      </code>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => copyToClipboard(record.host, `mx-host-${index}`)}
+                                        className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                                      >
+                                        {copiedStates[`mx-host-${index}`] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                                      </Button>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <code className="text-sm font-mono text-gray-700">{record.priority}</code>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                      <code className="text-sm font-mono text-gray-700">
+                                        {record.value}
+                                      </code>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => copyToClipboard(record.value, `mx-value-${index}`)}
+                                        className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                                      >
+                                        {copiedStates[`mx-value-${index}`] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                                      </Button>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    {record.description && (
+                                      <span className="text-xs text-gray-500">{record.description}</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Confirmation and Verification */}
+                    <div className="bg-gray-50 rounded-xl p-6">
+                      <div className="flex items-start gap-3 mb-6">
+                        <Checkbox 
+                          id="dns-added" 
+                          checked={dnsRecordsAdded} 
+                          onCheckedChange={(checked) => setDnsRecordsAdded(checked as boolean)}
+                          className="mt-1"
+                        />
+                        <label htmlFor="dns-added" className="text-gray-700 font-medium leading-relaxed">
+                          I've added all the settings above to my domain provider
+                        </label>
+                      </div>
+
+                      <div className="text-center">
+                        <Button 
+                          className="text-white px-8 py-3 rounded-lg font-medium transition-colors text-base disabled:opacity-50 disabled:bg-gray-300"
+                          style={{ backgroundColor: !dnsRecordsAdded || verifying !== null ? undefined : 'rgb(87, 140, 255)' }}
+                          onMouseEnter={(e) => {
+                            if (!(!dnsRecordsAdded || verifying !== null)) {
+                              e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!(!dnsRecordsAdded || verifying !== null)) {
+                              e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                            }
+                          }}
+                          disabled={!dnsRecordsAdded || verifying !== null}
+                          onClick={() => {
+                            if (pendingDomainData?.id) {
+                              handleVerifyDomain(pendingDomainData.id)
+                            }
+                          }}
+                        >
+                          {verifying ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Checking connection...
+                            </>
+                          ) : (
+                            'Check My Domain'
+                          )}
+                        </Button>
+                      </div>
+                      
+                      <div className="text-center mt-4">
+                        <p className="text-sm text-gray-500">
+                          Changes can take up to 24 hours to take effect
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Verification Results - Exact same as domains page */}
+                    {showVerificationResults && verificationResults && (
+                      <div className="mt-8">
+                        <div className="bg-white rounded-xl border p-6">
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-medium text-gray-900">Connection Status</h3>
+                            <Button
+                              variant="ghost"
+                              onClick={() => setShowVerificationResults(false)}
+                              className="text-gray-400 hover:text-gray-600"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          
+                          {verificationResults?.domainReady === true ? (
+                            <div className="text-center py-8">
+                              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <CheckCircle className="h-8 w-8 text-green-600" />
+                              </div>
+                              <h3 className="text-xl font-medium text-gray-900 mb-2">Domain Connected!</h3>
+                              <p className="text-gray-600 mb-6">
+                                Your domain is ready to send emails. You can now create sender accounts.
+                              </p>
+                              <div className="space-x-4">
+                                <Button 
+                                  onClick={() => {
+                                    // Refresh domains and hide instructions
+                                    fetchDomainsAndSenders()
+                                    if (onShowDomainInstructions) {
+                                      onShowDomainInstructions(false)
+                                    }
+                                  }}
+                                  className="text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                                  style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                                  }}
+                                >
+                                  Continue to Sender Selection
+                                </Button>
+                                <Button 
+                                  variant="outline"
+                                  onClick={() => {
+                                    if (onShowDomainInstructions) {
+                                      onShowDomainInstructions(false)
+                                    }
+                                  }}
+                                  className="border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2 rounded-lg font-medium transition-colors"
+                                >
+                                  Back to Setup
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-6">
+                              <div className="text-center">
+                                <div className="flex items-center justify-center gap-3 mb-4">
+                                  <AlertCircle className="h-6 w-6 text-red-500" />
+                                  <span className="text-lg font-medium text-gray-900">Setup Not Complete</span>
+                                </div>
+                                <p className="text-gray-600 mb-6">
+                                  Some DNS records still need to be added to your domain provider.
+                                </p>
+                              </div>
+                              
+                              {/* Simple list of missing records */}
+                              {(verificationResults.report?.records || verificationResults.recommendations || verificationResults.records || [])
+                                .filter((record: any) => !record.verified)
+                                .length > 0 && (
+                                <div className="bg-red-50 rounded-lg p-6">
+                                  <h4 className="font-medium text-gray-900 mb-4">Please check these settings:</h4>
+                                  <div className="space-y-3">
+                                    {(verificationResults.report?.records || verificationResults.recommendations || verificationResults.records || [])
+                                      .filter((record: any) => !record.verified)
+                                      .map((record: any, index: number) => (
+                                      <div key={`missing-${index}`} className="flex items-center gap-3 bg-white rounded-lg p-3">
+                                        <span className="text-red-500 text-lg">✗</span>
+                                        <div className="flex-1">
+                                          <div className="font-medium text-gray-900">
+                                            {record.record?.replace(/\(.*?\)/g, '').trim() || `${record.type} record`}
+                                          </div>
+                                          <div className="text-sm text-gray-600">
+                                            Check the {record.type} setting in your DNS
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Action buttons */}
+                              <div className="text-center">
+                                <p className="text-sm text-gray-600 mb-4">
+                                  Review your DNS settings and try again.
+                                </p>
+                                <div className="space-x-3">
+                                  <Button
+                                    onClick={() => {
+                                      setShowVerificationResults(false)
+                                      setDnsRecordsAdded(false)
+                                    }}
+                                    className="text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                                    style={{ backgroundColor: 'rgb(87, 140, 255)' }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
+                                    }}
+                                  >
+                                    Check Again
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      if (onShowDomainInstructions) {
+                                        onShowDomainInstructions(false)
+                                      }
+                                    }}
+                                    className="border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2 rounded-lg font-medium transition-colors"
+                                  >
+                                    Back to Setup
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Back button - only show when not showing verification results */}
+                    {!showVerificationResults && (
+                      <div className="text-center">
+                        <Button
+                          onClick={() => {
+                            console.log('🔄 Going back to domain setup...')
+                            if (onShowDomainInstructions) {
+                              onShowDomainInstructions(false)
+                            }
+                          }}
+                          variant="outline"
+                          className="px-6 py-3"
+                        >
+                          ← Back to Setup
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No DNS records available</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Default no domains screen
     return (
       <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
         <div className="max-w-7xl mx-auto">
@@ -757,9 +1363,8 @@ export default function CampaignSenderSelection({
               </p>
               <Button 
                 onClick={() => {
-                  // Navigate to root page with domain tab selected
-                  console.log('🔄 Navigating to /?tab=domain...')
-                  window.location.href = '/?tab=domain'
+                  console.log('🔄 Opening domain setup modal...')
+                  setShowDomainSetupModal(true)
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-8 py-4 text-lg"
               >
@@ -770,6 +1375,22 @@ export default function CampaignSenderSelection({
           </div>
         </div>
       </div>
+    )
+  }
+
+  // Show sender management if requested
+  if (showSenderManagement && selectedDomainForSenders) {
+    return (
+      <SenderManagement 
+        domainId={selectedDomainForSenders}
+        onBack={() => {
+          if (onShowSenderManagement) {
+            onShowSenderManagement(false)
+          }
+          // Refresh data when returning from sender management
+          fetchDomainsAndSenders()
+        }}
+      />
     )
   }
 
@@ -786,6 +1407,27 @@ export default function CampaignSenderSelection({
               </p>
             </div>
             <div className="flex items-center gap-3">
+              {/* Edit Accounts button - show if there are any verified domains with senders */}
+              {domainsWithSenders.some(domain => domain.status === 'verified' && domain.senders.length > 0) && (
+                <Button
+                  onClick={() => {
+                    // Find the first verified domain with senders to edit
+                    const domainToEdit = domainsWithSenders.find(domain => 
+                      domain.status === 'verified' && domain.senders.length > 0
+                    )
+                    if (domainToEdit && onDomainSelected && onShowSenderManagement) {
+                      onDomainSelected(domainToEdit.id)
+                      onShowSenderManagement(true)
+                    }
+                  }}
+                  variant="outline"
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50 rounded-2xl px-5 py-2.5 font-medium transition-colors"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Edit Accounts
+                </Button>
+              )}
+              
               {!isGuidedMode && (
                 <Button
                   onClick={handleManualSave}
@@ -811,9 +1453,8 @@ export default function CampaignSenderSelection({
               )}
               <Button
                 onClick={() => {
-                  // Navigate to root page with domain tab selected
-                  console.log('🔄 Navigating to /?tab=domain to add new domain...')
-                  window.location.href = '/?tab=domain'
+                  console.log('🔄 Opening domain setup modal...')
+                  setShowDomainSetupModal(true)
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-5 py-2.5 font-medium"
               >
@@ -921,9 +1562,13 @@ export default function CampaignSenderSelection({
                           </p>
                           <Button
                             onClick={() => {
-                              // Navigate to root page with domain tab to add senders
-                              console.log('🔄 Navigating to /?tab=domain to add senders...')
-                              window.location.href = '/?tab=domain'
+                              console.log('🔄 Opening sender management for domain:', domain.id)
+                              if (onDomainSelected) {
+                                onDomainSelected(domain.id)
+                              }
+                              if (onShowSenderManagement) {
+                                onShowSenderManagement(true)
+                              }
                             }}
                             className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
                           >
@@ -1122,6 +1767,8 @@ export default function CampaignSenderSelection({
             </div>
           </div>
         )}
+
+        {/* Modal is now managed by parent component */}
       </div>
     </div>
   )
