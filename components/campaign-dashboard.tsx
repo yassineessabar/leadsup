@@ -4116,7 +4116,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <DialogTitle>Sequence Preview</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              {steps.map((step, index) => (
+              {steps
+                .sort((a, b) => {
+                  // Sort by timing first (ascending), then by sequence step as secondary sort
+                  if (a.timing !== b.timing) {
+                    return a.timing - b.timing;
+                  }
+                  return (a.sequenceStep || a.id) - (b.sequenceStep || b.id);
+                })
+                .map((step, index) => (
                 <div key={step.id} className="border border-gray-200 rounded-2xl p-6">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium">{step.title}</h3>
@@ -4129,7 +4137,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   </div>
                   <div 
                     className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: step.content }}
+                    style={{ whiteSpace: 'pre-wrap' }}
+                    dangerouslySetInnerHTML={{ 
+                      __html: step.content?.replace(/\n/g, '<br/>') || '' 
+                    }}
                   />
                 </div>
               ))}
