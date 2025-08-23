@@ -255,7 +255,9 @@ async function createCampaignAndICPs(userId: string, formData: CampaignFormData)
       data: {
         campaign,
         aiAssets: icpsAndPersonas,
-        extractedKeywords: icpsAndPersonas.extracted_keywords || []
+        extractedKeywords: icpsAndPersonas.extracted_keywords || [],
+        aiGeneratedIndustries: icpsAndPersonas.target_industries || [],
+        aiGeneratedLocations: icpsAndPersonas.target_locations || []
       }
     })
   } catch (error) {
@@ -321,7 +323,10 @@ ${companyContext}
 
 ${websiteContent ? 'Analyze the website content to understand what this company does, who they serve, and how they create value. Use this context to create relevant ICPs and personas.' : 'Generate ICPs and personas based on the company information provided.'}
 
-IMPORTANT: For extracted_keywords, ONLY include broad, generic job titles like "CEO", "Director", "Manager", "VP", "President", "Founder", "Executive", "Head of Department". NEVER include specific task-oriented terms like "automate reviews", "online reputation", or "customer feedback".
+IMPORTANT: 
+1. For extracted_keywords, ONLY include broad, generic job titles like "CEO", "Director", "Manager", "VP", "President", "Founder", "Executive", "Head of Department". NEVER include specific task-oriented terms like "automate reviews", "online reputation", or "customer feedback".
+2. For target_industries, suggest 3-5 industries that would benefit most from this company's products/services based on the company's industry and main activity.
+3. For target_locations, suggest 3-5 locations/regions where the target customers are likely to be found, based on the company's location.
 
 Return JSON in this exact format:
 {
@@ -344,12 +349,14 @@ Return JSON in this exact format:
     "challenges": ["Challenge 1", "Challenge 2"],
     "preferred_communication": "Communication style"
   }],
-  "extracted_keywords": ["CEO", "Director", "Manager"]
+  "extracted_keywords": ["CEO", "Director", "Manager"],
+  "target_industries": ["Software", "Technology", "E-commerce"],
+  "target_locations": ["United States", "Canada", "United Kingdom"]
 }`
         }
       ],
       temperature: 0.3, // Even lower for fastest response
-      max_tokens: 400 // Further reduced for speed
+      max_tokens: 500 // Slightly increased to accommodate industries and locations
     })
 
     const result = JSON.parse(response.choices[0].message.content || '{}')
@@ -796,7 +803,9 @@ function getFallbackICPsAndPersonas() {
         preferred_communication: "Email, direct approach"
       }
     ],
-    extracted_keywords: ["CEO", "Director", "Manager", "VP", "President"]
+    extracted_keywords: ["CEO", "Director", "Manager", "VP", "President"],
+    target_industries: ["Software", "Technology", "Healthcare", "Financial Services", "E-commerce"],
+    target_locations: ["United States", "Canada", "United Kingdom", "Australia", "Germany"]
   }
 }
 

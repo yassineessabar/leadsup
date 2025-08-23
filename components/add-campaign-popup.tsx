@@ -558,6 +558,18 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
           updateCampaignKeywords(newKeywords, result.data.campaign.id);
         }
         
+        // Auto-fill AI-generated target industries based on company's base industry
+        if (result.data.aiGeneratedIndustries && result.data.aiGeneratedIndustries.length > 0) {
+          console.log('🏭 AI-generated target industries received:', result.data.aiGeneratedIndustries);
+          setMainICPIndustries(result.data.aiGeneratedIndustries);
+        }
+        
+        // Auto-fill AI-generated target locations based on company's base location
+        if (result.data.aiGeneratedLocations && result.data.aiGeneratedLocations.length > 0) {
+          console.log('📍 AI-generated target locations received:', result.data.aiGeneratedLocations);
+          setMainICPLocations(result.data.aiGeneratedLocations);
+        }
+        
         return result.data;
       } else {
         throw new Error(result.error || 'Unknown error occurred');
