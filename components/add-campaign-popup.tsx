@@ -153,7 +153,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     companyName: "",
     website: "",
     noWebsite: false,
-    language: "",
+    language: "English",
     keywords: [] as string[],
     mainActivity: "",
     location: "Australia",
@@ -888,19 +888,19 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="language" className="text-sm font-medium text-gray-700">Prospecting language</Label>
-            <Select value={formData.language} onValueChange={(value) => setFormData(prev => ({ ...prev, language: value }))}>
-              <SelectTrigger className="h-10 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] text-sm">
-                <SelectValue placeholder="Select language" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="english">🇺🇸 English</SelectItem>
-                <SelectItem value="french">🇫🇷 French</SelectItem>
-                <SelectItem value="spanish">🇪🇸 Spanish</SelectItem>
-                <SelectItem value="german">🇩🇪 German</SelectItem>
-                <SelectItem value="italian">🇮🇹 Italian</SelectItem>
-                <SelectItem value="portuguese">🇵🇹 Portuguese</SelectItem>
-              </SelectContent>
-            </Select>
+            <select 
+              id="language"
+              value={formData.language} 
+              onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
+              className="w-full h-10 border border-gray-200 rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)] transition-all"
+            >
+              <option value="English">🇺🇸 English</option>
+              <option value="French">🇫🇷 French</option>
+              <option value="Spanish">🇪🇸 Spanish</option>
+              <option value="German">🇩🇪 German</option>
+              <option value="Italian">🇮🇹 Italian</option>
+              <option value="Portuguese">🇵🇹 Portuguese</option>
+            </select>
           </div>
           <div></div>
         </div>
