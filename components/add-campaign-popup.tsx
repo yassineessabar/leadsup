@@ -10,9 +10,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Check, ChevronRight, MessageSquare, X, Globe, Search, BarChart3, MapPin, Tag, FolderOpen, Send, Users, Brain, Target, Filter, ExternalLink, FileText, ChevronLeft, Edit, Save, XCircle, Eye, Info } from 'lucide-react'
+import { Check, ChevronRight, MessageSquare, X, Globe, Search, BarChart3, MapPin, Tag, FolderOpen, Send, Users, Brain, Target, Filter, ExternalLink, FileText, ChevronLeft, Edit, Save, XCircle, Eye, Info, Plus } from 'lucide-react'
 
 interface AddCampaignPopupProps {
   isOpen: boolean
@@ -22,8 +23,8 @@ interface AddCampaignPopupProps {
 
 const steps = [
   { id: "company", label: "Company name", completed: false },
-  { id: "icps-personas", label: "ICPs & Personas", completed: false },
-  { id: "pain-value", label: "Pain points & Value props", completed: false },
+  { id: "target-audience", label: "Target Audience", completed: false },
+  { id: "pain-value", label: "Persona & Value props", completed: false },
   { id: "sequence", label: "Sequence review", completed: false },
 ]
 
@@ -171,15 +172,16 @@ const outreachStrategies = [
   // LinkedIn and Multi-Channel options temporarily hidden
 ]
 
+// IMPORTANT: Only return broad, generic, industry-agnostic prospect roles
+// Never return specific roles like "automate reviews", "online reputation", "customer feedback"
+// These roles must work across ALL industries and sectors
+const broadRoles = [
+  'CEO', 'Founder', 'President', 'Director', 'VP', 'Manager', 
+  'Executive', 'Head of Department', 'Owner', 'Partner'
+]
+
 // Helper function to get suggested roles based on campaign objective
 const getSuggestedRoles = (objective: string): string[] => {
-  // IMPORTANT: Only return broad, generic, industry-agnostic prospect roles
-  // Never return specific roles like "automate reviews", "online reputation", "customer feedback"
-  // These roles must work across ALL industries and sectors
-  const broadRoles = [
-    'CEO', 'Founder', 'President', 'Director', 'VP', 'Manager', 
-    'Executive', 'Head of Department', 'Owner', 'Partner'
-  ]
   
   switch (objective) {
     case 'sell-service':
@@ -237,6 +239,24 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       }))
     }
   }, [formData.companyName, formData.campaignName])
+
+  // Initialize AI-generated defaults when component mounts
+  useEffect(() => {
+    // Set default industry if none selected
+    if (mainICPIndustries.length === 0) {
+      setMainICPIndustries(["Software"])
+    }
+    
+    // Set default location if none selected  
+    if (mainICPLocations.length === 0) {
+      setMainICPLocations(["United States"])
+    }
+    
+    // Set default role if none selected
+    if (formData.keywords.length === 0) {
+      setFormData(prev => ({ ...prev, keywords: ["CEO"] }))
+    }
+  }, [])
   const [editingICP, setEditingICP] = useState(false)
   const [editingPersona, setEditingPersona] = useState(false)
   const [editingPainPoint, setEditingPainPoint] = useState(false)
@@ -612,6 +632,75 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   // Validation error states
   const [showIndustryError, setShowIndustryError] = useState(false)
   const [showLocationError, setShowLocationError] = useState(false)
+  
+  // Simple state for main ICP industries/locations
+  const [mainICPIndustries, setMainICPIndustries] = useState<string[]>([])
+  const [mainICPLocations, setMainICPLocations] = useState<string[]>([])
+  
+  // Simple functions for main ICP management
+  const addMainICPIndustry = () => {
+    const trimmed = newICPIndustry.trim()
+    const isValid = INDUSTRY_OPTIONS.some(industry => 
+      industry.toLowerCase() === trimmed.toLowerCase()
+    )
+    
+    if (trimmed && isValid && !mainICPIndustries.includes(trimmed)) {
+      const exactMatch = INDUSTRY_OPTIONS.find(industry => 
+        industry.toLowerCase() === trimmed.toLowerCase()
+      )
+      setMainICPIndustries([...mainICPIndustries, exactMatch!])
+      setNewICPIndustry("")
+      setShowIndustryDropdown(false)
+    } else if (trimmed && !isValid) {
+      setShowIndustryError(true)
+      setTimeout(() => setShowIndustryError(false), 3000)
+    }
+  }
+  
+  const removeMainICPIndustry = (industry: string) => {
+    setMainICPIndustries(mainICPIndustries.filter(i => i !== industry))
+  }
+  
+  const selectMainIndustry = (industry: string) => {
+    if (!mainICPIndustries.includes(industry)) {
+      setMainICPIndustries([...mainICPIndustries, industry])
+    }
+    setNewICPIndustry("")
+    setShowIndustryDropdown(false)
+    setFilteredIndustries([])
+  }
+  
+  const addMainICPLocation = () => {
+    const trimmed = newICPLocation.trim()
+    const isValid = LOCATION_OPTIONS.some(location => 
+      location.toLowerCase() === trimmed.toLowerCase()
+    )
+    
+    if (trimmed && isValid && !mainICPLocations.includes(trimmed)) {
+      const exactMatch = LOCATION_OPTIONS.find(location => 
+        location.toLowerCase() === trimmed.toLowerCase()
+      )
+      setMainICPLocations([...mainICPLocations, exactMatch!])
+      setNewICPLocation("")
+      setShowLocationDropdown(false)
+    } else if (trimmed && !isValid) {
+      setShowLocationError(true)
+      setTimeout(() => setShowLocationError(false), 3000)
+    }
+  }
+  
+  const removeMainICPLocation = (location: string) => {
+    setMainICPLocations(mainICPLocations.filter(l => l !== location))
+  }
+  
+  const selectMainLocation = (location: string) => {
+    if (!mainICPLocations.includes(location)) {
+      setMainICPLocations([...mainICPLocations, location])
+    }
+    setNewICPLocation("")
+    setShowLocationDropdown(false)
+    setFilteredLocations([])
+  }
 
   const addKeyword = () => {
     if (newKeyword.trim() && !formData.keywords.includes(newKeyword.trim())) {
@@ -783,7 +872,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       return
     }
     
-    const stepOrder = ["company", "icps-personas", "pain-value", "sequence"]
+    const stepOrder = ["company", "target-audience", "pain-value", "sequence"]
     const currentIndex = stepOrder.indexOf(currentStep)
     
     if (currentStep === "company" && showForm) {
@@ -817,7 +906,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
         // Immediately move to next step after API completes
         setIsProcessing(false);
         setCompletedSteps(prev => [...prev, "company"]);
-        setCurrentStep("icps-personas");
+        setCurrentStep("target-audience");
 
       } catch (error) {
         setIsProcessing(false);
@@ -831,10 +920,10 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
       if (nextStep === "pain-value") {
         setIsProcessing(true);
         try {
-          // NEW: Generate both pain points and email sequence in parallel for speed
+          // Generate pain points and value props for the next step
           await generateAllRemaining();
-          setCompletedSteps(prev => [...prev, currentStep, "pain-value"])
-          setCurrentStep("sequence") // Skip directly to sequence since we generated both
+          setCompletedSteps(prev => [...prev, currentStep])
+          setCurrentStep("pain-value") // Go to pain-value step to show the generated content
         } catch (error) {
           // Error handling is done in the function
           return;
@@ -893,20 +982,31 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   }
 
   const handleBack = () => {
-    const stepOrder = ["company", "icps-personas", "pain-value", "sequence"]
+    // If we're editing any item in pain-value step, go back to the list view first
+    if (currentStep === "pain-value" && (editingICP || editingPersona || editingPainPoint || editingValueProp)) {
+      setEditingICP(false)
+      setEditingPersona(false)
+      setEditingPainPoint(false)
+      setEditingValueProp(false)
+      return
+    }
+    
+    const stepOrder = ["company", "target-audience", "pain-value", "sequence"]
     const currentIndex = stepOrder.indexOf(currentStep)
     
     if (currentIndex > 0) {
       const prevStep = stepOrder[currentIndex - 1]
       setCurrentStep(prevStep)
       setIsProcessing(false)
+      
+      // Reset all editing states when navigating back
       setEditingICP(false)
       setEditingPersona(false)
       setEditingPainPoint(false)
       setEditingValueProp(false)
       
       if (prevStep === "company") {
-        setShowForm(false)
+        setShowForm(true)
       }
     }
   }
@@ -1119,142 +1219,25 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   )
 
   const renderCompanyInfo = () => (
-    <div className="max-w-3xl mx-auto space-y-3">
-      <div>
-        <h2 className="text-xl font-medium text-gray-900">
-          Information about your company
-        </h2>
-        <p className="text-sm text-gray-500 mt-1">Help our AI understand your business better</p>
-      </div>
-      
-      <div className="space-y-3">
-        <div className="space-y-2">
-          <Label htmlFor="activity" className="text-sm font-medium text-gray-700">Main activity</Label>
-          <p className="text-xs text-gray-500">{"Describe your company's core business, products, or services"}</p>
-          <Textarea
-            id="activity"
-            className="min-h-[80px] max-h-[120px] border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 transition-colors text-sm rounded-xl resize-none"
-            value={formData.mainActivity}
-            onChange={(e) => setFormData(prev => ({ ...prev, mainActivity: e.target.value }))}
-          />
-        </div>
-
-        <div className="space-y-3 pt-4 border-t border-gray-100">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-medium text-gray-800">Target Prospect Roles</h3>
-              {formData.keywords.length > 0 && (
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                  AI Generated
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-gray-600">
-              {formData.keywords.length > 0 
-                ? "AI-generated prospect roles based on your campaign objective and company info. You can add more or remove any." 
-                : "Add job titles and roles of your ideal prospects (e.g., \"CEO\", \"Director\", \"VP\", \"Manager\")"
-              }
-            </p>
-            <p className="text-xs text-gray-500">These will help us identify the right decision-makers to reach out to</p>
-          </div>
-          <div className="flex space-x-2">
-            <Input
-              id="keywords"
-              value={newKeyword}
-              onChange={(e) => setNewKeyword(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addKeyword()}
-              className="flex-1 h-10 border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 transition-colors rounded-xl text-sm"
-              placeholder="e.g., CEO, Director, VP, Manager"
-            />
-            <Button 
-              type="button"
-              onClick={addKeyword}
-              className="h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 text-sm"
-            >
-              Add Role
-            </Button>
+    <div className="max-w-3xl mx-auto space-y-6">
+      <div className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl shadow-sm p-6">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">{formData.companyName || "Company Name"}</h3>
+            <p className="text-sm text-gray-600">{formData.companyWebsite || "Website not provided"}</p>
           </div>
           
-          {/* Suggested roles based on campaign objective - only show if no AI roles yet */}
-          {formData.campaignObjective && formData.keywords.length === 0 && (
-            <div className="bg-blue-50/50 border border-blue-200/50 rounded-xl p-3">
-              <p className="text-xs font-medium text-blue-700 mb-2">Quick-add suggested roles while AI processes your data:</p>
-              <div className="flex flex-wrap gap-2">
-                {getSuggestedRoles(formData.campaignObjective).map((role, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => {
-                      if (!formData.keywords.includes(role)) {
-                        const newKeywords = [...formData.keywords, role];
-                        setFormData(prev => ({ 
-                          ...prev, 
-                          keywords: newKeywords
-                        }))
-                        // Update campaign with new keywords if campaign exists
-                        if (campaignId) {
-                          updateCampaignKeywords(newKeywords);
-                        }
-                      }
-                    }}
-                    className="text-xs bg-white border border-blue-200 text-blue-700 px-2 py-1 rounded-full hover:bg-blue-50 transition-colors"
-                  >
-                    + {role}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Additional suggestions for AI-generated roles */}
-          {formData.campaignObjective && formData.keywords.length > 0 && (
-            <div className="bg-gray-50/50 border border-gray-200/50 rounded-xl p-3">
-              <p className="text-xs font-medium text-gray-600 mb-2">Additional suggestions:</p>
-              <div className="flex flex-wrap gap-2">
-                {getSuggestedRoles(formData.campaignObjective)
-                  .filter(role => !formData.keywords.includes(role))
-                  .slice(0, 4)
-                  .map((role, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => {
-                      const newKeywords = [...formData.keywords, role];
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        keywords: newKeywords
-                      }))
-                      // Update campaign with new keywords if campaign exists
-                      if (campaignId) {
-                        updateCampaignKeywords(newKeywords);
-                      }
-                    }}
-                    className="text-xs bg-white border border-gray-200 text-gray-600 px-2 py-1 rounded-full hover:bg-gray-100 transition-colors"
-                  >
-                    + {role}
-                  </button>
-                ))}
-              </div>
+          {formData.mainActivity && (
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Main Activity</h4>
+              <p className="text-sm text-gray-600 leading-relaxed">{formData.mainActivity}</p>
             </div>
           )}
           
-          {formData.keywords.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-gray-700">Selected prospect roles:</p>
-              <div className="flex flex-wrap gap-2">
-                {formData.keywords.map((keyword, index) => (
-                  <div key={index} className="flex items-center space-x-2 bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
-                    <span className="text-xs font-medium">{keyword}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeKeyword(keyword)}
-                      className="text-indigo-600 hover:text-indigo-800 transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+          {formData.campaignObjective && (
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Campaign Objective</h4>
+              <p className="text-sm text-gray-600">{formData.campaignObjective.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
             </div>
           )}
         </div>
@@ -1262,17 +1245,277 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
     </div>
   )
 
+  const renderTargetAudience = () => {
+    // Get AI-generated default values (simulate AI generation for now)
+    const getAIGeneratedIndustries = () => {
+      const defaultIndustries = ["Software", "Technology", "SaaS"]
+      return mainICPIndustries.length > 0 ? mainICPIndustries : defaultIndustries.slice(0, 1)
+    }
+
+    const getAIGeneratedLocations = () => {
+      const defaultLocations = ["United States", "North America", "Europe"]
+      return mainICPLocations.length > 0 ? mainICPLocations : defaultLocations.slice(0, 1)
+    }
+
+    const getAIGeneratedRoles = () => {
+      const defaultRoles = ["CEO", "Founder", "Director"]
+      return formData.keywords.length > 0 ? formData.keywords : defaultRoles.slice(0, 1)
+    }
+
+    const aiIndustries = getAIGeneratedIndustries()
+    const aiLocations = getAIGeneratedLocations()
+    const aiRoles = getAIGeneratedRoles()
+
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-medium text-gray-900">
+            Target Audience
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">AI-generated target audience based on your company and campaign objective</p>
+        </div>
+
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 mb-8">
+          <div className="flex items-start space-x-4">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center mt-1">
+              <Brain className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-medium text-blue-900 mb-1">AI-Generated Target Audience</h3>
+              <p className="text-blue-800 text-sm">Our AI has analyzed your company information and campaign objective to suggest the most relevant target audience. You can modify these selections as needed.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* AI-generated content with pre-selected options */}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* AI-Generated Target Industries */}
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <label className="text-base font-semibold text-gray-900">Target Industries</label>
+                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                  AI Generated
+                </Badge>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {aiIndustries.map((industry, index) => (
+                    <Badge 
+                      key={index}
+                      className="text-sm bg-indigo-100 text-indigo-800 border border-indigo-200 py-1.5 px-3"
+                    >
+                      {industry}
+                      <button
+                        onClick={() => removeMainICPIndustry(industry)}
+                        className="ml-2 hover:text-indigo-900"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+                
+                <div className="flex gap-2 relative">
+                  <div className="flex-1 relative">
+                    <Input
+                      placeholder="Add another industry..."
+                      value={newICPIndustry}
+                      onChange={(e) => handleIndustryInputChange(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addMainICPIndustry()}
+                      className="text-sm"
+                    />
+                    {showIndustryDropdown && filteredIndustries.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
+                        {filteredIndustries.map((industry, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              selectMainIndustry(industry)
+                            }}
+                          >
+                            {industry}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <Button 
+                    type="button"
+                    size="sm"
+                    onClick={addMainICPIndustry}
+                    variant="outline"
+                    className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* AI-Generated Target Locations */}
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <label className="text-base font-semibold text-gray-900">Target Locations</label>
+                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                  AI Generated
+                </Badge>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {aiLocations.map((location, index) => (
+                    <Badge 
+                      key={index}
+                      className="text-sm bg-green-100 text-green-800 border border-green-200 py-1.5 px-3"
+                    >
+                      {location}
+                      <button
+                        onClick={() => removeMainICPLocation(location)}
+                        className="ml-2 hover:text-green-900"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+                
+                <div className="flex gap-2 relative">
+                  <div className="flex-1 relative">
+                    <Input
+                      placeholder="Add another location..."
+                      value={newICPLocation}
+                      onChange={(e) => handleLocationInputChange(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addMainICPLocation()}
+                      className="text-sm"
+                    />
+                    {showLocationDropdown && filteredLocations.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
+                        {filteredLocations.map((location, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              selectMainLocation(location)
+                            }}
+                          >
+                            {location}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <Button 
+                    type="button"
+                    size="sm"
+                    onClick={addMainICPLocation}
+                    variant="outline"
+                    className="text-green-600 border-green-200 hover:bg-green-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* AI-Generated Target Roles */}
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <label className="text-base font-semibold text-gray-900">Target Roles</label>
+                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                  AI Generated
+                </Badge>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {aiRoles.map((role, index) => (
+                    <Badge 
+                      key={index}
+                      className="text-sm bg-blue-100 text-blue-800 border border-blue-200 py-1.5 px-3"
+                    >
+                      {role}
+                      <button
+                        onClick={() => removeKeyword(role)}
+                        className="ml-2 hover:text-blue-900"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+                
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add another role..."
+                    value={newKeyword}
+                    onChange={(e) => setNewKeyword(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addKeyword()}
+                    className="text-sm flex-1"
+                  />
+                  <Button 
+                    type="button"
+                    size="sm"
+                    onClick={addKeyword}
+                    variant="outline"
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional suggestions */}
+          {broadRoles.length > 0 && formData.keywords.length < 3 && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">Suggested additional roles:</p>
+              <div className="flex flex-wrap gap-2">
+                {broadRoles.filter(role => !aiRoles.includes(role)).slice(0, 6).map((role, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setFormData(prev => ({ ...prev, keywords: [...prev.keywords, role] }))}
+                    className="px-3 py-1 text-sm text-gray-600 bg-white hover:bg-gray-100 rounded-md border border-gray-200 hover:border-gray-300 transition-colors"
+                  >
+                    + {role}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   const renderICPsAndPersonasList = () => {
     const displayICPs = aiAssets?.icps || sampleICPs
     const displayPersonas = aiAssets?.personas || samplePersonas
 
     return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-8">
       <div className="text-center">
         <h2 className="text-2xl font-medium text-gray-900">
-          Target Audience & Prospects
+          ICPs & Personas
         </h2>
-        <p className="text-sm text-gray-500 mt-1">Define your ideal customers, personas, and prospect roles</p>
+        <p className="text-sm text-gray-500 mt-1">Define your ideal customer profiles and target personas</p>
+      </div>
+
+      <div className="bg-blue-50/80 backdrop-blur-sm border border-blue-100/50 rounded-2xl p-4">
+        <div className="flex items-start space-x-3">
+          <div className="w-6 h-6 bg-blue-600 rounded-xl flex items-center justify-center mt-0.5">
+            <span className="text-white text-xs font-bold">i</span>
+          </div>
+          <p className="text-blue-900 font-medium text-sm">Review and customize your ideal customer profiles and target personas for this campaign.</p>
+        </div>
       </div>
       
       {/* Main Grid Layout */}
@@ -1393,125 +1636,6 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
           </div>
         </div>
 
-        {/* Right Column: Target Prospect Roles */}
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-medium text-gray-900">Target Prospect Roles</h3>
-              {formData.keywords.length > 0 && (
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                  AI Generated
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-gray-600">
-              {formData.keywords.length > 0 
-                ? "AI-generated prospect roles based on your campaign objective and company info. You can add more or remove any." 
-                : "Add job titles and roles of your ideal prospects (e.g., \"CEO\", \"Director\", \"VP\", \"Manager\")"
-              }
-            </p>
-            <p className="text-xs text-gray-500">These will help us identify the right decision-makers to reach out to</p>
-          </div>
-          <div className="flex space-x-2">
-            <Input
-              id="keywords"
-              value={newKeyword}
-              onChange={(e) => setNewKeyword(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addKeyword()}
-              className="flex-1 h-10 border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 transition-colors rounded-xl text-sm"
-              placeholder="e.g., CEO, Director, VP, Manager"
-            />
-            <Button 
-              type="button"
-              onClick={addKeyword}
-              className="h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 text-sm"
-            >
-              Add Role
-            </Button>
-          </div>
-          
-          {/* Suggested roles based on campaign objective - only show if no AI roles yet */}
-          {formData.campaignObjective && formData.keywords.length === 0 && (
-            <div className="bg-blue-50/50 border border-blue-200/50 rounded-xl p-3">
-              <p className="text-xs font-medium text-blue-700 mb-2">Quick-add suggested roles while AI processes your data:</p>
-              <div className="flex flex-wrap gap-2">
-                {getSuggestedRoles(formData.campaignObjective).map((role, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => {
-                      if (!formData.keywords.includes(role)) {
-                        const newKeywords = [...formData.keywords, role];
-                        setFormData(prev => ({ 
-                          ...prev, 
-                          keywords: newKeywords
-                        }))
-                        // Update campaign with new keywords if campaign exists
-                        if (campaignId) {
-                          updateCampaignKeywords(newKeywords);
-                        }
-                      }
-                    }}
-                    className="text-xs bg-white border border-blue-200 text-blue-700 px-2 py-1 rounded-full hover:bg-blue-50 transition-colors"
-                  >
-                    + {role}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {/* Additional suggestions for AI-generated roles */}
-          {formData.campaignObjective && formData.keywords.length > 0 && (
-            <div className="bg-gray-50/50 border border-gray-200/50 rounded-xl p-3">
-              <p className="text-xs font-medium text-gray-600 mb-2">Additional suggestions:</p>
-              <div className="flex flex-wrap gap-2">
-                {getSuggestedRoles(formData.campaignObjective)
-                  .filter(role => !formData.keywords.includes(role))
-                  .slice(0, 4)
-                  .map((role, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => {
-                      const newKeywords = [...formData.keywords, role];
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        keywords: newKeywords
-                      }))
-                      // Update campaign with new keywords if campaign exists
-                      if (campaignId) {
-                        updateCampaignKeywords(newKeywords);
-                      }
-                    }}
-                    className="text-xs bg-white border border-gray-200 text-gray-600 px-2 py-1 rounded-full hover:bg-gray-100 transition-colors"
-                  >
-                    + {role}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {formData.keywords.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-gray-700">Selected prospect roles:</p>
-              <div className="flex flex-wrap gap-2">
-                {formData.keywords.map((keyword, index) => (
-                  <div key={index} className="flex items-center space-x-2 bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
-                    <span className="text-xs font-medium">{keyword}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeKeyword(keyword)}
-                      className="text-indigo-600 hover:text-indigo-800 transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     </div>
     )
@@ -2093,100 +2217,357 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete }: AddCam
   const renderPainAndValueList = () => {
     const displayPainPoints = aiAssets?.pain_points || samplePainPoints
     const displayValueProps = aiAssets?.value_propositions || sampleValuePropositions
+    const displayICPs = aiAssets?.icps || sampleICPs
+    const displayPersonas = aiAssets?.personas || samplePersonas
 
     return (
-      <div className="max-w-3xl mx-auto space-y-4">
-      <div className="text-center">
-        <h2 className="text-2xl font-medium text-gray-900">
-          Pain Points & Value Propositions
-        </h2>
-        <p className="text-sm text-gray-500 mt-1">Review the AI-generated challenges and your solutions</p>
-      </div>
-      
-      <div className="bg-blue-50/80 backdrop-blur-sm border border-blue-100/50 rounded-2xl p-4">
-        <div className="flex items-start space-x-3">
-          <div className="w-6 h-6 bg-blue-600 rounded-xl flex items-center justify-center mt-0.5">
-            <span className="text-white text-xs font-bold">i</span>
-          </div>
-          <p className="text-blue-900 font-medium text-sm">Review the main challenge your customers face and how you solve it.</p>
-        </div>
-      </div>
-      
-      {/* Side-by-side layout for compact display */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Pain Points Section */}
-        <div className="space-y-3">
-          <h3 className="text-base font-medium text-gray-900">Customer Pain Point</h3>
-          {displayPainPoints.slice(0, 1).map((painPoint: any) => (
-            <div 
-              key={painPoint.id} 
-              className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
-            >
-              <div className="p-4">
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-gray-900">{painPoint.title}</h4>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => {
-                        setSelectedPainPoint(painPoint.id)
-                        setEditingPainPoint(true)
-                        setEditedData(prev => ({ ...prev, painPoint: { ...painPoint } }))
-                      }}
-                      className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl p-1.5"
-                    >
-                      <Edit className="w-3 h-3" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">{painPoint.description.substring(0, 100)}...</p>
-                </div>
-              </div>
-            </div>
-          ))}
+      <div className="max-w-5xl mx-auto space-y-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-medium text-gray-900">
+            Persona & Value Propositions
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">Review your target audience and messaging strategy</p>
         </div>
         
-        {/* Value Proposition Section */}
-        <div className="space-y-3">
-          <h3 className="text-base font-medium text-gray-900">Your Value Proposition</h3>
-          {displayValueProps.slice(0, 1).map((valueProp: any) => (
-            <div 
-              key={valueProp.id} 
-              className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
-            >
-              <div className="p-4">
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-gray-900">{valueProp.title}</h4>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => {
-                        setEditingValueProp(true)
-                        setEditedData(prev => ({ ...prev, valueProp: { ...valueProp } }))
-                      }}
-                      className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl p-1.5"
-                    >
-                      <Edit className="w-3 h-3" />
-                    </Button>
+        <div className="bg-blue-50/80 backdrop-blur-sm border border-blue-100/50 rounded-2xl p-4">
+          <div className="flex items-start space-x-3">
+            <div className="w-6 h-6 bg-blue-600 rounded-xl flex items-center justify-center mt-0.5">
+              <span className="text-white text-xs font-bold">i</span>
+            </div>
+            <p className="text-blue-900 font-medium text-sm">Review your ideal customers, personas, and how you solve their challenges.</p>
+          </div>
+        </div>
+        
+        {/* Four-section grid layout for better organization */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          {/* Ideal Customer Profile Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Ideal Customer Profile
+            </h3>
+            {displayICPs.slice(0, 1).map((icp: any) => (
+              <div 
+                key={icp.id} 
+                className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+              >
+                <div className="p-5">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center justify-between">
+                      {editingICP ? (
+                        <Input
+                          value={editedData.icp?.title || icp.title}
+                          onChange={(e) => setEditedData(prev => ({ ...prev, icp: { ...prev.icp, title: e.target.value } }))}
+                          className="text-base font-medium flex-1 mr-2"
+                        />
+                      ) : (
+                        <h4 className="text-base font-medium text-gray-900">{icp.title}</h4>
+                      )}
+                      <div className="flex gap-2">
+                        {editingICP ? (
+                          <>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleSave('icp')}
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50 rounded-xl p-2"
+                            >
+                              <Save className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setEditingICP(false)}
+                              className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl p-2"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedICP(icp.id)
+                              setEditingICP(true)
+                              setEditedData(prev => ({ ...prev, icp: { ...icp } }))
+                            }}
+                            className="text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl p-2"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    {editingICP ? (
+                      <Textarea
+                        value={editedData.icp?.description || icp.description}
+                        onChange={(e) => setEditedData(prev => ({ ...prev, icp: { ...prev.icp, description: e.target.value } }))}
+                        className="text-sm text-gray-600 leading-relaxed min-h-[80px]"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-600 leading-relaxed">{icp.description}</p>
+                    )}
+                    {icp.industries && icp.industries.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {icp.industries.slice(0, 3).map((industry: string, index: number) => (
+                          <span key={index} className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                            {industry}
+                          </span>
+                        ))}
+                        {icp.industries.length > 3 && (
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                            +{icp.industries.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">{valueProp.description.substring(0, 100)}...</p>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          {/* Target Persona Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Target Persona
+            </h3>
+            {displayPersonas.slice(0, 1).map((persona: any) => (
+              <div 
+                key={persona.id} 
+                className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+              >
+                <div className="p-5">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center justify-between">
+                      {editingPersona ? (
+                        <Input
+                          value={editedData.persona?.title || persona.title}
+                          onChange={(e) => setEditedData(prev => ({ ...prev, persona: { ...prev.persona, title: e.target.value } }))}
+                          className="text-base font-medium flex-1 mr-2"
+                        />
+                      ) : (
+                        <h4 className="text-base font-medium text-gray-900">{persona.title}</h4>
+                      )}
+                      <div className="flex gap-2">
+                        {editingPersona ? (
+                          <>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleSave('persona')}
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50 rounded-xl p-2"
+                            >
+                              <Save className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setEditingPersona(false)}
+                              className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl p-2"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPersona(persona.id)
+                              setEditingPersona(true)
+                              setEditedData(prev => ({ ...prev, persona: { ...persona } }))
+                            }}
+                            className="text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl p-2"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    {editingPersona ? (
+                      <Textarea
+                        value={editedData.persona?.description || persona.description}
+                        onChange={(e) => setEditedData(prev => ({ ...prev, persona: { ...prev.persona, description: e.target.value } }))}
+                        className="text-sm text-gray-600 leading-relaxed min-h-[80px]"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-600 leading-relaxed">{persona.description}</p>
+                    )}
+                    {persona.role && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                          {persona.role}
+                        </span>
+                        {persona.seniority && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                            {persona.seniority}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Customer Pain Point Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Customer Pain Point
+            </h3>
+            {displayPainPoints.slice(0, 1).map((painPoint: any) => (
+              <div 
+                key={painPoint.id} 
+                className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+              >
+                <div className="p-5">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center justify-between">
+                      {editingPainPoint ? (
+                        <Input
+                          value={editedData.painPoint?.title || painPoint.title}
+                          onChange={(e) => setEditedData(prev => ({ ...prev, painPoint: { ...prev.painPoint, title: e.target.value } }))}
+                          className="text-base font-medium flex-1 mr-2"
+                        />
+                      ) : (
+                        <h4 className="text-base font-medium text-gray-900">{painPoint.title}</h4>
+                      )}
+                      <div className="flex gap-2">
+                        {editingPainPoint ? (
+                          <>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleSave('painPoint')}
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50 rounded-xl p-2"
+                            >
+                              <Save className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setEditingPainPoint(false)}
+                              className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl p-2"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPainPoint(painPoint.id)
+                              setEditingPainPoint(true)
+                              setEditedData(prev => ({ ...prev, painPoint: { ...painPoint } }))
+                            }}
+                            className="text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl p-2"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    {editingPainPoint ? (
+                      <Textarea
+                        value={editedData.painPoint?.description || painPoint.description}
+                        onChange={(e) => setEditedData(prev => ({ ...prev, painPoint: { ...prev.painPoint, description: e.target.value } }))}
+                        className="text-sm text-gray-600 leading-relaxed min-h-[80px]"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-600 leading-relaxed">{painPoint.description}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Your Value Proposition Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Your Value Proposition
+            </h3>
+            {displayValueProps.slice(0, 1).map((valueProp: any) => (
+              <div 
+                key={valueProp.id} 
+                className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+              >
+                <div className="p-5">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center justify-between">
+                      {editingValueProp ? (
+                        <Input
+                          value={editedData.valueProp?.title || valueProp.title}
+                          onChange={(e) => setEditedData(prev => ({ ...prev, valueProp: { ...prev.valueProp, title: e.target.value } }))}
+                          className="text-base font-medium flex-1 mr-2"
+                        />
+                      ) : (
+                        <h4 className="text-base font-medium text-gray-900">{valueProp.title}</h4>
+                      )}
+                      <div className="flex gap-2">
+                        {editingValueProp ? (
+                          <>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleSave('valueProp')}
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50 rounded-xl p-2"
+                            >
+                              <Save className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setEditingValueProp(false)}
+                              className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl p-2"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setEditingValueProp(true)
+                              setEditedData(prev => ({ ...prev, valueProp: { ...valueProp } }))
+                            }}
+                            className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl p-2"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    {editingValueProp ? (
+                      <Textarea
+                        value={editedData.valueProp?.description || valueProp.description}
+                        onChange={(e) => setEditedData(prev => ({ ...prev, valueProp: { ...prev.valueProp, description: e.target.value } }))}
+                        className="text-sm text-gray-600 leading-relaxed min-h-[80px]"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-600 leading-relaxed">{valueProp.description}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+        
+        {/* Show additional items if they exist */}
+        {(displayICPs.length > 1 || displayPersonas.length > 1 || displayPainPoints.length > 1 || displayValueProps.length > 1) && (
+          <div className="text-center">
+            <p className="text-xs text-gray-500 bg-gray-100 px-4 py-2 rounded-full inline-block">
+              {displayICPs.length + displayPersonas.length + displayPainPoints.length + displayValueProps.length - 4} more items available for editing after creation
+            </p>
+          </div>
+        )}
       </div>
-      
-      {/* Show additional items if they exist */}
-      {(displayPainPoints.length > 1 || displayValueProps.length > 1) && (
-        <div className="text-center">
-          <p className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full inline-block">
-            {displayPainPoints.length + displayValueProps.length - 2} more items available for editing after creation
-          </p>
-        </div>
-      )}
-    </div>
     )
   }
 
@@ -2735,10 +3116,10 @@ Best regards,
                 <p className="text-sm text-gray-600 leading-relaxed">
                   {currentStep === "company" 
                     ? "To create the most relevant campaign, please complete each step and provide as much context as possible to our AI. Your input is crucial for optimal results!"
-                    : currentStep === "icps-personas"
-                      ? "Define your ideal customer profile and target personas to focus your sales and marketing efforts on the right audience."
+                    : currentStep === "target-audience"
+                      ? "Define your target industries, locations, and prospect roles to help us find the right people for your campaign."
                       : currentStep === "pain-value"
-                        ? "Identify customer pain points and articulate your value propositions to create messaging that resonates."
+                        ? "Review your ideal customers, personas, and value propositions to create messaging that resonates."
                         : "Create sequences that progressively deliver value, vary touchpoints, and optimize regularly based on prospect engagement metrics."
                   }
                 </p>
@@ -2762,16 +3143,8 @@ Best regards,
             <div className="flex-1 p-6 overflow-y-auto">
               {currentStep === "company" && showForm && renderCompanyForm()}
               {currentStep === "company" && !showForm && !isProcessing && renderCompanyInfo()}
-              {currentStep === "icps-personas" && !isProcessing && (
-                editingICP ? renderICPDetail() : 
-                editingPersona ? renderPersonaDetail() : 
-                renderICPsAndPersonasList()
-              )}
-              {currentStep === "pain-value" && !isProcessing && (
-                editingPainPoint ? renderPainPointDetail() :
-                editingValueProp ? renderValuePropositions() :
-                renderPainAndValueList()
-              )}
+              {currentStep === "target-audience" && !isProcessing && renderTargetAudience()}
+              {currentStep === "pain-value" && !isProcessing && renderPainAndValueList()}
               {/* Outreach strategy step removed - using email only */}
               {currentStep === "sequence" && !isProcessing && renderSequencePreview()}
               {isProcessing && renderProcessingSteps()}
