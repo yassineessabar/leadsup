@@ -112,8 +112,6 @@ export function DashboardSidebar({
   }, [fetchUserData]) // Removed onTabChange from dependencies to fix the error
 
   const mainMenuItems = [
-    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { id: "leads", label: "Leads", icon: Users },
     { 
       id: "campaigns", 
       label: "Campaigns", 
@@ -123,6 +121,8 @@ export function DashboardSidebar({
         // Hidden: LinkedIn and Multi-Channel
       ]
     },
+    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { id: "leads", label: "Leads", icon: Users },
     { id: "templates", label: "Templates", icon: FileText },
     { id: "inbox", label: "Inbox", icon: Inbox },
   ]
