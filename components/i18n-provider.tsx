@@ -12,18 +12,15 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     const initI18n = async () => {
       try {
         // i18n is already initialized in lib/i18n.js, just wait for it to be ready
-        if (i18n.isInitialized) {
-          console.log('✅ i18n already initialized, language:', i18n.language);
-        } else {
-          console.log('⏳ Waiting for i18n to initialize...');
-          // Wait for it to be ready
-          await i18n.init();
-        }
+        console.log('✅ i18n already initialized, language:', i18n.language);
         
-        // Force French for now to test translations
-        if (i18n.language !== 'fr') {
-          console.log('🔄 Forcing French language...');
-          await i18n.changeLanguage('fr');
+        // Set to user's preferred language or default
+        const storedLanguage = typeof window !== 'undefined' ? 
+          localStorage.getItem('i18nextLng') || 'fr' : 'fr';
+        
+        if (i18n.language !== storedLanguage) {
+          console.log('🔄 Setting language to:', storedLanguage);
+          await i18n.changeLanguage(storedLanguage);
         }
         
         // Check if translations are loaded
@@ -31,14 +28,10 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
         const hasFrench = i18n.hasResourceBundle('fr', 'translation');
         console.log('📚 Translation bundles loaded:', { en: hasEnglish, fr: hasFrench });
         
-        // Test a specific key
-        const testKey = i18n.t('campaignManagement.targetTab.title');
-        console.log('🧪 Test translation for targetTab.title:', testKey);
-        
-        console.log('✅ i18n initialization complete, current language:', i18n.language);
+        console.log('✅ i18n setup complete, current language:', i18n.language);
         setIsI18nInitialized(true);
       } catch (error) {
-        console.error('❌ Error initializing i18n:', error);
+        console.error('❌ Error setting up i18n:', error);
         setIsI18nInitialized(true); // Still set to true to prevent infinite loading
       }
     };

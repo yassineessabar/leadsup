@@ -325,7 +325,7 @@ export default function Home() {
       case "campaigns-multi-channel":
         return <CampaignsList activeSubTab={activeTab} />
       case "inbox":
-        return <InboxTab />
+        return <InboxTab key={`inbox-${typeof window !== 'undefined' ? localStorage.getItem('i18nextLng') : 'server'}`} />
       case "templates":
         return <TemplatesTab />
       case "integrations":

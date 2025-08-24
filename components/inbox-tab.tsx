@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import { useI18n } from '@/hooks/use-i18n'
 import { Search, MoreHorizontal, Reply, Forward, Archive, Trash2, Star, ChevronDown, Zap, Mail, MoreVertical, Send, X, Filter, Users, MessageSquare, RotateCcw } from 'lucide-react'
 
 interface Email {
@@ -62,6 +63,10 @@ const emailAccounts = [
 ]
 
 export default function InboxPage() {
+  // All hooks must be declared BEFORE any early returns
+  const { t, ready } = useI18n()
+  
+  
   const [emails, setEmails] = useState<Email[]>([])
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
   const [selectedEmails, setSelectedEmails] = useState<number[]>([])
@@ -93,6 +98,107 @@ export default function InboxPage() {
   })
   
   const { toast } = useToast()
+
+  // ALL hooks must be declared before any early returns
+  const fetchCampaigns = useCallback(async () => {
+    try {
+      const response = await fetch('/api/campaigns', {
+        credentials: 'include'
+      })
+      const result = await response.json()
+      
+      if (result.success) {
+        setCampaigns(result.data)
+      }
+    } catch (error) {
+      console.error('Error fetching campaigns:', error)
+    }
+  }, [])
+
+  const fetchFolderStats = useCallback(async () => {
+    try {
+      const response = await fetch('/api/inbox/stats', {
+        credentials: 'include'
+      })
+      const result = await response.json()
+      
+      if (result.success && result.data.folder_distribution) {
+        setFolderCounts({
+          inbox: result.data.folder_distribution.inbox || 0,
+          sent: result.data.folder_distribution.sent || 0,
+          trash: result.data.folder_distribution.trash || 0
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching folder stats:', error)
+    }
+  }, [])
+
+  const fetchEmails = useCallback(async () => {
+    try {
+      setLoading(true)
+      
+      // Build query parameters
+      const queryParams = new URLSearchParams({
+        folder: selectedFolder || 'inbox',
+        range: dateRange || '30'
+      })
+
+      if (selectedStatus) queryParams.append('status', selectedStatus)
+      if (selectedCampaign) queryParams.append('campaign_id', selectedCampaign)
+      if (searchQuery) queryParams.append('search', searchQuery)
+      if (selectedAccount) queryParams.append('account', selectedAccount)
+
+      const response = await fetch(`/api/inbox?${queryParams}`, {
+        credentials: 'include'
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      
+      console.log('Inbox API response:', result)
+      
+      if (result.success && result.emails) {
+        setEmails(result.emails)
+      } else {
+        console.error('API error fetching emails:', {
+          success: result.success,
+          error: result.error,
+          fullResponse: result
+        })
+        setEmails([])
+      }
+
+      setSelectedEmail(null)
+      // No fallback data - use real API only */
+    } catch (error) {
+      console.error('Error fetching emails:', error || 'Unknown error')
+      setEmails([])
+      setSelectedEmail(null)
+      // No fallback data - use real API only */
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedStatus, selectedAccount, selectedCampaign, searchQuery, selectedFolder, dateRange])
+
+  useEffect(() => {
+    fetchCampaigns()
+    fetchFolderStats()
+  }, [fetchCampaigns, fetchFolderStats])
+
+  useEffect(() => {
+    fetchEmails()
+  }, [fetchEmails])
+  
+  // Early return AFTER all hooks are declared
+  if (!ready) {
+    return <div className="flex items-center justify-center h-64">
+      <div className="text-gray-500">{t ? t('common.loading') : 'Loading...'}</div>
+    </div>
+  }
 
   // Fetch all messages for a thread
   const fetchThreadMessages = async (conversationId: string) => {
@@ -135,134 +241,6 @@ export default function InboxPage() {
     }
   }
 
-  // Fetch campaigns from API
-  const fetchCampaigns = async () => {
-    try {
-      const response = await fetch('/api/campaigns', {
-        credentials: 'include'
-      })
-      const result = await response.json()
-      
-      if (result.success) {
-        setCampaigns(result.data)
-      }
-    } catch (error) {
-      console.error('Error fetching campaigns:', error)
-    }
-  }
-
-  // Fetch folder statistics from API
-  const fetchFolderStats = async () => {
-    try {
-      const response = await fetch('/api/inbox/stats', {
-        credentials: 'include'
-      })
-      const result = await response.json()
-      
-      if (result.success && result.data.folder_distribution) {
-        setFolderCounts({
-          inbox: result.data.folder_distribution.inbox || 0,
-          sent: result.data.folder_distribution.sent || 0,
-          trash: result.data.folder_distribution.trash || 0
-        })
-      }
-    } catch (error) {
-      console.error('Error fetching folder stats:', error)
-    }
-  }
-
-  // Fetch emails from API with campaign filtering
-  const fetchEmails = async () => {
-    setLoading(true)
-    setSelectedEmail(null) // Clear selected email when fetching new folder
-    console.log('🔄 Fetching emails for folder:', selectedFolder)
-    try {
-      const params = new URLSearchParams()
-      if (selectedStatus) params.append('status', selectedStatus)
-      if (selectedAccount) params.append('account', selectedAccount) // Keep for backward compatibility
-      if (selectedCampaign) params.append('campaigns', selectedCampaign) // Fixed: use 'campaigns' not 'campaign_id'
-      if (searchQuery) params.append('search', searchQuery)
-      if (selectedFolder) params.append('folder', selectedFolder)
-      params.append('view', 'threads') // Ensure we use threaded view
-      
-      console.log('📡 API params:', params.toString())
-      
-      // Date range filter - Fixed: use date_from instead of start_date
-      if (dateRange !== 'custom') {
-        const days = parseInt(dateRange)
-        const startDate = new Date()
-        startDate.setDate(startDate.getDate() - days)
-        params.append('date_from', startDate.toISOString())
-      }
-
-      const response = await fetch(`/api/inbox?${params.toString()}`)
-      const data = await response.json()
-      
-      // Handle both data.emails and data.data formats
-      const emailsArray = data.emails || data.data || []
-      console.log('📧 API response:', { 
-        success: data.success, 
-        emailCount: emailsArray.length, 
-        folder: selectedFolder,
-        hasEmails: !!data.emails,
-        hasData: !!data.data,
-        rawResponse: data
-      })
-      
-      if (data.success && emailsArray.length >= 0) {  // Accept empty arrays too
-        // Normalize the email data to handle both old and new property names
-        const normalizedEmails = emailsArray.map((email: any) => ({
-          ...email,
-          isRead: email.isRead ?? email.is_read ?? false,
-          hasAttachment: email.hasAttachment ?? email.has_attachment ?? false,
-          isImportant: email.isImportant ?? email.is_important ?? false,
-          isOutOfOffice: email.isOutOfOffice ?? email.is_out_of_office ?? false,
-          statusLabel: email.statusLabel ?? email.status_label,
-          date: email.date || new Date(email.created_at || Date.now()).toLocaleDateString(),
-          // Fix sender/recipient mapping based on direction and actual data structure
-          sender: email.direction === 'outbound' 
-            ? (email.sender_email || email.sender)  // For outbound: our sending account
-            : (email.contact_email || email.sender),  // For inbound: external person
-          to_email: email.direction === 'outbound'
-            ? (email.contact_email || email.to_email)  // For outbound: recipient contact
-            : (email.sender_email || email.to_email || email.recipient_email),  // For inbound: our receiving account
-          // Also ensure we have content/preview fields
-          content: email.content || email.body_text || email.body_html,
-          preview: email.preview || (email.body_text ? email.body_text.substring(0, 100) + '...' : '')
-        }))
-        setEmails(normalizedEmails)
-        if (normalizedEmails.length > 0 && !selectedEmail) {
-          setSelectedEmail(normalizedEmails[0])
-        }
-      } else if (data.success && !data.emails) {
-        // API succeeded but no emails returned
-        console.log('📧 No emails returned for folder:', selectedFolder)
-        setEmails([])
-        setSelectedEmail(null)
-      } else {
-        // API failed
-        console.error('❌ API failed:', data.error)
-        setEmails([])
-        setSelectedEmail(null)
-      }
-    } catch (error) {
-      console.error('❌ Network error fetching emails:', error)
-      setEmails([])
-      setSelectedEmail(null)
-      // No fallback data - use real API only */
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchCampaigns()
-    fetchFolderStats()
-  }, [])
-
-  useEffect(() => {
-    fetchEmails()
-  }, [selectedStatus, selectedAccount, selectedCampaign, searchQuery, activeTab, selectedFolder, dateRange])
 
   const handleEmailSelect = async (email: Email) => {
     setSelectedEmail(email)
@@ -628,12 +606,12 @@ export default function InboxPage() {
       <div className="w-72 bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-3xl flex flex-col shadow-sm">
         {/* Folders Section */}
         <div className="p-6 border-b border-gray-100/50">
-          <div className="text-sm font-medium text-gray-700 uppercase tracking-wide mb-4">Folders</div>
+          <div className="text-sm font-medium text-gray-700 uppercase tracking-wide mb-4">{t('inbox.folders')}</div>
           <div className="space-y-2">
             {[
-              { name: 'Inbox', key: 'inbox', icon: Mail, count: folderCounts.inbox },
-              { name: 'Sent', key: 'sent', icon: Send, count: folderCounts.sent },
-              { name: 'Trash', key: 'trash', icon: Trash2, count: folderCounts.trash }
+              { name: t('inbox.inbox'), key: 'inbox', icon: Mail, count: folderCounts.inbox },
+              { name: t('inbox.sent'), key: 'sent', icon: Send, count: folderCounts.sent },
+              { name: t('inbox.trash'), key: 'trash', icon: Trash2, count: folderCounts.trash }
             ].map((folder, index) => (
               <button
                 key={index}
@@ -664,17 +642,17 @@ export default function InboxPage() {
 
         {/* Filters Section */}
         <div className="p-6 border-b border-gray-100/50">
-          <div className="text-sm font-medium text-gray-700 uppercase tracking-wide mb-4">Filters</div>
+          <div className="text-sm font-medium text-gray-700 uppercase tracking-wide mb-4">{t('inbox.filters')}</div>
           
           {/* Campaign Filter */}
           <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-2">Campaign</label>
+            <label className="block text-xs font-medium text-gray-700 mb-2">{t('inbox.campaign')}</label>
             <select 
               value={selectedCampaign || ''}
               onChange={(e) => setSelectedCampaign(e.target.value || null)}
               className="w-full text-sm border border-gray-200/50 rounded-2xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white/50"
             >
-              <option value="">All Campaigns</option>
+              <option value="">{t('inbox.allCampaigns')}</option>
               {campaigns.map(campaign => (
                 <option key={campaign.id} value={campaign.id.toString()}>
                   {campaign.name}
@@ -685,13 +663,13 @@ export default function InboxPage() {
 
           {/* Status Filter */}
           <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-2">Lead Status</label>
+            <label className="block text-xs font-medium text-gray-700 mb-2">{t('inbox.leadStatus')}</label>
             <select 
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="w-full text-sm border border-gray-200/50 rounded-2xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white/50"
             >
-              <option value="">All Statuses</option>
+              <option value="">{t('inbox.allStatuses')}</option>
               {Object.entries(statusConfig).map(([key, config]) => (
                 <option key={key} value={key}>{config.label}</option>
               ))}
@@ -700,16 +678,16 @@ export default function InboxPage() {
 
           {/* Date Range Filter */}
           <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-2">Date Range</label>
+            <label className="block text-xs font-medium text-gray-700 mb-2">{t('inbox.dateRange')}</label>
             <select 
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
               className="w-full text-sm border border-gray-200/50 rounded-2xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white/50"
             >
-              <option value="7">Last 7 days</option>
-              <option value="30">Last 30 days</option>
-              <option value="90">Last 90 days</option>
-              <option value="custom">Custom range</option>
+              <option value="7">{t('inbox.last7Days')}</option>
+              <option value="30">{t('inbox.last30Days')}</option>
+              <option value="90">{t('inbox.last90Days')}</option>
+              <option value="custom">{t('inbox.customRange')}</option>
             </select>
           </div>
         </div>
@@ -719,7 +697,7 @@ export default function InboxPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search messages..."
+              placeholder={t('inbox.searchMessages')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 text-sm border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
@@ -741,7 +719,7 @@ export default function InboxPage() {
               }`}
               onClick={() => setActiveTab("primary")}
             >
-              Primary
+              {t('inbox.primary')}
             </button>
             <button
               className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
@@ -751,7 +729,7 @@ export default function InboxPage() {
               }`}
               onClick={() => setActiveTab("others")}
             >
-              Others
+              {t('inbox.others')}
             </button>
           </div>
 
@@ -759,7 +737,7 @@ export default function InboxPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search mail"
+              placeholder={t('inbox.searchMail')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
@@ -773,14 +751,14 @@ export default function InboxPage() {
             <div className="flex items-center justify-center h-32">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-8 h-8 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
-                <div className="text-sm text-gray-500">Loading emails...</div>
+                <div className="text-sm text-gray-500">{t('inbox.loadingEmails')}</div>
               </div>
             </div>
           ) : emails.length === 0 ? (
             <div className="flex items-center justify-center h-32">
               <div className="text-center">
                 <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <div className="text-sm text-gray-500">No emails found</div>
+                <div className="text-sm text-gray-500">{t('inbox.noEmailsFound')}</div>
               </div>
             </div>
           ) : (
@@ -894,7 +872,7 @@ export default function InboxPage() {
                       size="sm" 
                       className="text-gray-400 hover:text-gray-600 rounded-2xl h-10 w-10 p-0"
                       onClick={handleRestore}
-                      title="Restore to Inbox"
+                      title={t('inbox.restoreToInbox')}
                     >
                       <RotateCcw className="w-4 h-4" />
                     </Button>
@@ -905,7 +883,7 @@ export default function InboxPage() {
                       size="sm" 
                       className="text-gray-400 hover:text-gray-600 rounded-2xl h-10 w-10 p-0"
                       onClick={handleArchive}
-                      title="Archive"
+                      title={t('inbox.archive')}
                     >
                       <Archive className="w-4 h-4" />
                     </Button>
@@ -1003,7 +981,7 @@ export default function InboxPage() {
                           fontFamily: 'inherit',
                           fontSize: '14px'
                         }}
-                        placeholder={composeMode === 'reply' ? "Type your reply..." : "Add a message..."}
+                        placeholder={composeMode === 'reply' ? t('inbox.typeReply') : t('inbox.addMessage')}
                       />
                     </div>
                     
@@ -1013,14 +991,14 @@ export default function InboxPage() {
                         onClick={composeMode === 'reply' ? sendReply : sendForward}
                       >
                         <Send className="w-4 h-4 mr-2" />
-                        {composeMode === 'reply' ? 'Send Reply' : 'Forward'}
+                        {composeMode === 'reply' ? t('inbox.sendReply') : t('inbox.forward')}
                       </Button>
                       <Button 
                         variant="outline" 
                         className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium"
                         onClick={cancelCompose}
                       >
-                        Cancel
+                        {t('button.cancel')}
                       </Button>
                     </div>
                   </div>
@@ -1065,7 +1043,7 @@ export default function InboxPage() {
                 <div className="border-t border-gray-100/50 mt-8">
                   <div className="py-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-6">
-                      Thread Messages ({threadMessages[selectedEmail.conversation_id].length})
+                      {t('inbox.threadMessages', { count: threadMessages[selectedEmail.conversation_id].length })}
                     </h3>
                     <div className="space-y-4">
                       {threadMessages[selectedEmail.conversation_id].map((message, index) => (
@@ -1081,7 +1059,7 @@ export default function InboxPage() {
                                   ? 'bg-blue-100 text-blue-800'
                                   : 'bg-gray-100 text-gray-800'
                               }`}>
-                                {message.direction === 'outbound' ? 'Sent' : 'Received'}
+                                {message.direction === 'outbound' ? t('inbox.sent') : t('inbox.received')}
                               </span>
                               <span className="text-sm text-gray-600">
                                 {message.formatted_date}
@@ -1129,8 +1107,8 @@ export default function InboxPage() {
                         const moreCount = totalMessages - 1
                         
                         return expandedThreads.has(selectedEmail.conversation_id) 
-                          ? 'Hide messages' 
-                          : `${moreCount} more message${moreCount !== 1 ? 's' : ''}`
+                          ? t('inbox.hideMessages') 
+                          : t('inbox.moreMessages', { count: moreCount })
                       })()}
                     </span>
                     <ChevronDown className={`w-4 h-4 transition-transform ${
@@ -1150,7 +1128,7 @@ export default function InboxPage() {
                     onClick={handleReply}
                   >
                     <Reply className="w-4 h-4 mr-2" />
-                    Reply
+                    {t('inbox.reply')}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -1158,7 +1136,7 @@ export default function InboxPage() {
                     onClick={handleForward}
                   >
                     <Forward className="w-4 h-4 mr-2" />
-                    Forward
+                    {t('inbox.forward')}
                   </Button>
                 </div>
               </div>
@@ -1168,8 +1146,8 @@ export default function InboxPage() {
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <Mail className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <div className="text-gray-500 text-lg font-light">Select an email to view</div>
-              <div className="text-gray-400 text-sm mt-2">Choose a message from the list to read its contents</div>
+              <div className="text-gray-500 text-lg font-light">{t('inbox.selectEmailToView')}</div>
+              <div className="text-gray-400 text-sm mt-2">{t('inbox.chooseMessage')}</div>
             </div>
           </div>
         )}
