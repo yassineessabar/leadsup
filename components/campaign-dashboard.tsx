@@ -422,25 +422,38 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       setWarmupCheckLoading(false)
     }
   }
-  const handleWarmupDecision = async (shouldWarmup: boolean) => {
+  const handleWarmupDecision = async (warmupChoice: string) => {
     setShowWarmupWarning(false)
     
-    if (shouldWarmup && campaign?.id && onStatusUpdate) {
-      // Set campaign status to "Warming"
-      console.log('🔥 Starting warmup for campaign:', campaign.id)
-      onStatusUpdate(campaign.id, 'Warming')
-      setIsGuidedFlow(false)
-      
-      // Warmup started - no automatic redirect needed
-      console.log('✅ Campaign warmup started successfully')
-    } else if (!shouldWarmup && campaign?.id && onStatusUpdate) {
-      // User chose to ignore warning and launch anyway
-      console.log('⚠️ Launching campaign despite low health scores')
-      onStatusUpdate(campaign.id, 'Active')
-      setIsGuidedFlow(false)
-      
-      // Campaign launched - no automatic redirect needed
-      console.log('✅ Campaign launched successfully despite low health scores')
+    if (campaign?.id && onStatusUpdate) {
+      switch (warmupChoice) {
+        case 'auto_warmup':
+          // Start sending gradually with automatic warmup
+          console.log('🔥 Starting auto warmup for campaign:', campaign.id)
+          onStatusUpdate(campaign.id, 'Active') // Set to active but with gradual sending
+          setIsGuidedFlow(false)
+          console.log('✅ Auto warmup campaign started successfully')
+          break
+          
+        case 'warmup_only':
+          // Warm up accounts without sending campaign emails
+          console.log('🔥 Starting warmup only for campaign:', campaign.id)
+          onStatusUpdate(campaign.id, 'Warming')
+          setIsGuidedFlow(false)
+          console.log('✅ Warmup only started successfully')
+          break
+          
+        case 'no_warmup':
+          // Start sending immediately
+          console.log('⚠️ Launching campaign immediately without warmup')
+          onStatusUpdate(campaign.id, 'Active')
+          setIsGuidedFlow(false)
+          console.log('✅ Campaign launched immediately without warmup')
+          break
+          
+        default:
+          console.error('❌ Unknown warmup choice:', warmupChoice)
+      }
     }
   }
 
@@ -4257,7 +4270,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       {/* Warmup Warning Dialog */}
       <Dialog open={showWarmupWarning} onOpenChange={setShowWarmupWarning}>
-        <DialogContent className="sm:max-w-[425px] rounded-3xl border border-gray-100 p-0 overflow-hidden">
+        <DialogContent className="max-w-[500px] rounded-3xl border border-gray-100 p-0 overflow-hidden">
           <div className="p-6 pb-0">
             <div className="flex items-center space-x-4 mb-4">
               <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl flex items-center justify-center">
@@ -4298,24 +4311,37 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             </div>
             
             <div className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
-              <p><span className="font-semibold">Warmup Mode:</span> Gradually increases sending volume over 2-4 weeks to improve deliverability.</p>
+              <p className="mb-2"><span className="font-semibold">Choose your sending approach:</span></p>
+              <ul className="space-y-1 text-xs">
+                <li>• <span className="font-medium">Auto Warmup:</span> Start sending gradually with automatic warmup (recommended)</li>
+                <li>• <span className="font-medium">Warmup Only:</span> Warm up accounts without sending campaign emails</li>
+                <li>• <span className="font-medium">No Warmup:</span> Start sending immediately (not recommended)</li>
+              </ul>
             </div>
           </div>
           
           <div className="flex gap-2 p-6 pt-3 border-t border-gray-100">
             <Button
               variant="outline"
-              onClick={() => handleWarmupDecision(false)}
+              onClick={() => handleWarmupDecision('no_warmup')}
               className="flex-1 h-10 rounded-xl text-sm"
             >
-              Skip Warmup
+              No Warmup
             </Button>
             <Button
-              onClick={() => handleWarmupDecision(true)}
+              variant="outline"
+              onClick={() => handleWarmupDecision('warmup_only')}
+              className="flex-1 h-10 rounded-xl text-sm"
+            >
+              <Flame className="w-4 h-4 mr-1.5" />
+              Warmup Only
+            </Button>
+            <Button
+              onClick={() => handleWarmupDecision('auto_warmup')}
               className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium"
             >
               <Flame className="w-4 h-4 mr-1.5" />
-              Start Warmup
+              Auto Warmup (Recommended)
             </Button>
           </div>
         </DialogContent>
