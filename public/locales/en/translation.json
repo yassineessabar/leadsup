@@ -1,4 +1,29 @@
 {
+  "logo": {
+    "leadsUp": "LeadsUp Logo"
+  },
+  "auth": {
+    "signupTitle": "Create Your Account",
+    "signupSubtitle": "Sign up to start generating leads effortlessly",
+    "fullName": "Full Name",
+    "email": "Email",
+    "password": "Password",
+    "signup": "Sign Up",
+    "alreadyHaveAccount": "Already have an account?",
+    "login": "Log In",
+    "bySigningUp": "By signing up, you agree to our",
+    "termsOfService": "Terms of Service",
+    "and": "and",
+    "privacyPolicy": "Privacy Policy",
+    "havingIssues": "Having issues?",
+    "contactUs": "Contact Us",
+    "greeting": "Welcome back!",
+    "emailPlaceholder": "name@example.com",
+    "passwordPlaceholder": "••••••••",
+    "rememberMe": "Remember Me",
+    "forgotPassword": "Forgot Password?",
+    "dontHaveAccount": "Don't have an account?"
+  },
   "navigation": {
     "createCampaign": "Create Campaign",
     "campaigns": "Campaigns",
