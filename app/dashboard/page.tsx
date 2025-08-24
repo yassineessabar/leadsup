@@ -24,8 +24,22 @@ import {
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useI18n } from '@/hooks/use-i18n'
+import { LanguageSelectorCompact } from '@/components/language-selector'
 
 export default function DashboardPage() {
+  const { t, ready, i18n } = useI18n()
+  
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-gray-600">Loading translations...</p>
+        </div>
+      </div>
+    );
+  }
   const [stats, setStats] = useState({
     totalLeads: 0,
     contactedLeads: 0,
@@ -105,22 +119,24 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Dashboard</h1>
-            <p className="text-slate-600 text-lg">Your prospecting overview</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">{t('dashboard.title')} - Lang: {ready ? i18n.language : 'loading'}</h1>
+            <p className="text-slate-600 text-lg">{t('dashboard.subtitle')}</p>
+            <p className="text-xs text-red-500">Debug: {t('greeting')} | Key: dashboard.title = {t('dashboard.title')}</p>
           </div>
           <div className="flex gap-3">
             <Link href="/contacts">
               <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-600/25">
                 <Users className="w-4 h-4 mr-2" />
-                Manage Leads
+                {t('dashboard.manageLeads')}
               </Button>
             </Link>
             <Link href="/campaigns">
               <Button variant="outline" className="border-slate-300 hover:bg-slate-50">
                 <Mail className="w-4 h-4 mr-2" />
-                New Campaign
+                {t('dashboard.newCampaign')}
               </Button>
             </Link>
+            <LanguageSelectorCompact />
           </div>
         </div>
 
@@ -129,7 +145,7 @@ export default function DashboardPage() {
           <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full opacity-5 transform translate-x-16 -translate-y-16"></div>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardDescription className="text-sm font-medium text-slate-600">Total Leads</CardDescription>
+              <CardDescription className="text-sm font-medium text-slate-600">{t('dashboard.metrics.totalLeads')}</CardDescription>
               <div className="p-2 rounded-xl bg-blue-50">
                 <Users className="w-4 h-4 text-blue-700" />
               </div>
@@ -138,7 +154,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <p className="text-2xl md:text-3xl font-bold text-slate-900">{stats.totalLeads}</p>
                 <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-none">
-                  Last 30 days
+                  {t('dashboard.metrics.last30Days')}
                 </Badge>
               </div>
             </CardContent>
@@ -147,7 +163,7 @@ export default function DashboardPage() {
           <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full opacity-5 transform translate-x-16 -translate-y-16"></div>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardDescription className="text-sm font-medium text-slate-600">Contacted Leads</CardDescription>
+              <CardDescription className="text-sm font-medium text-slate-600">{t('dashboard.metrics.contactedLeads')}</CardDescription>
               <div className="p-2 rounded-xl bg-emerald-50">
                 <Mail className="w-4 h-4 text-emerald-700" />
               </div>
@@ -156,7 +172,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <p className="text-2xl md:text-3xl font-bold text-slate-900">{stats.contactedLeads}</p>
                 <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-none">
-                  Last 30 days
+                  {t('dashboard.metrics.last30Days')}
                 </Badge>
               </div>
             </CardContent>
@@ -165,7 +181,7 @@ export default function DashboardPage() {
           <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full opacity-5 transform translate-x-16 -translate-y-16"></div>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardDescription className="text-sm font-medium text-slate-600">Active Campaigns</CardDescription>
+              <CardDescription className="text-sm font-medium text-slate-600">{t('dashboard.metrics.activeCampaigns')}</CardDescription>
               <div className="p-2 rounded-xl bg-purple-50">
                 <Target className="w-4 h-4 text-purple-700" />
               </div>
@@ -174,7 +190,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <p className="text-2xl md:text-3xl font-bold text-slate-900">{stats.activeCampaigns}</p>
                 <Badge variant="secondary" className="bg-purple-50 text-purple-600 border-none">
-                  Active now
+                  {t('dashboard.metrics.activeNow')}
                 </Badge>
               </div>
             </CardContent>
@@ -183,7 +199,7 @@ export default function DashboardPage() {
           <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500 to-green-600 rounded-full opacity-5 transform translate-x-16 -translate-y-16"></div>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardDescription className="text-sm font-medium text-slate-600">Response Rate</CardDescription>
+              <CardDescription className="text-sm font-medium text-slate-600">{t('dashboard.metrics.responseRate')}</CardDescription>
               <div className="p-2 rounded-xl bg-green-50">
                 <TrendingUp className="w-4 h-4 text-green-700" />
               </div>
@@ -192,7 +208,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <p className="text-2xl md:text-3xl font-bold text-slate-900">{stats.responseRate}</p>
                 <Badge variant="secondary" className="bg-green-50 text-green-600 border-none">
-                  All-time
+                  {t('dashboard.metrics.allTime')}
                 </Badge>
               </div>
             </CardContent>
@@ -207,7 +223,7 @@ export default function DashboardPage() {
             <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-slate-900">
-                  Processed Leads - Last 30 Days
+                  {t('dashboard.chart.title')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -225,7 +241,7 @@ export default function DashboardPage() {
                         stroke="#3b82f6" 
                         strokeWidth={3}
                         dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                        name="Imported"
+                        name={t('dashboard.chart.imported')}
                       />
                       <Line 
                         type="monotone" 
@@ -233,7 +249,7 @@ export default function DashboardPage() {
                         stroke="#10b981" 
                         strokeWidth={3}
                         dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
-                        name="Verified"
+                        name={t('dashboard.chart.verified')}
                       />
                       <Line 
                         type="monotone" 
@@ -241,7 +257,7 @@ export default function DashboardPage() {
                         stroke="#f59e0b" 
                         strokeWidth={3}
                         dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
-                        name="Enriched"
+                        name={t('dashboard.chart.enriched')}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -252,15 +268,15 @@ export default function DashboardPage() {
             {/* Recent Campaigns */}
             <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-xl font-bold text-slate-900">Recent Campaigns</CardTitle>
+                <CardTitle className="text-xl font-bold text-slate-900">{t('dashboard.recentCampaigns.title')}</CardTitle>
                 <Link href="/campaigns">
-                  <Button variant="outline" size="sm">View All</Button>
+                  <Button variant="outline" size="sm">{t('dashboard.recentCampaigns.viewAll')}</Button>
                 </Link>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {stats.recentCampaigns.length === 0 ? (
-                    <p className="text-slate-500 text-center py-8">No campaigns yet</p>
+                    <p className="text-slate-500 text-center py-8">{t('dashboard.recentCampaigns.noCampaigns')}</p>
                   ) : (
                     stats.recentCampaigns.map((campaign: any) => (
                       <div 
@@ -283,15 +299,15 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-4 text-sm text-slate-600">
                             <div className="flex items-center gap-1">
                               <Users className="w-4 h-4" />
-                              <span>0 prospects</span>
+                              <span>{t('dashboard.recentCampaigns.prospects', { count: 0 })}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Mail className="w-4 h-4" />
-                              <span>0 sent</span>
+                              <span>{t('dashboard.recentCampaigns.sent', { count: 0 })}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <TrendingUp className="w-4 h-4" />
-                              <span>0% responses</span>
+                              <span>{t('dashboard.recentCampaigns.responses', { rate: '0%' })}</span>
                             </div>
                           </div>
                         </div>
@@ -314,7 +330,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-900">
                   <ShieldCheck className="w-5 h-5 text-green-600" />
-                  Deliverability Score
+                  {t('dashboard.deliverability.title')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -343,19 +359,19 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="text-center space-y-2">
-                  <Badge className="bg-green-100 text-green-800 border-none">Excellent</Badge>
+                  <Badge className="bg-green-100 text-green-800 border-none">{t('dashboard.deliverability.excellent')}</Badge>
                   <p className="text-sm text-slate-700 font-medium">
-                    Your deliverability is optimal, keep it up!
+                    {t('dashboard.deliverability.optimalMessage')}
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-200/60">
                   <div className="text-center">
-                    <p className="text-xs text-slate-500 uppercase tracking-wide">IP Reputation</p>
-                    <p className="font-semibold text-slate-800">Good</p>
+                    <p className="text-xs text-slate-500 uppercase tracking-wide">{t('dashboard.deliverability.ipReputation')}</p>
+                    <p className="font-semibold text-slate-800">{t('dashboard.deliverability.good')}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-slate-500 uppercase tracking-wide">Authentication</p>
-                    <p className="font-semibold text-slate-800">Configured</p>
+                    <p className="text-xs text-slate-500 uppercase tracking-wide">{t('dashboard.deliverability.authentication')}</p>
+                    <p className="font-semibold text-slate-800">{t('dashboard.deliverability.configured')}</p>
                   </div>
                 </div>
               </CardContent>
@@ -366,11 +382,11 @@ export default function DashboardPage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-900">
                   <Brain className="w-5 h-5 text-blue-600" />
-                  AI Coaching
+                  {t('dashboard.aiCoaching.title')}
                 </CardTitle>
                 <Link href="/coaching">
                   <Button variant="outline" size="sm">
-                    View All
+                    {t('dashboard.aiCoaching.viewAll')}
                     <ArrowRight className="w-4 h-4 ml-1" />
                   </Button>
                 </Link>
@@ -384,22 +400,22 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-semibold text-slate-900">Your open rate is declining</h4>
+                          <h4 className="font-semibold text-slate-900">{t('dashboard.aiCoaching.openRateDeclining')}</h4>
                           <Badge className="bg-orange-100 text-orange-700 border-orange-200 border text-xs">
-                            high
+                            {t('dashboard.aiCoaching.high')}
                           </Badge>
                         </div>
                         <p className="text-sm text-slate-600 mb-3">
-                          Your average open rate is 18%, 12 points below the industry average (30%).
+                          {t('dashboard.aiCoaching.openRateMessage')}
                         </p>
                         <ul className="text-sm text-slate-600 space-y-1">
                           <li className="flex items-start gap-2">
                             <CheckCircle2 className="w-3 h-3 mt-0.5 text-green-500 flex-shrink-0" />
-                            <span>Test shorter subject lines (under 50 characters)</span>
+                            <span>{t('dashboard.aiCoaching.suggestion1')}</span>
                           </li>
                           <li className="flex items-start gap-2">
                             <CheckCircle2 className="w-3 h-3 mt-0.5 text-green-500 flex-shrink-0" />
-                            <span>Personalize subjects with company name</span>
+                            <span>{t('dashboard.aiCoaching.suggestion2')}</span>
                           </li>
                         </ul>
                       </div>
@@ -413,22 +429,22 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-semibold text-slate-900">Improve your deliverability</h4>
+                          <h4 className="font-semibold text-slate-900">{t('dashboard.aiCoaching.improveDeliverability')}</h4>
                           <Badge className="bg-red-100 text-red-700 border-red-200 border text-xs">
-                            critical
+                            {t('dashboard.aiCoaching.critical')}
                           </Badge>
                         </div>
                         <p className="text-sm text-slate-600 mb-3">
-                          Your deliverability score dropped to 72%. 28% of emails aren't reaching inboxes.
+                          {t('dashboard.aiCoaching.deliverabilityMessage')}
                         </p>
                         <ul className="text-sm text-slate-600 space-y-1">
                           <li className="flex items-start gap-2">
                             <CheckCircle2 className="w-3 h-3 mt-0.5 text-green-500 flex-shrink-0" />
-                            <span>Clean your list of invalid emails</span>
+                            <span>{t('dashboard.aiCoaching.cleanList')}</span>
                           </li>
                           <li className="flex items-start gap-2">
                             <CheckCircle2 className="w-3 h-3 mt-0.5 text-green-500 flex-shrink-0" />
-                            <span>Reduce sending volume temporarily</span>
+                            <span>{t('dashboard.aiCoaching.reduceVolume')}</span>
                           </li>
                         </ul>
                       </div>
@@ -443,26 +459,26 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-blue-900">
                   <Zap className="w-5 h-5" />
-                  Quick Actions
+                  {t('dashboard.quickActions.title')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Link href="/contacts" className="block">
                   <Button variant="ghost" className="w-full justify-start text-blue-700 hover:bg-blue-100">
                     <Users className="w-4 h-4 mr-2" />
-                    Import CSV List
+                    {t('dashboard.quickActions.importCSV')}
                   </Button>
                 </Link>
                 <Link href="/templates" className="block">
                   <Button variant="ghost" className="w-full justify-start text-blue-700 hover:bg-blue-100">
                     <Mail className="w-4 h-4 mr-2" />
-                    Create Template
+                    {t('dashboard.quickActions.createTemplate')}
                   </Button>
                 </Link>
                 <Link href="/analytics" className="block">
                   <Button variant="ghost" className="w-full justify-start text-blue-700 hover:bg-blue-100">
                     <TrendingUp className="w-4 h-4 mr-2" />
-                    Analyze Performance
+                    {t('dashboard.quickActions.analyzePerformance')}
                   </Button>
                 </Link>
               </CardContent>

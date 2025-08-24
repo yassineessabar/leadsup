@@ -6,8 +6,9 @@ import { useState, useEffect, useCallback, useRef } from "react" // Import useRe
 import { useRouter } from "next/navigation"
 import { useCompanyLogo } from "@/hooks/useCompanyLogo"
 import { useSubscription } from "@/hooks/use-subscription"
-import { Save, Edit3, X, Globe, User, Mail, Phone, Building, MapPin, Clock, Eye, Crown, ArrowLeft, Info, FileText } from "lucide-react"
+import { Save, Edit3, X, Globe, User, Mail, Phone, Building, MapPin, Clock, Eye, Crown, ArrowLeft, Info } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import { useI18n } from "@/hooks/use-i18n"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,8 +19,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AutomationLogs } from "./automation-logs"
 import type { UserProfile } from "@/types/db"
 
 interface AccountTabProps {
@@ -27,11 +26,11 @@ interface AccountTabProps {
 }
 
 export function AccountTab({ onTabChange }: AccountTabProps) {
+  const { t } = useI18n()
   const router = useRouter()
   const { logoUrl, updateLogo } = useCompanyLogo()
   const { userInfo, hasActiveSubscription } = useSubscription()
   const [isEditing, setIsEditing] = useState(false)
-  const [activeTab, setActiveTab] = useState("profile")
   const [profileData, setProfileData] = useState<UserProfile>({
     id: "1", // Mock ID
     first_name: "",
@@ -111,16 +110,16 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
       } else {
         console.error("Error saving profile:", result.error)
         toast({
-          title: "Save Failed",
-          description: "Failed to save profile information.",
+          title: t('account.profile.errors.saveFailed'),
+          description: t('account.profile.errors.saveFailedDescription'),
           variant: "destructive"
         })
       }
     } catch (error) {
       console.error("Error saving profile:", error)
       toast({
-        title: "Save Failed",
-        description: "Failed to save profile information.",
+        title: t('account.profile.errors.saveFailed'),
+        description: t('account.profile.errors.saveFailedDescription'),
         variant: "destructive"
       })
     }
@@ -144,8 +143,8 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
           // Remove success message - logo update is already handled by the hook
         } else {
           toast({
-            title: "Upload Failed",
-            description: "Failed to sync avatar across components. Please try again.",
+            title: t('account.profile.errors.uploadFailed'),
+            description: t('account.profile.errors.uploadFailedDescription'),
             variant: "destructive"
           })
         }
@@ -189,29 +188,15 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
           </Button>
           <div className="h-6 w-px bg-gray-300" />
           <div>
-            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Account</h1>
-            <p className="text-gray-600">Manage your profile information and automation logs</p>
+            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('account.title')}</h1>
+            <p className="text-gray-600">Manage your profile information and account settings</p>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-gray-100 p-1 rounded-2xl">
-          <TabsTrigger value="profile" className="rounded-xl">
-            <User className="w-4 h-4 mr-2" />
-            Profile
-          </TabsTrigger>
-          <TabsTrigger value="logs" className="rounded-xl">
-            <FileText className="w-4 h-4 mr-2" />
-            Automation Logs
-          </TabsTrigger>
-        </TabsList>
+      {/* Account Settings */}
+      <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden shadow-sm">
 
-        {/* Profile Tab */}
-        <TabsContent value="profile" className="space-y-0">
-          {/* Account Settings */}
-          <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden shadow-sm">
 
         {/* Profile Section */}
         <div className="space-y-0">
@@ -249,12 +234,12 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
                     {isEditing ? (
                       <>
                         <X className="w-4 h-4 mr-2" />
-                        Cancel
+                        {t('account.profile.cancel')}
                       </>
                     ) : (
                       <>
                         <Edit3 className="w-4 h-4 mr-2" />
-                        Edit Profile
+                        {t('account.profile.editProfile')}
                       </>
                     )}
                   </Button>
@@ -274,7 +259,7 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
                       className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      Change Photo
+                      {t('account.profile.changePhoto')}
                     </Button>
                   </div>
                 )}
@@ -286,55 +271,55 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
           {isEditing && (
             <>
               <div className="bg-gray-50/50 px-8 py-4">
-                <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide">Personal Information</h2>
+                <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide">{t('account.profile.personalInformation')}</h2>
               </div>
 
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">First Name</Label>
+                    <Label className="text-sm font-medium text-gray-700">{t('account.profile.firstName')}</Label>
                     <Input
                       value={profileData.first_name || ''}
                       onChange={(e) => setProfileData((prev) => ({ ...prev, first_name: e.target.value }))}
                       className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
-                      placeholder="Enter your first name"
+                      placeholder={t('account.profile.placeholders.firstName')}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">Last Name</Label>
+                    <Label className="text-sm font-medium text-gray-700">{t('account.profile.lastName')}</Label>
                     <Input
                       value={profileData.last_name || ''}
                       onChange={(e) => setProfileData((prev) => ({ ...prev, last_name: e.target.value }))}
                       className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
-                      placeholder="Enter your last name"
+                      placeholder={t('account.profile.placeholders.lastName')}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">Email Address</Label>
+                    <Label className="text-sm font-medium text-gray-700">{t('account.profile.emailAddress')}</Label>
                     <Input
                       type="email"
                       value={profileData.email || ''}
                       onChange={(e) => setProfileData((prev) => ({ ...prev, email: e.target.value }))}
                       className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
-                      placeholder="Enter your email"
+                      placeholder={t('account.profile.placeholders.email')}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">Company</Label>
+                    <Label className="text-sm font-medium text-gray-700">{t('account.profile.company')}</Label>
                     <Input
                       value={profileData.company || ''}
                       onChange={(e) => setProfileData((prev) => ({ ...prev, company: e.target.value }))}
                       className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
-                      placeholder="Enter your company name"
+                      placeholder={t('account.profile.placeholders.company')}
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Password</Label>
+                  <Label className="text-sm font-medium text-gray-700">{t('account.profile.password')}</Label>
                   <Input
                     type="password"
-                    placeholder="Enter your password"
+                    placeholder={t('account.profile.placeholders.password')}
                     className="h-12 border-gray-200 rounded-2xl focus:border-blue-600 focus:ring-blue-600"
                   />
                 </div>
@@ -345,7 +330,7 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
                     onClick={handleSaveProfile}
                   >
                     <Save className="w-4 h-4 mr-2" />
-                    Save Changes
+                    {t('account.profile.saveChanges')}
                   </Button>
                 </div>
               </div>
@@ -356,7 +341,7 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
 
         {/* Subscription Section */}
         <div className="bg-gray-50/50 px-8 py-4">
-          <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide">Billing & Plan</h2>
+          <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide">{t('account.billing.title')}</h2>
         </div>
 
         <div className="p-8">
@@ -366,9 +351,9 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
                 <Crown className="h-5 w-5 text-yellow-600" />
               </div>
               <div>
-                <h3 className="text-base font-medium text-gray-900">Current Plan</h3>
+                <h3 className="text-base font-medium text-gray-900">{t('account.billing.currentPlan')}</h3>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  {isPremium ? `${planName} - Active` : "Upgrade to unlock more features"}
+                  {isPremium ? `${planName} - ${t('account.billing.active')}` : t('account.billing.upgradeToUnlock')}
                 </p>
               </div>
             </div>
@@ -376,26 +361,19 @@ export function AccountTab({ onTabChange }: AccountTabProps) {
               {isPremium && (
                 <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  Active
+                  {t('account.billing.active')}
                 </div>
               )}
               <Button
                 className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-300"
                 onClick={() => onTabChange?.("upgrade")}
               >
-                {isPremium ? "Change Plan" : "Upgrade"}
+                {isPremium ? t('account.billing.changePlan') : t('account.billing.upgrade')}
               </Button>
             </div>
           </div>
         </div>
       </div>
-        </TabsContent>
-
-        {/* Logs Tab */}
-        <TabsContent value="logs" className="space-y-0">
-          <AutomationLogs />
-        </TabsContent>
-      </Tabs>
     </div>
   )
 }

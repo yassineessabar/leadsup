@@ -1234,7 +1234,7 @@ export default function CampaignSenderSelection({
                   <div>
                         <div className="bg-white rounded-xl border p-6">
                           <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-medium text-gray-900">Connection Status</h3>
+                            <h3 className="text-lg font-medium text-gray-900">{t('dnsSetup.verification.connectionStatus')}</h3>
                             <Button
                               variant="ghost"
                               onClick={() => setShowVerificationResults(false)}
@@ -1291,10 +1291,10 @@ export default function CampaignSenderSelection({
                               <div className="text-center">
                                 <div className="flex items-center justify-center gap-3 mb-4">
                                   <AlertCircle className="h-6 w-6 text-red-500" />
-                                  <span className="text-lg font-medium text-gray-900">Setup Not Complete</span>
+                                  <span className="text-lg font-medium text-gray-900">{t('dnsSetup.verification.setupNotComplete')}</span>
                                 </div>
                                 <p className="text-gray-600 mb-6">
-                                  Some DNS records still need to be added to your domain provider.
+                                  {t('dnsSetup.verification.someDNSRecordsNeeded')}
                                 </p>
                               </div>
                               
@@ -1303,7 +1303,7 @@ export default function CampaignSenderSelection({
                                 .filter((record: any) => !record.verified)
                                 .length > 0 && (
                                 <div className="bg-red-50 rounded-lg p-6">
-                                  <h4 className="font-medium text-gray-900 mb-4">Please check these settings:</h4>
+                                  <h4 className="font-medium text-gray-900 mb-4">{t('dnsSetup.verification.pleaseCheckSettings')}</h4>
                                   <div className="space-y-3">
                                     {(verificationResults.report?.records || verificationResults.recommendations || verificationResults.records || [])
                                       .filter((record: any) => !record.verified)
@@ -1312,10 +1312,18 @@ export default function CampaignSenderSelection({
                                         <span className="text-red-500 text-lg">✗</span>
                                         <div className="flex-1">
                                           <div className="font-medium text-gray-900">
-                                            {record.record?.replace(/\(.*?\)/g, '').trim() || `${record.type} record`}
+                                            {(() => {
+                                              const recordText = record.record || `${record.type} ${record.host || ''}`;
+                                              // If it contains "Cryptographic email signing", translate it
+                                              if (recordText.includes('Cryptographic email signing')) {
+                                                const parts = recordText.split(' - ');
+                                                return `${parts[0]} - ${t('dnsSetup.verification.cryptographicEmailSigning')}`;
+                                              }
+                                              return recordText.replace(/\(.*?\)/g, '').trim();
+                                            })()}
                                           </div>
                                           <div className="text-sm text-gray-600">
-                                            Check the {record.type} setting in your DNS
+                                            {t('dnsSetup.verification.checkSettingInDNS', { type: record.type })}
                                           </div>
                                         </div>
                                       </div>
@@ -1327,7 +1335,7 @@ export default function CampaignSenderSelection({
                               {/* Action buttons */}
                               <div className="text-center">
                                 <p className="text-sm text-gray-600 mb-4">
-                                  Review your DNS settings and try again.
+                                  {t('dnsSetup.verification.reviewDNSSettings')}
                                 </p>
                                 <div className="space-x-3">
                                   <Button
@@ -1344,7 +1352,7 @@ export default function CampaignSenderSelection({
                                       e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
                                     }}
                                   >
-                                    Check Again
+                                    {t('dnsSetup.verification.checkAgain')}
                                   </Button>
                                   <Button
                                     variant="outline"
@@ -1540,10 +1548,10 @@ export default function CampaignSenderSelection({
                               {domain.domain}
                             </h3>
                             <p className="text-gray-500 mt-1">
-                              {domain.senders.length} sender account{domain.senders.length !== 1 ? 's' : ''}
+                              {domain.senders.length} {domain.senders.length === 1 ? t('senderManagement.senderAccount') : t('senderManagement.senderAccounts')}
                               {selectedInDomain > 0 && (
                                 <span className="ml-2 text-gray-700 font-medium">
-                                  • {selectedInDomain} selected
+                                  • {selectedInDomain} {t('senderManagement.selected')}
                                 </span>
                               )}
                             </p>
@@ -1554,7 +1562,7 @@ export default function CampaignSenderSelection({
 
                     <div className="flex items-center gap-3">
                       <Badge className="bg-gray-100 text-gray-600 border-0 px-3 py-1 rounded-xl text-xs font-medium">
-                        Verified
+                        {t('senderManagement.verified')}
                       </Badge>
                       
                       {domain.senders.length > 0 && (
@@ -1826,7 +1834,7 @@ export default function CampaignSenderSelection({
                 <h4 className="font-medium text-red-900 mb-2">This will permanently remove:</h4>
                 <ul className="text-sm text-red-800 space-y-1">
                   <li>• The domain and all its DNS settings</li>
-                  <li>• {domainToDelete?.senders.length || 0} sender account(s)</li>
+                  <li>• {domainToDelete?.senders.length || 0} {(domainToDelete?.senders.length || 0) === 1 ? t('senderManagement.senderAccount') : t('senderManagement.senderAccounts')}</li>
                   <li>• All email history for this domain</li>
                 </ul>
               </div>

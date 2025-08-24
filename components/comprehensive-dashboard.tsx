@@ -375,7 +375,7 @@ export function ComprehensiveDashboard() {
                   }}
                 >
                   <Users className="w-4 h-4 mr-2" />
-                  Manage Leads
+                  {t('dashboard.manageLeads')}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -386,7 +386,7 @@ export function ComprehensiveDashboard() {
                   }}
                 >
                   <Mail className="w-4 h-4 mr-2" />
-                  New Campaign
+                  {t('dashboard.newCampaign')}
                 </Button>
               </div>
             </div>

@@ -2867,6 +2867,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       <div className="flex flex-wrap gap-2">
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
                           const isActive = activeDays.includes(day)
+                          const dayKey = day.toLowerCase()
                           return (
                             <button
                               key={day}
@@ -2884,7 +2885,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                 }
                               }}
                             >
-                              {day}
+                              {t(`campaignManagement.settings.days.${dayKey}`)}
                             </button>
                           )
                         })}
@@ -3949,7 +3950,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="flex items-center gap-6 text-sm text-gray-500 font-light">
                     <span className="flex items-center gap-1.5">
                       <Mail className="h-4 w-4" />
-                      {t('campaignManagement.header.campaignType', { type: campaign?.type || 'Email' })}
+                      {(() => {
+                        const typeValue = campaign?.type || 'Email'
+                        const result = t('campaignManagement.header.campaignType', { type: typeValue })
+                        // If translation fails (shows placeholder), use English fallback
+                        if (result.includes('{type}')) {
+                          return `${typeValue} Campaign`
+                        }
+                        return result
+                      })()}
                     </span>
                     <Badge 
                       variant="outline"
@@ -4076,7 +4085,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 onClick={() => setDeleteConfirm(prev => ({ ...prev, isOpen: false }))}
                 className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
               >
-                Cancel
+                {t('button.cancel')}
               </Button>
               <Button 
                 variant="destructive" 
@@ -4182,10 +4191,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 {/* Progress indicator */}
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-gray-500">
-                    {t('campaignManagement.guidedFlow.progress.stepOf', { 
-                      current: guidedFlowStep + 1, 
-                      total: guidedFlowSteps.length 
-                    })}
+                    {(() => {
+                      const params = { current: guidedFlowStep + 1, total: guidedFlowSteps.length }
+                      const result = t('campaignManagement.guidedFlow.progress.stepOf', params)
+                      // If translation fails (shows placeholders), use English fallback
+                      if (result.includes('{current}') || result.includes('{total}')) {
+                        return `Step ${params.current} of ${params.total}`
+                      }
+                      return result
+                    })()}
                   </div>
                   <div className="w-64">
                     <Progress 
@@ -4261,7 +4275,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       ) : (
                         <>
                           <Check className="w-4 h-4 mr-2" />
-                          Save
+                          {t('button.save')}
                         </>
                       )}
                     </Button>
@@ -4275,7 +4289,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       {/* Warmup Warning Dialog */}
       <Dialog open={showWarmupWarning} onOpenChange={setShowWarmupWarning}>
-        <DialogContent className="max-w-[500px] rounded-3xl border border-gray-100 p-0 overflow-hidden">
+        <DialogContent className="max-w-4xl rounded-3xl border border-gray-100 p-0 overflow-hidden">
           <div className="p-6 pb-0">
             <div className="flex items-center space-x-4 mb-4">
               <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl flex items-center justify-center">
@@ -4283,10 +4297,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </div>
               <div>
                 <DialogTitle className="text-lg font-semibold text-gray-900">
-                  Health Score Alert
+                  {t('senderManagement.warmupWarningDialog.title')}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-gray-500">
-                  Some senders need warming up
+                  {t('senderManagement.warmupWarningDialog.description')}
                 </DialogDescription>
               </div>
             </div>
@@ -4294,7 +4308,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           
           <div className="px-6 pb-4">
             <div className="bg-orange-50/50 rounded-xl p-3 mb-3">
-              <p className="text-xs font-medium text-orange-900 mb-2">Accounts Below 90% Health</p>
+              <p className="text-xs font-medium text-orange-900 mb-2">{t('senderManagement.warmupWarningDialog.accountsBelowThreshold')}</p>
               <div className="space-y-1.5">
                 {lowHealthSenders.map((sender, index) => {
                   const getScoreColor = (score: number) => {
@@ -4316,10 +4330,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             </div>
             
             <div className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
-              <p className="mb-2"><span className="font-semibold">Choose your sending approach:</span></p>
+              <p className="mb-2"><span className="font-semibold">{t('senderManagement.warmupWarningDialog.chooseApproach')}</span></p>
               <ul className="space-y-1 text-xs">
-                <li>• <span className="font-medium">Auto Warmup:</span> Start sending gradually with automatic warmup (recommended)</li>
-                <li>• <span className="font-medium">Warmup Only:</span> Warm up accounts without sending campaign emails</li>
+                <li>• {t('senderManagement.warmupWarningDialog.autoWarmupOption')}</li>
+                <li>• {t('senderManagement.warmupWarningDialog.warmupOnlyOption')}</li>
               </ul>
             </div>
           </div>
@@ -4331,14 +4345,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               className="flex-1 h-10 rounded-xl text-sm"
             >
               <Flame className="w-4 h-4 mr-1.5" />
-              Warmup Only
+              {t('senderManagement.warmupWarningDialog.warmupOnlyButton')}
             </Button>
             <Button
               onClick={() => handleWarmupDecision('auto_warmup')}
               className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium"
             >
               <Flame className="w-4 h-4 mr-1.5" />
-              Auto Warmup (Recommended)
+              {t('senderManagement.warmupWarningDialog.autoWarmupButton')}
             </Button>
           </div>
         </DialogContent>
@@ -4386,10 +4400,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <Shield className="w-8 h-8 text-gray-600" />
             </div>
             <DialogTitle className="text-xl font-medium text-gray-900 mb-2">
-              Enhancement Required
+              {t('senderManagement.healthScoreDialog.title')}
             </DialogTitle>
             <DialogDescription className="text-gray-500 text-sm">
-              Some accounts need optimization for better performance.
+              {t('senderManagement.healthScoreDialog.description')}
             </DialogDescription>
           </DialogHeader>
           
@@ -4397,9 +4411,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             <div className="bg-gray-50 rounded-2xl p-4 mb-6">
               <div className="text-center">
                 <div className="text-2xl font-medium text-gray-900 mb-1">
-                  {lowDeliverabilityAccounts.length} account{lowDeliverabilityAccounts.length !== 1 ? 's' : ''}
+                  {lowDeliverabilityAccounts.length === 1 
+                    ? t('senderManagement.healthScoreDialog.accountCount', { count: lowDeliverabilityAccounts.length })
+                    : t('senderManagement.healthScoreDialog.accountCountPlural', { count: lowDeliverabilityAccounts.length })
+                  }
                 </div>
-                <div className="text-sm text-gray-500">need enhancement</div>
+                <div className="text-sm text-gray-500">{t('senderManagement.healthScoreDialog.needEnhancement')}</div>
               </div>
             </div>
 
@@ -4412,13 +4429,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 }}
                 className="flex-1 border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl py-3 font-medium"
               >
-                Cancel
+                {t('button.cancel')}
               </Button>
               <Button
                 onClick={proceedWithSenderSave}
                 className="flex-1 bg-gray-900 hover:bg-gray-800 text-white rounded-2xl py-3 border-0 font-medium"
               >
-                Enhance
+                {t('senderManagement.healthScoreDialog.enhanceButton')}
               </Button>
             </div>
           </div>

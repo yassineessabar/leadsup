@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import Link from "next/link"
+import { useI18n } from "@/hooks/use-i18n"
+import { LanguageSelectorCompact } from "@/components/language-selector"
 
 export default function SignupPage() {
+  const { t } = useI18n()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [formData, setFormData] = useState({
@@ -26,7 +29,7 @@ export default function SignupPage() {
 
     // Validate password length
     if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters long")
+      setError(t("auth.passwordMinLength"))
       setLoading(false)
       return
     }
@@ -46,7 +49,7 @@ export default function SignupPage() {
       })
 
       if (!response.ok) {
-        let errorMessage = "Registration failed"
+        let errorMessage = t("auth.signupFailed")
         try {
           const errorData = await response.json()
           errorMessage = errorData.error || errorMessage
@@ -78,20 +81,23 @@ export default function SignupPage() {
           if (loginData.success) {
             localStorage.removeItem('auth_cache')
             sessionStorage.removeItem('auth_cache')
+            // Preserve language setting
+            const savedLang = localStorage.getItem('i18nextLng') || 'en'
             setTimeout(() => {
-              window.location.href = "/"
+              window.location.href = `/?lng=${savedLang}`
             }, 100)
           }
         } else {
           // Registration successful but auto-login failed
-          window.location.href = "/auth/login"
+          const savedLang = localStorage.getItem('i18nextLng') || 'en'
+          window.location.href = `/auth/login?lng=${savedLang}`
         }
       } else {
-        setError(data.error || "Registration failed")
+        setError(data.error || t("auth.signupFailed"))
       }
     } catch (err) {
       console.error("Registration error:", err)
-      setError("Network error. Please check your connection and try again.")
+      setError(t("auth.networkError"))
     } finally {
       setLoading(false)
     }
@@ -103,9 +109,9 @@ export default function SignupPage() {
     
     try {
       // TODO: Implement Google OAuth
-      setError("Google signup coming soon")
+      setError(t("auth.googleSignupComingSoon"))
     } catch (err) {
-      setError("Failed to sign up with Google")
+      setError(t("auth.googleSignupFailed"))
     } finally {
       setLoading(false)
     }
@@ -115,6 +121,11 @@ export default function SignupPage() {
     <div className="min-h-screen bg-white">
       <main className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-md">
+          {/* Language Selector */}
+          <div className="flex justify-end mb-4">
+            <LanguageSelectorCompact />
+          </div>
+
           {/* Logo */}
           <div className="flex justify-center mb-4">
             <Link href="/" className="flex items-center">
@@ -129,9 +140,9 @@ export default function SignupPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-semibold text-gray-900 mb-2">
-              Sign up for LeadsUp
+              {t("auth.signupTitle")}
             </h1>
-            <p className="text-gray-600">Start your journey with us.</p>
+            <p className="text-gray-600">{t("auth.signupSubtitle")}</p>
           </div>
 
           {/* Error Message */}
@@ -147,7 +158,7 @@ export default function SignupPage() {
             {/* Full Name Field */}
             <div>
               <label htmlFor="fullName" className="block text-sm font-medium text-gray-900 mb-2">
-                Full Name
+                {t("auth.fullName")}
               </label>
               <Input
                 id="fullName"
@@ -163,7 +174,7 @@ export default function SignupPage() {
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
-                Email
+                {t("auth.email")}
               </label>
               <Input
                 id="email"
@@ -179,7 +190,7 @@ export default function SignupPage() {
             {/* Password Field */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
-                Password
+                {t("auth.password")}
               </label>
               <Input
                 id="password"
@@ -200,15 +211,15 @@ export default function SignupPage() {
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-4 py-2 font-medium transition-colors h-11"
             >
-              {loading ? "Creating account..." : "Sign up"}
+              {loading ? t("auth.creatingAccount") : t("auth.signup")}
             </Button>
 
             {/* Login Link */}
             <div>
               <p className="text-sm text-gray-600 text-center">
-                Already have an account?{" "}
+                {t("auth.alreadyHaveAccount")}{" "}
                 <Link href="/auth/login" className="text-blue-600 hover:text-blue-700 font-medium">
-                  Log in
+                  {t("auth.login")}
                 </Link>
               </p>
             </div>
@@ -216,19 +227,19 @@ export default function SignupPage() {
             {/* Terms */}
             <div>
               <p className="text-xs text-gray-500 text-center">
-                By signing up, you agree to our{" "}
-                <Link href="/terms" className="text-blue-600 hover:text-blue-700">Terms of Service</Link>
-                {" "}and{" "}
-                <Link href="/privacy" className="text-blue-600 hover:text-blue-700">Privacy Policy</Link>
+                {t("auth.bySigningUp")}{" "}
+                <Link href="/terms" className="text-blue-600 hover:text-blue-700">{t("auth.termsOfService")}</Link>
+                {" "}{t("auth.and")}{" "}
+                <Link href="/privacy" className="text-blue-600 hover:text-blue-700">{t("auth.privacyPolicy")}</Link>
               </p>
             </div>
           </form>
 
           {/* Help Link */}
           <div className="mt-8 text-center text-sm text-gray-500">
-            <p>Having issues with this page?</p>
+            <p>{t("auth.havingIssues")}</p>
             <a href="mailto:support@leadsup.io" className="text-blue-600 hover:text-blue-700 font-medium">
-              Contact us
+              {t("auth.contactUs")}
             </a>
           </div>
         </div>

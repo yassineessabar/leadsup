@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/hooks/use-auth"
+import { useI18n } from "@/hooks/use-i18n"
 import type { Subscription, Invoice } from "@/types/db"
 
 interface BillingSubscriptionPageProps {
@@ -15,6 +16,7 @@ interface BillingSubscriptionPageProps {
 }
 
 export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPageProps = {}) {
+  const { t } = useI18n()
   const { user, loading: authLoading, isAuthenticated } = useAuth()
   const router = useRouter()
   const [subscription, setSubscription] = useState<Subscription | null>(null)
@@ -106,7 +108,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="text-gray-600 text-sm">Loading your billing information...</p>
+          <p className="text-gray-600 text-sm">{t('billingPage.loading')}</p>
         </div>
       </div>
     )
@@ -139,8 +141,8 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
           </Button>
           <div className="h-6 w-px bg-gray-300" />
           <div>
-            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Billing & Subscription</h1>
-            <p className="text-gray-600">Manage your subscription and view billing history</p>
+            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('billingPage.title')}</h1>
+            <p className="text-gray-600">{t('billingPage.subtitle')}</p>
           </div>
         </div>
       </div>
@@ -159,22 +161,22 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                     </div>
                     <div>
                       <h3 className="text-2xl font-light text-gray-900">
-                        Unlock Premium Features
+                        {t('billingPage.upgrade.unlockPremiumFeatures')}
                       </h3>
-                      <p className="text-gray-500 text-sm">Join thousands of satisfied customers</p>
+                      <p className="text-gray-500 text-sm">{t('billingPage.upgrade.joinThousands')}</p>
                     </div>
                   </div>
                   <p className="text-gray-600 max-w-md">
-                    Get access to advanced billing management, detailed invoice history, subscription controls, and priority support.
+                    {t('billingPage.upgrade.getAccessDescription')}
                   </p>
                   <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500">
                     <div className="flex items-center gap-2">
                       <Shield className="w-4 h-4" />
-                      <span>Secure payments</span>
+                      <span>{t('billingPage.upgrade.securePayments')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4" />
-                      <span>24/7 support</span>
+                      <span>{t('billingPage.upgrade.support247')}</span>
                     </div>
                   </div>
                 </div>
@@ -182,7 +184,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                   onClick={() => router.push("/?tab=upgrade")}
                   className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 h-12 px-8 rounded-2xl font-medium transition-all duration-200 hover:scale-105"
                 >
-                  Upgrade Now
+                  {t('billingPage.upgrade.upgradeNow')}
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -199,14 +201,14 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                   <CreditCard className="w-6 h-6 text-gray-600" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-light text-gray-900">Current Plan</h2>
-                  <p className="text-gray-600">Manage your subscription details</p>
+                  <h2 className="text-2xl font-light text-gray-900">{t('billingPage.currentPlan')}</h2>
+                  <p className="text-gray-600">{t('billingPage.manageSubscriptionDetails')}</p>
                 </div>
               </div>
               {hasActiveSubscription && (
                 <div className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-2xl">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium">Active</span>
+                  <span className="text-sm font-medium">{t('billingPage.active')}</span>
                 </div>
               )}
             </div>
@@ -223,7 +225,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                         <TrendingUp className="w-5 h-5 text-gray-600" />
                       </div>
                       <div>
-                        <h4 className="font-medium text-gray-900">Plan</h4>
+                        <h4 className="font-medium text-gray-900">{t('billingPage.plan')}</h4>
                         <p className="text-2xl font-light text-gray-900">{subscription.plan_name}</p>
                       </div>
                     </div>
@@ -235,9 +237,9 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                         <DollarSign className="w-5 h-5 text-gray-600" />
                       </div>
                       <div>
-                        <h4 className="font-medium text-gray-900">Price</h4>
+                        <h4 className="font-medium text-gray-900">{t('billingPage.price')}</h4>
                         <p className="text-2xl font-light text-gray-900">
-                          {subscription.currency} {subscription.price}<span className="text-sm text-gray-500">/month</span>
+                          {subscription.currency} {subscription.price}<span className="text-sm text-gray-500">{t('billingPage.month')}</span>
                         </p>
                       </div>
                     </div>
@@ -249,7 +251,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                         <Calendar className="w-5 h-5 text-gray-600" />
                       </div>
                       <div>
-                        <h4 className="font-medium text-gray-900">Next Billing</h4>
+                        <h4 className="font-medium text-gray-900">{t('billingPage.nextBilling')}</h4>
                         <p className="text-lg font-light text-gray-900">{subscription.end_date ? formatDate(subscription.end_date) : "N/A"}</p>
                       </div>
                     </div>
@@ -261,7 +263,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                         <CheckCircle className="w-5 h-5 text-green-600" />
                       </div>
                       <div>
-                        <h4 className="font-medium text-gray-900">Status</h4>
+                        <h4 className="font-medium text-gray-900">{t('billingPage.status')}</h4>
                         <Badge
                           className={
                             subscription.status === "active"
@@ -284,7 +286,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                     <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
                       <Info className="w-4 h-4 text-gray-600" />
                     </div>
-                    <h4 className="text-lg font-medium text-gray-900">Plan Features</h4>
+                    <h4 className="text-lg font-medium text-gray-900">{t('billingPage.planFeatures')}</h4>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {subscription.features.map((feature, index) => (
@@ -305,7 +307,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                     variant="outline"
                     className="flex-1 h-12 rounded-2xl font-medium border-gray-200 text-gray-700 hover:bg-gray-50"
                   >
-                    Change Plan
+                    {t('billingPage.changePlan')}
                   </Button>
                   <Button
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400 h-12 px-6 rounded-2xl font-medium transition-all duration-200 hover:scale-105"
@@ -315,10 +317,10 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                     {managingSubscription ? (
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Opening Portal...
+                        {t('billingPage.openingPortal')}
                       </div>
                     ) : (
-                      "Manage Subscription"
+                      t('billingPage.manageSubscription')
                     )}
                   </Button>
                 </div>
@@ -329,12 +331,12 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                   <CreditCard className="w-10 h-10 text-gray-400" />
                 </div>
                 <h3 className="text-xl font-light text-gray-900 mb-2">
-                  {user?.subscription_type === 'free' ? 'No Active Subscription' : 'Subscription Not Found'}
+                  {user?.subscription_type === 'free' ? t('billingPage.noActiveSubscription') : t('billingPage.subscriptionNotFound')}
                 </h3>
                 <p className="text-gray-600 mb-8 max-w-md mx-auto">
                   {user?.subscription_type === 'free' 
-                    ? 'Start your journey with one of our premium plans to unlock powerful features.' 
-                    : 'We couldn\'t find an active subscription for your account.'}
+                    ? t('billingPage.startJourneyText') 
+                    : t('billingPage.couldNotFindSubscription')}
                 </p>
                 {!isProOrEnterprise && (
                   <Button
@@ -342,7 +344,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                     className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-8 rounded-2xl font-medium transition-all duration-200 hover:scale-105"
                   >
                     <Sparkles className="w-4 h-4 mr-2" />
-                    View Plans & Pricing
+                    {t('billingPage.viewPlansAndPricing')}
                   </Button>
                 )}
               </div>
@@ -360,13 +362,13 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                     <DollarSign className="w-6 h-6 text-gray-600" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-light text-gray-900">Billing History</h2>
-                    <p className="text-gray-600">Download invoices and track payments</p>
+                    <h2 className="text-2xl font-light text-gray-900">{t('billingPage.billingHistory')}</h2>
+                    <p className="text-gray-600">{t('billingPage.billingHistorySubtitle')}</p>
                   </div>
                 </div>
                 {invoices.length > 0 && (
                   <div className="text-sm text-gray-500">
-                    {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}
+                    {t('billingPage.invoiceCount', { count: invoices.length })}
                   </div>
                 )}
               </div>
@@ -378,9 +380,9 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                   <div className="w-20 h-20 rounded-3xl bg-gray-100 flex items-center justify-center mx-auto mb-6">
                     <Calendar className="w-10 h-10 text-gray-400" />
                   </div>
-                  <h3 className="text-xl font-light text-gray-900 mb-2">No Invoices Yet</h3>
+                  <h3 className="text-xl font-light text-gray-900 mb-2">{t('billingPage.noInvoicesYet')}</h3>
                   <p className="text-gray-600 max-w-md mx-auto">
-                    Your billing history will appear here once you start using our services. All invoices are automatically generated and stored securely.
+                    {t('billingPage.billingHistoryDescription')}
                   </p>
                 </div>
               ) : (
@@ -393,7 +395,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                           <Calendar className="w-6 h-6 text-gray-600" />
                         </div>
                         <div>
-                          <h4 className="font-medium text-gray-900 mb-1">Invoice #{invoice.invoice_number}</h4>
+                          <h4 className="font-medium text-gray-900 mb-1">{t('billingPage.invoice')} #{invoice.invoice_number}</h4>
                           <p className="text-sm text-gray-500 mb-1">
                             {formatDate(invoice.issue_date)}
                           </p>
@@ -414,7 +416,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                             onClick={() => handleDownloadInvoice(invoice.download_url)}
                           >
                             <Download className="w-4 h-4" />
-                            <span className="sr-only">Download</span>
+                            <span className="sr-only">{t('billingPage.downloadInvoice')}</span>
                           </Button>
                           <Button
                             variant="outline"
@@ -423,7 +425,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                             onClick={() => window.open(invoice.download_url, "_blank")}
                           >
                             <ExternalLink className="w-4 h-4" />
-                            <span className="sr-only">View</span>
+                            <span className="sr-only">{t('billingPage.viewInvoice')}</span>
                           </Button>
                         </div>
                       </div>

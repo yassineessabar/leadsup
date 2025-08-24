@@ -218,7 +218,22 @@
     "phase": "Phase",
     "day": "Day",
     "health": "health",
-    "warmingProgress": "Warming Progress"
+    "warmingProgress": "Warming Progress",
+    "warmupWarningDialog": {
+      "title": "Health Score Alert",
+      "description": "Some senders still need warming up",
+      "accountsBelowThreshold": "Accounts Below 90% Health",
+      "continueWarmupLabel": "Continue Warmup:",
+      "continueWarmupDescription": "Keep warming to improve health scores before going active.",
+      "resumeAnywayLabel": "Resume Anyway:",
+      "resumeAnywayDescription": "Go active now despite low health scores.",
+      "stopAnywayLabel": "Stop Anyway:",
+      "stopAnywayDescription": "Stop the campaign now despite health scores.",
+      "resumeAnywayButton": "Resume Anyway",
+      "stopAnywayButton": "Stop Anyway",
+      "continueWarmupButton": "Continue Warmup",
+      "processingText": "Processing..."
+    }
   },
   "domains": {
     "title": "Domains",
@@ -399,6 +414,24 @@
       "testEmailSent": "Test email sent from {{senderEmail}} to {{testEmail}}. Reply to test the complete flow!",
       "createdPresetAccounts": "Created {{count}} preset email accounts",
       "savedSenders": "✅ Saved {{count}} sender(s) to campaign"
+    },
+    "healthScoreDialog": {
+      "title": "Enhancement Required",
+      "description": "Some accounts need optimization for better performance.",
+      "accountCount": "{{count}} account",
+      "accountCountPlural": "{{count}} accounts", 
+      "needEnhancement": "need enhancement",
+      "enhanceButton": "Enhance"
+    },
+    "warmupWarningDialog": {
+      "title": "Health Score Alert",
+      "description": "Some senders need warming up",
+      "accountsBelowThreshold": "Accounts Below 90% Health",
+      "chooseApproach": "Choose your sending approach:",
+      "autoWarmupOption": "Auto Warmup: Start sending gradually with automatic warmup (recommended)",
+      "warmupOnlyOption": "Warmup Only: Warm up accounts without sending campaign emails",
+      "warmupOnlyButton": "Warmup Only",
+      "autoWarmupButton": "Auto Warmup (Recommended)"
     }
   },
   "domainSetup": {
@@ -623,6 +656,209 @@
       "aiSequenceMessage": "This AI-crafted sequence is tailored to your business and target audience",
       "standardSequenceMessage": "This standard sequence will run automatically for each prospect",
       "editNote": "You can edit individual steps or timing after creation"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account and application preferences",
+    "profile": {
+      "title": "Profile",
+      "description": "Manage your profile and account settings"
+    },
+    "language": {
+      "title": "Language & Preferences",
+      "description": "Choose your preferred language and interface settings"
+    },
+    "upgrade": {
+      "title": "Upgrade Plan",
+      "description": "Unlock premium features and increased limits"
+    },
+    "billing": {
+      "title": "Billing & Invoices",
+      "description": "View your billing history and payment methods"
+    },
+    "support": {
+      "title": "Help Center",
+      "description": "Find answers to common questions"
+    },
+    "privacy": {
+      "title": "Privacy & Security",
+      "description": "Control your privacy settings and security options"
+    },
+    "signOut": {
+      "title": "Sign Out",
+      "description": "Sign out of your account",
+      "signingOut": "Signing Out...",
+      "pleaseWait": "Please wait..."
+    },
+    "footer": {
+      "needHelp": "Need help?",
+      "contactSupport": "Contact Support"
+    }
+  },
+  "billingPage": {
+    "title": "Billing & Subscription",
+    "subtitle": "Manage your subscription and view billing history",
+    "loading": "Loading your billing information...",
+    "currentPlan": "Current Plan",
+    "manageSubscriptionDetails": "Manage your subscription details",
+    "active": "Active",
+    "changePlan": "Change Plan",
+    "manageSubscription": "Manage Subscription",
+    "openingPortal": "Opening Portal...",
+    "viewPlansAndPricing": "View Plans & Pricing",
+    "billingHistory": "Billing History",
+    "billingHistorySubtitle": "Download invoices and track payments",
+    "plan": "Plan",
+    "price": "Price",
+    "nextBilling": "Next Billing",
+    "status": "Status",
+    "planFeatures": "Plan Features",
+    "month": "/month",
+    "noActiveSubscription": "No Active Subscription",
+    "subscriptionNotFound": "Subscription Not Found",
+    "startJourneyText": "Start your journey with one of our premium plans to unlock powerful features.",
+    "couldNotFindSubscription": "We couldn't find an active subscription for your account.",
+    "noInvoicesYet": "No Invoices Yet",
+    "billingHistoryDescription": "Your billing history will appear here once you start using our services. All invoices are automatically generated and stored securely.",
+    "invoice": "Invoice",
+    "invoiceCount": "{{count}} invoice",
+    "invoiceCount_other": "{{count}} invoices",
+    "downloadInvoice": "Download",
+    "viewInvoice": "View",
+    "upgrade": {
+      "unlockPremiumFeatures": "Unlock Premium Features",
+      "joinThousands": "Join thousands of satisfied customers",
+      "getAccessDescription": "Get access to advanced billing management, detailed invoice history, subscription controls, and priority support.",
+      "securePayments": "Secure payments",
+      "support247": "24/7 support",
+      "upgradeNow": "Upgrade Now"
+    }
+  },
+  "account": {
+    "title": "Account",
+    "subtitle": "Manage your profile information and automation logs",
+    "tabs": {
+      "profile": "Profile",
+      "automationLogs": "Automation Logs"
+    },
+    "profile": {
+      "editProfile": "Edit Profile",
+      "cancel": "Cancel",
+      "changePhoto": "Change Photo",
+      "personalInformation": "Personal Information",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "emailAddress": "Email Address",
+      "company": "Company",
+      "password": "Password",
+      "saveChanges": "Save Changes",
+      "placeholders": {
+        "firstName": "Enter your first name",
+        "lastName": "Enter your last name",
+        "email": "Enter your email",
+        "company": "Enter your company name",
+        "password": "Enter your password"
+      },
+      "errors": {
+        "saveFailed": "Save Failed",
+        "saveFailedDescription": "Failed to save profile information.",
+        "uploadFailed": "Upload Failed",
+        "uploadFailedDescription": "Failed to sync avatar across components. Please try again."
+      }
+    },
+    "billing": {
+      "title": "Billing & Plan",
+      "currentPlan": "Current Plan",
+      "active": "Active",
+      "upgradeToUnlock": "Upgrade to unlock more features",
+      "changePlan": "Change Plan",
+      "upgrade": "Upgrade"
+    }
+  },
+  "upgrade": {
+    "title": "Upgrade Plans",
+    "subtitle": "Choose the perfect plan for your team's growth",
+    "whyUpgrade": "Why Upgrade?",
+    "whyUpgradeDescription": "Unlock powerful features designed to help you collect more reviews, gain valuable insights, and grow your business faster.",
+    "features": {
+      "secureReliable": "Secure & Reliable",
+      "secureDescription": "Enterprise-grade security with 99.9% uptime guarantee",
+      "provenResults": "Proven Results",
+      "resultsDescription": "Customers see 3x more reviews within 30 days",
+      "expertSupport": "Expert Support",
+      "supportDescription": "Dedicated success manager and 24/7 support"
+    },
+    "billing": {
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "save": "Save 20%",
+      "billedMonthly": "Billed monthly",
+      "billedAnnually": "Billed annually",
+      "perMember": "per member / month",
+      "saveAmount": "Save ${{amount}}/year"
+    },
+    "trial": {
+      "freeTrialIncluded": "🎉 7-day free trial included",
+      "noPaymentRequired": "No payment required to start"
+    },
+    "buttons": {
+      "startFreeTrial": "Start 7-day free trial",
+      "currentPlan": "Current Plan",
+      "processing": "Processing...",
+      "whatsIncluded": "What's included"
+    },
+    "plans": {
+      "basic": {
+        "name": "Basic",
+        "description": "Perfect for small teams and startups.",
+        "features": [
+          "Multi-channel collection (SMS, Email)",
+          "Custom review page",
+          "Choice of action for each review",
+          "Basic analytics dashboard",
+          "Email support"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "Ideal for growing teams and projects.",
+        "mostPopular": "Most Popular",
+        "features": [
+          "Everything in Basic +",
+          "CSV import & export",
+          "WhatsApp integration",
+          "Multi-channel follow-ups",
+          "Dynamic routing of reviews",
+          "Advanced analytics",
+          "Priority support"
+        ]
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "description": "Built for large organization needs.",
+        "features": [
+          "Everything in Pro +",
+          "Checkout & in-store QR code reviews",
+          "AI responses to Google reviews",
+          "Automated Trustpilot responses",
+          "AI suggestions for negative reviews",
+          "Monthly strategic review with success manager",
+          "Custom integrations",
+          "24/7 phone support"
+        ]
+      }
+    },
+    "enterprise": {
+      "needCustomSolution": "Need a custom solution?",
+      "perfectForEnterprise": "Perfect for enterprise organizations",
+      "contactDescription": "Contact our sales team for custom Enterprise pricing, dedicated support, and tailored features for your organization.",
+      "scheduleDemo": "Schedule Demo",
+      "contactSales": "Contact Sales"
+    },
+    "errors": {
+      "error": "Error",
+      "failedToInitiate": "Failed to initiate upgrade. Please try again."
     }
   },
   "emailSenders": {

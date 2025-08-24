@@ -28,6 +28,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useI18n } from "@/hooks/use-i18n"
+import { LanguageButtons } from "@/components/language-selector"
 
 interface SettingsPageProps {
   onSectionChange?: (section: string) => void
@@ -35,6 +37,7 @@ interface SettingsPageProps {
 
 
 export function SettingsPage({ onSectionChange }: SettingsPageProps) {
+  const { t } = useI18n()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [firstName, setFirstName] = useState("Loop")
   const [lastName, setLastName] = useState("Review")
@@ -67,8 +70,8 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Settings</h1>
-        <p className="text-gray-600">Manage your account and application preferences</p>
+        <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('settings.title')}</h1>
+        <p className="text-gray-600">{t('settings.subtitle')}</p>
       </div>
 
       {/* Settings List */}
@@ -84,12 +87,26 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
                 <User className="h-5 w-5 text-gray-600" />
               </div>
               <div className="text-left">
-                <h3 className="text-base font-medium text-gray-900">Profile</h3>
-                <p className="text-sm text-gray-500">Manage your profile and account settings</p>
+                <h3 className="text-base font-medium text-gray-900">{t('settings.profile.title')}</h3>
+                <p className="text-sm text-gray-500">{t('settings.profile.description')}</p>
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
           </button>
+
+          {/* Language & Preferences Section */}
+          <div className="p-6 border-b border-gray-50">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-100/50 flex items-center justify-center">
+                <Globe className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-base font-medium text-gray-900">{t('settings.language.title')}</h3>
+                <p className="text-sm text-gray-500">{t('settings.language.description')}</p>
+              </div>
+            </div>
+            <LanguageButtons />
+          </div>
 
           {/* Billing Section */}
           <button
@@ -101,8 +118,8 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
                 <Zap className="h-5 w-5 text-gray-600" />
               </div>
               <div className="text-left">
-                <h3 className="text-base font-medium text-gray-900">Upgrade Plan</h3>
-                <p className="text-sm text-gray-500">Unlock premium features and increased limits</p>
+                <h3 className="text-base font-medium text-gray-900">{t('settings.upgrade.title')}</h3>
+                <p className="text-sm text-gray-500">{t('settings.upgrade.description')}</p>
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
@@ -117,8 +134,8 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
                 <CreditCard className="h-5 w-5 text-gray-600" />
               </div>
               <div className="text-left">
-                <h3 className="text-base font-medium text-gray-900">Billing & Invoices</h3>
-                <p className="text-sm text-gray-500">View your billing history and payment methods</p>
+                <h3 className="text-base font-medium text-gray-900">{t('settings.billing.title')}</h3>
+                <p className="text-sm text-gray-500">{t('settings.billing.description')}</p>
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
@@ -134,8 +151,8 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
                 <HelpCircle className="h-5 w-5 text-gray-600" />
               </div>
               <div className="text-left">
-                <h3 className="text-base font-medium text-gray-900">Help Center</h3>
-                <p className="text-sm text-gray-500">Find answers to common questions</p>
+                <h3 className="text-base font-medium text-gray-900">{t('settings.support.title')}</h3>
+                <p className="text-sm text-gray-500">{t('settings.support.description')}</p>
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
@@ -150,8 +167,8 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
                 <Shield className="h-5 w-5 text-gray-600" />
               </div>
               <div className="text-left">
-                <h3 className="text-base font-medium text-gray-900">Privacy & Security</h3>
-                <p className="text-sm text-gray-500">Control your privacy settings and security options</p>
+                <h3 className="text-base font-medium text-gray-900">{t('settings.privacy.title')}</h3>
+                <p className="text-sm text-gray-500">{t('settings.privacy.description')}</p>
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
@@ -173,10 +190,10 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
               </div>
               <div className="text-left">
                 <h3 className="text-base font-medium text-gray-900">
-                  {isSigningOut ? "Signing Out..." : "Sign Out"}
+                  {isSigningOut ? t('settings.signOut.signingOut') : t('settings.signOut.title')}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  {isSigningOut ? "Please wait..." : "Sign out of your account"}
+                  {isSigningOut ? t('settings.signOut.pleaseWait') : t('settings.signOut.description')}
                 </p>
               </div>
             </div>
@@ -189,7 +206,7 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
 
       {/* Footer */}
       <div className="mt-8 text-center text-sm text-gray-500">
-        <p>Need help? <a href="/support" className="font-medium" style={{ color: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(87, 140, 255)'}>Contact Support</a></p>
+        <p>{t('settings.footer.needHelp')} <a href="/support" className="font-medium" style={{ color: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(87, 140, 255)'}>{t('settings.footer.contactSupport')}</a></p>
       </div>
     </div>
   )

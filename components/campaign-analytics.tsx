@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useI18n } from '@/hooks/use-i18n'
 import { ArrowLeft, RefreshCw, Pause, Play, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -106,6 +108,9 @@ interface CampaignAnalyticsProps {
 }
 
 export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: CampaignAnalyticsProps) {
+  const router = useRouter()
+  const { t } = useI18n()
+  
   console.log('🚨🚨🚨 CAMPAIGN ANALYTICS COMPONENT LOADED 🚨🚨🚨')
   console.log('🚨 Campaign prop:', campaign)
   console.log('🚨 Campaign ID:', campaign?.id)
@@ -788,7 +793,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                   nextEmailIn = "Scheduled"
                 }
               } else if (sequenceStatus.sequences_sent >= sequenceStatus.total_sequences) {
-                nextEmailIn = "Sequence complete"
+                nextEmailIn = t('analytics.sequenceComplete')
               } else {
                 // Next sequence is ready to be sent
                 const nextStep = sequenceStatus.sequences_sent + 1
@@ -930,7 +935,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 }
                 nextEmailIn = isDue ? "Due next" : nextEmailData.relative
               } else {
-                nextEmailIn = "Sequence complete"
+                nextEmailIn = t('analytics.sequenceComplete')
               }
             }
             
@@ -938,7 +943,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             if (campaign.status === 'Paused' || contact.email_status === 'Paused') {
               nextEmailIn = "Paused"
             } else if (campaign.status === 'Warming') {
-              nextEmailIn = "Warming"
+              nextEmailIn = t('analytics.warming')
             }
           } else {
             // No sequence status data available - fallback to old logic
@@ -1008,10 +1013,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                   minute: '2-digit'
                 })
               } else {
-                next_scheduled = "Sequence complete"
+                next_scheduled = t('analytics.sequenceComplete')
               }
             } else {
-              next_scheduled = "Sequence complete"
+              next_scheduled = t('analytics.sequenceComplete')
             }
           } else if (["Completed", "Replied", "Unsubscribed", "Bounced"].includes(status)) {
             next_scheduled = "None"
@@ -1867,11 +1872,11 @@ Sequence Info:
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Users className="h-4 w-4" />
-                    {contacts.length} contacts
+                    {contacts.length} {t('analytics.contacts')}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Clock className="h-4 w-4" />
-                    {progressPercentage}% complete
+                    {progressPercentage}% {t('analytics.complete')}
                   </span>
                 </div>
               </div>
@@ -1885,7 +1890,7 @@ Sequence Info:
                 className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
+                {t('analytics.refresh')}
               </Button>
               
               <select 
@@ -1899,9 +1904,9 @@ Sequence Info:
                 }}
                 className="border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-2.5 font-medium transition-all duration-300 rounded-2xl border"
               >
-                <option value={`${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>Last 7 days</option>
-                <option value={`${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>Last 30 days</option>
-                <option value={`${new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>Last 90 days</option>
+                <option value={`${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>{t('analytics.last7Days')}</option>
+                <option value={`${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>{t('analytics.last30Days')}</option>
+                <option value={`${new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}_${new Date().toISOString().split('T')[0]}`}>{t('analytics.last90Days')}</option>
               </select>
               
               {campaign.status === "Active" ? (
@@ -1931,7 +1936,7 @@ Sequence Info:
                   className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                 >
                   <Play className="h-4 w-4 mr-2" />
-                  Resume
+                  {t('analytics.resume')}
                 </Button>
               )}
               
@@ -1949,8 +1954,8 @@ Sequence Info:
                   <Target className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">Emails Sent</h3>
-                  <p className="text-gray-500 text-sm">Campaign progress</p>
+                  <h3 className="text-lg font-medium text-gray-900">{t('analytics.emailsSent')}</h3>
+                  <p className="text-gray-500 text-sm">{t('analytics.campaignProgress')}</p>
                 </div>
               </div>
               <div className="flex items-end justify-between">
@@ -1963,7 +1968,7 @@ Sequence Info:
                 )}
                 <span className="text-sm text-gray-400 font-medium">
                   {hasBeenStarted && totalPlanned > 0 ? `${Math.round((totalSent / totalPlanned) * 100)}%` : 
-                   hasBeenStarted ? '0%' : 'Not started'}
+                   hasBeenStarted ? '0%' : t('analytics.notStarted')}
                 </span>
               </div>
             </CardContent>
@@ -1976,8 +1981,8 @@ Sequence Info:
                   <Eye className="w-6 h-6 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">Open Rate</h3>
-                  <p className="text-gray-500 text-sm">Email engagement</p>
+                  <h3 className="text-lg font-medium text-gray-900">{t('analytics.openRate')}</h3>
+                  <p className="text-gray-500 text-sm">{t('analytics.emailEngagement')}</p>
                 </div>
               </div>
               <div className="flex items-end justify-between">
@@ -1989,7 +1994,7 @@ Sequence Info:
                   </p>
                 )}
                 <span className="text-sm text-gray-400 font-medium">
-                  {hasBeenStarted ? (metrics?.uniqueOpens ? `${metrics.uniqueOpens} unique` : 'No data') : 'Not started'}
+                  {hasBeenStarted ? (metrics?.uniqueOpens ? `${metrics.uniqueOpens} unique` : 'No data') : t('analytics.notStarted')}
                 </span>
               </div>
             </CardContent>
@@ -2002,8 +2007,8 @@ Sequence Info:
                   <MousePointer className="w-6 h-6 text-violet-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">Click Rate</h3>
-                  <p className="text-gray-500 text-sm">Link engagement</p>
+                  <h3 className="text-lg font-medium text-gray-900">{t('analytics.clickRate')}</h3>
+                  <p className="text-gray-500 text-sm">{t('analytics.linkEngagement')}</p>
                 </div>
               </div>
               <div className="flex items-end justify-between">
@@ -2015,7 +2020,7 @@ Sequence Info:
                   </p>
                 )}
                 <span className="text-sm text-gray-400 font-medium">
-                  {hasBeenStarted ? (metrics?.uniqueClicks ? `${metrics.uniqueClicks} unique` : 'No data') : 'Not started'}
+                  {hasBeenStarted ? (metrics?.uniqueClicks ? `${metrics.uniqueClicks} unique` : 'No data') : t('analytics.notStarted')}
                 </span>
               </div>
             </CardContent>
@@ -2028,8 +2033,8 @@ Sequence Info:
                   <Target className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">Delivery Rate</h3>
-                  <p className="text-gray-500 text-sm">Successfully delivered</p>
+                  <h3 className="text-lg font-medium text-gray-900">{t('analytics.deliveryRate')}</h3>
+                  <p className="text-gray-500 text-sm">{t('analytics.successfullyDelivered')}</p>
                 </div>
               </div>
               <div className="flex items-end justify-between">
@@ -2041,7 +2046,7 @@ Sequence Info:
                   </p>
                 )}
                 <span className="text-sm text-gray-400 font-medium">
-                  {hasBeenStarted ? (metrics?.emailsBounced ? `${metrics.emailsBounced} bounced` : 'No bounces') : 'Not started'}
+                  {hasBeenStarted ? (metrics?.emailsBounced ? `${metrics.emailsBounced} bounced` : 'No bounces') : t('analytics.notStarted')}
                 </span>
               </div>
             </CardContent>
@@ -2064,7 +2069,7 @@ Sequence Info:
                 </div>
                 <div>
                   <h3 className="text-lg font-medium text-gray-900">
-                    {campaign.status === 'Warming' ? 'Warming Progress' : 'Sender Health'}
+                    {campaign.status === 'Warming' ? t('analytics.warmingProgress') : t('analytics.senderHealth')}
                   </h3>
                   <p className="text-gray-500 text-sm">Loading...</p>
                 </div>
@@ -2110,8 +2115,8 @@ Sequence Info:
                           <Flame className="w-6 h-6 text-orange-600" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="text-lg font-medium text-gray-900">Warming Progress</h3>
-                          <p className="text-gray-500 text-sm">{senders.length} sender{senders.length > 1 ? 's' : ''} warming • {getPhaseStatus(avgPhase)}</p>
+                          <h3 className="text-lg font-medium text-gray-900">{t('analytics.warmingProgress')}</h3>
+                          <p className="text-gray-500 text-sm">{senders.length} {t('analytics.sendersWarming')} • {getPhaseStatus(avgPhase)}</p>
                         </div>
                         <Button
                           variant="outline"
@@ -2119,7 +2124,7 @@ Sequence Info:
                           onClick={() => setWarmingProgressExpanded(!warmingProgressExpanded)}
                           className="flex items-center space-x-2 px-3 py-2 text-sm"
                         >
-                          <span>{warmingProgressExpanded ? 'Minimize' : 'View Details'}</span>
+                          <span>{warmingProgressExpanded ? t('analytics.minimize') : t('analytics.viewDetails')}</span>
                           <ChevronDown className={`w-4 h-4 transition-transform ${warmingProgressExpanded ? 'rotate-180' : ''}`} />
                         </Button>
                       </div>
@@ -2134,14 +2139,14 @@ Sequence Info:
                           <div className="mb-6 p-4 bg-white rounded-xl border">
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center space-x-2">
-                                <span className="text-sm font-medium text-gray-700">Overall Warming Progress</span>
+                                <span className="text-sm font-medium text-gray-700">{t('analytics.overallWarmingProgress')}</span>
                                 <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPhaseColor(avgPhase)}`}>
-                                  Phase {avgPhase.toFixed(1)}
+                                  {t('analytics.phase')} {avgPhase.toFixed(1)}
                                 </div>
                               </div>
                               <div className="text-right">
                                 <span className="text-lg font-semibold text-gray-900">{overallProgress.toFixed(1)}%</span>
-                                <p className="text-xs text-gray-500">{avgDays.toFixed(0)} of 35 days</p>
+                                <p className="text-xs text-gray-500">{avgDays.toFixed(0)} of 35 {t('analytics.dayTarget')}</p>
                               </div>
                             </div>
                             
@@ -2155,10 +2160,10 @@ Sequence Info:
                             
                             {/* Phase Milestones */}
                             <div className="flex justify-between text-xs text-gray-500">
-                              <span className={avgPhase >= 1 ? 'text-orange-600 font-medium' : ''}>Phase 1</span>
-                              <span className={avgPhase >= 2 ? 'text-orange-600 font-medium' : ''}>Phase 2</span>
-                              <span className={avgPhase >= 3 ? 'text-orange-600 font-medium' : ''}>Phase 3</span>
-                              <span className={overallProgress >= 100 ? 'text-green-600 font-medium' : ''}>Complete</span>
+                              <span className={avgPhase >= 1 ? 'text-orange-600 font-medium' : ''}>{t('analytics.phase')} 1</span>
+                              <span className={avgPhase >= 2 ? 'text-orange-600 font-medium' : ''}>{t('analytics.phase')} 2</span>
+                              <span className={avgPhase >= 3 ? 'text-orange-600 font-medium' : ''}>{t('analytics.phase')} 3</span>
+                              <span className={overallProgress >= 100 ? 'text-green-600 font-medium' : ''}>{t('analytics.complete')}</span>
                             </div>
                           </div>
                         )
@@ -2167,10 +2172,10 @@ Sequence Info:
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-2 flex-wrap">
                           <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium text-gray-600 bg-gray-50">
-                            Health: {avgHealthScore}%
+                            {t('analytics.health')}: {avgHealthScore}%
                           </div>
                           <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium text-gray-600 bg-gray-50">
-                            {warmingMetrics.summary?.totalEmailsSentToday || 0} emails today
+                            {warmingMetrics.summary?.totalEmailsSentToday || 0} {t('analytics.emailsToday')}
                           </div>
                         </div>
                       </div>
@@ -2199,14 +2204,14 @@ Sequence Info:
                                     <div className="flex flex-col">
                                       <p className="text-sm font-medium text-gray-900">{sender.sender_email}</p>
                                       <div className="flex items-center space-x-2 text-xs text-gray-500">
-                                        <span>Phase {phase} • Day {dayInPhase}</span>
+                                        <span>{t('analytics.phase')} {phase} • {t('analytics.day')} {dayInPhase}</span>
                                         <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
-                                        <span>{healthScore}% health</span>
+                                        <span>{healthScore}% {t('analytics.health')}</span>
                                       </div>
                                     </div>
                                   </div>
                                   <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPhaseColor(phase)}`}>
-                                    Phase {phase}
+                                    {t('analytics.phase')} {phase}
                                   </div>
                                 </div>
                                 
@@ -2214,27 +2219,27 @@ Sequence Info:
                                 <div className="grid grid-cols-3 gap-3 mb-4">
                                   <div className="text-center p-3 bg-white rounded-lg border">
                                     <p className="text-lg font-medium text-gray-900">{emailsToday}</p>
-                                    <p className="text-xs text-gray-500">Emails sent</p>
+                                    <p className="text-xs text-gray-500">{t('analytics.emailsSent')}</p>
                                     <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                                       <div 
                                         className="bg-blue-500 h-1.5 rounded-full" 
                                         style={{ width: `${Math.min((emailsToday / dailyTarget) * 100, 100)}%` }}
                                       ></div>
                                     </div>
-                                    <p className="text-xs text-gray-400 mt-1">{dailyTarget} target</p>
+                                    <p className="text-xs text-gray-400 mt-1">{dailyTarget} {t('analytics.target')}</p>
                                   </div>
                                   <div className="text-center p-3 bg-white rounded-lg border">
                                     <p className="text-lg font-medium text-gray-900">{opensToday}</p>
-                                    <p className="text-xs text-gray-500">Opens today</p>
+                                    <p className="text-xs text-gray-500">{t('analytics.opensToday')}</p>
                                     <p className="text-xs text-gray-400 mt-1">
-                                      {emailsToday > 0 ? `${((opensToday / emailsToday) * 100).toFixed(1)}%` : '0%'} rate
+                                      {emailsToday > 0 ? `${((opensToday / emailsToday) * 100).toFixed(1)}%` : '0%'} {t('analytics.rate')}
                                     </p>
                                   </div>
                                   <div className="text-center p-3 bg-white rounded-lg border">
                                     <p className="text-lg font-medium text-gray-900">{repliesToday}</p>
-                                    <p className="text-xs text-gray-500">Replies today</p>
+                                    <p className="text-xs text-gray-500">{t('analytics.repliesToday')}</p>
                                     <p className="text-xs text-gray-400 mt-1">
-                                      {emailsToday > 0 ? `${((repliesToday / emailsToday) * 100).toFixed(1)}%` : '0%'} rate
+                                      {emailsToday > 0 ? `${((repliesToday / emailsToday) * 100).toFixed(1)}%` : '0%'} {t('analytics.rate')}
                                     </p>
                                   </div>
                                 </div>
@@ -2243,7 +2248,7 @@ Sequence Info:
                                 <div className="grid grid-cols-2 gap-3 mb-4">
                                   <div className="p-3 bg-white rounded-lg border">
                                     <div className="flex items-center justify-between mb-2">
-                                      <span className="text-sm font-medium text-gray-700">Total Warming Days</span>
+                                      <span className="text-sm font-medium text-gray-700">{t('analytics.totalWarmingDays')}</span>
                                       <span className="text-sm text-gray-900">{sender.total_warming_days || 0}</span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
@@ -2252,11 +2257,11 @@ Sequence Info:
                                         style={{ width: `${Math.min(((sender.total_warming_days || 0) / 35) * 100, 100)}%` }}
                                       ></div>
                                     </div>
-                                    <p className="text-xs text-gray-400 mt-1">35 days target</p>
+                                    <p className="text-xs text-gray-400 mt-1">35 {t('analytics.dayTarget')}</p>
                                   </div>
                                   <div className="p-3 bg-white rounded-lg border">
                                     <div className="flex items-center justify-between mb-2">
-                                      <span className="text-sm font-medium text-gray-700">Health Score</span>
+                                      <span className="text-sm font-medium text-gray-700">{t('analytics.healthScore')}</span>
                                       <span className="text-sm text-gray-900">{healthScore}%</span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
@@ -2272,8 +2277,8 @@ Sequence Info:
                                 {/* Phase Progress */}
                                 <div className="p-3 bg-white rounded-lg border">
                                   <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-gray-700">Phase {phase} Progress</span>
-                                    <span className="text-xs text-gray-500">Day {dayInPhase}</span>
+                                    <span className="text-sm font-medium text-gray-700">{t('analytics.phase')} {phase} {t('analytics.phaseProgress')}</span>
+                                    <span className="text-xs text-gray-500">{t('analytics.day')} {dayInPhase}</span>
                                   </div>
                                   
                                   {/* Phase timeline */}
@@ -2284,15 +2289,15 @@ Sequence Info:
                                           phaseNum < phase ? 'bg-green-500' : 
                                           phaseNum === phase ? 'bg-orange-500' : 'bg-gray-200'
                                         }`}></div>
-                                        <p className="text-xs text-center mt-1 text-gray-500">Phase {phaseNum}</p>
+                                        <p className="text-xs text-center mt-1 text-gray-500">{t('analytics.phase')} {phaseNum}</p>
                                       </div>
                                     ))}
                                   </div>
                                   
                                   <div className="text-xs text-gray-500 text-center">
-                                    {phase === 1 && "Building initial reputation"}
-                                    {phase === 2 && "Increasing volume and engagement"}
-                                    {phase === 3 && "Full warming capacity"}
+                                    {phase === 1 && t('analytics.buildingInitialReputation')}
+                                    {phase === 2 && t('analytics.increasingVolumeEngagement')}
+                                    {phase === 3 && t('analytics.fullWarmingCapacity')}
                                   </div>
                                 </div>
                               </div>
@@ -2311,13 +2316,13 @@ Sequence Info:
                       <Flame className="w-6 h-6 text-orange-600 animate-pulse" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-gray-900">Warming Progress</h3>
-                      <p className="text-sm text-gray-500 font-light">Initializing warming system...</p>
+                      <h3 className="text-xl font-semibold text-gray-900">{t('analytics.warmingProgress')}</h3>
+                      <p className="text-sm text-gray-500 font-light">{t('analytics.initializingWarmingSystem')}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-3xl font-light text-orange-600">—</p>
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">No data yet</p>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{t('analytics.noDataYet')}</p>
                   </div>
                 </div>
               )
@@ -2487,7 +2492,7 @@ Sequence Info:
                         <Zap className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900">Daily Limit</h3>
+                        <h3 className="text-lg font-medium text-gray-900">{t('analytics.dailyLimit')}</h3>
                         <p className="text-gray-500 text-sm">{selectedSenderCount} selected sender{selectedSenderCount > 1 ? 's' : ''} • Variable limits per sender</p>
                       </div>
                     </div>
@@ -2500,17 +2505,27 @@ Sequence Info:
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            // Navigate to campaign sender management
-                            const url = new URL(window.location.origin)
-                            url.searchParams.set('tab', 'campaigns-email')
-                            url.searchParams.set('campaignId', campaign.id.toString())
-                            url.searchParams.set('subtab', 'sender')
-                            window.location.href = url.toString()
+                            // First go back to campaigns tab, then navigate to edit with sender tab
+                            onBack()
+                            
+                            // Use setTimeout to ensure the campaigns tab loads first
+                            setTimeout(() => {
+                              const url = new URL(window.location.href)
+                              url.searchParams.set('campaignId', campaign.id.toString())
+                              url.searchParams.set('campaign', campaign.id.toString())
+                              url.searchParams.set('openCampaign', 'true')
+                              url.searchParams.set('subtab', 'sender')
+                              window.history.pushState({}, '', url.toString())
+                              
+                              // Dispatch a custom event to trigger the campaign tab to process URL params
+                              const event = new CustomEvent('url-params-changed')
+                              window.dispatchEvent(event)
+                            }, 100)
                           }}
                           className="flex items-center gap-2 h-8 px-3 text-xs rounded-full"
                         >
                           <Settings className="w-3 h-3" />
-                          Manage
+                          {t('analytics.manage')}
                         </Button>
                       </div>
                     </div>
@@ -2524,10 +2539,9 @@ Sequence Info:
                             </svg>
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm text-blue-900 font-medium mb-2">Want to increase your daily limit?</p>
+                            <p className="text-sm text-blue-900 font-medium mb-2">{t('analytics.wantToIncrease')}</p>
                             <p className="text-xs text-blue-700">
-                              We recommend 50 emails per account per day for optimal deliverability. 
-                              To send more emails, add new domains or sender accounts in the campaign settings.
+                              {t('analytics.weRecommend50Emails')}
                             </p>
                           </div>
                         </div>
@@ -2536,7 +2550,7 @@ Sequence Info:
                     
                     {selectedSenderCount === 0 && (
                       <div className="mt-6 text-center py-4">
-                        <p className="text-sm text-gray-500 mb-3">No sender accounts selected</p>
+                        <p className="text-sm text-gray-500 mb-3">{t('analytics.noSenderAccounts')}</p>
                         <Button
                           variant="outline"
                           onClick={() => {
@@ -2550,7 +2564,7 @@ Sequence Info:
                           className="flex items-center gap-2"
                         >
                           <Settings className="w-4 h-4" />
-                          Add Sender Accounts
+                          {t('analytics.addSenderAccounts')}
                         </Button>
                       </div>
                     )}
@@ -2570,12 +2584,12 @@ Sequence Info:
                 <Users className="w-6 h-6 text-blue-600" />
               </div>
               <div className="flex-1">
-                <h2 className="text-xl font-medium text-gray-900">Contacts</h2>
-                <p className="text-gray-500 text-sm mt-1">{contacts.length} total contacts in campaign</p>
+                <h2 className="text-xl font-medium text-gray-900">{t('analytics.contacts')}</h2>
+                <p className="text-gray-500 text-sm mt-1">{contacts.length} {t('analytics.totalContactsInCampaign')}</p>
               </div>
               <Button variant="outline" className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl">
                 <Download className="h-4 w-4 mr-2" />
-                Export
+                {t('analytics.export')}
               </Button>
             </div>
             
@@ -2583,7 +2597,7 @@ Sequence Info:
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search contacts..."
+                  placeholder={t('analytics.searchContacts')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 h-10 bg-gray-50 border-gray-200 rounded-2xl"
@@ -2593,12 +2607,12 @@ Sequence Info:
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="h-10 px-4 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl">
                     <Filter className="h-4 w-4 mr-2" />
-                    {statusFilter === "all" ? "All Status" : statusFilter}
+                    {statusFilter === "all" ? t('analytics.allStatus') : statusFilter}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="rounded-2xl border-gray-200">
                   <DropdownMenuItem onClick={() => setStatusFilter("all")}>
-                    All Status
+                    {t('analytics.allStatus')}
                   </DropdownMenuItem>
                   {uniqueStatuses.map(status => (
                     <DropdownMenuItem key={status} onClick={() => setStatusFilter(status)}>
@@ -2615,7 +2629,7 @@ Sequence Info:
                   disabled={isDeleting === 'bulk'}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  {isDeleting === 'bulk' ? 'Deleting...' : `Delete (${selectedContacts.length})`}
+                  {isDeleting === 'bulk' ? t('analytics.deleting') : `${t('analytics.delete')} (${selectedContacts.length})`}
                 </Button>
               )}
             </div>
@@ -2637,12 +2651,12 @@ Sequence Info:
                           }}
                         />
                       </th>
-                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
-                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[200px]">Status</th>
-                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
-                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Timezone</th>
-                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Next Email</th>
-                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('analytics.contact')}</th>
+                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[200px]">{t('analytics.status')}</th>
+                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('analytics.location')}</th>
+                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('analytics.timezone')}</th>
+                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('analytics.nextEmail')}</th>
+                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('analytics.actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-100">
@@ -2673,8 +2687,8 @@ Sequence Info:
                       <tr>
                         <td colSpan={8} className="p-12 text-center text-gray-500">
                           <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                          <p className="text-lg font-medium text-gray-900 mb-2">No contacts found</p>
-                          <p className="text-sm text-gray-500">Try adjusting your search or filters</p>
+                          <p className="text-lg font-medium text-gray-900 mb-2">{t('analytics.noContactsFound')}</p>
+                          <p className="text-sm text-gray-500">{t('analytics.tryAdjusting')}</p>
                         </td>
                       </tr>
                     ) : (
@@ -2870,7 +2884,7 @@ Sequence Info:
                     className="border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                     onClick={() => setDisplayLimit(prev => prev + 20)}
                   >
-                    Load More ({filteredContacts.length - displayLimit} remaining)
+                    {t('analytics.loadMore')} ({filteredContacts.length - displayLimit} {t('analytics.remaining')})
                   </Button>
                 </div>
               )}
@@ -2887,14 +2901,14 @@ Sequence Info:
                   <TrendingUp className="w-6 h-6 text-indigo-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-medium text-gray-900">Campaign Progress</h2>
-                  <p className="text-gray-500 text-sm mt-1">Email delivery status</p>
+                  <h2 className="text-xl font-medium text-gray-900">{t('analytics.campaignProgress')}</h2>
+                  <p className="text-gray-500 text-sm mt-1">{t('analytics.emailDeliveryStatus')}</p>
                 </div>
               </div>
               <div className="space-y-6">
                 <div>
                   <div className="flex justify-between text-sm mb-3">
-                    <span className="text-gray-600 font-medium">Progress</span>
+                    <span className="text-gray-600 font-medium">{t('analytics.progress')}</span>
                     <span className="font-semibold text-gray-900">{progressPercentage}%</span>
                   </div>
                   <Progress value={progressPercentage} className="h-3 bg-gray-100" />
@@ -2905,7 +2919,7 @@ Sequence Info:
                       {totalSent}
                     </p>
                     <p className="text-sm text-gray-500 mt-1">
-                      Sent
+                      {t('analytics.sent')}
                     </p>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-2xl">
@@ -2913,7 +2927,7 @@ Sequence Info:
                       {totalRemaining > 0 ? totalRemaining : 0}
                     </p>
                     <p className="text-sm text-gray-500 mt-1">
-                      Remaining
+                      {t('analytics.remaining')}
                     </p>
                   </div>
                 </div>
@@ -2961,8 +2975,8 @@ Sequence Info:
                   <BarChart3 className="w-6 h-6 text-emerald-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-medium text-gray-900">Status Distribution</h2>
-                  <p className="text-gray-500 text-sm mt-1">Contact sequence status</p>
+                  <h2 className="text-xl font-medium text-gray-900">{t('analytics.statusDistribution')}</h2>
+                  <p className="text-gray-500 text-sm mt-1">{t('analytics.contactSequenceStatus')}</p>
                 </div>
               </div>
               <div className="space-y-4">
@@ -3103,7 +3117,7 @@ Sequence Info:
                             {/* Status badges */}
                             <div>
                               {step.status === 'sent' && (
-                                <span className="text-sm font-medium text-green-600">Sent</span>
+                                <span className="text-sm font-medium text-green-600">{t('analytics.sent')}</span>
                               )}
                               {step.status === 'pending' && isNext && (
                                 <span className="text-sm font-medium text-gray-900">Up Next</span>
@@ -3174,7 +3188,7 @@ Sequence Info:
                     <div className="text-xl font-semibold text-gray-900">
                       {generateContactSchedule(sequenceModalContact).filter(s => s.status === 'sent').length}
                     </div>
-                    <div className="text-sm text-gray-500">Sent</div>
+                    <div className="text-sm text-gray-500">{t('analytics.sent')}</div>
                   </div>
                   <div>
                     <div className="text-xl font-semibold text-gray-900">
@@ -3253,7 +3267,7 @@ Sequence Info:
                         emailPreviewModal.step.status === 'skipped' ? 'bg-gray-100 text-gray-600 border-gray-200' :
                         'bg-yellow-100 text-yellow-700 border-yellow-200'
                       }`}>
-                        {emailPreviewModal.step.status === 'sent' ? '✓ Sent' :
+                        {emailPreviewModal.step.status === 'sent' ? `✓ ${t('analytics.sent')}` :
                          emailPreviewModal.step.status === 'pending' ? '🔄 Pending' :
                          emailPreviewModal.step.status === 'skipped' ? '⏭️ Skipped' :
                          '⏳ Upcoming'}
@@ -3342,7 +3356,7 @@ Sequence Info:
           <DialogHeader className="pb-4 border-b border-gray-200">
             <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
               <User className="w-5 h-5 text-gray-600" />
-              Contact Details
+              {t('analytics.contactDetails')}
             </DialogTitle>
           </DialogHeader>
           
@@ -3386,11 +3400,11 @@ Sequence Info:
                   <p className="font-medium text-gray-900">{contactDetailsModal.title || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Location</p>
+                  <p className="text-sm text-gray-500 mb-1">{t('analytics.location')}</p>
                   <p className="font-medium text-gray-900">{contactDetailsModal.location || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Timezone</p>
+                  <p className="text-sm text-gray-500 mb-1">{t('analytics.timezone')}</p>
                   <p className="font-medium text-gray-900">{contactDetailsModal.timezone || deriveTimezoneFromLocation(contactDetailsModal.location) || 'UTC'}</p>
                 </div>
                 <div>
@@ -3451,7 +3465,7 @@ Sequence Info:
 
       {/* Warmup Warning Dialog */}
       <Dialog open={showWarmupWarning} onOpenChange={setShowWarmupWarning}>
-        <DialogContent className="sm:max-w-[425px] rounded-2xl border border-gray-200 p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[550px] rounded-2xl border border-gray-200 p-0 overflow-hidden">
           <div className="p-6 pb-0">
             <div className="flex items-center space-x-4 mb-4">
               <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
@@ -3459,10 +3473,10 @@ Sequence Info:
               </div>
               <div>
                 <DialogTitle className="text-lg font-semibold text-gray-900">
-                  Health Score Alert
+                  {t('analytics.warmupWarningDialog.title')}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-gray-500">
-                  Some senders still need warming up
+                  {t('analytics.warmupWarningDialog.description')}
                 </DialogDescription>
               </div>
             </div>
@@ -3470,7 +3484,7 @@ Sequence Info:
           
           <div className="px-6 pb-4">
             <div className="bg-orange-50 rounded-xl p-4 mb-4">
-              <p className="text-sm font-medium text-orange-900 mb-3">Accounts Below 90% Health</p>
+              <p className="text-sm font-medium text-orange-900 mb-3">{t('analytics.warmupWarningDialog.accountsBelowThreshold')}</p>
               <div className="space-y-2">
                 {lowHealthSenders.map((sender, index) => {
                   const getScoreColor = (score: number) => {
@@ -3492,14 +3506,14 @@ Sequence Info:
             </div>
             
             <div className="text-sm text-gray-600 bg-gray-50 rounded-xl p-4">
-              <p className="mb-2"><span className="font-medium">Continue Warmup:</span> Keep warming to improve health scores before going active.</p>
+              <p className="mb-2"><span className="font-medium">{t('analytics.warmupWarningDialog.continueWarmupLabel')}</span> {t('analytics.warmupWarningDialog.continueWarmupDescription')}</p>
               <p>
                 <span className="font-medium">
-                  {pendingResumeStatus === "Completed" ? "Stop Anyway:" : "Resume Anyway:"}
+                  {pendingResumeStatus === "Completed" ? t('analytics.warmupWarningDialog.stopAnywayLabel') : t('analytics.warmupWarningDialog.resumeAnywayLabel')}
                 </span>{" "}
                 {pendingResumeStatus === "Completed" 
-                  ? "Stop the campaign now despite health scores." 
-                  : "Go active now despite low health scores."
+                  ? t('analytics.warmupWarningDialog.stopAnywayDescription') 
+                  : t('analytics.warmupWarningDialog.resumeAnywayDescription')
                 }
               </p>
             </div>
@@ -3519,10 +3533,10 @@ Sequence Info:
               {warmupDecisionLoading ? (
                 <>
                   <div className="w-4 h-4 mr-2 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-                  Processing...
+                  {t('analytics.warmupWarningDialog.processingText')}
                 </>
               ) : (
-                pendingResumeStatus === "Completed" ? "Stop Anyway" : "Resume Anyway"
+                pendingResumeStatus === "Completed" ? t('analytics.warmupWarningDialog.stopAnywayButton') : t('analytics.warmupWarningDialog.resumeAnywayButton')
               )}
             </Button>
             <Button
@@ -3537,12 +3551,12 @@ Sequence Info:
               {warmupDecisionLoading ? (
                 <>
                   <div className="w-4 h-4 mr-1.5 border-2 border-white border-t-orange-200 rounded-full animate-spin"></div>
-                  Processing...
+                  {t('analytics.warmupWarningDialog.processingText')}
                 </>
               ) : (
                 <>
                   <Flame className="w-4 h-4 mr-1.5" />
-                  Continue Warmup
+                  {t('analytics.warmupWarningDialog.continueWarmupButton')}
                 </>
               )}
             </Button>

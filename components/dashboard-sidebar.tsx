@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { useCompanyLogo } from "@/hooks/useCompanyLogo"
 import { UpgradeProDialog } from "@/components/upgrade-pro-dialog"
 import { useState, useEffect, useCallback } from "react"
+import { useI18n } from "@/hooks/use-i18n"
 
 interface MenuItem {
   id: string
@@ -37,6 +38,7 @@ export function DashboardSidebar({
   onToggleCollapsed,
 }: DashboardSidebarProps) {
   const router = useRouter()
+  const { t } = useI18n()
   const { logoUrl, loading: logoLoading } = useCompanyLogo()
   const [companyName, setCompanyName] = useState("LeadsUp")
   const [loading, setLoading] = useState(true)
@@ -114,21 +116,21 @@ export function DashboardSidebar({
   const mainMenuItems = [
     { 
       id: "campaigns", 
-      label: "Campaigns", 
+      label: t("navigation.campaigns"), 
       icon: Zap,
       subItems: [
-        { id: "campaigns-email", label: "Email", icon: Mail }
+        { id: "campaigns-email", label: t("navigation.email"), icon: Mail }
         // Hidden: LinkedIn and Multi-Channel
       ]
     },
-    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { id: "leads", label: "Leads", icon: Users },
-    { id: "templates", label: "Templates", icon: FileText },
-    { id: "inbox", label: "Inbox", icon: Inbox },
+    { id: "dashboard", label: t("navigation.dashboard"), icon: BarChart3 },
+    { id: "leads", label: t("navigation.leads"), icon: Users },
+    { id: "templates", label: t("navigation.templates"), icon: FileText },
+    { id: "inbox", label: t("navigation.inbox"), icon: Inbox },
   ]
 
   const toolsMenuItems = [
-    { id: "domain", label: "Domain", icon: Globe }
+    { id: "domain", label: t("navigation.domain"), icon: Globe }
   ]
 
   // Removed settings menu item - now accessed via company button
@@ -206,10 +208,10 @@ export function DashboardSidebar({
                 window.dispatchEvent(event)
               }, 100)
             }}
-            title={isCollapsed ? "Create Campaign" : undefined}
+            title={isCollapsed ? t("navigation.createCampaign") : undefined}
           >
             <Plus className="h-4 w-4" />
-            {!isCollapsed && <span className="text-base">Create Campaign</span>}
+            {!isCollapsed && <span className="text-base">{t("navigation.createCampaign")}</span>}
           </Button>
         </div>
 
@@ -254,7 +256,7 @@ export function DashboardSidebar({
 
           {/* Tools Section */}
           <div className="space-y-1">
-            {!isCollapsed && <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2 mt-4">Tools</p>}
+            {!isCollapsed && <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2 mt-4">{t("navigation.tools")}</p>}
             {toolsMenuItems.map((item) => {
               const Icon = item.icon
               const isActive = activeTab === item.id
@@ -350,10 +352,10 @@ export function DashboardSidebar({
                 isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-4 py-3"
               )}
               onClick={handleUpgrade}
-              title={isCollapsed ? "Try Pro for free" : undefined}
+              title={isCollapsed ? t("navigation.tryProForFree") : undefined}
             >
               <Crown className="h-4 w-4" />
-              {!isCollapsed && "Try Pro for free"}
+              {!isCollapsed && t("navigation.tryProForFree")}
             </Button>
           )}
 
@@ -396,7 +398,7 @@ export function DashboardSidebar({
           </div>
           <div className="min-w-0">
             <h1 className="font-light text-xl tracking-tight text-gray-900">LeadsUp</h1>
-            <p className="text-xs text-gray-500 font-light">Lead Generation Platform</p>
+            <p className="text-xs text-gray-500 font-light">{t("navigation.leadGenerationPlatform")}</p>
           </div>
         </div>
       </div>
@@ -415,7 +417,7 @@ export function DashboardSidebar({
           }}
         >
           <Plus className="h-4 w-4" />
-          Create Campaign
+          {t("navigation.createCampaign")}
         </Button>
       </div>
 
@@ -458,7 +460,7 @@ export function DashboardSidebar({
 
         {/* Tools Section */}
         <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-4 py-2">Tools</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-4 py-2">{t("navigation.tools")}</p>
           <ul className="space-y-2">
             {toolsMenuItems.map((item) => {
               const Icon = item.icon
@@ -547,7 +549,7 @@ export function DashboardSidebar({
             onClick={handleUpgrade}
           >
             <Crown className="w-5 h-5 mr-3" />
-            <span className="truncate">Try Pro for free</span>
+            <span className="truncate">{t("navigation.tryProForFree")}</span>
             <img
               src="https://framerusercontent.com/images/gtnO9xfRQzAPZ18lfRKGZJVoB6U.png"
               alt="Loop Logo"

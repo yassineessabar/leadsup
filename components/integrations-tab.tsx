@@ -1,11 +1,19 @@
 import { useState } from "react"
+import { useI18n } from '@/hooks/use-i18n'
 import { Settings, AlertTriangle, Play, Info, User, Cog, Clock, Zap, Plus, Mail, CheckCircle, XCircle, Linkedin, Phone } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 
 export function IntegrationsTab() {
+  const { t, ready } = useI18n()
   const [showConnectDropdown, setShowConnectDropdown] = useState(false)
+  
+  if (!ready) {
+    return <div className="flex items-center justify-center h-64">
+      <div className="text-gray-500">{t ? t('common.loading') : 'Loading...'}</div>
+    </div>
+  }
   const [showLinkedInModal, setShowLinkedInModal] = useState(false)
   const [showEmailProviderModal, setShowEmailProviderModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
@@ -87,8 +95,8 @@ export function IntegrationsTab() {
         <div className="px-6 py-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Connected Accounts</h1>
-              <p className="text-gray-600 mt-1">Manage your email and social accounts for outreach campaigns</p>
+              <h1 className="text-2xl font-bold text-gray-900">{t('integrations.connectedAccounts')}</h1>
+              <p className="text-gray-600 mt-1">{t('integrations.manageAccounts')}</p>
             </div>
             <div className="relative">
               <Button
@@ -97,7 +105,7 @@ export function IntegrationsTab() {
                 onClick={() => setShowConnectDropdown(!showConnectDropdown)}
               >
                 <Plus className="w-4 h-4" />
-                <span>Connect Account</span>
+                <span>{t('integrations.connectAccount')}</span>
               </Button>
               
               {/* Connect Account Dropdown */}
@@ -109,8 +117,8 @@ export function IntegrationsTab() {
                   >
                     <Mail className="w-5 h-5 text-gray-500" />
                     <div className="text-left">
-                      <div className="font-medium">Email Account</div>
-                      <div className="text-xs text-gray-500">Gmail, Outlook, or SMTP</div>
+                      <div className="font-medium">{t('integrations.emailAccount')}</div>
+                      <div className="text-xs text-gray-500">{t('integrations.emailAccountDesc')}</div>
                     </div>
                   </button>
                   <button
@@ -119,8 +127,8 @@ export function IntegrationsTab() {
                   >
                     <Linkedin className="w-5 h-5 text-gray-500" />
                     <div className="text-left">
-                      <div className="font-medium">LinkedIn Account</div>
-                      <div className="text-xs text-gray-500">Social outreach & prospecting</div>
+                      <div className="font-medium">{t('integrations.linkedinAccount')}</div>
+                      <div className="text-xs text-gray-500">{t('integrations.linkedinAccountDesc')}</div>
                     </div>
                   </button>
                   <button
@@ -129,8 +137,8 @@ export function IntegrationsTab() {
                   >
                     <Phone className="w-5 h-5 text-gray-500" />
                     <div className="text-left">
-                      <div className="font-medium">Phone Number</div>
-                      <div className="text-xs text-gray-500">SMS & calling campaigns</div>
+                      <div className="font-medium">{t('integrations.phoneNumber')}</div>
+                      <div className="text-xs text-gray-500">{t('integrations.phoneNumberDesc')}</div>
                     </div>
                   </button>
                 </div>
@@ -143,7 +151,7 @@ export function IntegrationsTab() {
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Accounts</p>
+                  <p className="text-sm font-medium text-gray-600">{t('integrations.totalAccounts')}</p>
                   <p className="text-2xl font-bold text-gray-900">{emailAccounts.length}</p>
                 </div>
                 <Mail className="w-8 h-8 text-gray-400" />
@@ -152,7 +160,7 @@ export function IntegrationsTab() {
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active Warmup</p>
+                  <p className="text-sm font-medium text-gray-600">{t('integrations.activeWarmup')}</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {emailAccounts.filter(acc => acc.warmupStatus === 'active').length}
                   </p>
@@ -163,7 +171,7 @@ export function IntegrationsTab() {
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Need Attention</p>
+                  <p className="text-sm font-medium text-gray-600">{t('integrations.needAttention')}</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {emailAccounts.filter(acc => acc.actionRequired).length}
                   </p>
@@ -174,7 +182,7 @@ export function IntegrationsTab() {
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Avg. Score</p>
+                  <p className="text-sm font-medium text-gray-600">{t('integrations.avgScore')}</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {Math.round(emailAccounts.reduce((sum, acc) => sum + acc.score, 0) / emailAccounts.length)}
                   </p>
@@ -194,19 +202,19 @@ export function IntegrationsTab() {
             <div className="flex items-center">
               <div className="flex-1 flex items-center space-x-2 text-gray-500 text-sm font-medium">
                 <User className="w-4 h-4" />
-                <span>Account</span>
+                <span>{t('integrations.account')}</span>
               </div>
               <div className="w-32 flex items-center justify-center text-gray-500 text-sm font-medium">
                 <Cog className="w-4 h-4" />
-                <span className="ml-1">Setup Status</span>
+                <span className="ml-1">{t('integrations.setupStatus')}</span>
               </div>
               <div className="w-32 flex items-center justify-center text-gray-500 text-sm font-medium">
                 <Clock className="w-4 h-4" />
-                <span className="ml-1">Daily Limit</span>
+                <span className="ml-1">{t('integrations.dailyLimit')}</span>
               </div>
               <div className="w-32 flex items-center justify-center text-gray-500 text-sm font-medium">
                 <Zap className="w-4 h-4" />
-                <span className="ml-1">Health Score</span>
+                <span className="ml-1">{t('integrations.healthScore')}</span>
               </div>
               <div className="w-20 flex items-center justify-center text-gray-500 text-sm font-medium">
                 <Settings className="w-4 h-4" />
@@ -236,7 +244,7 @@ export function IntegrationsTab() {
                           <Badge className={account.warmupStatus === 'active' 
                             ? "bg-blue-100 text-blue-700 hover:bg-blue-100" 
                             : "bg-gray-100 text-gray-700 hover:bg-gray-100"}>
-                            {account.warmupStatus === 'active' ? 'Active' : 'Paused'}
+                            {account.warmupStatus === 'active' ? t('integrations.active') : t('integrations.paused')}
                           </Badge>
                         </div>
                       </div>
@@ -329,27 +337,27 @@ export function IntegrationsTab() {
                 {/* Step 1 */}
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-2">1. Download the lemlist extension</h3>
-                    <p className="text-sm text-gray-600">Make sure to have the lemlist Chrome extension for LinkedIn.</p>
+                    <h3 className="font-semibold text-gray-900 mb-2">{t('integrations.downloadExtension')}</h3>
+                    <p className="text-sm text-gray-600">{t('integrations.downloadExtensionDesc')}</p>
                   </div>
                   <Button className="ml-4 bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center space-x-2">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                       <circle cx="12" cy="12" r="10"/>
                       <path d="M8 12l2 2 4-4" stroke="white" strokeWidth="2" fill="none"/>
                     </svg>
-                    <span>Download for</span>
-                    <span className="font-semibold">Google chrome</span>
+                    <span>{t('integrations.downloadFor')}</span>
+                    <span className="font-semibold">{t('integrations.googleChrome')}</span>
                   </Button>
                 </div>
 
                 {/* Step 2 */}
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-2">2. Link your lemlist account to your LinkedIn account</h3>
-                    <p className="text-sm text-gray-600">Make sure your lemlist account is linked to the extension.</p>
+                    <h3 className="font-semibold text-gray-900 mb-2">{t('integrations.linkAccount')}</h3>
+                    <p className="text-sm text-gray-600">{t('integrations.linkAccountDesc')}</p>
                   </div>
                   <Button className="ml-4 bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2">
-                    <span>Go to LinkedIn</span>
+                    <span>{t('integrations.goToLinkedin')}</span>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                       <polyline points="15,3 21,3 21,9"/>
@@ -360,8 +368,8 @@ export function IntegrationsTab() {
 
                 {/* Step 3 */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">3. Import your contacts and refresh lemlist page</h3>
-                  <p className="text-sm text-gray-600">Do a LinkedIn search and import the contacts to your CRM.</p>
+                  <h3 className="font-semibold text-gray-900 mb-2">{t('integrations.importContacts')}</h3>
+                  <p className="text-sm text-gray-600">{t('integrations.importContactsDesc')}</p>
                 </div>
               </div>
             </div>
@@ -375,7 +383,7 @@ export function IntegrationsTab() {
           <div className="bg-white rounded-lg w-full max-w-md mx-4">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div className="flex items-center space-x-2">
-                <h2 className="text-lg font-semibold text-gray-900">Select your email provider</h2>
+                <h2 className="text-lg font-semibold text-gray-900">{t('integrations.selectEmailProvider')}</h2>
                 <div className="w-5 h-5 bg-blue-500 rounded flex items-center justify-center">
                   <Mail className="w-3 h-3 text-white" />
                 </div>
@@ -393,7 +401,7 @@ export function IntegrationsTab() {
             
             <div className="p-6">
               <p className="text-sm text-gray-600 mb-6">
-                Choose the provider you use to log into your email account.
+                {t('integrations.chooseProvider')}
               </p>
               
               <div className="space-y-4">
@@ -408,9 +416,9 @@ export function IntegrationsTab() {
                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                       </svg>
                     </div>
-                    <span className="font-medium text-gray-900">Google / Gmail</span>
+                    <span className="font-medium text-gray-900">{t('integrations.googleGmail')}</span>
                   </div>
-                  <Button variant="outline" size="sm">Connect</Button>
+                  <Button variant="outline" size="sm">{t('integrations.connect')}</Button>
                 </div>
 
                 {/* Microsoft/Outlook */}
@@ -422,12 +430,12 @@ export function IntegrationsTab() {
                         <path d="M20 3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H4V5h16v14z"/>
                       </svg>
                     </div>
-                    <span className="font-medium text-gray-900">Microsoft / Outlook</span>
+                    <span className="font-medium text-gray-900">{t('integrations.microsoftOutlook')}</span>
                   </div>
-                  <Button variant="outline" size="sm">Connect</Button>
+                  <Button variant="outline" size="sm">{t('integrations.connect')}</Button>
                 </div>
 
-                <div className="text-center text-gray-500 text-sm py-2">or</div>
+                <div className="text-center text-gray-500 text-sm py-2">{t('integrations.or')}</div>
 
                 {/* Other email provider */}
                 <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
@@ -435,9 +443,9 @@ export function IntegrationsTab() {
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                       <Mail className="w-4 h-4 text-blue-600" />
                     </div>
-                    <span className="font-medium text-gray-900">Other email provider (SMTP/IMAP)</span>
+                    <span className="font-medium text-gray-900">{t('integrations.otherEmailProvider')}</span>
                   </div>
-                  <Button variant="outline" size="sm">Connect</Button>
+                  <Button variant="outline" size="sm">{t('integrations.connect')}</Button>
                 </div>
               </div>
             </div>
@@ -449,15 +457,15 @@ export function IntegrationsTab() {
       {showSettingsModal && selectedAccountId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Email warm up settings</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('integrations.emailWarmupSettings')}</h2>
             
             <div className="space-y-4 mb-6">
               <p className="text-sm text-gray-600">
-                Warming up your emails is a very important step in optimizing your deliverability. This will help your emails avoid the spam folder and get more replies.
+                {t('integrations.warmupImportance')}
               </p>
               
               <p className="text-sm text-gray-600">
-                We recommend you warming up your emails for about 3 to 4 weeks before sending cold emails with campaigns
+                {t('integrations.warmupRecommendation')}
               </p>
             </div>
 
@@ -466,11 +474,11 @@ export function IntegrationsTab() {
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-700">Email warmup settings</span>
+                    <span className="text-sm font-medium text-gray-700">{t('integrations.emailWarmupSettings')}</span>
                     <Info className="w-4 h-4 text-gray-400" />
                   </div>
                   <div className="text-sm text-gray-600">
-                    Configure warmup parameters for this account
+                    {t('integrations.configureWarmupParams')}
                   </div>
                 </div>
               </div>
@@ -479,10 +487,10 @@ export function IntegrationsTab() {
             {/* Modal buttons */}
             <div className="flex justify-end space-x-3">
               <Button variant="outline" onClick={closeSettingsModal}>
-                Cancel
+                {t('button.cancel')}
               </Button>
               <Button onClick={closeSettingsModal} className="bg-blue-600 hover:bg-blue-700">
-                Save
+                {t('button.save')}
               </Button>
             </div>
           </div>

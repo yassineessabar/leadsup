@@ -1,56 +1,7 @@
 {
   "greeting": "Bienvenue sur LeadsUp",
   "common": {
-    "loading": "Chargement...",
-    "error": "Erreur",
-    "success": "Succès",
-    "warning": "Avertissement",
-    "info": "Information",
-    "confirm": "Êtes-vous sûr ?",
-    "yes": "Oui",
-    "no": "Non",
-    "all": "Tout",
-    "none": "Aucun",
-    "select": "Sélectionner",
-    "selected": "Sélectionné",
-    "actions": "Actions",
-    "more": "Plus",
-    "less": "Moins",
-    "showMore": "Afficher plus",
-    "showLess": "Afficher moins",
-    "noResults": "Aucun résultat trouvé",
-    "searchPlaceholder": "Rechercher...",
-    "filterBy": "Filtrer par",
-    "filter": "Filtres",
-    "sortBy": "Trier par",
-    "ascending": "Croissant",
-    "descending": "Décroissant",
-    "from": "De",
-    "to": "À",
-    "date": "Date",
-    "time": "Heure",
-    "duration": "Durée",
-    "statusLabel": "Statut",
-    "progress": "Progression",
-    "completed": "Terminé",
-    "pending": "En attente",
-    "failed": "Échoué",
-    "retry": "Réessayer",
-    "skip": "Passer",
-    "optional": "Optionnel",
-    "required": "Requis",
-    "readMore": "Lire plus",
-    "viewDetails": "Voir les détails",
-    "close": "Fermer",
-    "open": "Ouvrir",
-    "new": "Nouveau",
-    "edit": "Modifier",
-    "delete": "Supprimer",
-    "copy": "Copier",
-    "paste": "Coller",
-    "cut": "Couper",
-    "undo": "Annuler",
-    "redo": "Refaire"
+    "loading": "Chargement..."
   },
   "inbox": {
     "folders": "Dossiers",
@@ -141,7 +92,7 @@
     "warmupStatus": "Statut de réchauffement",
     "senderHealth": "Santé de l'expéditeur",
     "overallProgress": "Progrès global",
-    "phaseProgress": "Progrès de phase",
+    "phaseProgress": "Progrès de la phase",
     "businessHours": "Heures d'ouverture",
     "timezone": "Fuseau horaire",
     "lastActivity": "Dernière activité",
@@ -173,7 +124,7 @@
     "customRange": "Plage personnalisée",
     "allStatus": "Tous les statuts",
     "loadMore": "Charger plus",
-    "remaining": "Restant",
+    "remaining": "restant",
     "minimize": "Réduire",
     "viewDetails": "Voir les détails",
     "complete": "Terminé",
@@ -202,9 +153,15 @@
     "cancel": "Annuler",
     "close": "Fermer",
     "test": "Test",
+    "warming": "Réchauffement",
+    "contacts": "Contacts",
+    "complete": "Terminé",
+    "refresh": "Actualiser",
+    "resume": "Reprendre",
     "notStarted": "Non commencé",
     "emailEngagement": "Engagement email",
     "linkEngagement": "Engagement des liens",
+    "deliveryRate": "Taux de livraison",
     "successfullyDelivered": "Livré avec succès",
     "dailyLimit": "Limite quotidienne",
     "manage": "Gérer",
@@ -213,10 +170,15 @@
     "searchContacts": "Rechercher des contacts...",
     "contact": "Contact",
     "location": "Localisation",
+    "timezone": "Fuseau horaire",
     "nextEmail": "Prochain email",
     "actions": "Actions",
+    "noContactsFound": "Aucun contact trouvé",
     "tryAdjusting": "Essayez d'ajuster votre recherche ou vos filtres",
     "emailDeliveryStatus": "Statut de livraison des emails",
+    "sent": "Envoyé",
+    "remaining": "Restant",
+    "statusDistribution": "Répartition des statuts",
     "contactSequenceStatus": "Statut de séquence de contact",
     "totalWarmingDays": "Total jours de réchauffement",
     "healthScore": "Score de santé",
@@ -225,35 +187,26 @@
     "fullWarmingCapacity": "Capacité de réchauffement complète",
     "initializingWarmingSystem": "Initialisation du système de réchauffement...",
     "noDataYet": "Aucune donnée pour le moment",
+    "emailsToday": "emails aujourd'hui",
+    "emailsSent": "Emails envoyés",
     "target": "objectif",
     "opensToday": "Ouvertures aujourd'hui",
     "rate": "taux",
     "repliesToday": "Réponses aujourd'hui",
     "dayTarget": "objectif en jours",
+    "phaseProgress": "Progrès de phase",
     "noSenderAccounts": "Aucun compte expéditeur sélectionné",
     "addSenderAccounts": "Ajouter des comptes expéditeurs",
     "weRecommend50Emails": "Nous recommandons 50 emails par compte par jour pour une délivrabilité optimale. Pour envoyer plus d'emails, ajoutez de nouveaux domaines ou comptes expéditeurs dans les paramètres de campagne.",
     "totalContactsInCampaign": "total de contacts dans la campagne",
+    "contactDetails": "Détails du contact",
+    "sequenceComplete": "Séquence terminée",
     "sendersWarming": "expéditeurs en réchauffement",
     "starting": "Démarrage",
     "phase": "Phase",
     "day": "Jour",
     "health": "santé",
-    "warmupWarningDialog": {
-      "title": "Alerte Score de Santé",
-      "description": "Certains expéditeurs ont encore besoin d'échauffement",
-      "accountsBelowThreshold": "Comptes en dessous de 90% de santé",
-      "continueWarmupLabel": "Continuer l'échauffement :",
-      "continueWarmupDescription": "Continuer à réchauffer pour améliorer les scores de santé avant de devenir actif.",
-      "resumeAnywayLabel": "Reprendre quand même :",
-      "resumeAnywayDescription": "Devenir actif maintenant malgré les scores de santé faibles.",
-      "stopAnywayLabel": "Arrêter quand même :",
-      "stopAnywayDescription": "Arrêter la campagne maintenant malgré les scores de santé.",
-      "resumeAnywayButton": "Reprendre quand même",
-      "stopAnywayButton": "Arrêter quand même",
-      "continueWarmupButton": "Continuer l'échauffement",
-      "processingText": "Traitement..."
-    }
+    "warmingProgress": "Progrès de réchauffement"
   },
   "domains": {
     "title": "Domaines",
@@ -283,7 +236,7 @@
     },
     "stats": {
       "sent": "Envoyés",
-      "delivered": "Livrés",
+      "delivered": "Livrés", 
       "rejected": "Rejetés",
       "received": "Reçus"
     },
@@ -357,20 +310,13 @@
     "contactUs": "Contactez-nous"
   },
   "navigation": {
-    "createCampaign": "Créer une campagne",
-    "campaigns": "Campagnes",
-    "email": "Email",
-    "dashboard": "Tableau de bord",
     "dashboardNav": "Tableau de bord",
+    "campaigns": "Campagnes",
     "leads": "Prospects",
-    "templates": "Modèles",
     "inbox": "Boîte de réception",
-    "tools": "Outils",
-    "domain": "Domaine",
-    "domains": "Domaines",
-    "tryProForFree": "Essayer Pro gratuitement",
-    "leadGenerationPlatform": "Plateforme de génération de leads",
     "integrations": "Intégrations",
+    "domains": "Domaines",
+    "templates": "Modèles",
     "analytics": "Analytique",
     "settings": "Paramètres",
     "billing": "Facturation",
@@ -485,6 +431,12 @@
     "manageMonitorCampaigns": "Gérez et surveillez vos campagnes de prospection",
     "searchCampaigns": "Rechercher des campagnes...",
     "allStatus": "Tous les statuts",
+    "draft": "Brouillon",
+    "active": "Active",
+    "paused": "En pause",
+    "completed": "Terminée",
+    "loading": "Chargement des campagnes...",
+    "noCampaigns": "Aucune campagne trouvée",
     "createFirstCampaign": "Créez votre première campagne pour commencer à prospecter",
     "campaign": "Campagne",
     "openRate": "Taux d'ouverture",
@@ -518,9 +470,11 @@
     "failedToUpdateStatus": "Échec de la mise à jour du statut de la campagne",
     "letsCreateNewCampaign": "Créons une nouvelle campagne",
     "whatToNameIt": "Comment voulez-vous la nommer ?",
+    "campaignName": "Nom de la campagne",
     "enterCampaignName": "Entrez le nom de la campagne",
     "configureYourCampaign": "Configurez votre campagne",
     "chooseTypeAndTrigger": "Choisissez le type et le déclencheur pour \"{{name}}\"",
+    "campaignType": "Type de campagne",
     "emailCampaign": "Campagne email",
     "sendEmailSequences": "Envoyer des séquences d'emails",
     "campaignTrigger": "Déclencheur de campagne",
@@ -573,10 +527,10 @@
     },
     "targetTab": {
       "title": "Public cible",
-      "subtitle": "Importez des contacts ou configurez l'extraction automatique pour créer votre liste cible",
+      "subtitle": "Importez des contacts ou configurez le scraping automatisé pour créer votre liste cible",
       "tabs": {
         "importContacts": "Importer des contacts",
-        "autoScraping": "Extraction automatique"
+        "autoScraping": "Scraping automatique"
       },
       "import": {
         "title": "Importer des contacts",
@@ -590,28 +544,28 @@
         "uploadCSV": "Télécharger CSV"
       },
       "scraping": {
-        "title": "Extraction de contacts LinkedIn",
-        "subtitle": "Trouvez et extrayez automatiquement des profils LinkedIn avec enrichissement d'email",
-        "targetIndustries": "Secteurs cibles (depuis les ICPs)",
-        "industryPlaceholder": "Tapez pour rechercher des secteurs...",
+        "title": "Scraping de contacts LinkedIn",
+        "subtitle": "Trouvez et scrapez automatiquement les profils LinkedIn avec enrichissement d'email",
+        "targetIndustries": "Industries cibles (des ICPs)",
+        "industryPlaceholder": "Tapez pour rechercher des industries...",
         "keywords": "Mots-clés",
-        "keywordsExample": "ex., PDG, Fondateur, Manager",
-        "targetLocations": "Localisations cibles (depuis les ICPs)",
-        "locationPlaceholder": "Tapez pour rechercher des localisations...",
+        "keywordsExample": "ex: CEO, Fondateur, Manager",
+        "targetLocations": "Localisations cibles (des ICPs)",
+        "locationPlaceholder": "Tapez pour rechercher des emplacements...",
         "dailyLimit": "Limite quotidienne",
         "freePlanLimit": "(Plan gratuit : jusqu'à 100/jour)",
-        "startScraping": "Commencer l'extraction",
-        "pauseScraping": "Mettre en pause l'extraction",
-        "fillRequiredFields": "Remplissez le secteur, ajoutez des mots-clés et spécifiez la localisation pour commencer l'extraction",
-        "scrapingActive": "L'extraction est actuellement active",
-        "scrapingPaused": "L'extraction est en pause",
-        "startingScraping": "Démarrage de l'extraction...",
-        "scrapingStarted": "Extraction démarrée",
-        "resumeScraping": "Reprendre l'extraction",
+        "startScraping": "Démarrer le scraping",
+        "pauseScraping": "Mettre en pause le scraping",
+        "fillRequiredFields": "Remplissez l'industrie, ajoutez des mots-clés et spécifiez l'emplacement pour démarrer le scraping",
+        "scrapingActive": "Le scraping est actuellement actif",
+        "scrapingPaused": "Le scraping est en pause",
+        "startingScraping": "Démarrage du scraping...",
+        "scrapingStarted": "Scraping démarré",
+        "resumeScraping": "Reprendre le scraping",
         "pause": "Pause",
-        "startingProcess": "Démarrage du processus d'extraction...",
-        "processRunning": "Le processus d'extraction s'exécute en arrière-plan...",
-        "confirmationTitle": "Commencer l'extraction",
+        "startingProcess": "Démarrage du processus de scraping...",
+        "processRunning": "Le processus de scraping fonctionne en arrière-plan...",
+        "confirmationTitle": "Démarrer le scraping",
         "confirmStart": "Démarrer",
         "readyToUpload": "Prêt à télécharger"
       },
@@ -724,54 +678,10 @@
         "variables": "Variables",
         "insertSignature": "Insérer la signature"
       }
-    },
-    "settings": {
-      "title": "Paramètres",
-      "subtitle": "Configurez le timing, le planning et les informations d'expéditeur",
-      "saveSettings": "Enregistrer les paramètres",
-      "sendingSchedule": {
-        "title": "Planning d'envoi",
-        "subtitle": "Quand et à quelle fréquence envoyer les emails",
-        "activeDays": "Jours actifs",
-        "sendingHours": "Heures d'envoi",
-        "to": "à"
-      },
-      "senderInformation": {
-        "title": "Informations expéditeur",
-        "subtitle": "Vos détails et signature email",
-        "firstName": "Prénom",
-        "lastName": "Nom",
-        "company": "Entreprise",
-        "website": "Site web",
-        "emailSignature": "Signature email"
-      },
-      "placeholders": {
-        "firstName": "Entrer le prénom",
-        "lastName": "Entrer le nom",
-        "company": "Entrer le nom de l'entreprise",
-        "website": "Entrer l'URL du site web",
-        "emailSignature": "Entrer votre signature email"
-      },
-      "defaultValues": {
-        "firstName": "Loop",
-        "lastName": "Review",
-        "company": "LeadsUp",
-        "website": "https://www.leadsup.com",
-        "signatureTemplate": "<br/><br/>Cordialement,<br/><strong>{{firstName}} {{lastName}}</strong><br/>{{company}}<br/><a href=\"{{website}}\" target=\"_blank\">{{website}}</a>"
-      },
-      "days": {
-        "mon": "Lun",
-        "tue": "Mar",
-        "wed": "Mer",
-        "thu": "Jeu",
-        "fri": "Ven",
-        "sat": "Sam",
-        "sun": "Dim"
-      }
     }
   },
   "leads": {
-    "title": "Titre",
+    "title": "Prospects",
     "addLead": "Ajouter un prospect",
     "importLeads": "Importer des prospects",
     "exportLeads": "Exporter des prospects",
@@ -844,6 +754,7 @@
     "lastNamePlaceholder": "Nom de famille",
     "emailPlaceholder": "email@exemple.com",
     "noCampaign": "Aucune campagne",
+    "title": "Titre",
     "jobTitle": "Titre du poste",
     "companyName": "Nom de l'entreprise",
     "industryPlaceholder": "Secteur",
@@ -895,6 +806,364 @@
     "contactAddedSuccessfully": "Le contact a été ajouté avec succès",
     "failedToSaveContact": "Échec de l'enregistrement du contact"
   },
+  "campaignCreation": {
+    "steps": {
+      "companyName": "Nom de l'entreprise",
+      "targetAudience": "Public cible",
+      "personaValueProps": "Persona et propositions de valeur",
+      "sequenceReview": "Révision de séquence"
+    },
+    "form": {
+      "campaignName": "Nom de la campagne",
+      "campaignObjective": "Objectif de la campagne",
+      "companyName": "Nom de l'entreprise",
+      "website": "Site web",
+      "noWebsite": "Aucun site web",
+      "location": "Emplacement",
+      "selectLocation": "Sélectionner l'emplacement",
+      "industry": "Secteur",
+      "prospectingLanguage": "Langue de prospection",
+      "enterCampaignName": "Entrez le nom de votre campagne",
+      "enterCompanyName": "Entrez le nom de votre entreprise",
+      "websiteNotProvided": "Site web non fourni",
+      "companyBusinessDescription": "Description de votre entreprise et de votre activité",
+      "letUsKnowAboutBusiness": "Parlez-nous un peu de votre entreprise afin que nous puissions vous aider à créer des campagnes ciblées",
+      "yourCompanyWebsite": "Le nom de votre entreprise et son site web",
+      "letsStartGettingToKnow": "Commençons par faire connaissance avec votre entreprise"
+    },
+    "instructions": {
+      "getStarted": "COMMENCER",
+      "campaignCreation": "Création de campagne",
+      "createMostRelevantCampaign": "Pour créer la campagne la plus pertinente, veuillez compléter chaque étape et fournir autant de contexte que possible à notre IA. Votre contribution est cruciale pour des résultats optimaux !",
+      "defineTargetAudience": "Définissez vos secteurs cibles, emplacements et rôles de prospects pour nous aider à trouver les bonnes personnes pour votre campagne.",
+      "reviewIdealCustomers": "Examinez vos clients idéaux, personas et propositions de valeur pour créer des messages qui résonnent.",
+      "createSequences": "Créez des séquences qui délivrent progressivement de la valeur, variez les points de contact et optimisez régulièrement selon les métriques d'engagement des prospects."
+    },
+    "validation": {
+      "campaignNameRequired": "Le nom de la campagne est requis",
+      "campaignObjectiveRequired": "L'objectif de la campagne est requis",
+      "companyNameRequired": "Le nom de l'entreprise est requis"
+    },
+    "processing": {
+      "generatingAICampaignAssets": "Génération des ressources de campagne IA...",
+      "processing": "Traitement en cours...",
+      "thisMayTakeFewSeconds": "Cela peut prendre quelques secondes"
+    },
+    "buttons": {
+      "createCampaign": "Créer une campagne",
+      "continue": "Continuer",
+      "loading": "Chargement..."
+    },
+    "objectives": {
+      "selectYourObjective": "Sélectionnez votre objectif",
+      "sellService": "💼 Vendre votre service",
+      "raiseMoney": "💰 Lever des fonds",
+      "bookMeetings": "📅 Programmer plus de réunions",
+      "growBrand": "📢 Développer la notoriété de votre marque",
+      "collectReviews": "⭐ Collecter des avis/témoignages",
+      "recruit": "👥 Recruter des candidats"
+    },
+    "countries": {
+      "australia": "🇦🇺 Australie",
+      "unitedStates": "🇺🇸 États-Unis",
+      "unitedKingdom": "🇬🇧 Royaume-Uni",
+      "canada": "🇨🇦 Canada",
+      "germany": "🇩🇪 Allemagne",
+      "france": "🇫🇷 France",
+      "spain": "🇪🇸 Espagne",
+      "italy": "🇮🇹 Italie",
+      "netherlands": "🇳🇱 Pays-Bas",
+      "singapore": "🇸🇬 Singapour",
+      "india": "🇮🇳 Inde",
+      "japan": "🇯🇵 Japon",
+      "brazil": "🇧🇷 Brésil",
+      "mexico": "🇲🇽 Mexique",
+      "southAfrica": "🇿🇦 Afrique du Sud"
+    },
+    "languages": {
+      "english": "🇺🇸 Anglais",
+      "french": "🇫🇷 Français",
+      "spanish": "🇪🇸 Espagnol",
+      "german": "🇩🇪 Allemand",
+      "italian": "🇮🇹 Italien",
+      "portuguese": "🇵🇹 Portugais"
+    },
+    "targetAudience": {
+      "title": "Public cible",
+      "subtitle": "Public cible généré par IA basé sur votre entreprise et objectif de campagne",
+      "aiGeneratedTargetAudience": "Public cible généré par IA",
+      "aiAnalyzedMessage": "Notre IA a analysé les informations de votre entreprise et l'objectif de votre campagne pour suggérer le public cible le plus pertinent. Vous pouvez modifier ces sélections selon vos besoins.",
+      "targetIndustries": "Secteurs cibles",
+      "targetLocations": "Localisations cibles",
+      "targetRoles": "Rôles cibles",
+      "aiGenerated": "Généré par IA",
+      "addAnotherIndustry": "Ajouter un autre secteur...",
+      "addAnotherLocation": "Ajouter une autre localisation...",
+      "addAnotherRole": "Ajouter un autre rôle..."
+    },
+    "personaValueProps": {
+      "title": "Persona et propositions de valeur",
+      "subtitle": "Examinez votre public cible et votre stratégie de messagerie",
+      "reviewMessage": "Examinez vos clients idéaux, personas et comment vous résolvez leurs défis.",
+      "idealCustomerProfile": "Profil client idéal",
+      "targetPersona": "Persona cible",
+      "customerPainPoint": "Point de douleur client",
+      "yourValueProposition": "Votre proposition de valeur",
+      "more": "+{count} de plus"
+    },
+    "sequenceReview": {
+      "aiGeneratedTitle": "Aperçu de séquence générée par IA",
+      "standardTitle": "Aperçu de séquence - {strategy}",
+      "aiGeneratedSubtitle": "Examinez votre séquence de prospection automatisée générée par IA",
+      "standardSubtitle": "Examinez votre séquence de prospection automatisée",
+      "aiSequenceMessage": "Cette séquence générée par IA s'exécutera automatiquement pour chaque prospect",
+      "standardSequenceMessage": "Cette séquence s'exécutera automatiquement pour chaque prospect",
+      "editNote": "Vous pouvez modifier les étapes individuelles ou le timing après la création",
+      "sequenceStart": "Début de séquence",
+      "immediately": "Immédiatement",
+      "sendImmediately": "Envoyer immédiatement",
+      "waitForDay": "Attendre {count} jour",
+      "waitForDays": "Attendre {count} jours",
+      "email": "Email",
+      "followUpEmail": "Email de suivi",
+      "finalEmail": "Email final",
+      "linkedinConnection": "Connexion LinkedIn",
+      "linkedinMessage": "Message LinkedIn",
+      "connectionRequest": "Demande de connexion",
+      "followUpMessage": "Message de suivi",
+      "finalMessage": "Message final"
+    },
+      "loading": {
+        "title": "Chargement de la campagne",
+        "subtitle": "Configuration de votre tableau de bord de campagne"
+      },
+      "header": {
+        "campaignType": "Campagne {type}"
+      },
+      "tabs": {
+        "target": "Cible",
+        "sequence": "Séquence",
+        "sender": "Expéditeur",
+        "settings": "Paramètres"
+      },
+      "guidedFlow": {
+        "steps": {
+          "addTargetAudience": "Ajouter un public cible",
+          "createEmailSequences": "Créer des séquences d'emails",
+          "selectSenderAccounts": "Sélectionner les comptes expéditeur",
+          "configureSettings": "Configurer les paramètres"
+        },
+        "descriptions": {
+          "importContacts": "Importez des contacts ou configurez l'extraction automatique",
+          "designMessages": "Concevez vos messages de prospection et leur timing",
+          "chooseEmailAccounts": "Choisissez les comptes email à utiliser pour l'envoi",
+          "setSendingSchedule": "Définissez le planning d'envoi et les préférences de campagne"
+        },
+        "progress": {
+          "stepOf": "Étape {current} sur {total}"
+        },
+        "buttons": {
+          "previous": "Précédent",
+          "saveNext": "Enregistrer et Suivant",
+          "checking": "Vérification...",
+          "launchCampaign": "Lancer la campagne"
+        }
+      },
+      "settings": {
+        "title": "Paramètres",
+        "subtitle": "Configurez le timing, le planning et les informations d'expéditeur",
+        "saveSettings": "Enregistrer les paramètres",
+        "sendingSchedule": {
+          "title": "Planning d'envoi",
+          "subtitle": "Quand et à quelle fréquence envoyer les emails",
+          "activeDays": "Jours actifs",
+          "sendingHours": "Heures d'envoi",
+          "to": "à"
+        },
+        "senderInformation": {
+          "title": "Informations expéditeur",
+          "subtitle": "Vos détails et signature email",
+          "firstName": "Prénom",
+          "lastName": "Nom",
+          "company": "Entreprise",
+          "website": "Site web",
+          "emailSignature": "Signature email"
+        },
+        "days": {
+          "mon": "Lun",
+          "tue": "Mar", 
+          "wed": "Mer",
+          "thu": "Jeu",
+          "fri": "Ven",
+          "sat": "Sam",
+          "sun": "Dim"
+        },
+        "defaultValues": {
+          "firstName": "Jean",
+          "lastName": "Dupont",
+          "company": "Mon Entreprise",
+          "website": "https://monentreprise.fr",
+          "signatureTemplate": "<br/><br/>Cordialement,<br/><strong>{{firstName}} {{lastName}}</strong><br/>{{company}}<br/><a href=\"{{website}}\" target=\"_blank\">{{website}}</a>"
+        },
+        "placeholders": {
+          "firstName": "Jean",
+          "lastName": "Dupont",
+          "company": "Entreprise SA",
+          "website": "https://entreprise.com",
+          "enterUrl": "Entrez l'URL :"
+        }
+      },
+      "sequence": {
+        "title": "Séquence d'emails",
+        "subtitle": "Configurez les étapes et le timing de votre séquence d'emails",
+        "saveSequence": "Enregistrer la séquence",
+        "saving": "Enregistrement...",
+        "campaignTimeline": {
+          "title": "Chronologie de campagne",
+          "subtitle": "Aperçu de la séquence d'emails"
+        },
+        "sequences": {
+          "initialOutreach": "Prospection initiale",
+          "followUpOutreach": "Prospection de suivi",
+          "subject": "Objet : \"{subject}\"",
+          "noSubject": "Aucun objet",
+          "editSubject": "Modifier l'objet de la séquence",
+          "deleteSequence": "Supprimer toute la séquence",
+          "removeEmail": "Supprimer cet email"
+        },
+        "steps": {
+          "immediately": "Immédiatement",
+          "day": "Jour {timing}"
+        },
+        "buttons": {
+          "addEmail": "Ajouter un email",
+          "addFollowUpSequence": "Ajouter une séquence de suivi"
+        },
+        "gap": {
+          "waitingPeriod": "Période d'attente de {gap} jour(s)",
+          "clickToEdit": "Cliquer pour modifier",
+          "enterWaitingPeriod": "Entrez la période d'attente (jours) :"
+        },
+        "editor": {
+          "subject": "Objet",
+          "message": "Message",
+          "subjectPlaceholder": "Entrez la ligne d'objet",
+          "timing": "Timing (Jours)",
+          "addStep": "Ajouter une étape",
+          "deleteStep": "Supprimer l'étape",
+          "preview": "Aperçu",
+          "editSubjectPrompt": "Entrez la ligne d'objet pour la séquence {sequence} :"
+        }
+      },
+      "dialogs": {
+        "delete": {
+          "deleteSequence": "Supprimer la séquence",
+          "deleteStep": "Supprimer l'étape",
+          "sequenceConfirmation": "Êtes-vous sûr de vouloir supprimer la séquence \"{name}\" ? Cette action ne peut pas être annulée.",
+          "stepConfirmation": "Êtes-vous sûr de vouloir supprimer cette étape ? Cette action ne peut pas être annulée.",
+          "cancel": "Annuler",
+          "delete": "Supprimer"
+        },
+        "preview": {
+          "title": "Aperçu de séquence",
+          "subject": "Objet : {subject}",
+          "immediately": "Immédiatement",
+          "waitDays": "Attendre {timing} jours"
+        },
+        "deleteCampaign": {
+          "title": "Supprimer la campagne",
+          "confirmation": "Êtes-vous sûr de vouloir supprimer la campagne \"{name}\" ?",
+          "warning": "Cette action ne peut pas être annulée.",
+          "deleteCampaign": "Supprimer la campagne"
+        },
+        "warmupWarning": {
+          "title": "Faible délivrabilité détectée",
+          "subtitle": "Certains comptes expéditeur ont des scores de santé faibles",
+          "description": "Nous recommandons d'améliorer le processus d'échauffement pour améliorer la délivrabilité des emails avant de lancer votre campagne.",
+          "enhance": "Améliorer",
+          "proceedAnyway": "Continuer quand même"
+        },
+        "noAccountSelected": {
+          "title": "Sélectionner un compte expéditeur",
+          "description": "Choisissez au moins un compte pour continuer."
+        }
+      }
+    },
+    "targetTab": {
+      "title": "Public cible",
+      "subtitle": "Importez des contacts ou configurez l'extraction automatique pour créer votre liste cible",
+      "tabs": {
+        "importContacts": "Importer des contacts",
+        "autoScraping": "Extraction automatique"
+      },
+      "import": {
+        "title": "Importer des contacts",
+        "subtitle": "Téléchargez votre liste de contacts depuis un fichier CSV",
+        "uploadSuccessful": "Téléchargement réussi !",
+        "uploadCSVFile": "Télécharger un fichier CSV",
+        "contactsImportedSuccessfully": "Vos contacts ont été importés avec succès.",
+        "importFromCSV": "Importez vos contacts depuis un fichier CSV. Maximum 10 000 contacts.",
+        "chooseFile": "Choisir un fichier",
+        "uploading": "Téléchargement...",
+        "uploadCSV": "Télécharger CSV"
+      },
+      "scraping": {
+        "title": "Extraction de contacts LinkedIn",
+        "subtitle": "Trouvez et extrayez automatiquement des profils LinkedIn avec enrichissement d'email",
+        "targetIndustries": "Secteurs cibles (depuis les ICPs)",
+        "industryPlaceholder": "Tapez pour rechercher des secteurs...",
+        "keywords": "Mots-clés",
+        "keywordsExample": "ex., PDG, Fondateur, Manager",
+        "targetLocations": "Localisations cibles (depuis les ICPs)",
+        "locationPlaceholder": "Tapez pour rechercher des localisations...",
+        "dailyLimit": "Limite quotidienne",
+        "freePlanLimit": "(Plan gratuit : jusqu'à 100/jour)",
+        "startScraping": "Commencer l'extraction",
+        "pauseScraping": "Mettre en pause l'extraction",
+        "fillRequiredFields": "Remplissez le secteur, ajoutez des mots-clés et spécifiez la localisation pour commencer l'extraction",
+        "scrapingActive": "L'extraction est actuellement active",
+        "scrapingPaused": "L'extraction est en pause",
+        "startingScraping": "Démarrage de l'extraction...",
+        "scrapingStarted": "Extraction démarrée",
+        "resumeScraping": "Reprendre l'extraction",
+        "pause": "Pause",
+        "startingProcess": "Démarrage du processus d'extraction...",
+        "processRunning": "Le processus d'extraction s'exécute en arrière-plan...",
+        "confirmationTitle": "Commencer l'extraction",
+        "confirmStart": "Démarrer",
+        "readyToUpload": "Prêt à télécharger"
+      },
+      "stats": {
+        "imported": "Importés",
+        "duplicates": "Doublons",
+        "totalProcessed": "Total traité"
+      },
+      "csvFormat": {
+        "title": "Exigences de format CSV :",
+        "headerRow": "La première ligne doit contenir les en-têtes de colonnes",
+        "requiredFields": "Champs requis : Email, Prénom, Nom",
+        "optionalFields": "Champs optionnels : Entreprise, Titre, Téléphone, URL LinkedIn",
+        "encoding": "Encodage UTF-8 recommandé"
+      },
+      "validation": {
+        "selectFromDropdown": "Veuillez sélectionner dans les options du menu déroulant"
+      },
+      "upgrade": {
+        "title": "Passer à Pro",
+        "description": "Débloquez des limites de scraping quotidiennes plus élevées et des fonctionnalités premium pour booster vos campagnes de prospection.",
+        "freePlan": "Plan Gratuit",
+        "freePlanLimit": "Jusqu'à 100 contacts/jour",
+        "proPlan": "Plan Pro",
+        "proPlanLimit": "Jusqu'à 1 000+ contacts/jour",
+        "features": {
+          "higherLimits": "Limites de scraping quotidiennes plus élevées",
+          "advancedTargeting": "Options de ciblage avancées",
+          "prioritySupport": "Support client prioritaire"
+        },
+        "maybeLater": "Peut-être plus tard",
+        "upgradeNow": "Passer à Pro"
+      }
+  },
   "dashboardAnalytics": {
     "noEmailPerformanceData": "Aucune donnée de performance email",
     "campaignAnalyticsWillAppear": "Les analyses de campagne apparaîtront ici une fois que vous lancerez votre première campagne.",
@@ -922,7 +1191,7 @@
   },
   "dashboardStats": {
     "totalLeads": "Total des leads",
-    "contactedLeads": "Leads contactés",
+    "contactedLeads": "Leads contactés", 
     "activeCampaigns": "Campagnes actives",
     "responseRate": "Taux de réponse",
     "last30Days": "30 derniers jours",
@@ -978,6 +1247,58 @@
     "amount": "Montant",
     "statusLabel": "Statut",
     "downloadInvoice": "Télécharger la facture"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "warning": "Avertissement",
+    "info": "Information",
+    "confirm": "Êtes-vous sûr ?",
+    "yes": "Oui",
+    "no": "Non",
+    "all": "Tout",
+    "none": "Aucun",
+    "select": "Sélectionner",
+    "selected": "Sélectionné",
+    "actions": "Actions",
+    "more": "Plus",
+    "less": "Moins",
+    "showMore": "Afficher plus",
+    "showLess": "Afficher moins",
+    "noResults": "Aucun résultat trouvé",
+    "searchPlaceholder": "Rechercher...",
+    "filterBy": "Filtrer par",
+    "filter": "Filtres",
+    "sortBy": "Trier par",
+    "ascending": "Croissant",
+    "descending": "Décroissant",
+    "from": "De",
+    "to": "À",
+    "date": "Date",
+    "time": "Heure",
+    "duration": "Durée",
+    "statusLabel": "Statut",
+    "progress": "Progression",
+    "completed": "Terminé",
+    "pending": "En attente",
+    "failed": "Échoué",
+    "retry": "Réessayer",
+    "skip": "Passer",
+    "optional": "Optionnel",
+    "required": "Requis",
+    "readMore": "Lire plus",
+    "viewDetails": "Voir les détails",
+    "close": "Fermer",
+    "open": "Ouvrir",
+    "new": "Nouveau",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "copy": "Copier",
+    "paste": "Coller",
+    "cut": "Couper",
+    "undo": "Annuler",
+    "redo": "Refaire"
   },
   "errors": {
     "generic": "Une erreur s'est produite",
@@ -1068,30 +1389,12 @@
     },
     "senderAccount": "compte expéditeur",
     "senderAccounts": "comptes expéditeurs",
-    "selected": "sélectionné",
+    "selected": "sélectionné", 
     "verified": "Vérifié",
     "success": {
       "testEmailSent": "Email de test envoyé de {{senderEmail}} vers {{testEmail}}. Répondez pour tester le flux complet !",
       "createdPresetAccounts": "{{count}} comptes email prédéfinis créés",
       "savedSenders": "{{count}} expéditeur(s) enregistré(s) dans la campagne"
-    },
-    "healthScoreDialog": {
-      "title": "Amélioration requise",
-      "description": "Certains comptes ont besoin d'optimisation pour de meilleures performances.",
-      "accountCount": "{{count}} compte",
-      "accountCountPlural": "{{count}} comptes", 
-      "needEnhancement": "nécessitent une amélioration",
-      "enhanceButton": "Améliorer"
-    },
-    "warmupWarningDialog": {
-      "title": "Alerte Score de Santé",
-      "description": "Certains expéditeurs ont besoin d'échauffement",
-      "accountsBelowThreshold": "Comptes en dessous de 90% de santé",
-      "chooseApproach": "Choisissez votre approche d'envoi :",
-      "autoWarmupOption": "Échauffement automatique : Commencer l'envoi progressivement avec un échauffement automatique (recommandé)",
-      "warmupOnlyOption": "Échauffement seulement : Réchauffer les comptes sans envoyer d'emails de campagne",
-      "warmupOnlyButton": "Échauffement seulement",
-      "autoWarmupButton": "Échauffement automatique (Recommandé)"
     }
   },
   "domainSetup": {
@@ -1181,344 +1484,7 @@
       "addedSettings": "J'ai ajouté tous les paramètres ci-dessus à mon fournisseur de domaine",
       "checking": "Vérification de la connexion...",
       "checkDomain": "Vérifier mon domaine",
-      "timeNote": "Les changements peuvent prendre jusqu'à 24 heures pour prendre effet",
-      "connectionStatus": "Statut de connexion",
-      "setupNotComplete": "Configuration incomplète",
-      "someDNSRecordsNeeded": "Certains enregistrements DNS doivent encore être ajoutés à votre fournisseur de domaine.",
-      "pleaseCheckSettings": "Veuillez vérifier ces paramètres :",
-      "checkSettingInDNS": "Vérifiez le paramètre {{type}} dans votre DNS",
-      "cryptographicEmailSigning": "Signature cryptographique des emails",
-      "reviewDNSSettings": "Vérifiez vos paramètres DNS et réessayez.",
-      "checkAgain": "Vérifier à nouveau"
-    }
-  },
-  "campaignCreation": {
-    "instructions": {
-      "getStarted": "COMMENCER",
-      "campaignCreation": "Création de campagne",
-      "createMostRelevantCampaign": "Créons la campagne la plus pertinente pour votre entreprise",
-      "defineTargetAudience": "Définissez votre public cible",
-      "reviewIdealCustomers": "Révisez vos clients idéaux et points de douleur",
-      "createSequences": "Révisez et personnalisez vos séquences d'emails"
-    },
-    "steps": {
-      "companyName": "Nom de l'entreprise",
-      "targetAudience": "Public cible",
-      "personaValueProps": "Persona et propositions de valeur",
-      "sequenceReview": "Révision de séquence"
-    },
-    "form": {
-      "yourCompanyWebsite": "Votre entreprise et site web",
-      "letsStartGettingToKnow": "Commençons par apprendre à connaître votre entreprise",
-      "campaignName": "Nom de la campagne",
-      "enterCampaignName": "Entrez le nom de la campagne",
-      "campaignObjective": "Objectif de la campagne",
-      "companyName": "Nom de l'entreprise",
-      "enterCompanyName": "Entrez le nom de l'entreprise",
-      "website": "Site web",
-      "websiteNotProvided": "Site web non fourni",
-      "noWebsite": "Je n'ai pas de site web",
-      "location": "Localisation",
-      "selectLocation": "Sélectionnez la localisation",
-      "industry": "Secteur",
-      "prospectingLanguage": "Langue de prospection"
-    },
-    "objectives": {
-      "selectYourObjective": "Sélectionnez votre objectif",
-      "sellService": "🎯 Vendre un produit/service",
-      "raiseMoney": "💰 Lever des fonds",
-      "bookMeetings": "📅 Réserver plus de réunions",
-      "growBrand": "📢 Développer la notoriété de votre marque",
-      "collectReviews": "⭐ Collecter des avis/témoignages",
-      "recruit": "👥 Recruter des candidats"
-    },
-    "countries": {
-      "australia": "🇦🇺 Australie",
-      "unitedStates": "🇺🇸 États-Unis",
-      "unitedKingdom": "🇬🇧 Royaume-Uni",
-      "canada": "🇨🇦 Canada",
-      "germany": "🇩🇪 Allemagne",
-      "france": "🇫🇷 France",
-      "spain": "🇪🇸 Espagne",
-      "italy": "🇮🇹 Italie",
-      "netherlands": "🇳🇱 Pays-Bas",
-      "singapore": "🇸🇬 Singapour",
-      "india": "🇮🇳 Inde",
-      "japan": "🇯🇵 Japon",
-      "brazil": "🇧🇷 Brésil",
-      "mexico": "🇲🇽 Mexique",
-      "southAfrica": "🇿🇦 Afrique du Sud"
-    },
-    "languages": {
-      "english": "Anglais",
-      "french": "Français",
-      "spanish": "Espagnol",
-      "german": "Allemand",
-      "italian": "Italien",
-      "portuguese": "Portugais"
-    },
-    "buttons": {
-      "continue": "Continuer",
-      "loading": "Chargement...",
-      "createCampaign": "Créer une campagne"
-    },
-    "validation": {
-      "campaignNameRequired": "Le nom de la campagne est requis",
-      "campaignObjectiveRequired": "L'objectif de la campagne est requis",
-      "companyNameRequired": "Le nom de l'entreprise est requis"
-    },
-    "processing": {
-      "generatingAICampaignAssets": "🤖 Génération d'actifs de campagne IA...",
-      "processing": "Traitement...",
-      "thisMayTakeFewSeconds": "Cela peut prendre quelques secondes"
-    },
-    "targetAudience": {
-      "title": "Public cible",
-      "subtitle": "Définissez qui vous voulez atteindre",
-      "aiGeneratedTargetAudience": "Public cible généré par IA",
-      "aiAnalyzedMessage": "Nous avons analysé votre entreprise et identifié le meilleur public à cibler",
-      "targetIndustries": "Secteurs cibles",
-      "targetLocations": "Localisations cibles",
-      "targetRoles": "Rôles cibles",
-      "aiGenerated": "Généré par IA",
-      "addAnotherIndustry": "Ajouter un autre secteur...",
-      "addAnotherLocation": "Ajouter une autre localisation...",
-      "addAnotherRole": "Ajouter un autre rôle..."
-    },
-    "personaValueProps": {
-      "title": "Persona et propositions de valeur",
-      "subtitle": "Comprenez vos clients et votre valeur",
-      "reviewMessage": "Révisez et modifiez les insights générés par IA sur vos clients idéaux",
-      "idealCustomerProfile": "Profil client idéal",
-      "targetPersona": "Persona cible",
-      "customerPainPoint": "Point de douleur du client",
-      "yourValueProposition": "Votre proposition de valeur",
-      "more": "+{{count}} de plus"
-    },
-    "sequenceReview": {
-      "sequenceStart": "Début de séquence",
-      "immediately": "Immédiatement",
-      "sendImmediately": "Envoyer immédiatement",
-      "waitForDay": "Attendre {{count}} jour",
-      "waitForDays": "Attendre {{count}} jours",
-      "email": "Email",
-      "followUpEmail": "Email de relance",
-      "finalEmail": "Email final",
-      "linkedinConnection": "Connexion LinkedIn",
-      "linkedinMessage": "Message LinkedIn",
-      "connectionRequest": "Demande de connexion",
-      "followUpMessage": "Message de relance",
-      "finalMessage": "Message final",
-      "aiGeneratedTitle": "✨ Séquence d'emails générée par IA",
-      "standardTitle": "Stratégie {{strategy}}",
-      "aiGeneratedSubtitle": "Séquence personnalisée basée sur votre entreprise",
-      "standardSubtitle": "Séquence d'emails éprouvée pour votre campagne",
-      "aiSequenceMessage": "Cette séquence créée par IA est adaptée à votre entreprise et public cible",
-      "standardSequenceMessage": "Cette séquence standard s'exécutera automatiquement pour chaque prospect",
-      "editNote": "Vous pouvez modifier les étapes individuelles ou le timing après la création"
-    }
-  },
-  "settings": {
-    "title": "Paramètres",
-    "subtitle": "Gérez votre compte et préférences d'application",
-    "profile": {
-      "title": "Profil",
-      "description": "Gérez votre profil et paramètres de compte"
-    },
-    "language": {
-      "title": "Langue et préférences",
-      "description": "Choisissez votre langue préférée et paramètres d'interface"
-    },
-    "upgrade": {
-      "title": "Mettre à niveau le plan",
-      "description": "Débloquez des fonctionnalités premium et des limites augmentées"
-    },
-    "billing": {
-      "title": "Facturation et factures",
-      "description": "Consultez votre historique de facturation et méthodes de paiement"
-    },
-    "support": {
-      "title": "Centre d'aide",
-      "description": "Trouvez des réponses aux questions fréquentes"
-    },
-    "privacy": {
-      "title": "Confidentialité et sécurité",
-      "description": "Contrôlez vos paramètres de confidentialité et options de sécurité"
-    },
-    "signOut": {
-      "title": "Se déconnecter",
-      "description": "Se déconnecter de votre compte",
-      "signingOut": "Déconnexion en cours...",
-      "pleaseWait": "Veuillez patienter..."
-    },
-    "footer": {
-      "needHelp": "Besoin d'aide ?",
-      "contactSupport": "Contacter le support"
-    }
-  },
-  "billingPage": {
-    "title": "Facturation et abonnement",
-    "subtitle": "Gérez votre abonnement et consultez l'historique de facturation",
-    "loading": "Chargement de vos informations de facturation...",
-    "currentPlan": "Plan actuel",
-    "manageSubscriptionDetails": "Gérez les détails de votre abonnement",
-    "active": "Actif",
-    "changePlan": "Changer de plan",
-    "manageSubscription": "Gérer l'abonnement",
-    "openingPortal": "Ouverture du portail...",
-    "viewPlansAndPricing": "Voir les plans et tarifs",
-    "billingHistory": "Historique de facturation",
-    "billingHistorySubtitle": "Téléchargez les factures et suivez les paiements",
-    "plan": "Plan",
-    "price": "Prix",
-    "nextBilling": "Prochaine facturation",
-    "status": "Statut",
-    "planFeatures": "Fonctionnalités du plan",
-    "month": "/mois",
-    "noActiveSubscription": "Aucun abonnement actif",
-    "subscriptionNotFound": "Abonnement introuvable",
-    "startJourneyText": "Commencez votre parcours avec l'un de nos plans premium pour débloquer des fonctionnalités puissantes.",
-    "couldNotFindSubscription": "Nous n'avons pas pu trouver d'abonnement actif pour votre compte.",
-    "noInvoicesYet": "Aucune facture pour le moment",
-    "billingHistoryDescription": "Votre historique de facturation apparaîtra ici une fois que vous commencerez à utiliser nos services. Toutes les factures sont générées automatiquement et stockées en sécurité.",
-    "invoice": "Facture",
-    "invoiceCount": "{{count}} facture",
-    "invoiceCount_other": "{{count}} factures",
-    "downloadInvoice": "Télécharger",
-    "viewInvoice": "Voir",
-    "upgrade": {
-      "unlockPremiumFeatures": "Débloquez les fonctionnalités premium",
-      "joinThousands": "Rejoignez des milliers de clients satisfaits",
-      "getAccessDescription": "Accédez à la gestion avancée de la facturation, à l'historique détaillé des factures, aux contrôles d'abonnement et au support prioritaire.",
-      "securePayments": "Paiements sécurisés",
-      "support247": "Support 24/7",
-      "upgradeNow": "Mettre à niveau maintenant"
-    }
-  },
-  "account": {
-    "title": "Compte",
-    "subtitle": "Gérez vos informations de profil et journaux d'automatisation",
-    "tabs": {
-      "profile": "Profil",
-      "automationLogs": "Journaux d'automatisation"
-    },
-    "profile": {
-      "editProfile": "Modifier le profil",
-      "cancel": "Annuler",
-      "changePhoto": "Changer la photo",
-      "personalInformation": "Informations personnelles",
-      "firstName": "Prénom",
-      "lastName": "Nom de famille",
-      "emailAddress": "Adresse email",
-      "company": "Entreprise",
-      "password": "Mot de passe",
-      "saveChanges": "Enregistrer les modifications",
-      "placeholders": {
-        "firstName": "Entrez votre prénom",
-        "lastName": "Entrez votre nom de famille",
-        "email": "Entrez votre email",
-        "company": "Entrez le nom de votre entreprise",
-        "password": "Entrez votre mot de passe"
-      },
-      "errors": {
-        "saveFailed": "Échec de l'enregistrement",
-        "saveFailedDescription": "Échec de l'enregistrement des informations de profil.",
-        "uploadFailed": "Échec du téléchargement",
-        "uploadFailedDescription": "Échec de la synchronisation de l'avatar entre les composants. Veuillez réessayer."
-      }
-    },
-    "billing": {
-      "title": "Facturation et plan",
-      "currentPlan": "Plan actuel",
-      "active": "Actif",
-      "upgradeToUnlock": "Mettre à niveau pour débloquer plus de fonctionnalités",
-      "changePlan": "Changer de plan",
-      "upgrade": "Mettre à niveau"
-    }
-  },
-  "upgrade": {
-    "title": "Plans de mise à niveau",
-    "subtitle": "Choisissez le plan parfait pour la croissance de votre équipe",
-    "whyUpgrade": "Pourquoi mettre à niveau ?",
-    "whyUpgradeDescription": "Débloquez des fonctionnalités puissantes conçues pour vous aider à collecter plus d'avis, obtenir des informations précieuses et faire croître votre entreprise plus rapidement.",
-    "features": {
-      "secureReliable": "Sécurisé et fiable",
-      "secureDescription": "Sécurité de niveau entreprise avec garantie de disponibilité à 99,9%",
-      "provenResults": "Résultats prouvés",
-      "resultsDescription": "Les clients voient 3x plus d'avis en 30 jours",
-      "expertSupport": "Support expert",
-      "supportDescription": "Gestionnaire de succès dédié et support 24/7"
-    },
-    "billing": {
-      "monthly": "Mensuel",
-      "yearly": "Annuel",
-      "save": "Économisez 20%",
-      "billedMonthly": "Facturé mensuellement",
-      "billedAnnually": "Facturé annuellement",
-      "perMember": "par membre / mois",
-      "saveAmount": "Économisez {{amount}}$/an"
-    },
-    "trial": {
-      "freeTrialIncluded": "🎉 Essai gratuit de 7 jours inclus",
-      "noPaymentRequired": "Aucun paiement requis pour commencer"
-    },
-    "buttons": {
-      "startFreeTrial": "Commencer l'essai gratuit de 7 jours",
-      "currentPlan": "Plan actuel",
-      "processing": "Traitement...",
-      "whatsIncluded": "Ce qui est inclus"
-    },
-    "plans": {
-      "basic": {
-        "name": "Basique",
-        "description": "Parfait pour les petites équipes et startups.",
-        "features": [
-          "Collection multi-canaux (SMS, Email)",
-          "Page d'avis personnalisée",
-          "Choix d'action pour chaque avis",
-          "Tableau de bord analytique basique",
-          "Support par email"
-        ]
-      },
-      "pro": {
-        "name": "Pro",
-        "description": "Idéal pour les équipes et projets en croissance.",
-        "mostPopular": "Le plus populaire",
-        "features": [
-          "Tout ce qui est dans Basique +",
-          "Import et export CSV",
-          "Intégration WhatsApp",
-          "Relances multi-canaux",
-          "Routage dynamique des avis",
-          "Analytique avancée",
-          "Support prioritaire"
-        ]
-      },
-      "enterprise": {
-        "name": "Entreprise",
-        "description": "Conçu pour les besoins des grandes organisations.",
-        "features": [
-          "Tout ce qui est dans Pro +",
-          "Avis QR code en magasin et à la caisse",
-          "Réponses IA aux avis Google",
-          "Réponses automatisées Trustpilot",
-          "Suggestions IA pour les avis négatifs",
-          "Revue stratégique mensuelle avec gestionnaire de succès",
-          "Intégrations personnalisées",
-          "Support téléphonique 24/7"
-        ]
-      }
-    },
-    "enterprise": {
-      "needCustomSolution": "Besoin d'une solution personnalisée ?",
-      "perfectForEnterprise": "Parfait pour les organisations d'entreprise",
-      "contactDescription": "Contactez notre équipe commerciale pour des tarifs Entreprise personnalisés, un support dédié et des fonctionnalités sur mesure pour votre organisation.",
-      "scheduleDemo": "Planifier une démo",
-      "contactSales": "Contacter les ventes"
-    },
-    "errors": {
-      "error": "Erreur",
-      "failedToInitiate": "Échec du lancement de la mise à niveau. Veuillez réessayer."
+      "timeNote": "Les changements peuvent prendre jusqu'à 24 heures pour prendre effet"
     }
   },
   "emailSenders": {

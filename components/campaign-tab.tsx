@@ -15,6 +15,7 @@ import CampaignDashboard from "./campaign-dashboard"
 import AddCampaignPopup from "./add-campaign-popup"
 import { DomainSetupButton } from "./domain-setup-button"
 import { CampaignAnalytics } from "./campaign-analytics"
+import { useI18n } from "@/hooks/use-i18n"
 
 interface Campaign {
   id: string | number
@@ -40,6 +41,7 @@ interface CampaignsListProps {
 }
 
 export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
+  const { t, ready } = useI18n()
   const searchParams = useSearchParams()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createStep, setCreateStep] = useState(1) // 1: Name, 2: Type & Trigger
@@ -177,8 +179,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         // Handle specific case where no stats are found (normal for new campaigns)
         if (result.error && result.error.includes('No stats found')) {
           toast({
-            title: "ℹ️ No SendGrid Data",
-            description: "This campaign hasn't sent any emails through SendGrid yet.",
+            title: t('campaigns.noSendGridData'),
+            description: t('campaigns.noEmailsSentYet'),
             variant: "default"
           })
           return // Exit gracefully, this is not an error
@@ -207,22 +209,22 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         )
 
         toast({
-          title: "✅ Sync Complete",
-          description: `Campaign metrics updated from SendGrid (${rates.openRate}% open rate, ${rates.clickRate}% click rate)`
+          title: t('campaigns.syncComplete'),
+          description: t('campaigns.metricsUpdated', { openRate: rates.openRate, clickRate: rates.clickRate })
         })
       } else {
         // No metrics found - this is normal for campaigns that haven't sent emails
         toast({
-          title: "ℹ️ No Metrics Found",
-          description: "This campaign has no SendGrid activity to sync.",
+          title: t('campaigns.noMetricsFound'),
+          description: t('campaigns.noSendGridActivity'),
           variant: "default"
         })
       }
     } catch (error) {
       console.error('❌ Sync error:', error)
       toast({
-        title: "❌ Sync Failed",
-        description: error instanceof Error ? error.message : "Failed to sync with SendGrid",
+        title: t('campaigns.syncFailed'),
+        description: error instanceof Error ? error.message : t('campaigns.failedToSyncSendGrid'),
         variant: "destructive"
       })
     } finally {
@@ -328,8 +330,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       } else {
         console.error("Failed to fetch campaigns:", result.error)
         toast({
-          title: "Error",
-          description: "Failed to load campaigns",
+          title: t('common.error'),
+          description: t('campaigns.failedToLoad'),
           variant: "destructive"
         })
         setLoading(false)
@@ -337,8 +339,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     } catch (error) {
       console.error("Error fetching campaigns:", error)
       toast({
-        title: "Error", 
-        description: "Failed to load campaigns",
+        title: t('common.error'), 
+        description: t('campaigns.failedToLoad'),
         variant: "destructive"
       })
       setLoading(false)
@@ -479,8 +481,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           setNewCampaignTrigger("New Client")
           
           toast({
-            title: "Campaign Created",
-            description: `${newCampaignName} (${newCampaignType}) has been created successfully`,
+            title: t('campaigns.campaignCreated'),
+            description: t('campaigns.campaignCreatedSuccessfully', { name: newCampaignName, type: newCampaignType }),
           })
           
           // Notify sidebar that campaigns have changed
@@ -492,16 +494,16 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           setCurrentView("dashboard")
         } else {
           toast({
-            title: "Error",
-            description: result.error || "Failed to create campaign",
+            title: t('common.error'),
+            description: result.error || t('campaigns.failedToCreateCampaign'),
             variant: "destructive"
           })
         }
       } catch (error) {
         console.error("Error creating campaign:", error)
         toast({
-          title: "Error",
-          description: "Failed to create campaign",
+          title: t('common.error'),
+          description: t('campaigns.failedToCreateCampaign'),
           variant: "destructive"
         })
       }
@@ -578,23 +580,23 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
       if (successCount > 0) {
         toast({
-          title: "Campaigns Deleted",
-          description: `${successCount} campaign(s) deleted successfully${failedCount > 0 ? `, ${failedCount} failed` : ''}`,
+          title: t('campaigns.campaignsDeleted'),
+          description: t('campaigns.campaignsDeletedCount', { count: successCount, failed: failedCount > 0 ? t('campaigns.failedCount', { count: failedCount }) : '' }),
         })
       }
 
       if (failedCount > 0) {
         toast({
-          title: "Some Deletions Failed",
-          description: `${failedCount} campaign(s) could not be deleted`,
+          title: t('campaigns.someDeletionsFailed'),
+          description: t('campaigns.couldNotDeleteCampaigns', { count: failedCount }),
           variant: "destructive"
         })
       }
     } catch (error) {
       console.error("Error deleting campaigns:", error)
       toast({
-        title: "Error",
-        description: "Failed to delete campaigns",
+        title: t('common.error'),
+        description: t('campaigns.failedToDeleteCampaigns'),
         variant: "destructive"
       })
     } finally {
@@ -624,8 +626,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     } catch (error) {
       console.error('❌ ERROR in handleWarmupDecision:', error)
       toast({
-        title: "Error",
-        description: "Failed to update campaign status",
+        title: t('common.error'),
+        description: t('campaigns.failedToUpdateStatus'),
         variant: "destructive"
       })
     }
@@ -1151,6 +1153,18 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     )
   }
 
+  // Wait for translations to be ready
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-[rgb(243,243,241)] p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -1158,8 +1172,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         <div className="mb-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
-              <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Campaigns</h1>
-              <p className="text-gray-500 font-light">Manage and monitor your outreach campaigns</p>
+              <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('campaigns.title')}</h1>
+              <p className="text-gray-500 font-light">{t('campaigns.manageMonitorCampaigns')}</p>
             </div>
             
             <div className="flex gap-3">
@@ -1168,7 +1182,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Create Campaign
+                {t('campaigns.createCampaign')}
               </Button>
             </div>
           </div>
@@ -1179,7 +1193,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search campaigns..."
+              placeholder={t('campaigns.searchCampaigns')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 h-10 bg-white border-gray-200 rounded-2xl"
@@ -1187,14 +1201,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40 h-10 bg-white border-gray-200 rounded-2xl">
-              <SelectValue placeholder="All Status" />
+              <SelectValue placeholder={t('campaigns.allStatus')} />
             </SelectTrigger>
             <SelectContent className="rounded-2xl border-gray-200">
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="paused">Paused</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="all">{t('campaigns.allStatus')}</SelectItem>
+              <SelectItem value="draft">{t('campaigns.draft')}</SelectItem>
+              <SelectItem value="active">{t('campaigns.active')}</SelectItem>
+              <SelectItem value="paused">{t('campaigns.paused')}</SelectItem>
+              <SelectItem value="completed">{t('campaigns.completed')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1204,21 +1218,21 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           {loading ? (
             <div className="col-span-full flex items-center justify-center py-16">
               <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-              <span className="ml-3 text-gray-600 font-medium">Loading campaigns...</span>
+              <span className="ml-3 text-gray-600 font-medium">{t('campaigns.loading')}</span>
             </div>
           ) : filteredCampaigns.length === 0 ? (
             <div className="col-span-full text-center py-16">
               <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
                 <Mail className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">No campaigns found</h3>
-              <p className="text-gray-500 mb-8 font-light">Create your first campaign to start reaching out to prospects</p>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">{t('campaigns.noCampaigns')}</h3>
+              <p className="text-gray-500 mb-8 font-light">{t('campaigns.createFirstCampaign')}</p>
               <Button 
                 onClick={() => setShowAdvancedPopup(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-6 py-3 font-medium transition-all duration-300 rounded-2xl"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Create Campaign
+                {t('campaigns.createCampaign')}
               </Button>
             </div>
           ) : (
@@ -1283,7 +1297,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           <h3 className="text-lg font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
                             {campaign.name || 'Untitled Campaign'}
                           </h3>
-                          <p className="text-sm text-gray-500 mt-1">{campaign.type} Campaign</p>
+                          <p className="text-sm text-gray-500 mt-1">{campaign.type} {t('campaigns.campaign')}</p>
                         </div>
                       </div>
                       
@@ -1299,7 +1313,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                             syncCampaignWithSendGrid(campaign.id, userId)
                           }}
                           disabled={syncingCampaigns.has(campaign.id)}
-                          title="Sync with SendGrid"
+                          title={t('campaigns.syncWithSendGrid')}
                         >
                           <RefreshCw className={`w-4 h-4 ${syncingCampaigns.has(campaign.id) ? 'animate-spin text-blue-600' : ''}`} />
                         </Button>
@@ -1384,7 +1398,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                              hasBeenStarted ? '0%' : '—'}
                           </p>
                           <p className="text-sm text-gray-500 mt-1">
-                            {hasBeenStarted ? 'Open Rate' : 'Not started'}
+                            {hasBeenStarted ? t('campaigns.openRate') : t('campaigns.notStarted')}
                           </p>
                         </div>
                         <div className="text-center p-4 bg-gray-50 rounded-2xl">
@@ -1393,7 +1407,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                              hasBeenStarted ? '0%' : '—'}
                           </p>
                           <p className="text-sm text-gray-500 mt-1">
-                            {hasBeenStarted ? 'Response' : 'Not started'}
+                            {hasBeenStarted ? t('campaigns.response') : t('campaigns.notStarted')}
                           </p>
                         </div>
                       </div>
@@ -1402,7 +1416,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     <div className="mb-6">
                       <div className="flex justify-between text-sm mb-3">
                         <span className="text-gray-600 font-medium">
-                          {hasBeenStarted ? 'Progress' : 'Ready to Start'}
+                          {hasBeenStarted ? t('common.progress') : t('campaigns.readyToStart')}
                         </span>
                         <span className="font-semibold text-gray-900">
                           {hasBeenStarted ? `${progress.percentage}%` : '—'}
@@ -1416,10 +1430,10 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                       </div>
                       <div className="flex justify-between text-sm text-gray-500 mt-2">
                         <span>
-                          {hasBeenStarted ? `${progress.sent} sent` : 'Not started'}
+                          {hasBeenStarted ? t('campaigns.emailsSent', { count: progress.sent }) : t('campaigns.notStarted')}
                         </span>
                         <span>
-                          {progress.totalPlanned > 0 ? `${progress.totalPlanned} total` : 'No contacts'}
+                          {progress.totalPlanned > 0 ? t('campaigns.totalContacts', { count: progress.totalPlanned }) : t('campaigns.noContacts')}
                         </span>
                       </div>
                     </div>
@@ -1435,7 +1449,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                             handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
                           }}
                         >
-                          Pause
+                          {t('campaigns.pause')}
                         </Button>
                       ) : campaign.status === 'Warming' ? (
                         <>
@@ -1459,7 +1473,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                             }}
                           >
                             <Flame className="w-4 h-4 mr-2 text-orange-700 animate-pulse" />
-                            View Warming
+                            {t('campaigns.viewWarming')}
                           </Button>
                           <Button
                             variant="outline"
@@ -1480,7 +1494,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                             handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
                           }}
                         >
-                          Resume
+                          {t('campaigns.resume')}
                         </Button>
                       ) : (
                         <Button
@@ -1490,7 +1504,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                             handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
                           }}
                         >
-                          Start
+                          {t('campaigns.start')}
                         </Button>
                       )}
                       
@@ -1514,33 +1528,33 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </Button>
-                <span className="text-gray-600">Back</span>
+                <span className="text-gray-600">{t('button.back')}</span>
               </div>
 
               {/* Step 1: Campaign Name */}
               {createStep === 1 && (
                 <div className="text-center space-y-6">
                   <div>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-2">Let's create a new campaign</h2>
-                    <p className="text-gray-600">What would you like to name it?</p>
+                    <h2 className="text-2xl font-semibold text-gray-900 mb-2">{t('campaigns.letsCreateNewCampaign')}</h2>
+                    <p className="text-gray-600">{t('campaigns.whatToNameIt')}</p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-left text-sm font-medium text-gray-700">Campaign Name</label>
+                    <label className="block text-left text-sm font-medium text-gray-700">{t('campaigns.campaignName')}</label>
                     <Input
                       value={newCampaignName}
                       onChange={(e) => setNewCampaignName(e.target.value)}
                       className="text-lg py-3"
-                      placeholder="Enter campaign name"
+                      placeholder={t('campaigns.enterCampaignName')}
                     />
                   </div>
 
                   <div className="flex justify-center space-x-4 pt-4">
                     <Button variant="outline" onClick={() => setShowCreateModal(false)}>
-                      Cancel
+                      {t('button.cancel')}
                     </Button>
                     <Button style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'} onClick={handleCreateCampaign}>
-                      Continue →
+                      {t('button.continue')} →
                     </Button>
                   </div>
                 </div>
@@ -1550,13 +1564,13 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               {createStep === 2 && (
                 <div className="space-y-8">
                   <div className="text-center">
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-2">Configure your campaign</h2>
-                    <p className="text-gray-600">Choose the type and trigger for "{newCampaignName}"</p>
+                    <h2 className="text-2xl font-semibold text-gray-900 mb-2">{t('campaigns.configureYourCampaign')}</h2>
+                    <p className="text-gray-600">{t('campaigns.chooseTypeAndTrigger', { name: newCampaignName })}</p>
                   </div>
 
                   {/* Campaign Type */}
                   <div className="space-y-4">
-                    <label className="block text-sm font-medium text-gray-700">Campaign Type</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('campaigns.campaignType')}</label>
                     <RadioGroup
                       value={newCampaignType}
                       onValueChange={(value) => setNewCampaignType(value as "Email")}
@@ -1567,8 +1581,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           <Label htmlFor="email" className="flex items-center space-x-3 cursor-pointer">
                             <Mail className="w-5 h-5" style={{ color: 'rgb(87, 140, 255)' }} />
                             <div>
-                              <div className="font-medium">Email Campaign</div>
-                              <div className="text-sm text-gray-500">Send email sequences</div>
+                              <div className="font-medium">{t('campaigns.emailCampaign')}</div>
+                              <div className="text-sm text-gray-500">{t('campaigns.sendEmailSequences')}</div>
                             </div>
                           </Label>
                         </div>
@@ -1578,7 +1592,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
                   {/* Trigger Selection */}
                   <div className="space-y-4">
-                    <label className="block text-sm font-medium text-gray-700">Campaign Trigger</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('campaigns.campaignTrigger')}</label>
                     <RadioGroup value={newCampaignTrigger} onValueChange={setNewCampaignTrigger}>
                       <div className="grid grid-cols-1 gap-3">
                         {triggerOptions.map((option) => {
@@ -1608,7 +1622,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
                   <div className="flex justify-center space-x-4 pt-4">
                     <Button variant="outline" onClick={() => setCreateStep(1)}>
-                      Back
+                      {t('button.back')}
                     </Button>
                     <Button style={{ backgroundColor: 'rgb(87, 140, 255)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'} onClick={handleCreateCampaign}>
                       Create Campaign
@@ -1638,10 +1652,10 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                 </div>
                 <div>
                   <DialogTitle className="text-lg font-semibold text-gray-900">
-                    Health Score Alert
+                    {t('campaigns.healthScoreAlert')}
                   </DialogTitle>
                   <DialogDescription className="text-sm text-gray-500">
-                    Some senders still need warming up
+                    {t('campaigns.sendersNeedWarming')}
                   </DialogDescription>
                 </div>
               </div>
@@ -1649,7 +1663,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
             
             <div className="px-6 pb-4">
               <div className="bg-orange-50/50 rounded-xl p-3 mb-3">
-                <p className="text-xs font-medium text-orange-900 mb-2">Accounts Still Below 90% Health</p>
+                <p className="text-xs font-medium text-orange-900 mb-2">{t('campaigns.accountsBelowHealthThreshold')}</p>
                 <div className="space-y-1.5">
                   {lowHealthSenders.map((sender, index) => {
                     const getScoreColor = (score: number) => {
@@ -1671,14 +1685,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               </div>
               
               <div className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
-                <p><span className="font-semibold">Continue Warmup:</span> Keep warming to improve health scores before going active.</p>
+                <p><span className="font-semibold">{t('campaigns.continueWarmup')}:</span> {t('campaigns.continueWarmupDescription')}</p>
                 <p className="mt-1">
                   <span className="font-semibold">
-                    {pendingResumeStatus === "Completed" ? "Stop Anyway:" : "Resume Anyway:"}
+                    {pendingResumeStatus === "Completed" ? t('campaigns.stopAnyway') : t('campaigns.resumeAnyway')}:
                   </span>{" "}
                   {pendingResumeStatus === "Completed" 
-                    ? "Stop the campaign now despite health scores." 
-                    : "Go active now despite low health scores."
+                    ? t('campaigns.stopCampaignDespiteHealth')
+                    : t('campaigns.goActiveDespiteHealth')
                   }
                 </p>
               </div>
@@ -1694,7 +1708,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                 }}
                 className="flex-1 h-10 rounded-xl text-sm"
               >
-                {pendingResumeStatus === "Completed" ? "Stop Anyway" : "Resume Anyway"}
+                {pendingResumeStatus === "Completed" ? t('campaigns.stopAnyway') : t('campaigns.resumeAnyway')}
               </Button>
               <Button
                 onClick={(e) => {
@@ -1705,7 +1719,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                 className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium"
               >
                 <Flame className="w-4 h-4 mr-1.5" />
-                Continue Warmup
+                {t('campaigns.continueWarmup')}
               </Button>
             </div>
           </DialogContent>

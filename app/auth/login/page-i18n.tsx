@@ -56,10 +56,8 @@ export default function LoginPageI18n() {
       if (data.success) {
         localStorage.removeItem('auth_cache')
         sessionStorage.removeItem('auth_cache')
-        // Preserve language setting
-        const savedLang = localStorage.getItem('i18nextLng') || 'en'
         setTimeout(() => {
-          window.location.href = `/?lng=${savedLang}`
+          window.location.href = "/"
         }, 100)
       } else {
         setError(data.error || t('auth.loginFailed'))

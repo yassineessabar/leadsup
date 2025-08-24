@@ -3,6 +3,7 @@ import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/hooks/use-auth'
 import { OnboardingProvider } from '@/hooks/use-onboarding'
+import { I18nProvider } from '@/components/i18n-provider'
 
 export const metadata: Metadata = {
   title: 'LeadsUp — Generate More Leads. Convert Better.',
@@ -36,12 +37,14 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Switzer:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <AuthProvider>
-          <OnboardingProvider>
-            {children}
-            <Toaster />
-          </OnboardingProvider>
-        </AuthProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <OnboardingProvider>
+              {children}
+              <Toaster />
+            </OnboardingProvider>
+          </AuthProvider>
+        </I18nProvider>
       </body>
     </html>
   )

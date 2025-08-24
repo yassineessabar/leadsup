@@ -7,12 +7,14 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
 import { TrialBanner } from "@/components/trial-banner"
+import { useI18n } from "@/hooks/use-i18n"
 
 interface UpgradePageProps {
   onTabChange?: (tab: string) => void
 }
 
 export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
+  const { t } = useI18n()
   const [isYearly, setIsYearly] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [userInfo, setUserInfo] = useState<{
@@ -95,8 +97,8 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
     } catch (error) {
       console.error("Error initiating upgrade:", error)
       toast({
-        title: "Error",
-        description: "Failed to initiate upgrade. Please try again.",
+        title: t('upgrade.errors.error'),
+        description: t('upgrade.errors.failedToInitiate'),
         variant: "destructive",
       })
     } finally {
@@ -107,59 +109,39 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
   const plans = [
     {
       name: "Basic",
-      description: "Perfect for small teams and startups.",
+      nameKey: "upgrade.plans.basic.name",
+      descriptionKey: "upgrade.plans.basic.description",
       price: 39,
       yearlyPrice: 29,
       buttonText: "Start 7-day free trial",
       buttonVariant: "outline" as const,
-      features: [
-        "Multi-channel collection (SMS, Email)",
-        "Custom review page",
-        "Choice of action for each review",
-        "Basic analytics dashboard",
-        "Email support",
-      ],
+      featuresKey: "upgrade.plans.basic.features",
       highlighted: false,
       icon: Users,
       popular: false,
     },
     {
       name: "Pro",
-      description: "Ideal for growing teams and projects.",
+      nameKey: "upgrade.plans.pro.name",
+      descriptionKey: "upgrade.plans.pro.description",
       price: 79,
       yearlyPrice: 69,
       buttonText: "Start 7-day free trial",
       buttonVariant: "default" as const,
-      features: [
-        "Everything in Basic +",
-        "CSV import & export",
-        "WhatsApp integration",
-        "Multi-channel follow-ups",
-        "Dynamic routing of reviews",
-        "Advanced analytics",
-        "Priority support",
-      ],
+      featuresKey: "upgrade.plans.pro.features",
       highlighted: true,
       icon: TrendingUp,
       popular: true,
     },
     {
       name: "Enterprise",
-      description: "Built for large organization needs.",
+      nameKey: "upgrade.plans.enterprise.name",
+      descriptionKey: "upgrade.plans.enterprise.description",
       price: 180,
       yearlyPrice: 160,
       buttonText: "Start 7-day free trial",
       buttonVariant: "default" as const,
-      features: [
-        "Everything in Pro +",
-        "Checkout & in-store QR code reviews",
-        "AI responses to Google reviews",
-        "Automated Trustpilot responses",
-        "AI suggestions for negative reviews",
-        "Monthly strategic review with success manager",
-        "Custom integrations",
-        "24/7 phone support",
-      ],
+      featuresKey: "upgrade.plans.enterprise.features",
       highlighted: false,
       icon: Crown,
       popular: false,
@@ -186,8 +168,8 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
           </Button>
           <div className="h-6 w-px bg-gray-300" />
           <div>
-            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Upgrade Plans</h1>
-            <p className="text-gray-600">Choose the perfect plan for your team's growth</p>
+            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('upgrade.title')}</h1>
+            <p className="text-gray-600">{t('upgrade.subtitle')}</p>
           </div>
         </div>
       </div>
@@ -205,10 +187,10 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
               <div className="w-12 h-12 rounded-2xl bg-gray-100/50 flex items-center justify-center">
                 <Sparkles className="w-6 h-6 text-gray-600" />
               </div>
-              <h2 className="text-2xl font-light text-gray-900">Why Upgrade?</h2>
+              <h2 className="text-2xl font-light text-gray-900">{t('upgrade.whyUpgrade')}</h2>
             </div>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Unlock powerful features designed to help you collect more reviews, gain valuable insights, and grow your business faster.
+              {t('upgrade.whyUpgradeDescription')}
             </p>
           </div>
           
@@ -217,24 +199,24 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
               <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
                 <Shield className="w-7 h-7 text-gray-600" />
               </div>
-              <h3 className="font-medium text-gray-900 mb-2">Secure & Reliable</h3>
-              <p className="text-sm text-gray-600">Enterprise-grade security with 99.9% uptime guarantee</p>
+              <h3 className="font-medium text-gray-900 mb-2">{t('upgrade.features.secureReliable')}</h3>
+              <p className="text-sm text-gray-600">{t('upgrade.features.secureDescription')}</p>
             </div>
             
             <div className="text-center p-6 bg-gray-50/50 rounded-2xl border border-gray-100/50">
               <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
                 <TrendingUp className="w-7 h-7 text-gray-600" />
               </div>
-              <h3 className="font-medium text-gray-900 mb-2">Proven Results</h3>
-              <p className="text-sm text-gray-600">Customers see 3x more reviews within 30 days</p>
+              <h3 className="font-medium text-gray-900 mb-2">{t('upgrade.features.provenResults')}</h3>
+              <p className="text-sm text-gray-600">{t('upgrade.features.resultsDescription')}</p>
             </div>
             
             <div className="text-center p-6 bg-gray-50/50 rounded-2xl border border-gray-100/50">
               <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
                 <Users className="w-7 h-7 text-gray-600" />
               </div>
-              <h3 className="font-medium text-gray-900 mb-2">Expert Support</h3>
-              <p className="text-sm text-gray-600">Dedicated success manager and 24/7 support</p>
+              <h3 className="font-medium text-gray-900 mb-2">{t('upgrade.features.expertSupport')}</h3>
+              <p className="text-sm text-gray-600">{t('upgrade.features.supportDescription')}</p>
             </div>
           </div>
         </div>
@@ -242,7 +224,7 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
         {/* Billing Toggle */}
         <div className="flex items-center justify-center gap-4 mb-8">
           <span className={`text-sm font-medium ${!isYearly ? 'text-gray-900' : 'text-gray-500'}`}>
-            Monthly
+            {t('upgrade.billing.monthly')}
           </span>
           <Switch
             checked={isYearly}
@@ -251,11 +233,11 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
           />
           <div className="flex items-center gap-2">
             <span className={`text-sm font-medium ${isYearly ? 'text-gray-900' : 'text-gray-500'}`}>
-              Yearly
+              {t('upgrade.billing.yearly')}
             </span>
             {isYearly && (
               <Badge className="bg-gray-100 text-gray-700 text-xs font-medium">
-                Save 20%
+                {t('upgrade.billing.save')}
               </Badge>
             )}
           </div>
@@ -276,7 +258,7 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
                   <div className="bg-gray-900 text-white px-4 py-2 rounded-2xl text-xs font-medium flex items-center gap-2 shadow-lg">
                     <Star className="w-3 h-3 fill-white" />
-                    Most Popular
+                    {t('upgrade.plans.pro.mostPopular')}
                   </div>
                 </div>
               )}
@@ -289,8 +271,8 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
                       <plan.icon className="w-6 h-6 text-gray-600" />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-light text-gray-900">{plan.name}</h3>
-                      <p className="text-gray-600 text-sm">{plan.description}</p>
+                      <h3 className="text-2xl font-light text-gray-900">{t(plan.nameKey)}</h3>
+                      <p className="text-gray-600 text-sm">{t(plan.descriptionKey)}</p>
                     </div>
                   </div>
 
@@ -299,27 +281,27 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
                       <span className="text-4xl font-light text-gray-900">
                         ${isYearly ? plan.yearlyPrice : plan.price}
                       </span>
-                      <span className="text-gray-500 text-sm">per member / month</span>
+                      <span className="text-gray-500 text-sm">{t('upgrade.billing.perMember')}</span>
                     </div>
 
                     <p className="text-gray-400 text-xs mb-4">
-                      {isYearly ? "Billed annually" : "Billed monthly"}
+                      {isYearly ? t('upgrade.billing.billedAnnually') : t('upgrade.billing.billedMonthly')}
                     </p>
 
                     {/* Trial indicator */}
                     <div className="bg-gray-50/50 border border-gray-100/50 rounded-2xl p-4 mb-4">
                       <p className="font-medium text-xs text-gray-700 mb-1">
-                        🎉 7-day free trial included
+                        {t('upgrade.trial.freeTrialIncluded')}
                       </p>
                       <p className="text-xs text-gray-500">
-                        No payment required to start
+                        {t('upgrade.trial.noPaymentRequired')}
                       </p>
                     </div>
 
                     {isYearly && (
                       <div className="flex items-center justify-center gap-2 mb-4">
                         <Badge className="bg-gray-100 text-gray-700 text-xs">
-                          Save ${(plan.price - plan.yearlyPrice) * 12}/year
+                          {t('upgrade.billing.saveAmount', { amount: (plan.price - plan.yearlyPrice) * 12 })}
                         </Badge>
                       </div>
                     )}
@@ -339,12 +321,12 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
                   {isLoading ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Processing...
+                      {t('upgrade.buttons.processing')}
                     </div>
                   ) : userInfo.subscription_type === plan.name.toLowerCase() ? (
-                    "Current Plan"
+                    t('upgrade.buttons.currentPlan')
                   ) : (
-                    plan.buttonText
+                    t('upgrade.buttons.startFreeTrial')
                   )}
                 </Button>
 
@@ -352,10 +334,10 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
                 <div className="space-y-4">
                   <h4 className="text-lg font-medium text-gray-900 flex items-center gap-2">
                     <Check className="w-5 h-5 text-gray-600" />
-                    What's included
+                    {t('upgrade.buttons.whatsIncluded')}
                   </h4>
                   <div className="space-y-3">
-                    {plan.features.map((feature, featureIndex) => (
+                    {t(plan.featuresKey, { returnObjects: true }).map((feature: string, featureIndex: number) => (
                       <div key={featureIndex} className="flex items-start gap-3">
                         <div className="w-5 h-5 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <Check className="w-3 h-3 text-gray-600" />
@@ -382,12 +364,12 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
                       <CreditCard className="w-6 h-6 text-gray-600" />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-light text-gray-900">Need a custom solution?</h3>
-                      <p className="text-gray-600">Perfect for enterprise organizations</p>
+                      <h3 className="text-2xl font-light text-gray-900">{t('upgrade.enterprise.needCustomSolution')}</h3>
+                      <p className="text-gray-600">{t('upgrade.enterprise.perfectForEnterprise')}</p>
                     </div>
                   </div>
                   <p className="text-gray-600 max-w-md">
-                    Contact our sales team for custom Enterprise pricing, dedicated support, and tailored features for your organization.
+                    {t('upgrade.enterprise.contactDescription')}
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -395,12 +377,12 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
                     variant="outline"
                     className="h-12 px-6 rounded-2xl font-medium border-gray-200 text-gray-700 hover:bg-gray-50"
                   >
-                    Schedule Demo
+                    {t('upgrade.enterprise.scheduleDemo')}
                   </Button>
                   <Button
                     className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-8 rounded-2xl font-medium transition-all duration-200 hover:scale-105"
                   >
-                    Contact Sales
+                    {t('upgrade.enterprise.contactSales')}
                   </Button>
                 </div>
               </div>

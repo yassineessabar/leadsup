@@ -2145,7 +2145,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                 className="text-white" style={{ backgroundColor: 'rgb(37, 99, 235)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(37, 99, 235)'}
               >
                 <Save className="w-4 h-4 mr-2" />
-                Save Changes
+                {t('contacts.saveChanges')}
               </Button>
             </div>
           </CardContent>
@@ -2278,7 +2278,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                 className="text-white" style={{ backgroundColor: 'rgb(37, 99, 235)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(37, 99, 235)'}
               >
                 <Save className="w-4 h-4 mr-2" />
-                Save Changes
+                {t('contacts.saveChanges')}
               </Button>
             </div>
           </CardContent>
@@ -2341,7 +2341,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                 className="text-white" style={{ backgroundColor: 'rgb(37, 99, 235)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(67, 120, 235)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(37, 99, 235)'}
               >
                 <Save className="w-4 h-4 mr-2" />
-                Save Changes
+                {t('contacts.saveChanges')}
               </Button>
             </div>
           </CardContent>
@@ -2459,6 +2459,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                               size="sm"
                               onClick={() => handleSave('icp')}
                               className="text-green-600 hover:text-green-700 hover:bg-green-50 rounded-xl p-2"
+                              title={t('contacts.saveChanges')}
                             >
                               <Save className="w-4 h-4" />
                             </Button>
@@ -2546,6 +2547,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                               size="sm"
                               onClick={() => handleSave('persona')}
                               className="text-green-600 hover:text-green-700 hover:bg-green-50 rounded-xl p-2"
+                              title={t('contacts.saveChanges')}
                             >
                               <Save className="w-4 h-4" />
                             </Button>
@@ -2631,6 +2633,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                               size="sm"
                               onClick={() => handleSave('painPoint')}
                               className="text-green-600 hover:text-green-700 hover:bg-green-50 rounded-xl p-2"
+                              title={t('contacts.saveChanges')}
                             >
                               <Save className="w-4 h-4" />
                             </Button>
@@ -2704,6 +2707,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                               size="sm"
                               onClick={() => handleSave('valueProp')}
                               className="text-green-600 hover:text-green-700 hover:bg-green-50 rounded-xl p-2"
+                              title={t('contacts.saveChanges')}
                             >
                               <Save className="w-4 h-4" />
                             </Button>
@@ -3350,7 +3354,7 @@ Best regards,
                   }`}
                 >
                   <ChevronLeft className="w-4 h-4 mr-2" />
-                  Back
+                  {t('buttons.back')}
                 </Button>
                 <Button 
                   onClick={handleContinue}
