@@ -34,6 +34,15 @@
       "delivered": "Livrés", 
       "rejected": "Rejetés",
       "received": "Reçus"
+    },
+    "addedOn": "Ajouté le {{date}}",
+    "alreadyConnected": {
+      "title": "Domaine déjà connecté !",
+      "description": "Ce domaine est déjà vérifié et prêt à envoyer des emails.",
+      "manageSenders": "Gérer les expéditeurs d'emails"
+    },
+    "verification": {
+      "readyToSend": "Votre domaine est prêt à envoyer des emails. Vous pouvez maintenant créer des comptes expéditeur."
     }
   },
   "welcome": "Bienvenue {{name}}",
@@ -1000,39 +1009,6 @@
     "lastSync": "Dernière synchronisation",
     "syncStatus": "Statut de synchronisation"
   },
-  "domains": {
-    "title": "Domaines",
-    "manageEmailDomains": "Gérez vos domaines de messagerie pour l'envoi de campagnes",
-    "addDomain": "Ajouter un domaine",
-    "searchDomains": "Rechercher dans les domaines",
-    "dateCreated": "Date de création",
-    "name": "Nom",
-    "statusLabel": "Statut",
-    "loadingDomains": "Chargement des domaines...",
-    "noDomainsYet": "Aucun domaine pour le moment",
-    "addFirstDomain": "Ajoutez votre premier domaine pour commencer l'envoi d'emails",
-    "manage": "Gérer",
-    "setup": "Configurer",
-    "delete": "Supprimer",
-    "deleteDomain": "Supprimer le domaine",
-    "deleting": "Suppression...",
-    "cancel": "Annuler",
-    "deleteConfirmation": "Cette action ne peut pas être annulée. Tapez \"delete\" pour confirmer la suppression de <strong>{{domain}}</strong>.",
-    "deletePlaceholder": "Tapez 'delete' pour confirmer",
-    "status": {
-      "verified": "Vérifié",
-      "pending": "En attente",
-      "failed": "Échec",
-      "settingUp": "Configuration en cours",
-      "unknown": "Inconnu"
-    },
-    "stats": {
-      "sent": "Envoyés",
-      "delivered": "Livrés", 
-      "rejected": "Rejetés",
-      "received": "Reçus"
-    }
-  },
   "templates": {
     "title": "Modèles",
     "createTemplate": "Créer un modèle",
@@ -1314,6 +1290,84 @@
       "checking": "Vérification de la connexion...",
       "checkDomain": "Vérifier mon domaine",
       "timeNote": "Les changements peuvent prendre jusqu'à 24 heures pour prendre effet"
+    }
+  },
+  "emailSenders": {
+    "title": "Expéditeurs d'emails",
+    "description": "Gérez qui peut envoyer des emails depuis ce domaine",
+    "backToDomains": "Retour aux domaines",
+    "connected": "Connecté",
+    "primary": "Principal",
+    "addSender": "Ajouter un expéditeur",
+    "dailyLimit": "Limite quotidienne",
+    "healthScore": "Score de santé",
+    "cancel": "Annuler",
+    "emailsSent": "{{count}} emails envoyés",
+    "addedOn": "Ajouté le {{date}}",
+    "presetAccountsInfo": "Nous avons créé 3 comptes email courants pour vous. Vous pouvez en ajouter d'autres ou les personnaliser selon vos besoins.",
+    "stats": {
+      "totalAccounts": "Comptes totaux",
+      "activeWarmup": "Réchauffement actif",
+      "needAttention": "Nécessitent attention",
+      "avgScore": "Score moyen"
+    },
+    "noSenders": {
+      "title": "Aucun expéditeur pour le moment",
+      "description": "Ajoutez des adresses email qui peuvent envoyer depuis ce domaine. Chaque expéditeur obtient sa propre identité email.",
+      "addFirst": "Ajouter votre premier expéditeur"
+    },
+    "status": {
+      "active": "Actif",
+      "warmingUp": "Réchauffement",
+      "needsAttention": "Nécessite attention",
+      "pending": "En attente",
+      "unknown": "Inconnu"
+    },
+    "loading": {
+      "settingUp": "Configuration de vos comptes email...",
+      "loadingAccounts": "Chargement des comptes expéditeur..."
+    },
+    "addDialog": {
+      "title": "Ajouter un nouvel expéditeur",
+      "description": "Créer un nouvel expéditeur email pour {{domain}}",
+      "emailAddress": "Adresse email",
+      "placeholder": "support",
+      "willCreate": "Ceci créera : {{email}}",
+      "displayName": "Nom d'affichage (optionnel)",
+      "displayPlaceholder": "Équipe support",
+      "displayDescription": "Comment cet expéditeur apparaîtra dans les emails des destinataires",
+      "primaryNote": "Ce sera votre expéditeur principal car c'est le premier."
+    },
+    "editDialog": {
+      "title": "Modifier l'expéditeur",
+      "description": "Mettre à jour les détails de cet expéditeur email",
+      "displayName": "Nom d'affichage",
+      "displayPlaceholder": "Équipe support",
+      "displayDescription": "Comment cet expéditeur apparaîtra dans les emails des destinataires",
+      "dailyLimit": "Limite d'emails quotidienne",
+      "dailyLimitDescription": "Nombre maximum d'emails que cet expéditeur peut envoyer par jour",
+      "makePrimary": "Faire de celui-ci l'expéditeur principal",
+      "update": "Mettre à jour l'expéditeur"
+    },
+    "deleteDialog": {
+      "title": "Supprimer l'expéditeur",
+      "description": "Êtes-vous sûr de vouloir supprimer cet expéditeur email ? Cette action ne peut pas être annulée.",
+      "remove": "Supprimer l'expéditeur"
+    },
+    "success": {
+      "createdPresets": "{{count}} comptes email prédéfinis créés",
+      "created": "Compte expéditeur créé avec succès",
+      "updated": "Compte expéditeur mis à jour avec succès",
+      "deleted": "Compte expéditeur supprimé",
+      "defaultUpdated": "Expéditeur par défaut mis à jour"
+    },
+    "errors": {
+      "failedToLoad": "Échec du chargement des comptes expéditeur",
+      "emailRequired": "L'email est requis",
+      "failedToCreate": "Échec de la création du compte expéditeur",
+      "failedToUpdate": "Échec de la mise à jour du compte expéditeur",
+      "failedToDelete": "Échec de la suppression du compte expéditeur",
+      "failedToUpdateDefault": "Échec de la mise à jour de l'expéditeur par défaut"
     }
   }
 }

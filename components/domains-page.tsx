@@ -657,7 +657,7 @@ export default function DomainsPage() {
                             </div>
                           </div>
                           <p className="text-gray-600 text-sm">
-                            Added {new Date(domain.created_at).toLocaleDateString()}
+                            {t('domains.addedOn', { date: new Date(domain.created_at).toLocaleDateString() })}
                           </p>
                         </div>
                       </div>
@@ -980,9 +980,9 @@ export default function DomainsPage() {
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <CheckCircle className="h-8 w-8 text-green-600" />
                     </div>
-                    <h3 className="text-xl font-medium text-gray-900 mb-2">Domain Already Connected!</h3>
+                    <h3 className="text-xl font-medium text-gray-900 mb-2">{t('domains.alreadyConnected.title')}</h3>
                     <p className="text-gray-600 mb-6">
-                      This domain is already verified and ready to send emails.
+                      {t('domains.alreadyConnected.description')}
                     </p>
                     <Button 
                       onClick={() => setCurrentView("senders")}
@@ -995,7 +995,7 @@ export default function DomainsPage() {
                         e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
                       }}
                     >
-                      Manage Email Senders
+                      {t('domains.alreadyConnected.manageSenders')}
                     </Button>
                   </div>
                 </div>
@@ -1082,7 +1082,7 @@ export default function DomainsPage() {
                     </div>
                     <h3 className="text-xl font-medium text-gray-900 mb-2">Domain Connected!</h3>
                     <p className="text-gray-600 mb-6">
-                      Your domain is ready to send emails. You can now create sender accounts.
+                      {t('domains.verification.readyToSend')}
                     </p>
                     <div className="space-x-4">
                       <Button 

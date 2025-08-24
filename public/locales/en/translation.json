@@ -33,6 +33,15 @@
       "delivered": "Delivered",
       "rejected": "Rejected", 
       "received": "Received"
+    },
+    "addedOn": "Added {{date}}",
+    "alreadyConnected": {
+      "title": "Domain Already Connected!",
+      "description": "This domain is already verified and ready to send emails.",
+      "manageSenders": "Manage Email Senders"
+    },
+    "verification": {
+      "readyToSend": "Your domain is ready to send emails. You can now create sender accounts."
     }
   },
   "campaignManagement": {
@@ -201,6 +210,84 @@
       "checking": "Checking connection...",
       "checkDomain": "Check My Domain",
       "timeNote": "Changes can take up to 24 hours to take effect"
+    }
+  },
+  "emailSenders": {
+    "title": "Email Senders",
+    "description": "Manage who can send emails from this domain",
+    "backToDomains": "Back to Domains",
+    "connected": "Connected",
+    "primary": "Primary",
+    "addSender": "Add Sender",
+    "dailyLimit": "Daily Limit",
+    "healthScore": "Health Score",
+    "cancel": "Cancel",
+    "emailsSent": "{{count}} emails sent",
+    "addedOn": "Added {{date}}",
+    "presetAccountsInfo": "We've created 3 common email accounts for you. You can add more or customize these as needed.",
+    "stats": {
+      "totalAccounts": "Total Accounts",
+      "activeWarmup": "Active Warmup",
+      "needAttention": "Need Attention",
+      "avgScore": "Avg. Score"
+    },
+    "noSenders": {
+      "title": "No senders yet",
+      "description": "Add email addresses that can send from this domain. Each sender gets their own email identity.",
+      "addFirst": "Add Your First Sender"
+    },
+    "status": {
+      "active": "Active",
+      "warmingUp": "Warming Up",
+      "needsAttention": "Needs Attention",
+      "pending": "Pending",
+      "unknown": "Unknown"
+    },
+    "loading": {
+      "settingUp": "Setting up your email accounts...",
+      "loadingAccounts": "Loading sender accounts..."
+    },
+    "addDialog": {
+      "title": "Add New Sender",
+      "description": "Create a new email sender for {{domain}}",
+      "emailAddress": "Email Address",
+      "placeholder": "support",
+      "willCreate": "This will create: {{email}}",
+      "displayName": "Display Name (Optional)",
+      "displayPlaceholder": "Support Team",
+      "displayDescription": "How this sender will appear in recipient emails",
+      "primaryNote": "This will be your primary sender since it's the first one."
+    },
+    "editDialog": {
+      "title": "Edit Sender",
+      "description": "Update the details for this email sender",
+      "displayName": "Display Name",
+      "displayPlaceholder": "Support Team",
+      "displayDescription": "How this sender will appear in recipient emails",
+      "dailyLimit": "Daily Email Limit",
+      "dailyLimitDescription": "Maximum number of emails this sender can send per day",
+      "makePrimary": "Make this the primary sender",
+      "update": "Update Sender"
+    },
+    "deleteDialog": {
+      "title": "Remove Sender",
+      "description": "Are you sure you want to remove this email sender? This action cannot be undone.",
+      "remove": "Remove Sender"
+    },
+    "success": {
+      "createdPresets": "Created {{count}} preset email accounts",
+      "created": "Sender account created successfully",
+      "updated": "Sender account updated successfully",
+      "deleted": "Sender account deleted",
+      "defaultUpdated": "Default sender updated"
+    },
+    "errors": {
+      "failedToLoad": "Failed to load sender accounts",
+      "emailRequired": "Email is required",
+      "failedToCreate": "Failed to create sender account",
+      "failedToUpdate": "Failed to update sender account",
+      "failedToDelete": "Failed to delete sender account",
+      "failedToUpdateDefault": "Failed to update default sender"
     }
   }
 }

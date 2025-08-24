@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useI18n } from '@/hooks/use-i18n'
 import {
   Mail,
   Plus,
@@ -49,6 +50,7 @@ interface SenderManagementProps {
 }
 
 export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
+  const { t, ready: translationsReady } = useI18n()
   const [domain, setDomain] = useState<Domain | null>(null)
   const [senders, setSenders] = useState<Sender[]>([])
   const [loading, setLoading] = useState(true)
@@ -123,15 +125,15 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'Active'
+        return t('emailSenders.status.active')
       case 'warming_up':
-        return 'Warming Up'
+        return t('emailSenders.status.warmingUp')
       case 'needs_attention':
-        return 'Needs Attention'
+        return t('emailSenders.status.needsAttention')
       case 'pending':
-        return 'Pending'
+        return t('emailSenders.status.pending')
       default:
-        return 'Unknown'
+        return t('emailSenders.status.unknown')
     }
   }
 
@@ -179,7 +181,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
       const successCount = responses.filter(r => r.ok).length
       
       if (successCount > 0) {
-        toast.success(`Created ${successCount} preset email accounts`)
+        toast.success(t('emailSenders.success.createdPresets', { count: successCount }))
         // Refresh the senders list after creating presets
         const updatedResponse = await fetch(`/api/domains/${domainId}/senders`)
         const updatedData = await updatedResponse.json()
@@ -209,11 +211,11 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
           await createPresetSenders(data.domain.domain)
         }
       } else {
-        toast.error(data.error || 'Failed to load sender accounts')
+        toast.error(data.error || t('emailSenders.errors.failedToLoad'))
       }
     } catch (error) {
       console.error('Error fetching senders:', error)
-      toast.error('Failed to load sender accounts')
+      toast.error(t('emailSenders.errors.failedToLoad'))
     } finally {
       setLoading(false)
     }
@@ -223,7 +225,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
     e.preventDefault()
     
     if (!addSenderForm.localPart) {
-      toast.error('Email is required')
+      toast.error(t('emailSenders.errors.emailRequired'))
       return
     }
 
@@ -245,16 +247,16 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
       const data = await response.json()
 
       if (response.ok) {
-        toast.success('Sender account created successfully')
+        toast.success(t('emailSenders.success.created'))
         setShowAddSender(false)
         setAddSenderForm({ localPart: '', display_name: '', is_default: false })
         fetchSenders()
       } else {
-        toast.error(data.error || 'Failed to create sender account')
+        toast.error(data.error || t('emailSenders.errors.failedToCreate'))
       }
     } catch (error) {
       console.error('Error creating sender:', error)
-      toast.error('Failed to create sender account')
+      toast.error(t('emailSenders.errors.failedToCreate'))
     } finally {
       setSubmitting(false)
     }
@@ -271,14 +273,14 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
       const data = await response.json()
 
       if (response.ok) {
-        toast.success('Default sender updated')
+        toast.success(t('emailSenders.success.defaultUpdated'))
         fetchSenders()
       } else {
-        toast.error(data.error || 'Failed to update default sender')
+        toast.error(data.error || t('emailSenders.errors.failedToUpdateDefault'))
       }
     } catch (error) {
       console.error('Error updating default sender:', error)
-      toast.error('Failed to update default sender')
+      toast.error(t('emailSenders.errors.failedToUpdateDefault'))
     }
   }
 
@@ -302,16 +304,16 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
       const data = await response.json()
 
       if (response.ok) {
-        toast.success('Sender account updated successfully')
+        toast.success(t('emailSenders.success.updated'))
         setShowEditDialog(null)
         setEditSenderForm({ display_name: '', daily_limit: 50, is_default: false })
         fetchSenders()
       } else {
-        toast.error(data.error || 'Failed to update sender account')
+        toast.error(data.error || t('emailSenders.errors.failedToUpdate'))
       }
     } catch (error) {
       console.error('Error updating sender:', error)
-      toast.error('Failed to update sender account')
+      toast.error(t('emailSenders.errors.failedToUpdate'))
     } finally {
       setSubmitting(false)
     }
@@ -326,15 +328,15 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
       const data = await response.json()
 
       if (response.ok) {
-        toast.success('Sender account deleted')
+        toast.success(t('emailSenders.success.deleted'))
         setShowDeleteDialog(null)
         fetchSenders()
       } else {
-        toast.error(data.error || 'Failed to delete sender account')
+        toast.error(data.error || t('emailSenders.errors.failedToDelete'))
       }
     } catch (error) {
       console.error('Error deleting sender:', error)
-      toast.error('Failed to delete sender account')
+      toast.error(t('emailSenders.errors.failedToDelete'))
     }
   }
 
@@ -346,6 +348,12 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
     }))
   }
 
+  if (!translationsReady) {
+    return <div className="flex items-center justify-center h-64">
+      <div className="text-gray-500">Loading...</div>
+    </div>
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -354,7 +362,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
             <div className="flex items-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
               <span className="text-gray-600">
-                {creatingPresets ? 'Setting up your email accounts...' : 'Loading sender accounts...'}
+                {creatingPresets ? t('emailSenders.loading.settingUp') : t('emailSenders.loading.loadingAccounts')}
               </span>
             </div>
           </div>
@@ -374,22 +382,22 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
             className="text-gray-600 hover:text-gray-900 -ml-2 mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Domains
+            {t('emailSenders.backToDomains')}
           </Button>
           
           <div className="mb-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Email Senders</h1>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('emailSenders.title')}</h1>
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span className="text-gray-700 font-medium">{domain?.domain}</span>
-                    <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Connected</span>
+                    <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">{t('emailSenders.connected')}</span>
                   </div>
                 </div>
                 <p className="text-gray-500 font-light">
-                  Manage who can send emails from this domain
+                  {t('emailSenders.description')}
                 </p>
               </div>
 
@@ -398,7 +406,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Sender
+                {t('emailSenders.addSender')}
               </Button>
             </div>
           </div>
@@ -415,25 +423,25 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                     <div className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
                       <div className="p-6">
                         <div className="text-3xl font-light text-gray-900">{stats.totalAccounts}</div>
-                        <div className="text-sm text-gray-500 mt-1">Total Accounts</div>
+                        <div className="text-sm text-gray-500 mt-1">{t('emailSenders.stats.totalAccounts')}</div>
                       </div>
                     </div>
                     <div className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
                       <div className="p-6">
                         <div className="text-3xl font-light text-blue-600">{stats.activeWarmup}</div>
-                        <div className="text-sm text-gray-500 mt-1">Active Warmup</div>
+                        <div className="text-sm text-gray-500 mt-1">{t('emailSenders.stats.activeWarmup')}</div>
                       </div>
                     </div>
                     <div className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
                       <div className="p-6">
                         <div className="text-3xl font-light text-red-600">{stats.needAttention}</div>
-                        <div className="text-sm text-gray-500 mt-1">Need Attention</div>
+                        <div className="text-sm text-gray-500 mt-1">{t('emailSenders.stats.needAttention')}</div>
                       </div>
                     </div>
                     <div className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
                       <div className="p-6">
                         <div className={`text-3xl font-light ${getHealthScoreColor(stats.avgScore)}`}>{stats.avgScore}%</div>
-                        <div className="text-sm text-gray-500 mt-1">Avg. Score</div>
+                        <div className="text-sm text-gray-500 mt-1">{t('emailSenders.stats.avgScore')}</div>
                       </div>
                     </div>
                   </>
@@ -450,9 +458,9 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Mail className="h-8 w-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No senders yet</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('emailSenders.noSenders.title')}</h3>
               <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                Add email addresses that can send from this domain. Each sender gets their own email identity.
+                {t('emailSenders.noSenders.description')}
               </p>
               <Button 
                 onClick={() => setShowAddSender(true)} 
@@ -466,7 +474,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                 }}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Your First Sender
+                {t('emailSenders.noSenders.addFirst')}
               </Button>
             </div>
           ) : (
@@ -480,7 +488,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
                     <p className="text-sm text-blue-800">
-                      We've created 3 common email accounts for you. You can add more or customize these as needed.
+                      {t('emailSenders.presetAccountsInfo')}
                     </p>
                   </div>
                 </div>
@@ -499,7 +507,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="text-lg font-medium text-gray-900 truncate">{sender.display_name || sender.email.split('@')[0]}</h3>
                           {sender.is_default && (
-                            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full flex-shrink-0">Primary</span>
+                            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full flex-shrink-0">{t('emailSenders.primary')}</span>
                           )}
                         </div>
                         <p className="text-gray-600 mb-3 truncate">{sender.email}</p>
@@ -507,11 +515,11 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                         {/* Sender details in grid */}
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
-                            <div className="text-gray-500 mb-1">Daily Limit</div>
+                            <div className="text-gray-500 mb-1">{t('emailSenders.dailyLimit')}</div>
                             <div className="font-medium text-gray-900">{sender.daily_limit || 50}/day</div>
                           </div>
                           <div>
-                            <div className="text-gray-500 mb-1">Health Score</div>
+                            <div className="text-gray-500 mb-1">{t('emailSenders.healthScore')}</div>
                             {Object.keys(healthScores).length === 0 ? (
                               <div className="font-medium text-lg text-gray-400">
                                 <div className="animate-pulse">--</div>
@@ -526,8 +534,8 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
 
                         <div className="mt-3 pt-3 border-t border-gray-100">
                           <div className="flex items-center gap-4 text-sm text-gray-500">
-                            <span>{sender.emails_sent || 0} emails sent</span>
-                            <span>Added {new Date(sender.created_at).toLocaleDateString()}</span>
+                            <span>{t('emailSenders.emailsSent', { count: sender.emails_sent || 0 })}</span>
+                            <span>{t('emailSenders.addedOn', { date: new Date(sender.created_at).toLocaleDateString() })}</span>
                           </div>
                         </div>
                       </div>
@@ -570,16 +578,16 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
         <Dialog open={showAddSender} onOpenChange={setShowAddSender}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader className="text-center pb-4">
-              <DialogTitle className="text-xl font-medium text-gray-900">Add New Sender</DialogTitle>
+              <DialogTitle className="text-xl font-medium text-gray-900">{t('emailSenders.addDialog.title')}</DialogTitle>
               <DialogDescription className="text-gray-500">
-                Create a new email sender for {domain?.domain}
+                {t('emailSenders.addDialog.description', { domain: domain?.domain })}
               </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleAddSender} className="space-y-6">
               <div>
                 <Label htmlFor="localPart" className="text-sm font-medium text-gray-700 mb-2 block">
-                  Email Address
+                  {t('emailSenders.addDialog.emailAddress')}
                 </Label>
                 <div className="flex border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-black focus-within:border-black transition-colors">
                   <Input
@@ -596,23 +604,23 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                   </div>
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
-                  This will create: {addSenderForm.localPart || 'example'}@{domain?.domain}
+                  {t('emailSenders.addDialog.willCreate', { email: `${addSenderForm.localPart || 'example'}@${domain?.domain}` })}
                 </p>
               </div>
 
               <div>
                 <Label htmlFor="display_name" className="text-sm font-medium text-gray-700 mb-2 block">
-                  Display Name (Optional)
+                  {t('emailSenders.addDialog.displayName')}
                 </Label>
                 <Input
                   id="display_name"
                   value={addSenderForm.display_name}
                   onChange={(e) => setAddSenderForm(prev => ({ ...prev, display_name: e.target.value }))}
-                  placeholder="Support Team"
+                  placeholder={t('emailSenders.addDialog.displayPlaceholder')}
                   className="border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-colors"
                 />
                 <p className="text-sm text-gray-500 mt-2">
-                  How this sender will appear in recipient emails
+                  {t('emailSenders.addDialog.displayDescription')}
                 </p>
               </div>
 
@@ -621,7 +629,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
                     <p className="text-sm text-blue-800">
-                      This will be your primary sender since it's the first one.
+                      {t('emailSenders.addDialog.primaryNote')}
                     </p>
                   </div>
                 </div>
@@ -635,7 +643,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                   disabled={submitting}
                   className="border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors"
                 >
-                  Cancel
+                  {t('emailSenders.cancel')}
                 </Button>
                 <Button 
                   type="submit" 
@@ -654,7 +662,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                   }}
                 >
                   {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Add Sender
+                  {t('emailSenders.addSender')}
                 </Button>
               </DialogFooter>
             </form>
@@ -665,32 +673,32 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
         <Dialog open={!!showEditDialog} onOpenChange={() => setShowEditDialog(null)}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader className="text-center pb-4">
-              <DialogTitle className="text-xl font-medium text-gray-900">Edit Sender</DialogTitle>
+              <DialogTitle className="text-xl font-medium text-gray-900">{t('emailSenders.editDialog.title')}</DialogTitle>
               <DialogDescription className="text-gray-500">
-                Update the details for this email sender
+                {t('emailSenders.editDialog.description')}
               </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleEditSender} className="space-y-6">
               <div>
                 <Label htmlFor="edit_display_name" className="text-sm font-medium text-gray-700 mb-2 block">
-                  Display Name
+                  {t('emailSenders.editDialog.displayName')}
                 </Label>
                 <Input
                   id="edit_display_name"
                   value={editSenderForm.display_name}
                   onChange={(e) => setEditSenderForm(prev => ({ ...prev, display_name: e.target.value }))}
-                  placeholder="Support Team"
+                  placeholder={t('emailSenders.editDialog.displayPlaceholder')}
                   className="border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-colors"
                 />
                 <p className="text-sm text-gray-500 mt-2">
-                  How this sender will appear in recipient emails
+                  {t('emailSenders.editDialog.displayDescription')}
                 </p>
               </div>
 
               <div>
                 <Label htmlFor="edit_daily_limit" className="text-sm font-medium text-gray-700 mb-2 block">
-                  Daily Email Limit
+                  {t('emailSenders.editDialog.dailyLimit')}
                 </Label>
                 <Input
                   id="edit_daily_limit"
@@ -702,7 +710,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                   className="border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-colors"
                 />
                 <p className="text-sm text-gray-500 mt-2">
-                  Maximum number of emails this sender can send per day
+                  {t('emailSenders.editDialog.dailyLimitDescription')}
                 </p>
               </div>
 
@@ -715,7 +723,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                   className="rounded border-gray-300 text-black focus:ring-black"
                 />
                 <Label htmlFor="edit_is_default" className="text-sm text-gray-700">
-                  Make this the primary sender
+                  {t('emailSenders.editDialog.makePrimary')}
                 </Label>
               </div>
 
@@ -727,7 +735,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                   disabled={submitting}
                   className="border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors"
                 >
-                  Cancel
+                  {t('emailSenders.cancel')}
                 </Button>
                 <Button 
                   type="submit" 
@@ -746,7 +754,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                   }}
                 >
                   {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Update Sender
+                  {t('emailSenders.editDialog.update')}
                 </Button>
               </DialogFooter>
             </form>
@@ -757,9 +765,9 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
         <Dialog open={!!showDeleteDialog} onOpenChange={() => setShowDeleteDialog(null)}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader className="text-center pb-4">
-              <DialogTitle className="text-xl font-medium text-gray-900">Remove Sender</DialogTitle>
+              <DialogTitle className="text-xl font-medium text-gray-900">{t('emailSenders.deleteDialog.title')}</DialogTitle>
               <DialogDescription className="text-gray-500">
-                Are you sure you want to remove this email sender? This action cannot be undone.
+                {t('emailSenders.deleteDialog.description')}
               </DialogDescription>
             </DialogHeader>
 
@@ -775,7 +783,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                 onClick={() => showDeleteDialog && handleDeleteSender(showDeleteDialog)}
                 className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
               >
-                Remove Sender
+                {t('emailSenders.deleteDialog.remove')}
               </Button>
             </DialogFooter>
           </DialogContent>
