@@ -20,7 +20,6 @@
     "greeting": "Welcome back!",
     "emailPlaceholder": "name@example.com",
     "passwordPlaceholder": "••••••••",
-    "rememberMe": "Remember Me",
     "forgotPassword": "Forgot Password?",
     "dontHaveAccount": "Don't have an account?"
   },

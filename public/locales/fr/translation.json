@@ -331,7 +331,6 @@
     "email": "Email",
     "password": "Mot de passe",
     "confirmPassword": "Confirmer le mot de passe",
-    "rememberMe": "Se souvenir de moi",
     "createAccount": "Créer un compte",
     "alreadyHaveAccount": "Vous avez déjà un compte ?",
     "dontHaveAccount": "Vous n'avez pas de compte ?",
@@ -368,7 +367,7 @@
     "tools": "Outils",
     "domain": "Domaine",
     "domains": "Domaines",
-    "tryProForFree": "Essayer Pro gratuitement",
+    "tryProForFree": "Essayer Pro",
     "leadGenerationPlatform": "Plateforme de génération de leads",
     "integrations": "Intégrations",
     "analytics": "Analytique",
@@ -1328,6 +1327,27 @@
     "language": {
       "title": "Langue et préférences",
       "description": "Choisissez votre langue préférée et paramètres d'interface"
+    },
+    "languagePreferences": {
+      "title": "Langue et préférences",
+      "description": "Personnalisez votre langue, thème et paramètres de notification"
+    },
+    "theme": {
+      "title": "Thème",
+      "description": "Choisissez votre thème préféré",
+      "light": "Clair",
+      "dark": "Sombre", 
+      "system": "Système",
+      "comingSoon": "Bientôt disponible"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Gérez vos préférences de notification",
+      "campaigns": "Mises à jour de campagne",
+      "campaignsDesc": "Recevez des notifications sur les changements de statut des campagnes",
+      "system": "Notifications système", 
+      "systemDesc": "Mises à jour importantes et annonces",
+      "comingSoon": "Bientôt disponible"
     },
     "upgrade": {
       "title": "Mettre à niveau le plan",
