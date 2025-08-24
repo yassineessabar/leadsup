@@ -369,6 +369,57 @@
       "requirementsNotMet": "Requirements Not Met",
       "pleaseComplete": "Please complete the following requirements before proceeding:",
       "importOrScraping": "You must either import contacts or set up auto-scraping to proceed"
+    },
+    "sequence": {
+      "title": "Email Sequence",
+      "subtitle": "Configure your email sequence steps and timing",
+      "saveSequence": "Save Sequence",
+      "saving": "Saving...",
+      "campaignTimeline": {
+        "title": "Campaign Timeline",
+        "subtitle": "Email sequence overview"
+      },
+      "sequences": {
+        "initialOutreach": "Initial Outreach",
+        "followUpOutreach": "Follow-up Outreach",
+        "subject": "Subject: \"{subject}\"",
+        "noSubject": "No subject",
+        "editSubject": "Edit sequence subject",
+        "deleteSequence": "Delete entire sequence",
+        "removeEmail": "Remove this email"
+      },
+      "steps": {
+        "immediately": "Immediately",
+        "day": "Day {timing}"
+      },
+      "buttons": {
+        "addEmail": "Add Email",
+        "addFollowUpSequence": "Add Follow-up Sequence"
+      },
+      "gap": {
+        "waitingPeriod": "{gap} day waiting period",
+        "clickToEdit": "Click to edit",
+        "enterWaitingPeriod": "Enter waiting period (days):"
+      },
+      "editor": {
+        "subject": "Subject",
+        "message": "Message",
+        "subjectPlaceholder": "Enter subject line",
+        "timing": "Timing (Days)",
+        "addStep": "Add Step",
+        "deleteStep": "Delete Step",
+        "preview": "Preview",
+        "editSubjectPrompt": "Enter subject line for {sequence} sequence:",
+        "sequenceSubjectLine": "Sequence Subject Line",
+        "sharedAcrossEmails": "Shared across all emails in the {sequence} sequence",
+        "sendDelay": "Send Delay",
+        "sendSchedule": "Send Schedule",
+        "minimumDays": "Minimum 90 days for follow-up sequence",
+        "immediately": "🚀 Immediately",
+        "emailContent": "Email Content",
+        "variables": "Variables",
+        "insertSignature": "Insert Signature"
+      }
     }
   },
   "leads": {

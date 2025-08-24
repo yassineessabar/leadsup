@@ -3271,7 +3271,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           updateGap(parseInt(newGap))
                         }
                       }}
-                      title="Click to edit waiting period"
+                      title={t('campaignManagement.sequence.gap.clickToEdit')}
                     >
                       <div className="flex items-center justify-center space-x-2">
                         <Clock className="h-4 w-4 text-gray-500" />
@@ -3280,13 +3280,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             const seq1End = Math.max(...steps.filter(s => s.sequence === 1).map(s => s.timing))
                             const seq2Start = Math.min(...steps.filter(s => s.sequence === 2).map(s => s.timing))
                             const gap = seq2Start - seq1End
-                            return `${gap} day waiting period`
+                            return t('campaignManagement.sequence.gap.waitingPeriod', { gap })
                           })()}
                         </div>
                         <Edit2 className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                       <div className="text-xs text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        Click to edit
+                        {t('campaignManagement.sequence.gap.clickToEdit')}
                       </div>
                     </div>
                   )}
@@ -3401,7 +3401,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             onClick={() => addStep(2)}
                           >
                             <Plus className="h-4 w-4 mr-2" />
-                            Add Email
+                            {t('campaignManagement.sequence.buttons.addEmail')}
                           </Button>
                         </div>
                       </div>
@@ -3445,7 +3445,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-gray-800 mb-3">
-                                 Sequence Subject Line
+                                 {t('campaignManagement.sequence.editor.sequenceSubjectLine')}
                               </label>
                               <Input
                                 value={activeStep.subject || ''}
@@ -3455,12 +3455,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               />
                               <p className="text-xs text-gray-500 mt-2 flex items-center space-x-1">
                                 <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
-                                <span>Shared across all emails in the {activeStep.sequence === 1 ? 'Initial Outreach' : 'Follow-up'} sequence</span>
+                                <span>{t('campaignManagement.sequence.editor.sharedAcrossEmails', { sequence: activeStep.sequence === 1 ? t('campaignManagement.sequence.sequences.initialOutreach') : t('campaignManagement.sequence.sequences.followUpOutreach') })}</span>
                               </p>
                             </div>
                             <div>
                               <label className="block text-sm font-semibold text-gray-800 mb-3">
-                                 {activeStep.sequence === 1 ? 'Send Delay' : 'Send Schedule'}
+                                 {activeStep.sequence === 1 ? t('campaignManagement.sequence.editor.sendDelay') : t('campaignManagement.sequence.editor.sendSchedule')}
                               </label>
                               {activeStep.sequence === 1 ? (
                                 <Select
@@ -3525,7 +3525,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   />
                                   <p className="text-xs text-gray-500 flex items-center space-x-1">
                                     <span className="w-1 h-1 bg-green-400 rounded-full"></span>
-                                    <span>Minimum 90 days for follow-up sequence</span>
+                                    <span>{t('campaignManagement.sequence.editor.minimumDays')}</span>
                                   </p>
                                 </div>
                               )}
@@ -3539,7 +3539,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           <div className="mb-4">
                             <div className="flex items-center justify-between mb-2">
                               <label className="block text-sm font-medium text-gray-700">
-                                Email Content
+                                {t('campaignManagement.sequence.editor.emailContent')}
                               </label>
                               <div className="flex items-center space-x-2">
                                 <Button
@@ -3550,7 +3550,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   }}
                                 >
                                   <Eye className="w-4 h-4 mr-2" />
-                                  Preview
+                                  {t('campaignManagement.sequence.editor.preview')}
                                 </Button>
                               </div>
                             </div>
@@ -3612,7 +3612,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                 </Button>
                                 <div className="flex-1"></div>
                                 <Button variant="ghost" size="sm" className="text-xs">
-                                  Variables
+                                  {t('campaignManagement.sequence.editor.variables')}
                                 </Button>
                               </div>
                               
@@ -3723,7 +3723,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                 }}
                               >
                                 <FileText className="w-3 h-3 mr-1 inline" />
-                                Insert Signature
+                                {t('campaignManagement.sequence.editor.insertSignature')}
                               </Badge>
                             </div>
                           </div>

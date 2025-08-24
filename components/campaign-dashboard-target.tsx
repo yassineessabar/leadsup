@@ -793,10 +793,10 @@ export function TargetTab({
                 <div className="bg-blue-50 rounded-2xl p-4">
                   <h4 className="text-sm font-medium text-blue-900 mb-2">{t('campaignManagement.targetTab.csvFormat.title')}</h4>
                   <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• First row must contain column headers</li>
-                    <li>• Required fields: Email, First Name, Last Name</li>
-                    <li>• Optional fields: Company, Title, Phone, LinkedIn URL</li>
-                    <li>• UTF-8 encoding recommended</li>
+                    <li>• {t('campaignManagement.targetTab.csvFormat.headerRow')}</li>
+                    <li>• {t('campaignManagement.targetTab.csvFormat.requiredFields')}</li>
+                    <li>• {t('campaignManagement.targetTab.csvFormat.optionalFields')}</li>
+                    <li>• {t('campaignManagement.targetTab.csvFormat.encoding')}</li>
                   </ul>
                 </div>
               </div>

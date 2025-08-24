@@ -369,6 +369,57 @@
       "requirementsNotMet": "Exigences non remplies",
       "pleaseComplete": "Veuillez compléter les exigences suivantes avant de continuer :",
       "importOrScraping": "Vous devez soit importer des contacts soit configurer le scraping automatique pour continuer"
+    },
+    "sequence": {
+      "title": "Séquence d'emails",
+      "subtitle": "Configurez les étapes et le timing de votre séquence d'emails",
+      "saveSequence": "Enregistrer la séquence",
+      "saving": "Enregistrement...",
+      "campaignTimeline": {
+        "title": "Chronologie de la campagne",
+        "subtitle": "Aperçu de la séquence d'emails"
+      },
+      "sequences": {
+        "initialOutreach": "Prospection initiale",
+        "followUpOutreach": "Relance",
+        "subject": "Objet : \"{subject}\"",
+        "noSubject": "Pas d'objet",
+        "editSubject": "Modifier l'objet de la séquence",
+        "deleteSequence": "Supprimer toute la séquence",
+        "removeEmail": "Supprimer cet email"
+      },
+      "steps": {
+        "immediately": "Immédiatement",
+        "day": "Jour {timing}"
+      },
+      "buttons": {
+        "addEmail": "Ajouter un email",
+        "addFollowUpSequence": "Ajouter une séquence de relance"
+      },
+      "gap": {
+        "waitingPeriod": "Période d'attente de {gap} jour",
+        "clickToEdit": "Cliquez pour modifier",
+        "enterWaitingPeriod": "Entrez la période d'attente (jours) :"
+      },
+      "editor": {
+        "subject": "Objet",
+        "message": "Message",
+        "subjectPlaceholder": "Entrez la ligne d'objet",
+        "timing": "Timing (Jours)",
+        "addStep": "Ajouter une étape",
+        "deleteStep": "Supprimer l'étape",
+        "preview": "Aperçu",
+        "editSubjectPrompt": "Entrez la ligne d'objet pour la séquence {sequence} :",
+        "sequenceSubjectLine": "Ligne d'objet de la séquence",
+        "sharedAcrossEmails": "Partagé entre tous les emails de la séquence {sequence}",
+        "sendDelay": "Délai d'envoi",
+        "sendSchedule": "Planning d'envoi",
+        "minimumDays": "Minimum 90 jours pour la séquence de relance",
+        "immediately": "🚀 Immédiatement",
+        "emailContent": "Contenu de l'email",
+        "variables": "Variables",
+        "insertSignature": "Insérer la signature"
+      }
     }
   },
   "leads": {
