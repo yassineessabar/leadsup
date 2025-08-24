@@ -13,7 +13,221 @@
     "leadGenerationPlatform": "Lead Generation Platform"
   },
   "common": {
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "filter": "Filter",
+    "status": "Status",
+    "progress": "Progress"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Overview of your campaigns and performance",
+    "manageLeads": "Manage Leads",
+    "newCampaign": "New Campaign",
+    "metrics": {
+      "totalLeads": "Total Leads",
+      "contactedLeads": "Contacted Leads",
+      "activeCampaigns": "Active Campaigns",
+      "responseRate": "Response Rate",
+      "last30Days": "Last 30 Days",
+      "activeNow": "Active Now",
+      "allTime": "All Time"
+    },
+    "chart": {
+      "title": "Lead Activity Overview",
+      "imported": "Imported",
+      "verified": "Verified",
+      "enriched": "Enriched"
+    },
+    "recentCampaigns": {
+      "title": "Recent Campaigns",
+      "viewAll": "View All",
+      "noCampaigns": "No campaigns yet",
+      "prospects": "{{count}} prospects",
+      "sent": "{{count}} sent",
+      "responses": "{{rate}} responses"
+    },
+    "deliverability": {
+      "title": "Deliverability Score",
+      "excellent": "Excellent",
+      "optimalMessage": "Your emails are optimally configured",
+      "ipReputation": "IP Reputation",
+      "authentication": "Authentication",
+      "good": "Good",
+      "configured": "Configured"
+    },
+    "aiCoaching": {
+      "title": "AI Coaching",
+      "viewAll": "View All",
+      "openRateDeclining": "Open Rate Declining",
+      "high": "High",
+      "openRateMessage": "Your campaign open rates have dropped 15% this week",
+      "suggestion1": "Test new subject line variations",
+      "suggestion2": "Review sending time optimization",
+      "improveDeliverability": "Improve Deliverability",
+      "critical": "Critical",
+      "deliverabilityMessage": "Some emails are hitting spam folders",
+      "cleanList": "Clean your email list of inactive contacts",
+      "reduceVolume": "Reduce sending volume temporarily"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "importCSV": "Import CSV",
+      "createTemplate": "Create Template",
+      "analyzePerformance": "Analyze Performance"
+    }
+  },
+  "dashboardStats": {
+    "totalLeads": "Total Leads",
+    "last30Days": "Last 30 Days",
+    "contactedLeads": "Contacted Leads",
+    "outreachActivity": "Outreach Activity",
+    "activeCampaigns": "Active Campaigns",
+    "runningSmoothly": "Running Smoothly",
+    "activeNow": "Active Now",
+    "responseRate": "Response Rate",
+    "engagementMetric": "Engagement Metric",
+    "allTime": "All Time"
+  },
+  "dashboardAnalytics": {
+    "noEmailPerformanceData": "No email performance data available",
+    "campaignAnalyticsWillAppear": "Campaign analytics will appear here",
+    "createYourFirstCampaign": "Create Your First Campaign",
+    "aiPoweredInsights": "AI-Powered Insights",
+    "smartRecommendations": "Smart Recommendations",
+    "viewAll": "View All",
+    "optimizeSubjectLines": "Optimize Subject Lines",
+    "highImpact": "High Impact",
+    "openRateImprovement": "Open Rate Improvement",
+    "keepUnder50Characters": "Keep subject lines under 50 characters",
+    "addCompanyNamePersonalization": "Add company name personalization",
+    "perfectTiming": "Perfect Timing",
+    "mediumImpact": "Medium Impact",
+    "bestEngagementTiming": "Best Engagement Timing",
+    "optimalTime": "Optimal Time",
+    "deliverability": "Deliverability",
+    "emailHealthScore": "Email Health Score",
+    "connectEmailAccountToSeeScore": "Connect your email account to see your score",
+    "connectEmailAccount": "Connect Email Account",
+    "quickStart": "Quick Start",
+    "getThingsDone": "Get Things Done",
+    "addDomains": "Add Domains",
+    "createCampaign": "Create Campaign"
+  },
+  "leads": {
+    "allContacts": "All Contacts",
+    "manageContactDatabase": "Manage Contact Database",
+    "searchPlaceholder": "Search contacts...",
+    "importNewContacts": "Import New Contacts",
+    "contact": "Contact",
+    "campaign": "Campaign",
+    "nextEmail": "Next Email",
+    "company": "Company",
+    "location": "Location",
+    "industry": "Industry",
+    "contactsPagination": "Contacts Pagination"
+  },
+  "campaigns": {
+    "openRate": "Open Rate",
+    "title": "Campaigns",
+    "manageMonitorCampaigns": "Manage & Monitor Campaigns",
+    "createCampaign": "Create Campaign",
+    "searchCampaigns": "Search Campaigns",
+    "allStatus": "All Status",
+    "campaign": "Campaign",
+    "active": "Active",
+    "paused": "Paused",
+    "warming": "Warming",
+    "response": "Response",
+    "emailsSent": "Emails Sent",
+    "noContacts": "No Contacts",
+    "pause": "Pause",
+    "resume": "Resume",
+    "viewWarming": "View Warming",
+    "delete": "Delete"
+  },
+  "campaignManagement": {
+    "targetTab": {
+      "title": "Target Audience",
+      "subtitle": "Define who you want to reach",
+      "tabs": {
+        "importContacts": "Import Contacts",
+        "autoScraping": "Auto Scraping"
+      },
+      "scraping": {
+        "title": "Smart Lead Scraping",
+        "subtitle": "Automatically find new prospects based on industries, roles, and locations",
+        "targetIndustries": "Target Industries",
+        "industryPlaceholder": "e.g. Software Development",
+        "keywords": "Keywords",
+        "keywordsExample": "e.g. CEO, Director, Manager, VP, President",
+        "targetLocations": "Target Locations",
+        "locationPlaceholder": "e.g. Australia",
+        "dailyLimit": "Daily Limit",
+        "freePlanLimit": "Free Plan Limit: 100",
+        "scrapingStarted": "Scraping Started",
+        "pause": "Pause Scraping",
+        "processRunning": "Process Running..."
+      },
+      "import": {
+        "title": "Import Contacts from File",
+        "subtitle": "Easily upload and add your contacts to start targeting",
+        "uploadCSVFile": "Upload CSV File",
+        "importFromCSV": "Import from CSV",
+        "chooseFile": "Choose File"
+      },
+      "csvFormat": {
+        "title": "CSV File Format",
+        "headerRow": "First row must contain column headers",
+        "requiredFields": "Required fields: Email, First Name, Last Name",
+        "optionalFields": "Optional fields: Company, Title, Phone, LinkedIn URL",
+        "encoding": "Encoding: UTF-8 recommended"
+      }
+    },
+    "sequence": {
+      "title": "Campaign Sequence",
+      "subtitle": "Define your outreach steps and follow-ups",
+      "saveSequence": "Save Sequence",
+      "campaignTimeline": {
+        "title": "Campaign Timeline",
+        "subtitle": "Overview of all scheduled outreach steps"
+      },
+      "sequences": {
+        "initialOutreach": "Initial Outreach",
+        "followUpOutreach": "Follow-Up Outreach",
+        "subject": "Subject"
+      },
+      "steps": {
+        "immediately": "Immediately",
+        "day": "Day"
+      },
+      "buttons": {
+        "addEmail": "Add Email"
+      },
+      "gap": {
+        "waitingPeriod": "Waiting Period",
+        "clickToEdit": "Click to edit"
+      },
+      "editor": {
+        "sequenceSubjectLine": "Sequence Subject Line",
+        "sharedAcrossEmails": "Shared across emails",
+        "sendDelay": "Send Delay",
+        "emailContent": "Email Content",
+        "preview": "Preview",
+        "variables": "Variables",
+        "insertSignature": "Insert Signature"
+      }
+    },
+    "dialogs": {
+      "deleteCampaign": {
+        "title": "Delete Campaign",
+        "confirmation": "Are you sure you want to delete this campaign?",
+        "warning": "This action cannot be undone. All campaign data will be permanently removed.",
+        "deleteCampaign": "Delete Campaign"
+      },
+      "delete": {
+        "cancel": "Cancel"
+      }
+    }
   },
   "inbox": {
     "folders": "Folders",
@@ -668,6 +882,27 @@
     "language": {
       "title": "Language & Preferences",
       "description": "Choose your preferred language and interface settings"
+    },
+    "languagePreferences": {
+      "title": "Language & Preferences",
+      "description": "Customize your language, theme, and notification settings"
+    },
+    "theme": {
+      "title": "Theme",
+      "description": "Choose your preferred theme",
+      "light": "Light",
+      "dark": "Dark", 
+      "system": "System",
+      "comingSoon": "Coming soon"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Manage your notification preferences",
+      "campaigns": "Campaign Updates",
+      "campaignsDesc": "Get notified about campaign status changes",
+      "system": "System Notifications", 
+      "systemDesc": "Important updates and announcements",
+      "comingSoon": "Coming soon"
     },
     "upgrade": {
       "title": "Upgrade Plan",
