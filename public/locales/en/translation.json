@@ -382,7 +382,7 @@
       "sequences": {
         "initialOutreach": "Initial Outreach",
         "followUpOutreach": "Follow-up Outreach",
-        "subject": "Subject: \"{subject}\"",
+        "subject": "Subject: {subject}",
         "noSubject": "No subject",
         "editSubject": "Edit sequence subject",
         "deleteSequence": "Delete entire sequence",
@@ -397,7 +397,7 @@
         "addFollowUpSequence": "Add Follow-up Sequence"
       },
       "gap": {
-        "waitingPeriod": "{gap} day waiting period",
+        "waitingPeriod": "{gap} days waiting period",
         "clickToEdit": "Click to edit",
         "enterWaitingPeriod": "Enter waiting period (days):"
       },
@@ -707,6 +707,7 @@
         },
         "buttons": {
           "previous": "Previous",
+          "saveNext": "Save & Next",
           "checking": "Checking...",
           "launchCampaign": "Launch Campaign"
         }

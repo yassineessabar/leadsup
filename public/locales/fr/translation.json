@@ -382,7 +382,7 @@
       "sequences": {
         "initialOutreach": "Prospection initiale",
         "followUpOutreach": "Relance",
-        "subject": "Objet : \"{subject}\"",
+        "subject": "Objet : {subject}",
         "noSubject": "Pas d'objet",
         "editSubject": "Modifier l'objet de la séquence",
         "deleteSequence": "Supprimer toute la séquence",
@@ -397,7 +397,7 @@
         "addFollowUpSequence": "Ajouter une séquence de relance"
       },
       "gap": {
-        "waitingPeriod": "Période d'attente de {gap} jour",
+        "waitingPeriod": "Période d'attente de {gap} jours",
         "clickToEdit": "Cliquez pour modifier",
         "enterWaitingPeriod": "Entrez la période d'attente (jours) :"
       },
@@ -707,6 +707,7 @@
         },
         "buttons": {
           "previous": "Précédent",
+          "saveNext": "Enregistrer et Suivant",
           "checking": "Vérification...",
           "launchCampaign": "Lancer la campagne"
         }

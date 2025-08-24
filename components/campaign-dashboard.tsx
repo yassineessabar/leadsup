@@ -3165,7 +3165,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               size="sm"
                               className="h-4 w-4 p-0 flex-shrink-0" style={{ color: 'rgb(87, 140, 255)' }}
                               onClick={() => {
-                                const newSubject = prompt('Enter subject line for Initial Outreach sequence:', steps.find(s => s.sequence === 1)?.subject || '')
+                                const newSubject = prompt(t('campaignManagement.sequence.editor.editSubjectPrompt', { sequence: t('campaignManagement.sequence.sequences.initialOutreach') }), steps.find(s => s.sequence === 1)?.subject || '')
                                 if (newSubject !== null) updateSequenceSubject(1, newSubject)
                               }}
                               title="Edit sequence subject"
@@ -3319,7 +3319,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               size="sm"
                               className="h-4 w-4 p-0 text-green-600 hover:bg-green-100"
                               onClick={() => {
-                                const newSubject = prompt('Enter subject line for Follow-up sequence:', steps.find(s => s.sequence === 2)?.subject || '')
+                                const newSubject = prompt(t('campaignManagement.sequence.editor.editSubjectPrompt', { sequence: t('campaignManagement.sequence.sequences.followUpOutreach') }), steps.find(s => s.sequence === 2)?.subject || '')
                                 if (newSubject !== null) updateSequenceSubject(2, newSubject)
                               }}
                               title="Edit sequence subject"
@@ -3434,9 +3434,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                 {activeStep.title}
                               </h3>
                               <div className="flex items-center space-x-2 text-sm text-gray-500">
-                                <span>{activeStep.sequence === 1 ? 'Initial Outreach' : 'Follow-up Outreach'}</span>
+                                <span>{activeStep.sequence === 1 ? t('campaignManagement.sequence.sequences.initialOutreach') : t('campaignManagement.sequence.sequences.followUpOutreach')}</span>
                                 <span>•</span>
-                                <span>{activeStep.timing === 0 ? 'Immediately' : `Day ${activeStep.timing}`}</span>
+                                <span>{activeStep.timing === 0 ? t('campaignManagement.sequence.steps.immediately') : t('campaignManagement.sequence.steps.day', { timing: activeStep.timing })}</span>
                               </div>
                             </div>
                           </div>
@@ -3450,7 +3450,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               <Input
                                 value={activeStep.subject || ''}
                                 onChange={(e) => updateSequenceSubject(activeStep.sequence, e.target.value)}
-                                placeholder={`Enter subject for ${activeStep.sequence === 1 ? 'Initial Outreach' : 'Follow-up'} sequence...`}
+                                placeholder={t('campaignManagement.sequence.editor.subjectPlaceholder')}
                                 className="w-full h-11 text-sm border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
                               />
                               <p className="text-xs text-gray-500 mt-2 flex items-center space-x-1">
@@ -3949,7 +3949,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="flex items-center gap-6 text-sm text-gray-500 font-light">
                     <span className="flex items-center gap-1.5">
                       <Mail className="h-4 w-4" />
-                      {t('campaignManagement.header.campaignType', { type: campaign?.type })}
+                      {t('campaignManagement.header.campaignType', { type: campaign?.type || 'Email' })}
                     </span>
                     <Badge 
                       variant="outline"
@@ -4182,7 +4182,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 {/* Progress indicator */}
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-gray-500">
-                    {t('campaignManagement.guidedFlow.progress.stepOf', { current: guidedFlowStep + 1, total: guidedFlowSteps.length })}
+                    {t('campaignManagement.guidedFlow.progress.stepOf', { 
+                      current: guidedFlowStep + 1, 
+                      total: guidedFlowSteps.length 
+                    })}
                   </div>
                   <div className="w-64">
                     <Progress 
@@ -4252,7 +4255,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       ) : guidedFlowSteps[guidedFlowStep]?.tab === 'sequence' ? (
                         <>
                           <Check className="w-4 h-4 mr-2" />
-                          Save & Next
+                          {t('campaignManagement.guidedFlow.buttons.saveNext')}
                           <ChevronRight className="w-4 h-4 ml-1" />
                         </>
                       ) : (
