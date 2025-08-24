@@ -145,7 +145,7 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
 
           {/* Support Section */}
           <button
-            onClick={() => window.open("https://loopreview.io/#contact", "_blank")}
+            onClick={() => onSectionChange?.("help")}
             className="w-full flex items-center justify-between p-6 hover:bg-gray-50/50 transition-all duration-200 group"
           >
             <div className="flex items-center gap-4">
@@ -161,7 +161,7 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
           </button>
 
           <button
-            onClick={() => window.open("https://loopreview.io/privacy-policy", "_blank")}
+            onClick={() => onSectionChange?.("privacy")}
             className="w-full flex items-center justify-between p-6 hover:bg-gray-50/50 transition-all duration-200 group"
           >
             <div className="flex items-center gap-4">

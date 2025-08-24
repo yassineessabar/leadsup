@@ -14,6 +14,8 @@ import { UpgradePage } from "@/components/upgrade-page"
 import { BillingSubscriptionPage } from "@/components/billing-subscription-page"
 import { SettingsPage } from "@/components/settings-page"
 import { LanguagePreferencesPage } from "@/components/language-preferences-page"
+import { PrivacyPolicyPage } from "@/components/privacy-policy-page"
+import { HelpCenterPage } from "@/components/help-center-page"
 import CampaignsList from "@/components/campaign-tab"
 import InboxTab from "@/components/inbox-tab"
 import { IntegrationsTab } from "@/components/integrations-tab"
@@ -349,6 +351,10 @@ export default function Home() {
         return <SettingsPage onSectionChange={handleTabChange} />
       case "language-preferences":
         return <LanguagePreferencesPage onBack={() => handleTabChange("settings")} />
+      case "privacy":
+        return <PrivacyPolicyPage onBack={() => handleTabChange("settings")} />
+      case "help":
+        return <HelpCenterPage onBack={() => handleTabChange("settings")} />
       case "account":
         return <AccountTab onTabChange={handleTabChange} />
       case "upgrade":

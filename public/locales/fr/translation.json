@@ -1342,6 +1342,109 @@
       "editNote": "Vous pouvez modifier les étapes individuelles ou le timing après la création"
     }
   },
+  "privacy": {
+    "title": "Politique de Confidentialité",
+    "subtitle": "Découvrez comment nous protégeons vos données et respectons votre vie privée",
+    "lastUpdated": "Dernière mise à jour",
+    "introduction": {
+      "title": "Notre Engagement envers la Confidentialité",
+      "content": "Chez LeadsUp, nous prenons votre vie privée au sérieux. Cette politique explique comment nous collectons, utilisons et protégeons vos informations personnelles lorsque vous utilisez notre plateforme de génération de prospects."
+    },
+    "sections": {
+      "dataCollection": {
+        "title": "Informations que Nous Collectons",
+        "content": "Nous collectons les informations que vous nous fournissez directement, par exemple lorsque vous créez un compte, utilisez nos services ou nous contactez pour obtenir de l'aide. Cela inclut votre nom, adresse e-mail, informations d'entreprise et données de campagne.",
+        "details": "Nous ne collectons que les informations nécessaires pour fournir et améliorer nos services."
+      },
+      "dataUsage": {
+        "title": "Comment Nous Utilisons Vos Informations",
+        "content": "Nous utilisons les informations que nous collectons pour fournir, maintenir et améliorer nos services, traiter les transactions, vous envoyer des avis techniques et des messages de support, et communiquer avec vous sur les produits et services.",
+        "details": "Nous ne vendons jamais vos informations personnelles à des tiers."
+      },
+      "dataSecurity": {
+        "title": "Sécurité des Données",
+        "content": "Nous mettons en place des mesures de sécurité appropriées pour protéger vos informations personnelles contre l'accès non autorisé, l'altération, la divulgation ou la destruction. Nous utilisons le chiffrement, des serveurs sécurisés et des audits de sécurité réguliers.",
+        "details": "Toutes les données sensibles sont chiffrées en transit et au repos en utilisant des protocoles de chiffrement standard de l'industrie."
+      },
+      "cookies": {
+        "title": "Cookies et Suivi",
+        "content": "Nous utilisons des cookies et des technologies similaires pour améliorer votre expérience, analyser les modèles d'utilisation et personnaliser le contenu. Vous pouvez contrôler les paramètres des cookies via les préférences de votre navigateur.",
+        "details": "La plupart des cookies que nous utilisons sont essentiels au bon fonctionnement de la plateforme."
+      },
+      "contact": {
+        "title": "Rétention et Suppression des Données",
+        "content": "Nous conservons vos informations uniquement aussi longtemps que nécessaire pour fournir nos services et nous conformer aux obligations légales. Vous pouvez demander la suppression de votre compte et de vos données à tout moment en contactant notre équipe de support.",
+        "details": "La suppression de compte est généralement traitée dans les 30 jours suivant votre demande."
+      }
+    },
+    "footer": {
+      "title": "Nous Contacter à Propos de la Confidentialité",
+      "content": "Si vous avez des questions sur cette Politique de Confidentialité ou nos pratiques de confidentialité, veuillez nous contacter à privacy@leadsup.io."
+    }
+  },
+  "help": {
+    "title": "Centre d'Aide",
+    "subtitle": "Obtenez de l'aide et trouvez des réponses aux questions courantes",
+    "search": {
+      "placeholder": "Rechercher des articles d'aide..."
+    },
+    "categories": {
+      "title": "Parcourir par Catégorie",
+      "subtitle": "Trouvez de l'aide organisée par sujet",
+      "gettingStarted": {
+        "title": "Commencer",
+        "description": "Apprenez les bases de l'utilisation de LeadsUp"
+      },
+      "features": {
+        "title": "Fonctionnalités de la Plateforme",
+        "description": "Comprenez toutes les fonctionnalités disponibles"
+      },
+      "campaigns": {
+        "title": "Gestion des Campagnes",
+        "description": "Créez et gérez vos campagnes"
+      },
+      "integrations": {
+        "title": "Intégrations",
+        "description": "Connectez-vous avec des services externes"
+      }
+    },
+    "faq": {
+      "title": "Questions Fréquemment Posées",
+      "subtitle": "Réponses rapides aux questions courantes",
+      "howToStart": {
+        "question": "Comment commencer avec LeadsUp ?",
+        "answer": "Commencez par créer votre compte, configurer votre première campagne et définir votre public cible. Notre configuration guidée vous accompagnera à chaque étape pour vous aider à démarrer rapidement."
+      },
+      "setupCampaign": {
+        "question": "Comment configurer ma première campagne ?",
+        "answer": "Naviguez vers la section Campagnes, cliquez sur 'Créer une Nouvelle Campagne', choisissez votre public cible, créez votre séquence d'e-mails et configurez vos paramètres d'envoi. La plateforme vous guidera à chaque étape."
+      },
+      "trackResults": {
+        "question": "Comment suivre les résultats de ma campagne ?",
+        "answer": "Utilisez le tableau de bord Analytics pour surveiller les taux d'ouverture, les taux de clic, les réponses et les conversions. Vous pouvez voir des statistiques en temps réel et exporter des rapports détaillés pour une analyse plus approfondie."
+      },
+      "manageDomains": {
+        "question": "Comment gérer mes domaines d'envoi ?",
+        "answer": "Allez dans Paramètres > Domaines pour ajouter et vérifier vos domaines d'envoi. Une configuration de domaine appropriée améliore la délivrabilité et aide à établir la confiance avec vos destinataires."
+      },
+      "billingQuestions": {
+        "question": "Comment fonctionne la facturation ?",
+        "answer": "LeadsUp propose des plans tarifaires flexibles basés sur vos besoins d'utilisation. Vous pouvez upgrader, downgrader ou annuler à tout moment. Consultez la section Facturation de votre compte pour des informations détaillées."
+      }
+    },
+    "contact": {
+      "title": "Vous Avez Encore Besoin d'Aide ?",
+      "subtitle": "Contactez notre équipe de support",
+      "email": {
+        "title": "Support par E-mail",
+        "description": "Obtenez de l'aide par e-mail dans les 24 heures"
+      },
+      "chat": {
+        "title": "Chat en Direct",
+        "description": "Chattez avec notre équipe de support en temps réel"
+      }
+    }
+  },
   "settings": {
     "title": "Paramètres",
     "subtitle": "Gérez votre compte et préférences d'application",
@@ -1350,7 +1453,7 @@
       "description": "Gérez votre profil et paramètres de compte"
     },
     "language": {
-      "title": "Langue et préférences",
+      "title": "Langue",
       "description": "Choisissez votre langue préférée et paramètres d'interface"
     },
     "languagePreferences": {
@@ -1383,12 +1486,12 @@
       "description": "Consultez votre historique de facturation et méthodes de paiement"
     },
     "support": {
-      "title": "Centre d'aide",
-      "description": "Trouvez des réponses aux questions fréquentes"
+      "title": "Centre d'Aide",
+      "description": "Obtenez de l'aide et trouvez des réponses aux questions courantes"
     },
     "privacy": {
-      "title": "Confidentialité et sécurité",
-      "description": "Contrôlez vos paramètres de confidentialité et options de sécurité"
+      "title": "Politique de Confidentialité",
+      "description": "Découvrez comment nous protégeons vos données et votre vie privée"
     },
     "signOut": {
       "title": "Se déconnecter",

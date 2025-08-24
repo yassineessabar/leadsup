@@ -922,6 +922,109 @@
       "editNote": "You can edit individual steps or timing after creation"
     }
   },
+  "privacy": {
+    "title": "Privacy Policy",
+    "subtitle": "Learn how we protect your data and respect your privacy",
+    "lastUpdated": "Last updated",
+    "introduction": {
+      "title": "Our Commitment to Privacy",
+      "content": "At LeadsUp, we take your privacy seriously. This policy explains how we collect, use, and protect your personal information when you use our lead generation platform."
+    },
+    "sections": {
+      "dataCollection": {
+        "title": "Information We Collect",
+        "content": "We collect information you provide directly to us, such as when you create an account, use our services, or contact us for support. This includes your name, email address, company information, and campaign data.",
+        "details": "We only collect information that is necessary to provide and improve our services."
+      },
+      "dataUsage": {
+        "title": "How We Use Your Information",
+        "content": "We use the information we collect to provide, maintain, and improve our services, process transactions, send you technical notices and support messages, and communicate with you about products and services.",
+        "details": "We never sell your personal information to third parties."
+      },
+      "dataSecurity": {
+        "title": "Data Security",
+        "content": "We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. We use encryption, secure servers, and regular security audits.",
+        "details": "All sensitive data is encrypted both in transit and at rest using industry-standard encryption protocols."
+      },
+      "cookies": {
+        "title": "Cookies and Tracking",
+        "content": "We use cookies and similar technologies to enhance your experience, analyze usage patterns, and personalize content. You can control cookie settings through your browser preferences.",
+        "details": "Most cookies we use are essential for the platform to function properly."
+      },
+      "contact": {
+        "title": "Data Retention and Deletion",
+        "content": "We retain your information only as long as necessary to provide our services and comply with legal obligations. You can request deletion of your account and data at any time by contacting our support team.",
+        "details": "Account deletion is typically processed within 30 days of your request."
+      }
+    },
+    "footer": {
+      "title": "Contact Us About Privacy",
+      "content": "If you have questions about this Privacy Policy or our privacy practices, please contact us at privacy@leadsup.io."
+    }
+  },
+  "help": {
+    "title": "Help Center",
+    "subtitle": "Get help and find answers to common questions",
+    "search": {
+      "placeholder": "Search for help articles..."
+    },
+    "categories": {
+      "title": "Browse by Category",
+      "subtitle": "Find help organized by topic",
+      "gettingStarted": {
+        "title": "Getting Started",
+        "description": "Learn the basics of using LeadsUp"
+      },
+      "features": {
+        "title": "Platform Features",
+        "description": "Understand all available features"
+      },
+      "campaigns": {
+        "title": "Campaign Management",
+        "description": "Create and manage your campaigns"
+      },
+      "integrations": {
+        "title": "Integrations",
+        "description": "Connect with external services"
+      }
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "subtitle": "Quick answers to common questions",
+      "howToStart": {
+        "question": "How do I get started with LeadsUp?",
+        "answer": "Start by creating your account, setting up your first campaign, and defining your target audience. Our guided setup will walk you through each step to get you up and running quickly."
+      },
+      "setupCampaign": {
+        "question": "How do I set up my first campaign?",
+        "answer": "Navigate to the Campaigns section, click 'Create New Campaign', choose your target audience, create your email sequence, and configure your sending settings. The platform will guide you through each step."
+      },
+      "trackResults": {
+        "question": "How can I track my campaign results?",
+        "answer": "Use the Analytics dashboard to monitor open rates, click-through rates, responses, and conversions. You can view real-time statistics and export detailed reports for further analysis."
+      },
+      "manageDomains": {
+        "question": "How do I manage my sending domains?",
+        "answer": "Go to Settings > Domains to add and verify your sending domains. Proper domain setup improves deliverability and helps build trust with your recipients."
+      },
+      "billingQuestions": {
+        "question": "How does billing work?",
+        "answer": "LeadsUp offers flexible pricing plans based on your usage needs. You can upgrade, downgrade, or cancel at any time. Check the Billing section in your account for detailed information."
+      }
+    },
+    "contact": {
+      "title": "Still Need Help?",
+      "subtitle": "Get in touch with our support team",
+      "email": {
+        "title": "Email Support",
+        "description": "Get help via email within 24 hours"
+      },
+      "chat": {
+        "title": "Live Chat",
+        "description": "Chat with our support team in real-time"
+      }
+    }
+  },
   "settings": {
     "title": "Settings",
     "subtitle": "Manage your account and application preferences",
@@ -964,11 +1067,11 @@
     },
     "support": {
       "title": "Help Center",
-      "description": "Find answers to common questions"
+      "description": "Get help and find answers to common questions"
     },
     "privacy": {
-      "title": "Privacy & Security",
-      "description": "Control your privacy settings and security options"
+      "title": "Privacy Policy",
+      "description": "Learn how we protect your data and privacy"
     },
     "signOut": {
       "title": "Sign Out",

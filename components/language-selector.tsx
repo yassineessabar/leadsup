@@ -24,15 +24,28 @@ export function LanguageSelector() {
     setCurrentLang(i18n.language);
   }, [i18n.language]);
 
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
-    setCurrentLang(lng);
-    // Store the language preference in multiple places
-    localStorage.setItem('i18nextLng', lng);
-    sessionStorage.setItem('i18nextLng', lng);
-    document.cookie = `i18nextLng=${lng}; path=/; max-age=31536000`; // 1 year
-    // Force page reload to ensure all components update
-    setTimeout(() => window.location.reload(), 100);
+  const changeLanguage = async (lng: string) => {
+    try {
+      console.log('🔄 LanguageSelector changing language to:', lng);
+      
+      // Clear and set storage
+      localStorage.removeItem('i18nextLng');
+      sessionStorage.removeItem('i18nextLng');
+      document.cookie = 'i18nextLng=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      
+      localStorage.setItem('i18nextLng', lng);
+      sessionStorage.setItem('i18nextLng', lng);
+      document.cookie = `i18nextLng=${lng}; path=/; max-age=31536000`;
+      
+      await i18n.changeLanguage(lng);
+      setCurrentLang(lng);
+      console.log('✅ LanguageSelector language changed to:', i18n.language);
+      
+      // Force page reload to ensure all components update
+      setTimeout(() => window.location.reload(), 300);
+    } catch (error) {
+      console.error('❌ LanguageSelector error:', error);
+    }
   };
 
   const currentLanguage = languages.find(lang => lang.code === currentLang) || languages[0];
@@ -70,16 +83,29 @@ export function LanguageSelectorCompact() {
   const { i18n } = useTranslation();
   const [currentLang, setCurrentLang] = useState(i18n.language);
 
-  const toggleLanguage = () => {
-    const newLang = currentLang === 'en' ? 'fr' : 'en';
-    i18n.changeLanguage(newLang);
-    setCurrentLang(newLang);
-    // Store the language preference in multiple places
-    localStorage.setItem('i18nextLng', newLang);
-    sessionStorage.setItem('i18nextLng', newLang);
-    document.cookie = `i18nextLng=${newLang}; path=/; max-age=31536000`; // 1 year
-    // Force page reload to ensure all components update
-    setTimeout(() => window.location.reload(), 100);
+  const toggleLanguage = async () => {
+    try {
+      const newLang = currentLang === 'en' ? 'fr' : 'en';
+      console.log('🔄 LanguageSelectorCompact toggling to:', newLang);
+      
+      // Clear and set storage
+      localStorage.removeItem('i18nextLng');
+      sessionStorage.removeItem('i18nextLng');
+      document.cookie = 'i18nextLng=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      
+      localStorage.setItem('i18nextLng', newLang);
+      sessionStorage.setItem('i18nextLng', newLang);
+      document.cookie = `i18nextLng=${newLang}; path=/; max-age=31536000`;
+      
+      await i18n.changeLanguage(newLang);
+      setCurrentLang(newLang);
+      console.log('✅ LanguageSelectorCompact language changed to:', i18n.language);
+      
+      // Force page reload to ensure all components update
+      setTimeout(() => window.location.reload(), 300);
+    } catch (error) {
+      console.error('❌ LanguageSelectorCompact error:', error);
+    }
   };
 
   const currentLanguage = languages.find(lang => lang.code === currentLang) || languages[0];
@@ -100,19 +126,66 @@ export function LanguageSelectorCompact() {
 
 // Inline language buttons for settings page
 export function LanguageButtons() {
-  const { i18n, t } = useTranslation();
+  const { i18n, t, ready } = useTranslation();
   const [currentLang, setCurrentLang] = useState(i18n.language);
+  const [isChanging, setIsChanging] = useState(false);
 
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
-    setCurrentLang(lng);
-    // Store the language preference in multiple places
-    localStorage.setItem('i18nextLng', lng);
-    sessionStorage.setItem('i18nextLng', lng);
-    document.cookie = `i18nextLng=${lng}; path=/; max-age=31536000`; // 1 year
-    // Force page reload to ensure all components update
-    setTimeout(() => window.location.reload(), 100);
+  useEffect(() => {
+    setCurrentLang(i18n.language);
+  }, [i18n.language]);
+
+  const changeLanguage = async (lng: string) => {
+    if (isChanging || lng === currentLang) return;
+    
+    try {
+      setIsChanging(true);
+      console.log('🔄 Changing language from', currentLang, 'to:', lng);
+      console.log('🔍 Before change - Current i18n language:', i18n.language);
+      
+      // Clear any conflicting storage first
+      console.log('🧹 Clearing existing language preferences');
+      localStorage.removeItem('i18nextLng');
+      sessionStorage.removeItem('i18nextLng');
+      document.cookie = 'i18nextLng=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      
+      // Set the new language preference
+      console.log('💾 Setting new language preference to:', lng);
+      localStorage.setItem('i18nextLng', lng);
+      sessionStorage.setItem('i18nextLng', lng);
+      document.cookie = `i18nextLng=${lng}; path=/; max-age=31536000`;
+      
+      // Force change the language
+      console.log('🔀 Calling i18n.changeLanguage');
+      await i18n.changeLanguage(lng);
+      console.log('✅ i18n language changed to:', i18n.language);
+      
+      setCurrentLang(lng);
+      console.log('✅ Language change completed successfully');
+      
+      // Force page reload to ensure all components update
+      setTimeout(() => {
+        console.log('🔄 Reloading page to apply language changes');
+        window.location.reload();
+      }, 300);
+    } catch (error) {
+      console.error('❌ Error changing language:', error);
+      setIsChanging(false);
+    }
   };
+
+  if (!ready) {
+    return (
+      <div className="flex flex-col space-y-2">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Language
+        </label>
+        <div className="flex gap-2">
+          <div className="w-24 h-8 bg-gray-200 animate-pulse rounded"></div>
+          <div className="w-24 h-8 bg-gray-200 animate-pulse rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col space-y-2">
@@ -126,10 +199,12 @@ export function LanguageButtons() {
             variant={currentLang === language.code ? 'default' : 'outline'}
             size="sm"
             onClick={() => changeLanguage(language.code)}
+            disabled={isChanging}
             className="gap-2"
           >
             <span>{language.flag}</span>
             <span>{language.name}</span>
+            {isChanging && currentLang !== language.code && <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin ml-1"></div>}
           </Button>
         ))}
       </div>

@@ -14,19 +14,32 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
         // i18n is already initialized in lib/i18n.js, just wait for it to be ready
         console.log('✅ i18n already initialized, language:', i18n.language);
         
-        // Set to user's preferred language or default
+        // Check for stored language preference and respect it
         const storedLanguage = typeof window !== 'undefined' ? 
-          localStorage.getItem('i18nextLng') || 'fr' : 'fr';
+          localStorage.getItem('i18nextLng') || sessionStorage.getItem('i18nextLng') || 'en' : 'en';
         
+        console.log('Current i18n language:', i18n.language);
+        console.log('Stored language preference:', storedLanguage);
+        
+        // Always set to stored language if it differs from current
         if (i18n.language !== storedLanguage) {
-          console.log('🔄 Setting language to:', storedLanguage);
+          console.log('🔄 Setting language to stored preference:', storedLanguage);
           await i18n.changeLanguage(storedLanguage);
+          console.log('✅ Language set to:', i18n.language);
+        } else {
+          console.log('✅ Language already matches stored preference:', i18n.language);
         }
         
         // Check if translations are loaded
         const hasEnglish = i18n.hasResourceBundle('en', 'translation');
         const hasFrench = i18n.hasResourceBundle('fr', 'translation');
         console.log('📚 Translation bundles loaded:', { en: hasEnglish, fr: hasFrench });
+        
+        // Force load translations if not already loaded
+        if (!hasEnglish || !hasFrench) {
+          console.log('🔄 Force loading missing translation bundles...');
+          await i18n.reloadResources();
+        }
         
         console.log('✅ i18n setup complete, current language:', i18n.language);
         setIsI18nInitialized(true);
