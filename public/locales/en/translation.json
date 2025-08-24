@@ -238,6 +238,134 @@
     "stopCampaignDespiteHealth": "Stop the campaign now despite health scores.",
     "goActiveDespiteHealth": "Go active now despite low health scores."
   },
+  "campaignManagement": {
+    "loading": {
+      "title": "Loading Campaign",
+      "subtitle": "Setting up your campaign dashboard"
+    },
+    "header": {
+      "campaignType": "{type} Campaign"
+    },
+    "tabs": {
+      "target": "Target",
+      "sequence": "Sequence", 
+      "sender": "Sender",
+      "settings": "Settings"
+    },
+    "guidedFlow": {
+      "steps": {
+        "addTargetAudience": "Add Target Audience",
+        "createEmailSequences": "Create Email Sequences",
+        "selectSenderAccounts": "Select Sender Accounts",
+        "configureSettings": "Configure Settings"
+      },
+      "descriptions": {
+        "importContacts": "Import contacts or set up automated scraping",
+        "designMessages": "Design your outreach messages and timing",
+        "chooseEmailAccounts": "Choose which email accounts to send from",
+        "setSendingSchedule": "Set sending schedule and campaign preferences"
+      },
+      "progress": {
+        "stepOf": "Step {current} of {total}"
+      },
+      "buttons": {
+        "previous": "Previous",
+        "checking": "Checking...",
+        "launchCampaign": "Launch Campaign"
+      }
+    },
+    "targetTab": {
+      "title": "Target Audience",
+      "subtitle": "Import contacts or set up automated scraping to build your target list",
+      "tabs": {
+        "importContacts": "Import Contacts",
+        "autoScraping": "Auto Scraping"
+      },
+      "import": {
+        "title": "Import Contacts",
+        "subtitle": "Upload your contact list from a CSV file",
+        "uploadSuccessful": "Upload Successful!",
+        "uploadCSVFile": "Upload CSV File",
+        "contactsImportedSuccessfully": "Your contacts have been imported successfully.",
+        "importFromCSV": "Import your contacts from a CSV file. Maximum 10,000 contacts.",
+        "chooseFile": "Choose File",
+        "uploading": "Uploading...",
+        "uploadCSV": "Upload CSV"
+      },
+      "scraping": {
+        "title": "LinkedIn Contact Scraping",
+        "subtitle": "Automatically find and scrape LinkedIn profiles with email enrichment",
+        "targetIndustries": "Target Industries (from ICPs)",
+        "industryPlaceholder": "Type to search industries...",
+        "keywords": "Keywords",
+        "keywordsExample": "e.g., CEO, Founder, Manager",
+        "targetLocations": "Target Locations (from ICPs)",
+        "locationPlaceholder": "Type to search locations...",
+        "dailyLimit": "Daily Limit",
+        "freePlanLimit": "(Free plan: up to 100/day)",
+        "startScraping": "Start Scraping",
+        "pauseScraping": "Pause Scraping",
+        "fillRequiredFields": "Fill in industry, add keywords, and specify location to start scraping",
+        "scrapingActive": "Scraping is currently active",
+        "scrapingPaused": "Scraping is paused",
+        "startingScraping": "Starting scraping...",
+        "scrapingStarted": "Scraping Started",
+        "resumeScraping": "Resume Scraping",
+        "pause": "Pause",
+        "startingProcess": "Starting scraping process...",
+        "processRunning": "Scraping process is running in the background...",
+        "confirmationTitle": "Start Scraping",
+        "confirmStart": "Start",
+        "readyToUpload": "Ready to upload"
+      },
+      "stats": {
+        "imported": "Imported",
+        "duplicates": "Duplicates",
+        "totalProcessed": "Total Processed"
+      },
+      "csvFormat": {
+        "title": "CSV Format Requirements:",
+        "headerRow": "First row must contain column headers",
+        "requiredFields": "Required fields: Email, First Name, Last Name",
+        "optionalFields": "Optional fields: Company, Title, Phone, LinkedIn URL",
+        "encoding": "UTF-8 encoding recommended"
+      },
+      "validation": {
+        "selectFromDropdown": "Please select from dropdown options"
+      },
+      "upgrade": {
+        "title": "Upgrade to Pro",
+        "description": "Unlock higher daily scraping limits and premium features to supercharge your outreach campaigns.",
+        "freePlan": "Free Plan",
+        "freePlanLimit": "Up to 100 contacts/day",
+        "proPlan": "Pro Plan", 
+        "proPlanLimit": "Up to 1,000+ contacts/day",
+        "features": {
+          "higherLimits": "Higher daily scraping limits",
+          "advancedTargeting": "Advanced targeting options",
+          "prioritySupport": "Priority customer support"
+        },
+        "maybeLater": "Maybe Later",
+        "upgradeNow": "Upgrade Now"
+      }
+    },
+    "dialogs": {
+      "delete": {
+        "deleteSequence": "Delete Sequence",
+        "deleteStep": "Delete Step",
+        "sequenceConfirmation": "Are you sure you want to delete the sequence \"{name}\"? This action cannot be undone.",
+        "stepConfirmation": "Are you sure you want to delete this step? This action cannot be undone.",
+        "cancel": "Cancel",
+        "delete": "Delete"
+      },
+      "deleteCampaign": {
+        "title": "Delete Campaign",
+        "confirmation": "Are you sure you want to delete the campaign \"{name}\"?",
+        "warning": "This action cannot be undone.",
+        "deleteCampaign": "Delete Campaign"
+      }
+    }
+  },
   "leads": {
     "title": "Leads",
     "addLead": "Add Lead",
@@ -389,6 +517,14 @@
       "yourCompanyWebsite": "Your company name and website",
       "letsStartGettingToKnow": "Let's start by getting to know your business"
     },
+    "instructions": {
+      "getStarted": "GET STARTED",
+      "campaignCreation": "Campaign creation",
+      "createMostRelevantCampaign": "To create the most relevant campaign, please complete each step and provide as much context as possible to our AI. Your input is crucial for optimal results!",
+      "defineTargetAudience": "Define your target industries, locations, and prospect roles to help us find the right people for your campaign.",
+      "reviewIdealCustomers": "Review your ideal customers, personas, and value propositions to create messaging that resonates.",
+      "createSequences": "Create sequences that progressively deliver value, vary touchpoints, and optimize regularly based on prospect engagement metrics."
+    },
     "validation": {
       "campaignNameRequired": "Campaign name is required",
       "campaignObjectiveRequired": "Campaign objective is required",
@@ -437,6 +573,266 @@
       "german": "🇩🇪 German",
       "italian": "🇮🇹 Italian",
       "portuguese": "🇵🇹 Portuguese"
+    },
+    "targetAudience": {
+      "title": "Target Audience",
+      "subtitle": "AI-generated target audience based on your company and campaign objective",
+      "aiGeneratedTargetAudience": "AI-Generated Target Audience",
+      "aiAnalyzedMessage": "Our AI has analyzed your company information and campaign objective to suggest the most relevant target audience. You can modify these selections as needed.",
+      "targetIndustries": "Target Industries",
+      "targetLocations": "Target Locations",
+      "targetRoles": "Target Roles",
+      "aiGenerated": "AI Generated",
+      "addAnotherIndustry": "Add another industry...",
+      "addAnotherLocation": "Add another location...",
+      "addAnotherRole": "Add another role..."
+    },
+    "personaValueProps": {
+      "title": "Persona & Value Propositions",
+      "subtitle": "Review your target audience and messaging strategy",
+      "reviewMessage": "Review your ideal customers, personas, and how you solve their challenges.",
+      "idealCustomerProfile": "Ideal Customer Profile",
+      "targetPersona": "Target Persona",
+      "customerPainPoint": "Customer Pain Point",
+      "yourValueProposition": "Your Value Proposition",
+      "more": "+{count} more"
+    },
+    "sequenceReview": {
+      "aiGeneratedTitle": "AI-Generated Sequence Preview",
+      "standardTitle": "Sequence Preview - {strategy}",
+      "aiGeneratedSubtitle": "Review your AI-generated automated outreach sequence",
+      "standardSubtitle": "Review your automated outreach sequence",
+      "aiSequenceMessage": "This AI-generated sequence will run automatically for each lead",
+      "standardSequenceMessage": "This sequence will run automatically for each lead",
+      "editNote": "You can edit individual steps or timing after creation",
+      "sequenceStart": "Sequence start",
+      "immediately": "Immediately",
+      "sendImmediately": "Send immediately",
+      "waitForDay": "Wait for {count} day",
+      "waitForDays": "Wait for {count} days",
+      "email": "Email",
+      "followUpEmail": "Follow-up Email",
+      "finalEmail": "Final Email",
+      "linkedinConnection": "LinkedIn Connection",
+      "linkedinMessage": "LinkedIn Message",
+      "connectionRequest": "Connection Request",
+      "followUpMessage": "Follow-up Message",
+      "finalMessage": "Final Message"
+    },
+    "campaignManagement": {
+      "loading": {
+        "title": "Loading Campaign",
+        "subtitle": "Setting up your campaign dashboard"
+      },
+      "header": {
+        "campaignType": "{type} Campaign"
+      },
+      "tabs": {
+        "target": "Target",
+        "sequence": "Sequence", 
+        "sender": "Sender",
+        "settings": "Settings"
+      },
+      "guidedFlow": {
+        "steps": {
+          "addTargetAudience": "Add Target Audience",
+          "createEmailSequences": "Create Email Sequences",
+          "selectSenderAccounts": "Select Sender Accounts",
+          "configureSettings": "Configure Settings"
+        },
+        "descriptions": {
+          "importContacts": "Import contacts or set up automated scraping",
+          "designMessages": "Design your outreach messages and timing",
+          "chooseEmailAccounts": "Choose which email accounts to send from",
+          "setSendingSchedule": "Set sending schedule and campaign preferences"
+        },
+        "progress": {
+          "stepOf": "Step {current} of {total}"
+        },
+        "buttons": {
+          "previous": "Previous",
+          "checking": "Checking...",
+          "launchCampaign": "Launch Campaign"
+        }
+      },
+      "settings": {
+        "title": "Settings",
+        "subtitle": "Configure timing, schedule and sender information",
+        "saveSettings": "Save Settings",
+        "sendingSchedule": {
+          "title": "Sending Schedule",
+          "subtitle": "When and how often to send emails",
+          "activeDays": "Active Days",
+          "sendingHours": "Sending Hours",
+          "to": "to"
+        },
+        "senderInformation": {
+          "title": "Sender Information",
+          "subtitle": "Your details and email signature",
+          "firstName": "First Name",
+          "lastName": "Last Name",
+          "company": "Company",
+          "website": "Website",
+          "emailSignature": "Email Signature"
+        },
+        "placeholders": {
+          "firstName": "John",
+          "lastName": "Doe",
+          "company": "Company Inc.",
+          "website": "https://company.com",
+          "enterUrl": "Enter URL:"
+        }
+      },
+      "sequence": {
+        "title": "Email Sequence",
+        "subtitle": "Configure your email sequence steps and timing",
+        "saveSequence": "Save Sequence",
+        "saving": "Saving...",
+        "campaignTimeline": {
+          "title": "Campaign Timeline",
+          "subtitle": "Email sequence overview"
+        },
+        "sequences": {
+          "initialOutreach": "Initial Outreach",
+          "followUpOutreach": "Follow-up Outreach",
+          "subject": "Subject: \"{subject}\"",
+          "noSubject": "No subject",
+          "editSubject": "Edit sequence subject",
+          "deleteSequence": "Delete entire sequence",
+          "removeEmail": "Remove this email"
+        },
+        "steps": {
+          "immediately": "Immediately",
+          "day": "Day {timing}"
+        },
+        "buttons": {
+          "addEmail": "Add Email",
+          "addFollowUpSequence": "Add Follow-up Sequence"
+        },
+        "gap": {
+          "waitingPeriod": "{gap} day waiting period",
+          "clickToEdit": "Click to edit",
+          "enterWaitingPeriod": "Enter waiting period (days):"
+        },
+        "editor": {
+          "subject": "Subject",
+          "message": "Message",
+          "subjectPlaceholder": "Enter subject line",
+          "timing": "Timing (Days)",
+          "addStep": "Add Step",
+          "deleteStep": "Delete Step",
+          "preview": "Preview",
+          "editSubjectPrompt": "Enter subject line for {sequence} sequence:"
+        }
+      },
+      "dialogs": {
+        "delete": {
+          "deleteSequence": "Delete Sequence",
+          "deleteStep": "Delete Step",
+          "sequenceConfirmation": "Are you sure you want to delete the sequence \"{name}\"? This action cannot be undone.",
+          "stepConfirmation": "Are you sure you want to delete this step? This action cannot be undone.",
+          "cancel": "Cancel",
+          "delete": "Delete"
+        },
+        "preview": {
+          "title": "Sequence Preview",
+          "subject": "Subject: {subject}",
+          "immediately": "Immediately",
+          "waitDays": "Wait {timing} days"
+        },
+        "deleteCampaign": {
+          "title": "Delete Campaign",
+          "confirmation": "Are you sure you want to delete the campaign \"{name}\"?",
+          "warning": "This action cannot be undone.",
+          "deleteCampaign": "Delete Campaign"
+        },
+        "warmupWarning": {
+          "title": "Low Deliverability Detected",
+          "subtitle": "Some sender accounts have low health scores",
+          "description": "We recommend enhancing the warm-up process to improve email deliverability before launching your campaign.",
+          "enhance": "Enhance",
+          "proceedAnyway": "Proceed Anyway"
+        },
+        "noAccountSelected": {
+          "title": "Select Sender Account",
+          "description": "Choose at least one account to proceed."
+        }
+      }
+    },
+    "targetTab": {
+      "title": "Target Audience",
+      "subtitle": "Import contacts or set up automated scraping to build your target list",
+      "tabs": {
+        "importContacts": "Import Contacts",
+        "autoScraping": "Auto Scraping"
+      },
+      "import": {
+        "title": "Import Contacts",
+        "subtitle": "Upload your contact list from a CSV file",
+        "uploadSuccessful": "Upload Successful!",
+        "uploadCSVFile": "Upload CSV File",
+        "contactsImportedSuccessfully": "Your contacts have been imported successfully.",
+        "importFromCSV": "Import your contacts from a CSV file. Maximum 10,000 contacts.",
+        "chooseFile": "Choose File",
+        "uploading": "Uploading...",
+        "uploadCSV": "Upload CSV"
+      },
+      "scraping": {
+        "title": "LinkedIn Contact Scraping",
+        "subtitle": "Automatically find and scrape LinkedIn profiles with email enrichment",
+        "targetIndustries": "Target Industries (from ICPs)",
+        "industryPlaceholder": "Type to search industries...",
+        "keywords": "Keywords",
+        "keywordsExample": "e.g., CEO, Founder, Manager",
+        "targetLocations": "Target Locations (from ICPs)",
+        "locationPlaceholder": "Type to search locations...",
+        "dailyLimit": "Daily Limit",
+        "freePlanLimit": "(Free plan: up to 100/day)",
+        "startScraping": "Start Scraping",
+        "pauseScraping": "Pause Scraping",
+        "fillRequiredFields": "Fill in industry, add keywords, and specify location to start scraping",
+        "scrapingActive": "Scraping is currently active",
+        "scrapingPaused": "Scraping is paused",
+        "startingScraping": "Starting scraping...",
+        "scrapingStarted": "Scraping Started",
+        "resumeScraping": "Resume Scraping",
+        "pause": "Pause",
+        "startingProcess": "Starting scraping process...",
+        "processRunning": "Scraping process is running in the background...",
+        "confirmationTitle": "Start Scraping",
+        "confirmStart": "Start",
+        "readyToUpload": "Ready to upload"
+      },
+      "stats": {
+        "imported": "Imported",
+        "duplicates": "Duplicates",
+        "totalProcessed": "Total Processed"
+      },
+      "csvFormat": {
+        "title": "CSV Format Requirements:",
+        "headerRow": "First row must contain column headers",
+        "requiredFields": "Required fields: Email, First Name, Last Name",
+        "optionalFields": "Optional fields: Company, Title, Phone, LinkedIn URL",
+        "encoding": "UTF-8 encoding recommended"
+      },
+      "validation": {
+        "selectFromDropdown": "Please select from dropdown options"
+      },
+      "upgrade": {
+        "title": "Upgrade to Pro",
+        "description": "Unlock higher daily scraping limits and premium features to supercharge your outreach campaigns.",
+        "freePlan": "Free Plan",
+        "freePlanLimit": "Up to 100 contacts/day",
+        "proPlan": "Pro Plan", 
+        "proPlanLimit": "Up to 1,000+ contacts/day",
+        "features": {
+          "higherLimits": "Higher daily scraping limits",
+          "advancedTargeting": "Advanced targeting options",
+          "prioritySupport": "Priority customer support"
+        },
+        "maybeLater": "Maybe Later",
+        "upgradeNow": "Upgrade Now"
+      }
     }
   },
   "dashboardAnalytics": {

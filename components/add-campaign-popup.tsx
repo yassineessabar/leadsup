@@ -185,6 +185,39 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
   const [selectedMessage, setSelectedMessage] = useState({ title: "", content: "" })
   const [error, setError] = useState<string | null>(null)
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false)
+  
+  // Main ICP state that was moved from later in the component
+  const [mainICPIndustries, setMainICPIndustries] = useState<string[]>([])
+  const [mainICPLocations, setMainICPLocations] = useState<string[]>([])
+  
+  // All editing state declarations
+  const [editingICP, setEditingICP] = useState(false)
+  const [editingPersona, setEditingPersona] = useState(false)
+  const [editingPainPoint, setEditingPainPoint] = useState(false)
+  const [editingValueProp, setEditingValueProp] = useState(false)
+  const [editedData, setEditedData] = useState({
+    icp: { ...sampleICPs.find(icp => icp.id === selectedICP) },
+    persona: { ...samplePersonas.find(persona => persona.id === selectedPersona) },
+    painPoint: { ...samplePainPoints.find(pp => pp.id === selectedPainPoint) },
+    valueProp: { ...sampleValuePropositions[0] }
+  })
+  
+  // Form input state
+  const [newKeyword, setNewKeyword] = useState("")
+  const [newICPIndustry, setNewICPIndustry] = useState("")
+  const [newICPLocation, setNewICPLocation] = useState("")
+  
+  // Autocomplete state for industries
+  const [showIndustryDropdown, setShowIndustryDropdown] = useState(false)
+  const [filteredIndustries, setFilteredIndustries] = useState<string[]>([])
+  
+  // Autocomplete state for locations  
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false)
+  const [filteredLocations, setFilteredLocations] = useState<string[]>([])
+  
+  // Validation error states
+  const [showIndustryError, setShowIndustryError] = useState(false)
+  const [showLocationError, setShowLocationError] = useState(false)
 
   // Auto-generate campaign name when company name changes
   useEffect(() => {
@@ -338,21 +371,12 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
       }
     }
   }, [campaignId, existingCampaignId])
-  const [editingICP, setEditingICP] = useState(false)
+  
 
   // Wait for translations to be ready
   if (!ready) {
     return null
   }
-  const [editingPersona, setEditingPersona] = useState(false)
-  const [editingPainPoint, setEditingPainPoint] = useState(false)
-  const [editingValueProp, setEditingValueProp] = useState(false)
-  const [editedData, setEditedData] = useState({
-    icp: { ...sampleICPs.find(icp => icp.id === selectedICP) },
-    persona: { ...samplePersonas.find(persona => persona.id === selectedPersona) },
-    painPoint: { ...samplePainPoints.find(pp => pp.id === selectedPainPoint) },
-    valueProp: { ...sampleValuePropositions[0] }
-  })
 
   const getProgressPercentage = () => {
     const totalSteps = steps.length
@@ -756,25 +780,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
     }
   }
 
-  const [newKeyword, setNewKeyword] = useState("")
-  const [newICPIndustry, setNewICPIndustry] = useState("")
-  const [newICPLocation, setNewICPLocation] = useState("")
   
-  // Autocomplete state for industries
-  const [showIndustryDropdown, setShowIndustryDropdown] = useState(false)
-  const [filteredIndustries, setFilteredIndustries] = useState<string[]>([])
-  
-  // Autocomplete state for locations  
-  const [showLocationDropdown, setShowLocationDropdown] = useState(false)
-  const [filteredLocations, setFilteredLocations] = useState<string[]>([])
-  
-  // Validation error states
-  const [showIndustryError, setShowIndustryError] = useState(false)
-  const [showLocationError, setShowLocationError] = useState(false)
-  
-  // Simple state for main ICP industries/locations
-  const [mainICPIndustries, setMainICPIndustries] = useState<string[]>([])
-  const [mainICPLocations, setMainICPLocations] = useState<string[]>([])
   
   // Simple functions for main ICP management
   const addMainICPIndustry = () => {
@@ -1452,9 +1458,9 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="text-center">
           <h2 className="text-2xl font-medium text-gray-900">
-            Target Audience
+            {t('campaignCreation.targetAudience.title')}
           </h2>
-          <p className="text-sm text-gray-500 mt-1">AI-generated target audience based on your company and campaign objective</p>
+          <p className="text-sm text-gray-500 mt-1">{t('campaignCreation.targetAudience.subtitle')}</p>
         </div>
 
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 mb-8">
@@ -1463,8 +1469,8 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
               <Brain className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="font-medium text-blue-900 mb-1">AI-Generated Target Audience</h3>
-              <p className="text-blue-800 text-sm">Our AI has analyzed your company information and campaign objective to suggest the most relevant target audience. You can modify these selections as needed.</p>
+              <h3 className="font-medium text-blue-900 mb-1">{t('campaignCreation.targetAudience.aiGeneratedTargetAudience')}</h3>
+              <p className="text-blue-800 text-sm">{t('campaignCreation.targetAudience.aiAnalyzedMessage')}</p>
             </div>
           </div>
         </div>
@@ -1476,9 +1482,9 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
             {/* AI-Generated Target Industries */}
             <div className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <label className="text-base font-semibold text-gray-900">Target Industries</label>
+                <label className="text-base font-semibold text-gray-900">{t('campaignCreation.targetAudience.targetIndustries')}</label>
                 <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                  AI Generated
+                  {t('campaignCreation.targetAudience.aiGenerated')}
                 </Badge>
               </div>
               
@@ -1503,7 +1509,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                 <div className="flex gap-2 relative">
                   <div className="flex-1 relative">
                     <Input
-                      placeholder="Add another industry..."
+                      placeholder={t('campaignCreation.targetAudience.addAnotherIndustry')}
                       value={newICPIndustry}
                       onChange={(e) => handleIndustryInputChange(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && addMainICPIndustry()}
@@ -1543,9 +1549,9 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
             {/* AI-Generated Target Locations */}
             <div className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <label className="text-base font-semibold text-gray-900">Target Locations</label>
+                <label className="text-base font-semibold text-gray-900">{t('campaignCreation.targetAudience.targetLocations')}</label>
                 <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                  AI Generated
+                  {t('campaignCreation.targetAudience.aiGenerated')}
                 </Badge>
               </div>
               
@@ -1570,7 +1576,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                 <div className="flex gap-2 relative">
                   <div className="flex-1 relative">
                     <Input
-                      placeholder="Add another location..."
+                      placeholder={t('campaignCreation.targetAudience.addAnotherLocation')}
                       value={newICPLocation}
                       onChange={(e) => handleLocationInputChange(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && addMainICPLocation()}
@@ -1610,9 +1616,9 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
             {/* AI-Generated Target Roles */}
             <div className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <label className="text-base font-semibold text-gray-900">Target Roles</label>
+                <label className="text-base font-semibold text-gray-900">{t('campaignCreation.targetAudience.targetRoles')}</label>
                 <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                  AI Generated
+                  {t('campaignCreation.targetAudience.aiGenerated')}
                 </Badge>
               </div>
               
@@ -1636,7 +1642,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                 
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Add another role..."
+                    placeholder={t('campaignCreation.targetAudience.addAnotherRole')}
                     value={newKeyword}
                     onChange={(e) => setNewKeyword(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addKeyword()}
@@ -2406,9 +2412,9 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="text-center">
           <h2 className="text-2xl font-medium text-gray-900">
-            Persona & Value Propositions
+            {t('campaignCreation.personaValueProps.title')}
           </h2>
-          <p className="text-sm text-gray-500 mt-1">Review your target audience and messaging strategy</p>
+          <p className="text-sm text-gray-500 mt-1">{t('campaignCreation.personaValueProps.subtitle')}</p>
         </div>
         
         <div className="bg-blue-50/80 backdrop-blur-sm border border-blue-100/50 rounded-2xl p-4">
@@ -2416,7 +2422,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
             <div className="w-6 h-6 bg-blue-600 rounded-xl flex items-center justify-center mt-0.5">
               <span className="text-white text-xs font-bold">i</span>
             </div>
-            <p className="text-blue-900 font-medium text-sm">Review your ideal customers, personas, and how you solve their challenges.</p>
+            <p className="text-blue-900 font-medium text-sm">{t('campaignCreation.personaValueProps.reviewMessage')}</p>
           </div>
         </div>
         
@@ -2426,7 +2432,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
           {/* Ideal Customer Profile Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              Ideal Customer Profile
+              {t('campaignCreation.personaValueProps.idealCustomerProfile')}
             </h3>
             {displayICPs.slice(0, 1).map((icp: any) => (
               <div 
@@ -2499,7 +2505,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                         ))}
                         {icp.industries.length > 3 && (
                           <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                            +{icp.industries.length - 3} more
+                            {t('campaignCreation.personaValueProps.more', { count: icp.industries.length - 3 })}
                           </span>
                         )}
                       </div>
@@ -2513,7 +2519,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
           {/* Target Persona Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              Target Persona
+              {t('campaignCreation.personaValueProps.targetPersona')}
             </h3>
             {displayPersonas.slice(0, 1).map((persona: any) => (
               <div 
@@ -2598,7 +2604,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
           {/* Customer Pain Point Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              Customer Pain Point
+              {t('campaignCreation.personaValueProps.customerPainPoint')}
             </h3>
             {displayPainPoints.slice(0, 1).map((painPoint: any) => (
               <div 
@@ -2671,7 +2677,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
           {/* Your Value Proposition Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              Your Value Proposition
+              {t('campaignCreation.personaValueProps.yourValueProposition')}
             </h3>
             {displayValueProps.slice(0, 1).map((valueProp: any) => (
               <div 
@@ -2933,18 +2939,18 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
       const emailSequences = aiAssets?.email_sequences || []
       
       if (emailSequences.length > 0) {
-        const steps = [{ type: "start", title: "Sequence start" }]
+        const steps = [{ type: "start", title: t('campaignCreation.sequenceReview.sequenceStart') }]
         
         emailSequences.forEach((email: any, index: number) => {
           steps.push({
             type: "timing",
-            text: email.timing_days === 0 ? "Immediately" : `Wait for ${email.timing_days} day${email.timing_days > 1 ? 's' : ''}`,
+            text: email.timing_days === 0 ? t('campaignCreation.sequenceReview.immediately') : email.timing_days === 1 ? t('campaignCreation.sequenceReview.waitForDay', { count: 1 }) : t('campaignCreation.sequenceReview.waitForDays', { count: email.timing_days }),
             color: "text-blue-600"
           })
           steps.push({
             type: "action",
             icon: "📧",
-            title: "Email",
+            title: t('campaignCreation.sequenceReview.email'),
             subtitle: email.subject,
             iconBg: "bg-green-50",
             iconColor: "text-green-600",
@@ -2959,32 +2965,32 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
       switch (selectedOutreachStrategy) {
         case "email":
           return [
-            { type: "start", title: "Sequence start" },
-            { type: "timing", text: "Send immediately", color: "text-blue-600" },
+            { type: "start", title: t('campaignCreation.sequenceReview.sequenceStart') },
+            { type: "timing", text: t('campaignCreation.sequenceReview.sendImmediately'), color: "text-blue-600" },
             { 
               type: "action", 
               icon: "📧", 
-              title: "Email", 
+              title: t('campaignCreation.sequenceReview.email'), 
               subtitle: "Collaborate?",
               iconBg: "bg-green-50",
               iconColor: "text-green-600",
               message: "Hi {{firstName}},\n\nI hope this email finds you well. I came across your work at {{companyName}} and was impressed by your approach to {{industry}}.\n\nI'd love to explore how we can collaborate and potentially help you overcome some of the challenges you might be facing with {{painPoint}}.\n\nWould you be open to a brief conversation this week?\n\nBest regards,\n{{senderName}}"
             },
-            { type: "timing", text: "Wait for 2 days" },
+            { type: "timing", text: t('campaignCreation.sequenceReview.waitForDays', { count: 2 }) },
             { 
               type: "action", 
               icon: "📧", 
-              title: "Follow-up Email", 
+              title: t('campaignCreation.sequenceReview.followUpEmail'), 
               subtitle: "Following up - {{companyName}}",
               iconBg: "bg-green-50",
               iconColor: "text-green-600",
               message: "Hi {{firstName}},\n\nI wanted to follow up on my previous email about potential collaboration opportunities.\n\nI understand you're probably busy, but I believe our solution could significantly help with {{painPoint}} that many companies like {{companyName}} face.\n\nWould you have 10 minutes for a quick call this week?\n\nBest regards,\n{{senderName}}"
             },
-            { type: "timing", text: "Wait for 3 days" },
+            { type: "timing", text: t('campaignCreation.sequenceReview.waitForDays', { count: 3 }) },
             { 
               type: "action", 
               icon: "📧", 
-              title: "Final Email", 
+              title: t('campaignCreation.sequenceReview.finalEmail'), 
               subtitle: "Last attempt - {{companyName}}",
               iconBg: "bg-green-50",
               iconColor: "text-green-600",
@@ -2994,13 +3000,13 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
         
         case "linkedin":
           return [
-            { type: "start", title: "Sequence start" },
-            { type: "timing", text: "Send immediately", color: "text-blue-600" },
+            { type: "start", title: t('campaignCreation.sequenceReview.sequenceStart') },
+            { type: "timing", text: t('campaignCreation.sequenceReview.sendImmediately'), color: "text-blue-600" },
             { 
               type: "action", 
               icon: "💼", 
-              title: "LinkedIn Connection", 
-              subtitle: "Connection Request",
+              title: t('campaignCreation.sequenceReview.linkedinConnection'), 
+              subtitle: t('campaignCreation.sequenceReview.connectionRequest'),
               platform: "LinkedIn",
               iconBg: "bg-blue-50",
               iconColor: "text-blue-600",
@@ -3013,12 +3019,12 @@ Looking forward to connecting!
 Best regards,
 {{senderName}}`
             },
-            { type: "timing", text: "Wait for 3 days" },
+            { type: "timing", text: t('campaignCreation.sequenceReview.waitForDays', { count: 3 }) },
             { 
               type: "action", 
               icon: "💼", 
-              title: "LinkedIn Message", 
-              subtitle: "Follow-up Message",
+              title: t('campaignCreation.sequenceReview.linkedinMessage'), 
+              subtitle: t('campaignCreation.sequenceReview.followUpMessage'),
               platform: "LinkedIn",
               iconBg: "bg-blue-50",
               iconColor: "text-blue-600",
@@ -3031,12 +3037,12 @@ We've helped similar companies overcome this. Would you be interested in a brief
 Best regards,
 {{senderName}}`
             },
-            { type: "timing", text: "Wait for 4 days" },
+            { type: "timing", text: t('campaignCreation.sequenceReview.waitForDays', { count: 4 }) },
             { 
               type: "action", 
               icon: "💼", 
-              title: "LinkedIn Message", 
-              subtitle: "Final Message",
+              title: t('campaignCreation.sequenceReview.linkedinMessage'), 
+              subtitle: t('campaignCreation.sequenceReview.finalMessage'),
               platform: "LinkedIn",
               iconBg: "bg-blue-50",
               iconColor: "text-blue-600",
@@ -3053,12 +3059,12 @@ Best regards,
         
         case "email-linkedin":
           return [
-            { type: "start", title: "Sequence start" },
-            { type: "timing", text: "Send immediately", color: "text-blue-600" },
+            { type: "start", title: t('campaignCreation.sequenceReview.sequenceStart') },
+            { type: "timing", text: t('campaignCreation.sequenceReview.sendImmediately'), color: "text-blue-600" },
             { 
               type: "action", 
               icon: "📧", 
-              title: "Email", 
+              title: t('campaignCreation.sequenceReview.email'), 
               subtitle: "Collaborate?",
               iconBg: "bg-green-50",
               iconColor: "text-green-600",
@@ -3073,12 +3079,12 @@ Would you be open to a brief conversation this week?
 Best regards,
 {{senderName}}`
             },
-            { type: "timing", text: "Wait for 2 days", color: "text-blue-600" },
+            { type: "timing", text: t('campaignCreation.sequenceReview.waitForDays', { count: 2 }), color: "text-blue-600" },
             { 
               type: "action", 
               icon: "👥", 
-              title: "LinkedIn Connection", 
-              subtitle: "Connection Request",
+              title: t('campaignCreation.sequenceReview.linkedinConnection'), 
+              subtitle: t('campaignCreation.sequenceReview.connectionRequest'),
               platform: "LinkedIn",
               iconBg: "bg-blue-50",
               iconColor: "text-blue-600",
@@ -3105,10 +3111,10 @@ Best regards,
       <div className="max-w-3xl mx-auto space-y-4">
         <div className="text-center">
           <h2 className="text-2xl font-medium text-gray-900">
-            {aiAssets?.email_sequences ? 'AI-Generated Sequence Preview' : `Sequence Preview - ${strategyTitle}`}
+            {aiAssets?.email_sequences ? t('campaignCreation.sequenceReview.aiGeneratedTitle') : t('campaignCreation.sequenceReview.standardTitle', { strategy: strategyTitle })}
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            {aiAssets?.email_sequences ? 'Review your AI-generated automated outreach sequence' : 'Review your automated outreach sequence'}
+            {aiAssets?.email_sequences ? t('campaignCreation.sequenceReview.aiGeneratedSubtitle') : t('campaignCreation.sequenceReview.standardSubtitle')}
           </p>
         </div>
 
@@ -3119,9 +3125,9 @@ Best regards,
             </div>
             <div>
               <p className="text-blue-900 font-medium text-sm">
-                {aiAssets?.email_sequences ? 'This AI-generated sequence will run automatically for each lead' : 'This sequence will run automatically for each lead'}
+                {aiAssets?.email_sequences ? t('campaignCreation.sequenceReview.aiSequenceMessage') : t('campaignCreation.sequenceReview.standardSequenceMessage')}
               </p>
-              <p className="text-blue-700 mt-1 text-xs">You can edit individual steps or timing after creation</p>
+              <p className="text-blue-700 mt-1 text-xs">{t('campaignCreation.sequenceReview.editNote')}</p>
             </div>
           </div>
         </div>
@@ -3245,9 +3251,9 @@ Best regards,
           <div className="w-80 bg-gray-50/80 backdrop-blur-xl border-r border-gray-100/30 h-full overflow-y-auto">
             <div className="p-6 space-y-5">
               <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wider font-semibold text-blue-600">GET STARTED</p>
+                <p className="text-xs uppercase tracking-wider font-semibold text-blue-600">{t('campaignCreation.instructions.getStarted')}</p>
                 <h1 className="text-2xl font-medium text-gray-900">
-                  Campaign creation
+                  {t('campaignCreation.instructions.campaignCreation')}
                 </h1>
               </div>
               
@@ -3298,12 +3304,12 @@ Best regards,
               <div className="mt-5 p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100/30 shadow-sm">
                 <p className="text-sm text-gray-600 leading-relaxed">
                   {currentStep === "company" 
-                    ? "To create the most relevant campaign, please complete each step and provide as much context as possible to our AI. Your input is crucial for optimal results!"
+                    ? t('campaignCreation.instructions.createMostRelevantCampaign')
                     : currentStep === "target-audience"
-                      ? "Define your target industries, locations, and prospect roles to help us find the right people for your campaign."
+                      ? t('campaignCreation.instructions.defineTargetAudience')
                       : currentStep === "pain-value"
-                        ? "Review your ideal customers, personas, and value propositions to create messaging that resonates."
-                        : "Create sequences that progressively deliver value, vary touchpoints, and optimize regularly based on prospect engagement metrics."
+                        ? t('campaignCreation.instructions.reviewIdealCustomers')
+                        : t('campaignCreation.instructions.createSequences')
                   }
                 </p>
               </div>

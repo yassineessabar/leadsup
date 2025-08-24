@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { INDUSTRY_OPTIONS } from '@/lib/industry-options'
+import { useI18n } from '@/hooks/use-i18n'
 
 interface TargetTabProps {
   campaignId: string | number
@@ -19,6 +20,7 @@ export function TargetTab({
   campaignId,
   onContactsImported
 }: TargetTabProps) {
+  const { t, ready: translationsReady } = useI18n()
   // CSV Upload state
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -637,6 +639,14 @@ export function TargetTab({
     }
   }
 
+  if (!translationsReady) {
+    return (
+      <div className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -644,9 +654,9 @@ export function TargetTab({
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-light text-gray-900 mb-2">Target Audience</h1>
+              <h1 className="text-3xl font-light text-gray-900 mb-2">{t('campaignManagement.targetTab.title')}</h1>
               <p className="text-gray-600 text-lg">
-                Import contacts or set up automated scraping to build your target list
+                {t('campaignManagement.targetTab.subtitle')}
               </p>
             </div>
           </div>
@@ -659,13 +669,13 @@ export function TargetTab({
               value="import" 
               className="rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
             >
-              Import Contacts
+              {t('campaignManagement.targetTab.tabs.importContacts')}
             </TabsTrigger>
             <TabsTrigger 
               value="scraping"
               className="rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
             >
-              Auto Scraping
+              {t('campaignManagement.targetTab.tabs.autoScraping')}
             </TabsTrigger>
           </TabsList>
 
@@ -673,9 +683,9 @@ export function TargetTab({
           <TabsContent value="import" className="space-y-6">
             <Card className="bg-white rounded-3xl shadow-sm border border-gray-100/50 overflow-hidden">
               <CardHeader className="p-8 pb-6">
-                <CardTitle className="text-2xl font-medium text-gray-900">Import Contacts</CardTitle>
+                <CardTitle className="text-2xl font-medium text-gray-900">{t('campaignManagement.targetTab.import.title')}</CardTitle>
                 <CardDescription className="mt-2 text-gray-600">
-                  Upload your contact list from a CSV file
+                  {t('campaignManagement.targetTab.import.subtitle')}
                 </CardDescription>
               </CardHeader>
             
@@ -693,13 +703,13 @@ export function TargetTab({
                   )}
                   
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    {uploadSuccess ? 'Upload Successful!' : 'Upload CSV File'}
+                    {uploadSuccess ? t('campaignManagement.targetTab.import.uploadSuccessful') : t('campaignManagement.targetTab.import.uploadCSVFile')}
                   </h3>
                   
                   <p className="text-sm text-gray-500 mb-6">
                     {uploadSuccess 
-                      ? 'Your contacts have been imported successfully.'
-                      : 'Import your contacts from a CSV file. Maximum 10,000 contacts.'
+                      ? t('campaignManagement.targetTab.import.contactsImportedSuccessfully')
+                      : t('campaignManagement.targetTab.import.importFromCSV')
                     }
                   </p>
                   
@@ -719,7 +729,7 @@ export function TargetTab({
                         disabled={isUploading}
                       >
                         <Upload className="w-4 h-4 mr-2" />
-                        Choose File
+                        {t('campaignManagement.targetTab.import.chooseFile')}
                       </Button>
                       
                       {uploadedFile && (
@@ -731,12 +741,12 @@ export function TargetTab({
                           {isUploading ? (
                             <>
                               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                              Uploading...
+                              {t('campaignManagement.targetTab.import.uploading')}
                             </>
                           ) : (
                             <>
                               <Upload className="w-4 h-4 mr-2" />
-                              Upload CSV
+                              {t('campaignManagement.targetTab.import.uploadCSV')}
                             </>
                           )}
                         </Button>
@@ -753,7 +763,7 @@ export function TargetTab({
                         <div className="text-left">
                           <p className="text-sm font-medium text-gray-900">{uploadedFile.name}</p>
                           <p className="text-xs text-gray-500">
-                            {(uploadedFile.size / 1024).toFixed(1)} KB • Ready to upload
+                            {(uploadedFile.size / 1024).toFixed(1)} KB • {t('campaignManagement.targetTab.scraping.readyToUpload')}
                           </p>
                         </div>
                       </div>
@@ -781,7 +791,7 @@ export function TargetTab({
                 </div>
 
                 <div className="bg-blue-50 rounded-2xl p-4">
-                  <h4 className="text-sm font-medium text-blue-900 mb-2">CSV Format Requirements:</h4>
+                  <h4 className="text-sm font-medium text-blue-900 mb-2">{t('campaignManagement.targetTab.csvFormat.title')}</h4>
                   <ul className="text-sm text-blue-700 space-y-1">
                     <li>• First row must contain column headers</li>
                     <li>• Required fields: Email, First Name, Last Name</li>
@@ -798,9 +808,9 @@ export function TargetTab({
           <TabsContent value="scraping" className="space-y-6">
             <Card className="bg-white rounded-3xl shadow-sm border border-gray-100/50 overflow-hidden">
               <CardHeader className="p-8 pb-6">
-                <CardTitle className="text-2xl font-medium text-gray-900">LinkedIn Contact Scraping</CardTitle>
+                <CardTitle className="text-2xl font-medium text-gray-900">{t('campaignManagement.targetTab.scraping.title')}</CardTitle>
                 <CardDescription className="mt-2 text-gray-600">
-                  Automatically find and scrape LinkedIn profiles with email enrichment
+                  {t('campaignManagement.targetTab.scraping.subtitle')}
                 </CardDescription>
               </CardHeader>
             
@@ -809,12 +819,12 @@ export function TargetTab({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <label className="block text-sm font-medium text-gray-700">Target Industries (from ICPs)</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('campaignManagement.targetTab.scraping.targetIndustries')}</label>
                         {showIndustryError && (
                           <div className="relative group">
                             <Info className="w-4 h-4 text-red-500 cursor-help" />
                             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-red-500 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-                              Please select from dropdown options
+                              {t('campaignManagement.targetTab.validation.selectFromDropdown')}
                               <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-red-500"></div>
                             </div>
                           </div>
@@ -824,7 +834,7 @@ export function TargetTab({
                         <div className="flex gap-2 relative">
                           <div className="flex-1 relative">
                             <Input
-                              placeholder="Type to search industries..."
+                              placeholder={t('campaignManagement.targetTab.scraping.industryPlaceholder')}
                               value={newICPIndustry}
                               onChange={(e) => handleIndustryInputChange(e.target.value)}
                               onKeyPress={(e) => e.key === 'Enter' && addICPIndustry()}
@@ -892,11 +902,11 @@ export function TargetTab({
                       </div>
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Keywords</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('campaignManagement.targetTab.scraping.keywords')}</label>
                       <div className="space-y-2">
                         <div className="flex gap-2">
                           <Input
-                            placeholder="e.g., CEO, Founder, Manager"
+                            placeholder={t('campaignManagement.targetTab.scraping.keywordsExample')}
                             value={keywordInput}
                             onChange={(e) => setKeywordInput(e.target.value)}
                             onKeyPress={handleKeywordKeyPress}
@@ -937,12 +947,12 @@ export function TargetTab({
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <label className="block text-sm font-medium text-gray-700">Target Locations (from ICPs)</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('campaignManagement.targetTab.scraping.targetLocations')}</label>
                         {showLocationError && (
                           <div className="relative group">
                             <Info className="w-4 h-4 text-red-500 cursor-help" />
                             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-red-500 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-                              Please select from dropdown options
+                              {t('campaignManagement.targetTab.validation.selectFromDropdown')}
                               <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-red-500"></div>
                             </div>
                           </div>
@@ -952,7 +962,7 @@ export function TargetTab({
                         <div className="flex gap-2 relative">
                           <div className="flex-1 relative">
                             <Input
-                              placeholder="Type to search locations..."
+                              placeholder={t('campaignManagement.targetTab.scraping.locationPlaceholder')}
                               value={newICPLocation}
                               onChange={(e) => handleLocationInputChange(e.target.value)}
                               onKeyPress={(e) => e.key === 'Enter' && addICPLocation()}
@@ -1021,8 +1031,8 @@ export function TargetTab({
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Daily Limit
-                        <span className="text-xs text-gray-500 ml-1">(Free plan: up to 100/day)</span>
+                        {t('campaignManagement.targetTab.scraping.dailyLimit')}
+                        <span className="text-xs text-gray-500 ml-1">{t('campaignManagement.targetTab.scraping.freePlanLimit')}</span>
                       </label>
                       <Input
                         type="number"
@@ -1053,7 +1063,7 @@ export function TargetTab({
                       >
                         <div className="flex items-center">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Starting scraping...
+                          {t('campaignManagement.targetTab.scraping.startingScraping')}
                         </div>
                       </Button>
                     ) : scrapingStatus === 'running' ? (
@@ -1064,7 +1074,7 @@ export function TargetTab({
                         >
                           <div className="flex items-center">
                             <div className="animate-pulse w-2 h-2 bg-white rounded-full mr-2"></div>
-                            Scraping Started
+                            {t('campaignManagement.targetTab.scraping.scrapingStarted')}
                           </div>
                         </Button>
                         <Button
@@ -1073,7 +1083,7 @@ export function TargetTab({
                           className="bg-gray-500 hover:bg-gray-600 text-white border-0 rounded-2xl px-4 py-2"
                         >
                           <Pause className="w-4 h-4 mr-1" />
-                          Pause
+                          {t('campaignManagement.targetTab.scraping.pause')}
                         </Button>
                       </div>
                     ) : scrapingStatus === 'completed' ? (
@@ -1083,7 +1093,7 @@ export function TargetTab({
                         className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
                       >
                         <Play className="w-4 h-4 mr-2" />
-                        Resume Scraping
+                        {t('campaignManagement.targetTab.scraping.resumeScraping')}
                       </Button>
                     ) : (
                       <Button
@@ -1096,15 +1106,15 @@ export function TargetTab({
                         }`}
                       >
                         <Play className="w-4 h-4 mr-2" />
-                        Start Scraping
+                        {t('campaignManagement.targetTab.scraping.startScraping')}
                       </Button>
                     )}
                     <div className="text-xs text-gray-500">
                       {isStartingScraping 
-                        ? "Starting scraping process..."
+                        ? t('campaignManagement.targetTab.scraping.startingProcess')
                         : scrapingStatus === 'running'
-                        ? "Scraping process is running in the background..."
-                        : "Fill in industry, add keywords, and specify location to start scraping"
+                        ? t('campaignManagement.targetTab.scraping.processRunning')
+                        : t('campaignManagement.targetTab.scraping.fillRequiredFields')
                       }
                     </div>
                   </div>
@@ -1121,7 +1131,7 @@ export function TargetTab({
         <DialogContent className="max-w-sm rounded-3xl">
           <DialogHeader className="text-center">
             <DialogTitle className="text-xl font-medium text-gray-900">
-              Start Scraping
+              {t('campaignManagement.targetTab.scraping.confirmationTitle')}
             </DialogTitle>
             <DialogDescription className="text-gray-500 text-sm mt-2">
               {icpIndustries.join(', ')} • {icpLocations.join(', ')} • {scrappingDailyLimit}/day
@@ -1135,7 +1145,7 @@ export function TargetTab({
                 onClick={() => setShowScrapingConfirmation(false)}
                 className="flex-1 rounded-2xl"
               >
-                Cancel
+                {t('campaignManagement.dialogs.delete.cancel')}
               </Button>
               <Button
                 onClick={handleSaveScraping}
@@ -1145,10 +1155,10 @@ export function TargetTab({
                 {isStartingScraping ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                    Starting...
+                    {t('campaignManagement.targetTab.scraping.startingScraping')}
                   </>
                 ) : (
-                  "Start"
+                  t('campaignManagement.targetTab.scraping.confirmStart')
                 )}
               </Button>
             </div>
@@ -1164,10 +1174,10 @@ export function TargetTab({
               <Zap className="w-8 h-8 text-blue-600" />
             </div>
             <DialogTitle className="text-3xl font-light text-gray-900 tracking-tight mb-3">
-              Upgrade to Pro
+              {t('campaignManagement.targetTab.upgrade.title')}
             </DialogTitle>
             <DialogDescription className="text-gray-500 font-light text-base leading-relaxed">
-              Unlock higher daily scraping limits and premium features to supercharge your outreach campaigns.
+              {t('campaignManagement.targetTab.upgrade.description')}
             </DialogDescription>
           </DialogHeader>
           
@@ -1175,12 +1185,12 @@ export function TargetTab({
             <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 mb-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Free Plan</h4>
-                  <p className="text-sm text-gray-500">Up to 100 contacts/day</p>
+                  <h4 className="font-medium text-gray-900 mb-1">{t('campaignManagement.targetTab.upgrade.freePlan')}</h4>
+                  <p className="text-sm text-gray-500">{t('campaignManagement.targetTab.upgrade.freePlanLimit')}</p>
                 </div>
                 <div className="text-right">
-                  <h4 className="font-medium text-blue-600 mb-1">Pro Plan</h4>
-                  <p className="text-sm text-blue-600">Up to 1,000+ contacts/day</p>
+                  <h4 className="font-medium text-blue-600 mb-1">{t('campaignManagement.targetTab.upgrade.proPlan')}</h4>
+                  <p className="text-sm text-blue-600">{t('campaignManagement.targetTab.upgrade.proPlanLimit')}</p>
                 </div>
               </div>
             </div>
@@ -1190,19 +1200,19 @@ export function TargetTab({
                 <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
                   <Check className="w-4 h-4 text-blue-600" />
                 </div>
-                <span className="text-gray-700 font-light">Higher daily scraping limits</span>
+                <span className="text-gray-700 font-light">{t('campaignManagement.targetTab.upgrade.features.higherLimits')}</span>
               </div>
               <div className="flex items-center gap-4">
                 <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
                   <Check className="w-4 h-4 text-blue-600" />
                 </div>
-                <span className="text-gray-700 font-light">Advanced targeting options</span>
+                <span className="text-gray-700 font-light">{t('campaignManagement.targetTab.upgrade.features.advancedTargeting')}</span>
               </div>
               <div className="flex items-center gap-4">
                 <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
                   <Check className="w-4 h-4 text-blue-600" />
                 </div>
-                <span className="text-gray-700 font-light">Priority customer support</span>
+                <span className="text-gray-700 font-light">{t('campaignManagement.targetTab.upgrade.features.prioritySupport')}</span>
               </div>
             </div>
 
@@ -1212,7 +1222,7 @@ export function TargetTab({
                 onClick={() => setShowUpgradeDialog(false)}
                 className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl py-3 font-medium transition-all duration-300"
               >
-                Maybe Later
+                {t('campaignManagement.targetTab.upgrade.maybeLater')}
               </Button>
               <Button
                 onClick={() => {
@@ -1230,7 +1240,7 @@ export function TargetTab({
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-3 border-0 font-medium transition-all duration-300"
               >
                 <Zap className="w-4 h-4 mr-2" />
-                Upgrade Now
+                {t('campaignManagement.targetTab.upgrade.upgradeNow')}
               </Button>
             </div>
           </div>

@@ -238,6 +238,134 @@
     "stopCampaignDespiteHealth": "Arrêter la campagne maintenant malgré les scores de santé.",
     "goActiveDespiteHealth": "Activer maintenant malgré les scores de santé faibles."
   },
+  "campaignManagement": {
+    "loading": {
+      "title": "Chargement de la campagne",
+      "subtitle": "Configuration de votre tableau de bord de campagne"
+    },
+    "header": {
+      "campaignType": "Campagne {type}"
+    },
+    "tabs": {
+      "target": "Cible",
+      "sequence": "Séquence",
+      "sender": "Expéditeur",
+      "settings": "Paramètres"
+    },
+    "guidedFlow": {
+      "steps": {
+        "addTargetAudience": "Ajouter un public cible",
+        "createEmailSequences": "Créer des séquences d'emails",
+        "selectSenderAccounts": "Sélectionner les comptes expéditeurs",
+        "configureSettings": "Configurer les paramètres"
+      },
+      "descriptions": {
+        "importContacts": "Importez des contacts ou configurez le scraping automatisé",
+        "designMessages": "Concevez vos messages de prospection et leur timing",
+        "chooseEmailAccounts": "Choisissez les comptes email d'envoi",
+        "setSendingSchedule": "Définissez le planning d'envoi et les préférences de campagne"
+      },
+      "progress": {
+        "stepOf": "Étape {current} sur {total}"
+      },
+      "buttons": {
+        "previous": "Précédent",
+        "checking": "Vérification...",
+        "launchCampaign": "Lancer la campagne"
+      }
+    },
+    "targetTab": {
+      "title": "Public cible",
+      "subtitle": "Importez des contacts ou configurez le scraping automatisé pour créer votre liste cible",
+      "tabs": {
+        "importContacts": "Importer des contacts",
+        "autoScraping": "Scraping automatique"
+      },
+      "import": {
+        "title": "Importer des contacts",
+        "subtitle": "Téléchargez votre liste de contacts depuis un fichier CSV",
+        "uploadSuccessful": "Téléchargement réussi !",
+        "uploadCSVFile": "Télécharger un fichier CSV",
+        "contactsImportedSuccessfully": "Vos contacts ont été importés avec succès.",
+        "importFromCSV": "Importez vos contacts depuis un fichier CSV. Maximum 10 000 contacts.",
+        "chooseFile": "Choisir un fichier",
+        "uploading": "Téléchargement...",
+        "uploadCSV": "Télécharger CSV"
+      },
+      "scraping": {
+        "title": "Scraping de contacts LinkedIn",
+        "subtitle": "Trouvez et scrapez automatiquement les profils LinkedIn avec enrichissement d'email",
+        "targetIndustries": "Industries cibles (des ICPs)",
+        "industryPlaceholder": "Tapez pour rechercher des industries...",
+        "keywords": "Mots-clés",
+        "keywordsExample": "ex: CEO, Fondateur, Manager",
+        "targetLocations": "Localisations cibles (des ICPs)",
+        "locationPlaceholder": "Tapez pour rechercher des emplacements...",
+        "dailyLimit": "Limite quotidienne",
+        "freePlanLimit": "(Plan gratuit : jusqu'à 100/jour)",
+        "startScraping": "Démarrer le scraping",
+        "pauseScraping": "Mettre en pause le scraping",
+        "fillRequiredFields": "Remplissez l'industrie, ajoutez des mots-clés et spécifiez l'emplacement pour démarrer le scraping",
+        "scrapingActive": "Le scraping est actuellement actif",
+        "scrapingPaused": "Le scraping est en pause",
+        "startingScraping": "Démarrage du scraping...",
+        "scrapingStarted": "Scraping démarré",
+        "resumeScraping": "Reprendre le scraping",
+        "pause": "Pause",
+        "startingProcess": "Démarrage du processus de scraping...",
+        "processRunning": "Le processus de scraping fonctionne en arrière-plan...",
+        "confirmationTitle": "Démarrer le scraping",
+        "confirmStart": "Démarrer",
+        "readyToUpload": "Prêt à télécharger"
+      },
+      "stats": {
+        "imported": "Importés",
+        "duplicates": "Doublons",
+        "totalProcessed": "Total traité"
+      },
+      "csvFormat": {
+        "title": "Exigences de format CSV :",
+        "headerRow": "La première ligne doit contenir les en-têtes de colonnes",
+        "requiredFields": "Champs requis : Email, Prénom, Nom",
+        "optionalFields": "Champs optionnels : Entreprise, Titre, Téléphone, URL LinkedIn",
+        "encoding": "Encodage UTF-8 recommandé"
+      },
+      "validation": {
+        "selectFromDropdown": "Veuillez sélectionner dans les options du menu déroulant"
+      },
+      "upgrade": {
+        "title": "Passer à Pro",
+        "description": "Débloquez des limites de scraping quotidiennes plus élevées et des fonctionnalités premium pour booster vos campagnes de prospection.",
+        "freePlan": "Plan Gratuit",
+        "freePlanLimit": "Jusqu'à 100 contacts/jour",
+        "proPlan": "Plan Pro",
+        "proPlanLimit": "Jusqu'à 1 000+ contacts/jour",
+        "features": {
+          "higherLimits": "Limites de scraping quotidiennes plus élevées",
+          "advancedTargeting": "Options de ciblage avancées",
+          "prioritySupport": "Support client prioritaire"
+        },
+        "maybeLater": "Peut-être plus tard",
+        "upgradeNow": "Passer à Pro"
+      }
+    },
+    "dialogs": {
+      "delete": {
+        "deleteSequence": "Supprimer la séquence",
+        "deleteStep": "Supprimer l'étape",
+        "sequenceConfirmation": "Êtes-vous sûr de vouloir supprimer la séquence \"{name}\" ? Cette action ne peut pas être annulée.",
+        "stepConfirmation": "Êtes-vous sûr de vouloir supprimer cette étape ? Cette action ne peut pas être annulée.",
+        "cancel": "Annuler",
+        "delete": "Supprimer"
+      },
+      "deleteCampaign": {
+        "title": "Supprimer la campagne",
+        "confirmation": "Êtes-vous sûr de vouloir supprimer la campagne \"{name}\" ?",
+        "warning": "Cette action ne peut pas être annulée.",
+        "deleteCampaign": "Supprimer la campagne"
+      }
+    }
+  },
   "leads": {
     "title": "Prospects",
     "addLead": "Ajouter un prospect",
@@ -389,6 +517,14 @@
       "yourCompanyWebsite": "Le nom de votre entreprise et son site web",
       "letsStartGettingToKnow": "Commençons par faire connaissance avec votre entreprise"
     },
+    "instructions": {
+      "getStarted": "COMMENCER",
+      "campaignCreation": "Création de campagne",
+      "createMostRelevantCampaign": "Pour créer la campagne la plus pertinente, veuillez compléter chaque étape et fournir autant de contexte que possible à notre IA. Votre contribution est cruciale pour des résultats optimaux !",
+      "defineTargetAudience": "Définissez vos secteurs cibles, emplacements et rôles de prospects pour nous aider à trouver les bonnes personnes pour votre campagne.",
+      "reviewIdealCustomers": "Examinez vos clients idéaux, personas et propositions de valeur pour créer des messages qui résonnent.",
+      "createSequences": "Créez des séquences qui délivrent progressivement de la valeur, variez les points de contact et optimisez régulièrement selon les métriques d'engagement des prospects."
+    },
     "validation": {
       "campaignNameRequired": "Le nom de la campagne est requis",
       "campaignObjectiveRequired": "L'objectif de la campagne est requis",
@@ -437,6 +573,266 @@
       "german": "🇩🇪 Allemand",
       "italian": "🇮🇹 Italien",
       "portuguese": "🇵🇹 Portugais"
+    },
+    "targetAudience": {
+      "title": "Public cible",
+      "subtitle": "Public cible généré par IA basé sur votre entreprise et objectif de campagne",
+      "aiGeneratedTargetAudience": "Public cible généré par IA",
+      "aiAnalyzedMessage": "Notre IA a analysé les informations de votre entreprise et l'objectif de votre campagne pour suggérer le public cible le plus pertinent. Vous pouvez modifier ces sélections selon vos besoins.",
+      "targetIndustries": "Secteurs cibles",
+      "targetLocations": "Localisations cibles",
+      "targetRoles": "Rôles cibles",
+      "aiGenerated": "Généré par IA",
+      "addAnotherIndustry": "Ajouter un autre secteur...",
+      "addAnotherLocation": "Ajouter une autre localisation...",
+      "addAnotherRole": "Ajouter un autre rôle..."
+    },
+    "personaValueProps": {
+      "title": "Persona et propositions de valeur",
+      "subtitle": "Examinez votre public cible et votre stratégie de messagerie",
+      "reviewMessage": "Examinez vos clients idéaux, personas et comment vous résolvez leurs défis.",
+      "idealCustomerProfile": "Profil client idéal",
+      "targetPersona": "Persona cible",
+      "customerPainPoint": "Point de douleur client",
+      "yourValueProposition": "Votre proposition de valeur",
+      "more": "+{count} de plus"
+    },
+    "sequenceReview": {
+      "aiGeneratedTitle": "Aperçu de séquence générée par IA",
+      "standardTitle": "Aperçu de séquence - {strategy}",
+      "aiGeneratedSubtitle": "Examinez votre séquence de prospection automatisée générée par IA",
+      "standardSubtitle": "Examinez votre séquence de prospection automatisée",
+      "aiSequenceMessage": "Cette séquence générée par IA s'exécutera automatiquement pour chaque prospect",
+      "standardSequenceMessage": "Cette séquence s'exécutera automatiquement pour chaque prospect",
+      "editNote": "Vous pouvez modifier les étapes individuelles ou le timing après la création",
+      "sequenceStart": "Début de séquence",
+      "immediately": "Immédiatement",
+      "sendImmediately": "Envoyer immédiatement",
+      "waitForDay": "Attendre {count} jour",
+      "waitForDays": "Attendre {count} jours",
+      "email": "Email",
+      "followUpEmail": "Email de suivi",
+      "finalEmail": "Email final",
+      "linkedinConnection": "Connexion LinkedIn",
+      "linkedinMessage": "Message LinkedIn",
+      "connectionRequest": "Demande de connexion",
+      "followUpMessage": "Message de suivi",
+      "finalMessage": "Message final"
+    },
+    "campaignManagement": {
+      "loading": {
+        "title": "Chargement de la campagne",
+        "subtitle": "Configuration de votre tableau de bord de campagne"
+      },
+      "header": {
+        "campaignType": "Campagne {type}"
+      },
+      "tabs": {
+        "target": "Cible",
+        "sequence": "Séquence",
+        "sender": "Expéditeur",
+        "settings": "Paramètres"
+      },
+      "guidedFlow": {
+        "steps": {
+          "addTargetAudience": "Ajouter un public cible",
+          "createEmailSequences": "Créer des séquences d'emails",
+          "selectSenderAccounts": "Sélectionner les comptes expéditeur",
+          "configureSettings": "Configurer les paramètres"
+        },
+        "descriptions": {
+          "importContacts": "Importez des contacts ou configurez l'extraction automatique",
+          "designMessages": "Concevez vos messages de prospection et leur timing",
+          "chooseEmailAccounts": "Choisissez les comptes email à utiliser pour l'envoi",
+          "setSendingSchedule": "Définissez le planning d'envoi et les préférences de campagne"
+        },
+        "progress": {
+          "stepOf": "Étape {current} sur {total}"
+        },
+        "buttons": {
+          "previous": "Précédent",
+          "checking": "Vérification...",
+          "launchCampaign": "Lancer la campagne"
+        }
+      },
+      "settings": {
+        "title": "Paramètres",
+        "subtitle": "Configurez le timing, le planning et les informations d'expéditeur",
+        "saveSettings": "Enregistrer les paramètres",
+        "sendingSchedule": {
+          "title": "Planning d'envoi",
+          "subtitle": "Quand et à quelle fréquence envoyer les emails",
+          "activeDays": "Jours actifs",
+          "sendingHours": "Heures d'envoi",
+          "to": "à"
+        },
+        "senderInformation": {
+          "title": "Informations expéditeur",
+          "subtitle": "Vos détails et signature email",
+          "firstName": "Prénom",
+          "lastName": "Nom",
+          "company": "Entreprise",
+          "website": "Site web",
+          "emailSignature": "Signature email"
+        },
+        "placeholders": {
+          "firstName": "Jean",
+          "lastName": "Dupont",
+          "company": "Entreprise SA",
+          "website": "https://entreprise.com",
+          "enterUrl": "Entrez l'URL :"
+        }
+      },
+      "sequence": {
+        "title": "Séquence d'emails",
+        "subtitle": "Configurez les étapes et le timing de votre séquence d'emails",
+        "saveSequence": "Enregistrer la séquence",
+        "saving": "Enregistrement...",
+        "campaignTimeline": {
+          "title": "Chronologie de campagne",
+          "subtitle": "Aperçu de la séquence d'emails"
+        },
+        "sequences": {
+          "initialOutreach": "Prospection initiale",
+          "followUpOutreach": "Prospection de suivi",
+          "subject": "Objet : \"{subject}\"",
+          "noSubject": "Aucun objet",
+          "editSubject": "Modifier l'objet de la séquence",
+          "deleteSequence": "Supprimer toute la séquence",
+          "removeEmail": "Supprimer cet email"
+        },
+        "steps": {
+          "immediately": "Immédiatement",
+          "day": "Jour {timing}"
+        },
+        "buttons": {
+          "addEmail": "Ajouter un email",
+          "addFollowUpSequence": "Ajouter une séquence de suivi"
+        },
+        "gap": {
+          "waitingPeriod": "Période d'attente de {gap} jour(s)",
+          "clickToEdit": "Cliquer pour modifier",
+          "enterWaitingPeriod": "Entrez la période d'attente (jours) :"
+        },
+        "editor": {
+          "subject": "Objet",
+          "message": "Message",
+          "subjectPlaceholder": "Entrez la ligne d'objet",
+          "timing": "Timing (Jours)",
+          "addStep": "Ajouter une étape",
+          "deleteStep": "Supprimer l'étape",
+          "preview": "Aperçu",
+          "editSubjectPrompt": "Entrez la ligne d'objet pour la séquence {sequence} :"
+        }
+      },
+      "dialogs": {
+        "delete": {
+          "deleteSequence": "Supprimer la séquence",
+          "deleteStep": "Supprimer l'étape",
+          "sequenceConfirmation": "Êtes-vous sûr de vouloir supprimer la séquence \"{name}\" ? Cette action ne peut pas être annulée.",
+          "stepConfirmation": "Êtes-vous sûr de vouloir supprimer cette étape ? Cette action ne peut pas être annulée.",
+          "cancel": "Annuler",
+          "delete": "Supprimer"
+        },
+        "preview": {
+          "title": "Aperçu de séquence",
+          "subject": "Objet : {subject}",
+          "immediately": "Immédiatement",
+          "waitDays": "Attendre {timing} jours"
+        },
+        "deleteCampaign": {
+          "title": "Supprimer la campagne",
+          "confirmation": "Êtes-vous sûr de vouloir supprimer la campagne \"{name}\" ?",
+          "warning": "Cette action ne peut pas être annulée.",
+          "deleteCampaign": "Supprimer la campagne"
+        },
+        "warmupWarning": {
+          "title": "Faible délivrabilité détectée",
+          "subtitle": "Certains comptes expéditeur ont des scores de santé faibles",
+          "description": "Nous recommandons d'améliorer le processus d'échauffement pour améliorer la délivrabilité des emails avant de lancer votre campagne.",
+          "enhance": "Améliorer",
+          "proceedAnyway": "Continuer quand même"
+        },
+        "noAccountSelected": {
+          "title": "Sélectionner un compte expéditeur",
+          "description": "Choisissez au moins un compte pour continuer."
+        }
+      }
+    },
+    "targetTab": {
+      "title": "Public cible",
+      "subtitle": "Importez des contacts ou configurez l'extraction automatique pour créer votre liste cible",
+      "tabs": {
+        "importContacts": "Importer des contacts",
+        "autoScraping": "Extraction automatique"
+      },
+      "import": {
+        "title": "Importer des contacts",
+        "subtitle": "Téléchargez votre liste de contacts depuis un fichier CSV",
+        "uploadSuccessful": "Téléchargement réussi !",
+        "uploadCSVFile": "Télécharger un fichier CSV",
+        "contactsImportedSuccessfully": "Vos contacts ont été importés avec succès.",
+        "importFromCSV": "Importez vos contacts depuis un fichier CSV. Maximum 10 000 contacts.",
+        "chooseFile": "Choisir un fichier",
+        "uploading": "Téléchargement...",
+        "uploadCSV": "Télécharger CSV"
+      },
+      "scraping": {
+        "title": "Extraction de contacts LinkedIn",
+        "subtitle": "Trouvez et extrayez automatiquement des profils LinkedIn avec enrichissement d'email",
+        "targetIndustries": "Secteurs cibles (depuis les ICPs)",
+        "industryPlaceholder": "Tapez pour rechercher des secteurs...",
+        "keywords": "Mots-clés",
+        "keywordsExample": "ex., PDG, Fondateur, Manager",
+        "targetLocations": "Localisations cibles (depuis les ICPs)",
+        "locationPlaceholder": "Tapez pour rechercher des localisations...",
+        "dailyLimit": "Limite quotidienne",
+        "freePlanLimit": "(Plan gratuit : jusqu'à 100/jour)",
+        "startScraping": "Commencer l'extraction",
+        "pauseScraping": "Mettre en pause l'extraction",
+        "fillRequiredFields": "Remplissez le secteur, ajoutez des mots-clés et spécifiez la localisation pour commencer l'extraction",
+        "scrapingActive": "L'extraction est actuellement active",
+        "scrapingPaused": "L'extraction est en pause",
+        "startingScraping": "Démarrage de l'extraction...",
+        "scrapingStarted": "Extraction démarrée",
+        "resumeScraping": "Reprendre l'extraction",
+        "pause": "Pause",
+        "startingProcess": "Démarrage du processus d'extraction...",
+        "processRunning": "Le processus d'extraction s'exécute en arrière-plan...",
+        "confirmationTitle": "Commencer l'extraction",
+        "confirmStart": "Démarrer",
+        "readyToUpload": "Prêt à télécharger"
+      },
+      "stats": {
+        "imported": "Importés",
+        "duplicates": "Doublons",
+        "totalProcessed": "Total traité"
+      },
+      "csvFormat": {
+        "title": "Exigences de format CSV :",
+        "headerRow": "La première ligne doit contenir les en-têtes de colonnes",
+        "requiredFields": "Champs requis : Email, Prénom, Nom",
+        "optionalFields": "Champs optionnels : Entreprise, Titre, Téléphone, URL LinkedIn",
+        "encoding": "Encodage UTF-8 recommandé"
+      },
+      "validation": {
+        "selectFromDropdown": "Veuillez sélectionner dans les options du menu déroulant"
+      },
+      "upgrade": {
+        "title": "Passer à Pro",
+        "description": "Débloquez des limites de scraping quotidiennes plus élevées et des fonctionnalités premium pour booster vos campagnes de prospection.",
+        "freePlan": "Plan Gratuit",
+        "freePlanLimit": "Jusqu'à 100 contacts/jour",
+        "proPlan": "Plan Pro",
+        "proPlanLimit": "Jusqu'à 1 000+ contacts/jour",
+        "features": {
+          "higherLimits": "Limites de scraping quotidiennes plus élevées",
+          "advancedTargeting": "Options de ciblage avancées",
+          "prioritySupport": "Support client prioritaire"
+        },
+        "maybeLater": "Peut-être plus tard",
+        "upgradeNow": "Passer à Pro"
+      }
     }
   },
   "dashboardAnalytics": {

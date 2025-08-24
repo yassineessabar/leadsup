@@ -25,6 +25,7 @@ import CampaignSenderSelection from "./campaign-sender-selection"
 import { TargetTab } from "./campaign-dashboard-target"
 import { DomainSetupModal } from "@/components/domain-setup-modal"
 import { toast } from "sonner"
+import { useI18n } from "@/hooks/use-i18n"
 
 interface CampaignDashboardProps {
   campaign?: {
@@ -41,6 +42,7 @@ interface CampaignDashboardProps {
 }
 
 export default function CampaignDashboard({ campaign, onBack, onDelete, onStatusUpdate, onNameUpdate, initialTab = "target" }: CampaignDashboardProps) {
+  const { t, ready: translationsReady } = useI18n()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState(initialTab)
   
@@ -283,10 +285,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   
   // Define the guided flow steps
   const guidedFlowSteps = [
-    { tab: 'target', title: 'Add Target Audience', description: 'Import contacts or set up automated scraping' },
-    { tab: 'sequence', title: 'Create Email Sequences', description: 'Design your outreach messages and timing' },
-    { tab: 'sender', title: 'Select Sender Accounts', description: 'Choose which email accounts to send from' },
-    { tab: 'settings', title: 'Configure Settings', description: 'Set sending schedule and campaign preferences' }
+    { tab: 'target', title: t('campaignManagement.guidedFlow.steps.addTargetAudience'), description: t('campaignManagement.guidedFlow.descriptions.importContacts') },
+    { tab: 'sequence', title: t('campaignManagement.guidedFlow.steps.createEmailSequences'), description: t('campaignManagement.guidedFlow.descriptions.designMessages') },
+    { tab: 'sender', title: t('campaignManagement.guidedFlow.steps.selectSenderAccounts'), description: t('campaignManagement.guidedFlow.descriptions.chooseEmailAccounts') },
+    { tab: 'settings', title: t('campaignManagement.guidedFlow.steps.configureSettings'), description: t('campaignManagement.guidedFlow.descriptions.setSendingSchedule') }
   ]
   const editorRef = useRef<HTMLDivElement>(null)
   const [testModalAccountId, setTestModalAccountId] = useState(null)
@@ -2830,8 +2832,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             {/* Clean Header */}
             <div className="flex justify-between items-start mb-8">
               <div>
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight">Settings</h1>
-                <p className="text-gray-500 mt-2 font-light">Configure timing, schedule and sender information</p>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight">{t('campaignManagement.settings.title')}</h1>
+                <p className="text-gray-500 mt-2 font-light">{t('campaignManagement.settings.subtitle')}</p>
               </div>
               <div className="flex items-center">
                 <Button 
@@ -2839,7 +2841,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                 >
                   <Check className="w-4 h-4 mr-2" />
-                  Save Settings
+                  {t('campaignManagement.settings.saveSettings')}
                 </Button>
               </div>
             </div>
@@ -2853,15 +2855,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       <Clock className="w-6 h-6 text-gray-400" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-medium text-gray-900">Sending Schedule</h2>
-                      <p className="text-gray-500 text-sm mt-1">When and how often to send emails</p>
+                      <h2 className="text-xl font-medium text-gray-900">{t('campaignManagement.settings.sendingSchedule.title')}</h2>
+                      <p className="text-gray-500 text-sm mt-1">{t('campaignManagement.settings.sendingSchedule.subtitle')}</p>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Sending Days */}
                     <div>
-                      <h4 className="text-sm font-medium text-gray-800 mb-4">Active Days</h4>
+                      <h4 className="text-sm font-medium text-gray-800 mb-4">{t('campaignManagement.settings.sendingSchedule.activeDays')}</h4>
                       <div className="flex flex-wrap gap-2">
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
                           const isActive = activeDays.includes(day)
@@ -2891,7 +2893,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
                     {/* Time Range */}
                     <div>
-                      <h4 className="text-sm font-medium text-gray-800 mb-4">Sending Hours</h4>
+                      <h4 className="text-sm font-medium text-gray-800 mb-4">{t('campaignManagement.settings.sendingSchedule.sendingHours')}</h4>
                       <div className="flex items-center gap-4">
                         <select 
                           value={sendingStartTime}
@@ -2909,7 +2911,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           })}
                         </select>
                         
-                        <span className="text-gray-400 font-medium text-sm">to</span>
+                        <span className="text-gray-400 font-medium text-sm">{t('campaignManagement.settings.sendingSchedule.to')}</span>
                         
                         <select 
                           value={sendingEndTime}
@@ -2941,57 +2943,57 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       <User className="w-6 h-6 text-gray-400" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-medium text-gray-900">Sender Information</h2>
-                      <p className="text-gray-500 text-sm mt-1">Your details and email signature</p>
+                      <h2 className="text-xl font-medium text-gray-900">{t('campaignManagement.settings.senderInformation.title')}</h2>
+                      <p className="text-gray-500 text-sm mt-1">{t('campaignManagement.settings.senderInformation.subtitle')}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div>
-                      <label className="block text-sm font-medium text-gray-800 mb-3">First Name</label>
+                      <label className="block text-sm font-medium text-gray-800 mb-3">{t('campaignManagement.settings.senderInformation.firstName')}</label>
                       <input
                         type="text"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
-                        placeholder="John"
+                        placeholder={t('campaignManagement.settings.placeholders.firstName')}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-800 mb-3">Last Name</label>
+                      <label className="block text-sm font-medium text-gray-800 mb-3">{t('campaignManagement.settings.senderInformation.lastName')}</label>
                       <input
                         type="text"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
-                        placeholder="Doe"
+                        placeholder={t('campaignManagement.settings.placeholders.lastName')}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-800 mb-3">Company</label>
+                      <label className="block text-sm font-medium text-gray-800 mb-3">{t('campaignManagement.settings.senderInformation.company')}</label>
                       <input
                         type="text"
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
                         className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
-                        placeholder="Company Inc."
+                        placeholder={t('campaignManagement.settings.placeholders.company')}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-800 mb-3">Website</label>
+                      <label className="block text-sm font-medium text-gray-800 mb-3">{t('campaignManagement.settings.senderInformation.website')}</label>
                       <input
                         type="text"
                         value={companyWebsite}
                         onChange={(e) => setCompanyWebsite(e.target.value)}
                         className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
-                        placeholder="https://company.com"
+                        placeholder={t('campaignManagement.settings.placeholders.website')}
                       />
                     </div>
                   </div>
 
                   {/* Signature Section */}
                   <div>
-                    <h4 className="text-lg font-medium text-gray-900 mb-6">Email Signature</h4>
+                    <h4 className="text-lg font-medium text-gray-900 mb-6">{t('campaignManagement.settings.senderInformation.emailSignature')}</h4>
                     
                     <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden">
                       <div 
@@ -3121,8 +3123,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             {/* Clean Header */}
             <div className="flex justify-between items-start mb-8">
               <div>
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight">Email Sequence</h1>
-                <p className="text-gray-500 mt-2 font-light">Configure your email sequence steps and timing</p>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight">{t('campaignManagement.sequence.title')}</h1>
+                <p className="text-gray-500 mt-2 font-light">{t('campaignManagement.sequence.subtitle')}</p>
               </div>
               <div className="flex items-center">
                 <Button 
@@ -3131,7 +3133,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   disabled={isSavingSequences}
                 >
                   <Check className="w-4 h-4 mr-2" />
-                  {isSavingSequences ? 'Saving...' : 'Save Sequence'}
+                  {isSavingSequences ? t('campaignManagement.sequence.saving') : t('campaignManagement.sequence.saveSequence')}
                 </Button>
               </div>
             </div>
@@ -3145,8 +3147,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       <Mail className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-medium text-gray-900">Campaign Timeline</h2>
-                      <p className="text-gray-500 text-sm mt-1">Email sequence overview</p>
+                      <h2 className="text-xl font-medium text-gray-900">{t('campaignManagement.sequence.campaignTimeline.title')}</h2>
+                      <p className="text-gray-500 text-sm mt-1">{t('campaignManagement.sequence.campaignTimeline.subtitle')}</p>
                     </div>
                   </div>
                   
@@ -3154,10 +3156,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="mb-8">
                     <div className="mb-4 flex items-center justify-between">
                       <div className="flex-1">
-                        <h4 className="text-sm font-medium text-blue-900 mb-2">Initial Outreach</h4>
+                        <h4 className="text-sm font-medium text-blue-900 mb-2">{t('campaignManagement.sequence.sequences.initialOutreach')}</h4>
                         <div className="text-xs text-gray-500">
                           <div className="flex items-start gap-2">
-                            <span className="flex-1 break-words">Subject: "{steps.find(s => s.sequence === 1)?.subject || 'No subject'}"</span>
+                            <span className="flex-1 break-words">{t('campaignManagement.sequence.sequences.subject', { subject: steps.find(s => s.sequence === 1)?.subject || t('campaignManagement.sequence.sequences.noSubject') })}</span>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -3207,7 +3209,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   {step.title}
                                 </div>
                                 <div className="text-sm text-gray-500 mt-1">
-                                  {step.timing === 0 ? 'Immediately' : `Day ${step.timing}`}
+                                  {step.timing === 0 ? t('campaignManagement.sequence.steps.immediately') : t('campaignManagement.sequence.steps.day', { timing: step.timing })}
                                 </div>
                               </div>
                               <div className="flex items-center space-x-2">
@@ -3250,7 +3252,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           onClick={() => addStep(1)}
                         >
                           <Plus className="h-4 w-4 mr-2" />
-                          Add Email
+                          {t('campaignManagement.sequence.buttons.addEmail')}
                         </Button>
                       </div>
                     </div>
@@ -3299,7 +3301,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         onClick={() => addStep(2)}
                       >
                         <Plus className="h-4 w-4 mr-2 flex-shrink-0" />
-                        <span>Add Follow-up Sequence</span>
+                        <span>{t('campaignManagement.sequence.buttons.addFollowUpSequence')}</span>
                       </Button>
                     </div>
                   )}
@@ -3309,9 +3311,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     <div>
                       <div className="mb-4 flex items-center justify-between">
                         <div className="flex-1">
-                          <h4 className="text-sm font-medium text-green-900 mb-2">Follow-up Outreach</h4>
+                          <h4 className="text-sm font-medium text-green-900 mb-2">{t('campaignManagement.sequence.sequences.followUpOutreach')}</h4>
                           <div className="text-xs text-gray-500 flex items-center space-x-2">
-                            <span>Subject: "{steps.find(s => s.sequence === 2)?.subject || 'No subject'}"</span>
+                            <span>{t('campaignManagement.sequence.sequences.subject', { subject: steps.find(s => s.sequence === 2)?.subject || t('campaignManagement.sequence.sequences.noSubject') })}</span>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -3867,16 +3869,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   // Show loading spinner while data is being fetched
-  if (isLoadingCampaignData) {
+  if (isLoadingCampaignData || !translationsReady) {
     return (
       <main className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center px-4 py-8">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
           <h2 className="text-lg font-medium text-gray-800 mb-2">
-            Loading Campaign
+            {!translationsReady ? 'Loading Campaign' : t('campaignManagement.loading.title')}
           </h2>
           <p className="text-sm text-gray-600">
-            Setting up your campaign dashboard
+            {!translationsReady ? 'Setting up your campaign dashboard' : t('campaignManagement.loading.subtitle')}
           </p>
         </div>
       </main>
@@ -3947,7 +3949,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="flex items-center gap-6 text-sm text-gray-500 font-light">
                     <span className="flex items-center gap-1.5">
                       <Mail className="h-4 w-4" />
-                      {campaign?.type} Campaign
+                      {t('campaignManagement.header.campaignType', { type: campaign?.type })}
                     </span>
                     <Badge 
                       variant="outline"
@@ -3973,7 +3975,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 hover:text-red-700 rounded-2xl px-4 py-2 transition-all duration-200"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Campaign
+                  {t('campaigns.delete')}
                 </Button>
               </div>
             </div>
@@ -3996,7 +3998,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               }`}
             >
               <Target className="w-4 h-4 mr-2" />
-              Target
+              {t('campaignManagement.tabs.target')}
             </Button>
             <Button 
               variant={activeTab === 'sequence' ? 'default' : 'outline'}
@@ -4011,7 +4013,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               }`}
             >
               <Mail className="w-4 h-4 mr-2" />
-              Sequence
+              {t('campaignManagement.tabs.sequence')}
             </Button>
             <Button 
               variant={activeTab === 'sender' ? 'default' : 'outline'}
@@ -4026,7 +4028,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               }`}
             >
               <Send className="w-4 h-4 mr-2" />
-              Sender
+              {t('campaignManagement.tabs.sender')}
             </Button>
             <Button 
               variant={activeTab === 'settings' ? 'default' : 'outline'}
@@ -4041,7 +4043,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               }`}
             >
               <Settings className="w-4 h-4 mr-2" />
-              Settings
+              {t('campaignManagement.tabs.settings')}
             </Button>
           </div>
           )}
@@ -4059,12 +4061,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           <DialogContent className="rounded-3xl">
             <DialogHeader>
               <DialogTitle>
-                {deleteConfirm.type === 'sequence' ? 'Delete Sequence' : 'Delete Step'}
+                {deleteConfirm.type === 'sequence' ? t('campaignManagement.dialogs.delete.deleteSequence') : t('campaignManagement.dialogs.delete.deleteStep')}
               </DialogTitle>
               <DialogDescription>
                 {deleteConfirm.type === 'sequence' 
-                  ? `Are you sure you want to delete the sequence "${deleteConfirm.item?.name}"? This action cannot be undone.`
-                  : `Are you sure you want to delete this step? This action cannot be undone.`
+                  ? t('campaignManagement.dialogs.delete.sequenceConfirmation', { name: deleteConfirm.item?.name })
+                  : t('campaignManagement.dialogs.delete.stepConfirmation')
                 }
               </DialogDescription>
             </DialogHeader>
@@ -4096,7 +4098,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto rounded-3xl">
             <DialogHeader>
-              <DialogTitle>Sequence Preview</DialogTitle>
+              <DialogTitle>{t('campaignManagement.dialogs.preview.title')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               {steps
@@ -4112,11 +4114,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium">{step.title}</h3>
                     <span className="text-sm text-gray-500">
-                      {step.timing === 0 ? 'Immediately' : `Wait ${step.timing} days`}
+                      {step.timing === 0 ? t('campaignManagement.dialogs.preview.immediately') : t('campaignManagement.dialogs.preview.waitDays', { timing: step.timing })}
                     </span>
                   </div>
                   <div className="text-sm text-gray-600 mb-2">
-                    Subject: {step.subject}
+                    {t('campaignManagement.dialogs.preview.subject', { subject: step.subject })}
                   </div>
                   <div 
                     className="prose prose-sm max-w-none"
@@ -4137,12 +4139,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-red-600">
                 <AlertTriangle className="h-5 w-5" />
-                Delete Campaign
+                {t('campaignManagement.dialogs.deleteCampaign.title')}
               </DialogTitle>
               <DialogDescription>
-                Are you sure you want to delete the campaign <strong>"{campaign?.name}"</strong>?
+                {t('campaignManagement.dialogs.deleteCampaign.confirmation', { name: campaign?.name })}
                 <br />
-                <span className="text-red-600 font-medium">This action cannot be undone.</span>
+                <span className="text-red-600 font-medium">{t('campaignManagement.dialogs.deleteCampaign.warning')}</span>
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -4151,14 +4153,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 onClick={() => setShowDeleteDialog(false)}
                 className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
               >
-                Cancel
+                {t('campaignManagement.dialogs.delete.cancel')}
               </Button>
               <Button
                 variant="destructive"
                 onClick={confirmDeleteCampaign}
                 className="bg-red-600 hover:bg-red-700 rounded-2xl"
               >
-                Delete Campaign
+                {t('campaignManagement.dialogs.deleteCampaign.deleteCampaign')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -4180,7 +4182,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 {/* Progress indicator */}
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-gray-500">
-                    Step {guidedFlowStep + 1} of {guidedFlowSteps.length}
+                    {t('campaignManagement.guidedFlow.progress.stepOf', { current: guidedFlowStep + 1, total: guidedFlowSteps.length })}
                   </div>
                   <div className="w-64">
                     <Progress 
@@ -4209,7 +4211,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
                   >
                     <ChevronLeft className="w-4 h-4 mr-1" />
-                    Previous
+                    {t('campaignManagement.guidedFlow.buttons.previous')}
                   </Button>
                   
                   {guidedFlowStep === guidedFlowSteps.length - 1 ? (
@@ -4218,7 +4220,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       className="bg-green-600 hover:bg-green-700 text-white rounded-2xl px-6"
                     >
                       <Rocket className="w-4 h-4 mr-2" />
-                      Launch Campaign
+                      {t('campaignManagement.guidedFlow.buttons.launchCampaign')}
                     </Button>
                   ) : (
                     <Button
@@ -4245,7 +4247,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       {validationLoading ? (
                         <>
                           <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Checking...
+                          {t('campaignManagement.guidedFlow.buttons.checking')}
                         </>
                       ) : guidedFlowSteps[guidedFlowStep]?.tab === 'sequence' ? (
                         <>

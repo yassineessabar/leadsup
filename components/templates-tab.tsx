@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useI18n } from '@/hooks/use-i18n'
 import { Eye, Share2, Filter, ChevronDown, FileText, X, Copy, Mail, Check, Link } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +23,9 @@ interface Template {
 }
 
 export function TemplatesTab() {
+  const { t, ready } = useI18n()
+  
+  // All state declarations must be before any early returns
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -32,6 +36,12 @@ export function TemplatesTab() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [templateToShare, setTemplateToShare] = useState<Template | null>(null)
   const [shareSuccess, setShareSuccess] = useState(false)
+  
+  if (!ready) {
+    return <div className="flex items-center justify-center h-64">
+      <div className="text-gray-500">{t ? t('common.loading') : 'Loading...'}</div>
+    </div>
+  }
 
   const templates: Template[] = [
     {
@@ -306,10 +316,10 @@ Best regards!`
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
               <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">
-                Template Library
+                {t('templates.templateLibrary')}
               </h1>
               <p className="text-gray-500 font-light">
-                Browse and use proven email templates that convert
+                {t('templates.browseAndUse')}
               </p>
             </div>
             
@@ -318,12 +328,12 @@ Best regards!`
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger className="w-48 h-10 bg-white border-gray-200 rounded-2xl">
                   <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="All Categories" />
+                  <SelectValue placeholder={t('templates.allCategories')} />
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl border-gray-200">
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="community">Community</SelectItem>
-                  <SelectItem value="premium">Premium</SelectItem>
+                  <SelectItem value="all">{t('templates.allCategories')}</SelectItem>
+                  <SelectItem value="community">{t('templates.community')}</SelectItem>
+                  <SelectItem value="premium">{t('templates.premium')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -361,7 +371,7 @@ Best regards!`
                 {/* Single Key Metric */}
                 <div className="mb-6 text-center">
                   <p className="text-2xl font-light text-gray-900">{template.metrics.openRate}</p>
-                  <p className="text-xs text-gray-500 mt-1">Open Rate</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('campaigns.openRate')}</p>
                 </div>
 
                 {/* Actions */}
@@ -372,14 +382,14 @@ Best regards!`
                     onClick={() => handleViewTemplate(template.id)}
                   >
                     <Eye className="w-4 h-4 mr-2" />
-                    View
+                    {t('templates.view')}
                   </Button>
                   <Button
                     variant="outline"
                     className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl"
                     onClick={() => handleUseTemplate(template.id)}
                   >
-                    Use Template
+                    {t('templates.useTemplate')}
                   </Button>
                   <Button
                     variant="outline"
@@ -401,14 +411,14 @@ Best regards!`
             <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
               <FileText className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-xl font-medium text-gray-900 mb-2">No templates found</h3>
-            <p className="text-gray-500 mb-8 font-light">Try adjusting your filters to see more templates</p>
+            <h3 className="text-xl font-medium text-gray-900 mb-2">{t('templates.noTemplatesFound')}</h3>
+            <p className="text-gray-500 mb-8 font-light">{t('templates.tryAdjustingFilters')}</p>
             <Button 
               variant="outline"
               onClick={() => setSelectedCategory("all")}
               className="border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-3 font-medium transition-all duration-300 rounded-2xl"
             >
-              Show All Templates
+              {t('templates.showAllTemplates')}
             </Button>
           </div>
         )}
@@ -439,9 +449,9 @@ Best regards!`
               <div className="space-y-6">
                 {/* Template Content */}
                 <div className="bg-gray-50 rounded-2xl p-6">
-                  <h3 className="text-sm font-medium text-gray-900 mb-3">Email Template</h3>
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">{t('templates.emailTemplate')}</h3>
                   <pre className="whitespace-pre-wrap text-sm text-gray-700 font-normal leading-relaxed">
-                    {selectedTemplate.content || 'No content available for this template.'}
+                    {selectedTemplate.content || t('templates.noContentAvailable')}
                   </pre>
                 </div>
 
@@ -449,15 +459,15 @@ Best regards!`
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-4 bg-gray-50 rounded-2xl">
                     <p className="text-xl font-light text-gray-900">{selectedTemplate.metrics.openRate}</p>
-                    <p className="text-xs text-gray-500 mt-1">Open Rate</p>
+                    <p className="text-xs text-gray-500 mt-1">{t('campaigns.openRate')}</p>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-2xl">
                     <p className="text-xl font-light text-gray-900">{selectedTemplate.metrics.responseRate}</p>
-                    <p className="text-xs text-gray-500 mt-1">Response Rate</p>
+                    <p className="text-xs text-gray-500 mt-1">{t('campaigns.responseRate')}</p>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-2xl">
                     <p className="text-xl font-light text-gray-900">{selectedTemplate.metrics.conversionRate}</p>
-                    <p className="text-xs text-gray-500 mt-1">Conversion Rate</p>
+                    <p className="text-xs text-gray-500 mt-1">{t('campaigns.conversionRate')}</p>
                   </div>
                 </div>
 
@@ -468,7 +478,7 @@ Best regards!`
                     onClick={() => setIsPreviewOpen(false)}
                     className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl"
                   >
-                    Close
+                    {t('button.close')}
                   </Button>
                   <Button
                     onClick={() => {
@@ -477,7 +487,7 @@ Best regards!`
                     }}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-0 font-medium transition-all duration-300 rounded-2xl"
                   >
-                    Use This Template
+                    {t('templates.useThisTemplate')}
                   </Button>
                 </div>
               </div>
@@ -490,10 +500,10 @@ Best regards!`
           <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto rounded-3xl">
             <DialogHeader>
               <DialogTitle className="text-xl font-light text-gray-900 tracking-tight">
-                Use Template in Campaign
+                {t('templates.useTemplateInCampaign')}
               </DialogTitle>
               <p className="text-sm text-gray-500 mt-2">
-                Select a campaign to copy "{templateToUse?.title}" content to your clipboard
+                {t('templates.selectCampaignToCopy', { title: templateToUse?.title })}
               </p>
             </DialogHeader>
             
@@ -501,13 +511,13 @@ Best regards!`
             <div className="bg-blue-50/50 border border-blue-100/50 rounded-2xl p-4 my-4">
               <h4 className="font-medium text-gray-900 mb-2 text-sm flex items-center">
                 <Copy className="w-4 h-4 text-blue-600 mr-2" />
-                How it works
+                {t('templates.howItWorks')}
               </h4>
               <ol className="text-xs text-gray-600 space-y-1 list-decimal list-inside">
-                <li>Select your campaign below</li>
-                <li>Template content will be copied to your clipboard</li>
-                <li>You'll be redirected to the campaign's sequence editor</li>
-                <li>Paste the template content into your email sequence</li>
+                <li>{t('templates.selectCampaignBelow')}</li>
+                <li>{t('templates.contentCopiedToClipboard')}</li>
+                <li>{t('templates.redirectToSequenceEditor')}</li>
+                <li>{t('templates.pasteContentIntoSequence')}</li>
               </ol>
             </div>
             
@@ -550,7 +560,7 @@ Best regards!`
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <p className="text-gray-500 mb-4">No campaigns found</p>
+                  <p className="text-gray-500 mb-4">{t('templates.noCampaignsFound')}</p>
                   <div className="flex flex-col gap-2">
                     <Button
                       variant="outline"
@@ -576,7 +586,7 @@ Best regards!`
                       disabled={loadingCampaigns}
                       className="border-blue-300 text-blue-700 hover:bg-blue-50 rounded-2xl"
                     >
-                      {loadingCampaigns ? 'Loading...' : 'Refresh Campaigns'}
+                      {loadingCampaigns ? t('common.loading') : t('templates.refreshCampaigns')}
                     </Button>
                     <Button
                       variant="outline"
@@ -588,7 +598,7 @@ Best regards!`
                       }}
                       className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
                     >
-                      Create New Campaign
+                      {t('templates.createNewCampaign')}
                     </Button>
                   </div>
                 </div>
@@ -600,7 +610,7 @@ Best regards!`
                   onClick={() => setIsCampaignSelectOpen(false)}
                   className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
                 >
-                  Cancel
+                  {t('button.cancel')}
                 </Button>
               </div>
             </div>
@@ -612,10 +622,10 @@ Best regards!`
           <DialogContent className="max-w-md rounded-3xl border border-gray-100/20">
             <DialogHeader className="pb-6">
               <DialogTitle className="text-center text-2xl font-light text-gray-900 tracking-tight">
-                Share Template
+                {t('templates.shareTemplate')}
               </DialogTitle>
               <p className="text-center text-gray-500 text-sm mt-2">
-                Share "{templateToShare?.title}" with others
+                {t('templates.shareTemplateWith', { title: templateToShare?.title })}
               </p>
             </DialogHeader>
             
@@ -651,12 +661,12 @@ Best regards!`
                   {shareSuccess ? (
                     <>
                       <Check className="w-4 h-4" />
-                      Link Copied!
+                      {t('templates.linkCopied')}
                     </>
                   ) : (
                     <>
                       <Copy className="w-4 h-4" />
-                      Copy Share Link
+                      {t('templates.copyShareLink')}
                     </>
                   )}
                 </Button>
@@ -667,7 +677,7 @@ Best regards!`
                   className="w-full flex items-center justify-center gap-3 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium transition-all duration-200"
                 >
                   <Mail className="w-4 h-4" />
-                  Share via Email
+                  {t('templates.shareViaEmail')}
                 </Button>
               </div>
 
@@ -675,7 +685,7 @@ Best regards!`
               <div className="bg-gray-50/50 border border-gray-100/50 rounded-2xl p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Link className="w-4 h-4 text-gray-500" />
-                  <span className="text-xs font-medium text-gray-700">Share URL</span>
+                  <span className="text-xs font-medium text-gray-700">{t('templates.shareURL')}</span>
                 </div>
                 <p className="text-xs text-gray-500 break-all">
                   {window.location.origin}/?tab=templates&template={templateToShare?.id}
@@ -689,7 +699,7 @@ Best regards!`
                 onClick={() => setIsShareModalOpen(false)}
                 className="w-full border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium"
               >
-                Close
+                {t('button.close')}
               </Button>
             </div>
           </DialogContent>
