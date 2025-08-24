@@ -4,8 +4,11 @@ import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { useI18n } from "@/hooks/use-i18n"
+import { LanguageSelectorCompact } from "@/components/language-selector"
 
 export default function ForgotPasswordPage() {
+  const { t } = useI18n()
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState("")
@@ -14,7 +17,7 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email.trim()) {
-      setMessage("Please enter your email")
+      setMessage(t('auth.pleaseEnterEmail'))
       return
     }
 
@@ -40,13 +43,13 @@ export default function ForgotPasswordPage() {
         if (data.devToken) {
           const url = `${window.location.origin}/auth/reset-password?token=${data.devToken}`
           setResetUrl(url)
-          setMessage("Development mode: Reset link generated below")
+          setMessage(t('auth.devModeMessage'))
         }
       } else {
-        setMessage(data.error || "Something went wrong. Please try again.")
+        setMessage(data.error || t('auth.somethingWentWrong'))
       }
     } catch (error) {
-      setMessage("Something went wrong. Please try again.")
+      setMessage(t('auth.somethingWentWrong'))
     } finally {
       setIsLoading(false)
     }
@@ -56,12 +59,17 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen bg-white">
       <main className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-md">
+          {/* Language Selector */}
+          <div className="flex justify-end mb-4">
+            <LanguageSelectorCompact />
+          </div>
+          
           {/* Logo */}
           <div className="flex justify-center mb-4">
             <Link href="/" className="flex items-center">
               <img 
                 src="https://framerusercontent.com/images/yar0HFd2Ii54LrLgUJ1sPLmjoS0.svg" 
-                alt="LeadsUp Logo" 
+                alt={t('logo.leadsUp')} 
                 className="h-10 w-auto"
               />
             </Link>
@@ -70,9 +78,9 @@ export default function ForgotPasswordPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-semibold text-gray-900 mb-2">
-              Reset your password
+              {t('auth.resetPasswordTitle')}
             </h1>
-            <p className="text-gray-600">Enter your email and we'll send you a reset link.</p>
+            <p className="text-gray-600">{t('auth.resetPasswordSubtitle')}</p>
           </div>
 
           {/* Messages */}
@@ -94,7 +102,7 @@ export default function ForgotPasswordPage() {
 
           {resetUrl && (
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800 mb-2 font-medium">Development Reset Link:</p>
+              <p className="text-sm text-blue-800 mb-2 font-medium">{t('auth.devResetLink')}</p>
               <a 
                 href={resetUrl}
                 className="text-blue-600 underline break-all text-sm hover:text-blue-800"
@@ -108,7 +116,7 @@ export default function ForgotPasswordPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
-                Email
+                {t('auth.email')}
               </label>
               <Input
                 id="email"
@@ -117,6 +125,7 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
+                placeholder={t('auth.emailPlaceholder')}
                 className="w-full h-11 bg-white text-gray-900 border border-gray-300 rounded-2xl px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -126,13 +135,13 @@ export default function ForgotPasswordPage() {
               disabled={isLoading || !email.trim()}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-4 py-2 font-medium transition-colors h-11"
             >
-              {isLoading ? "Sending..." : "Send Reset Email"}
+              {isLoading ? t('auth.sending') : t('auth.sendResetEmail')}
             </Button>
 
             <div>
               <p className="text-sm text-gray-600 text-center">
                 <Link href="/auth/login" className="text-blue-600 hover:text-blue-700 font-medium">
-                  Back to sign in
+                  {t('auth.backToSignIn')}
                 </Link>
               </p>
             </div>
@@ -140,9 +149,9 @@ export default function ForgotPasswordPage() {
 
           {/* Help Link */}
           <div className="mt-8 text-center text-sm text-gray-500">
-            <p>Having issues with this page?</p>
+            <p>{t('auth.havingIssuesPage')}</p>
             <a href="mailto:support@leadsup.io" className="text-blue-600 hover:text-blue-700 font-medium">
-              Contact us
+              {t('auth.contactUs')}
             </a>
           </div>
         </div>

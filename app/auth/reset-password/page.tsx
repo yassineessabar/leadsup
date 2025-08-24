@@ -4,8 +4,11 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { useI18n } from "@/hooks/use-i18n"
+import { LanguageSelectorCompact } from "@/components/language-selector"
 
 export default function ResetPasswordPage() {
+  const { t } = useI18n()
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
@@ -18,7 +21,7 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (!token) {
-      setMessage("Invalid or missing reset token")
+      setMessage(t('auth.invalidResetToken'))
       setIsValidToken(false)
       return
     }
@@ -42,11 +45,11 @@ export default function ResetPasswordPage() {
       if (data.success) {
         setIsValidToken(true)
       } else {
-        setMessage(data.error || "Invalid or expired reset token")
+        setMessage(data.error || t('auth.invalidOrExpiredToken'))
         setIsValidToken(false)
       }
     } catch (error) {
-      setMessage("Error validating reset token")
+      setMessage(t('auth.errorValidatingToken'))
       setIsValidToken(false)
     }
   }
@@ -55,12 +58,12 @@ export default function ResetPasswordPage() {
     e.preventDefault()
     
     if (password !== confirmPassword) {
-      setMessage("Passwords do not match")
+      setMessage(t('auth.passwordsDoNotMatch'))
       return
     }
 
     if (password.length < 8) {
-      setMessage("Password must be at least 8 characters long")
+      setMessage(t('auth.passwordMinLength'))
       return
     }
 
@@ -79,15 +82,15 @@ export default function ResetPasswordPage() {
       const data = await response.json()
 
       if (data.success) {
-        setMessage("Password reset successfully! Redirecting to login...")
+        setMessage(t('auth.passwordResetSuccess'))
         setTimeout(() => {
           router.push("/auth/login")
         }, 2000)
       } else {
-        setMessage(data.error || "Failed to reset password")
+        setMessage(data.error || t('auth.failedToResetPassword'))
       }
     } catch (error) {
-      setMessage("Something went wrong. Please try again.")
+      setMessage(t('auth.somethingWentWrong'))
     } finally {
       setIsLoading(false)
     }
@@ -95,12 +98,17 @@ export default function ResetPasswordPage() {
 
   if (isValidToken === null) {
     return (
-      <main className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center p-6">
+      <main className="min-h-screen bg-white flex items-center justify-center p-6">
         <div className="w-full max-w-md">
+          {/* Language Selector */}
+          <div className="flex justify-end mb-4">
+            <LanguageSelectorCompact />
+          </div>
+          
           <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
             <div className="p-8 text-center">
               <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">LeadsUp</h1>
-              <p className="text-gray-600">Validating reset token...</p>
+              <p className="text-gray-600">{t('auth.validatingToken')}</p>
             </div>
           </div>
         </div>
@@ -110,17 +118,22 @@ export default function ResetPasswordPage() {
 
   if (isValidToken === false) {
     return (
-      <main className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center p-6">
+      <main className="min-h-screen bg-white flex items-center justify-center p-6">
         <div className="w-full max-w-md">
+          {/* Language Selector */}
+          <div className="flex justify-end mb-4">
+            <LanguageSelectorCompact />
+          </div>
+          
           <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
             <div className="p-8 text-center">
               <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">LeadsUp</h1>
-              <p className="text-gray-600 mb-4">Invalid Reset Link</p>
+              <p className="text-gray-600 mb-4">{t('auth.invalidResetLink')}</p>
               <div className="p-4 bg-red-50 border border-red-200 rounded-2xl mb-6">
                 <p className="text-red-600 text-sm">{message}</p>
               </div>
               <a href="/auth/forgot-password" className="text-blue-600 hover:text-blue-700 text-sm">
-                Request a new reset link
+                {t('auth.requestNewResetLink')}
               </a>
             </div>
           </div>
@@ -130,25 +143,30 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center p-6">
+    <main className="min-h-screen bg-white flex items-center justify-center p-6">
       <div className="w-full max-w-md">
+        {/* Language Selector */}
+        <div className="flex justify-end mb-4">
+          <LanguageSelectorCompact />
+        </div>
+        
         <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
           {/* Header */}
           <div className="p-8 text-center">
             <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">LeadsUp</h1>
-            <p className="text-gray-600">Set new password</p>
+            <p className="text-gray-600">{t('auth.setNewPassword')}</p>
           </div>
 
           {/* Form */}
           <div className="px-8 pb-8">
             {message && (
               <div className={`mb-6 p-4 rounded-2xl ${
-                message.includes("successfully") 
+                message.includes("successfully") || message.includes("succès")
                   ? "bg-green-50 border border-green-200"
                   : "bg-red-50 border border-red-200"
               }`}>
                 <p className={`text-sm ${
-                  message.includes("successfully") 
+                  message.includes("successfully") || message.includes("succès")
                     ? "text-green-600"
                     : "text-red-600"
                 }`}>
@@ -160,7 +178,7 @@ export default function ResetPasswordPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
                 type="password"
-                placeholder="New password"
+                placeholder={t('auth.newPassword')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -171,7 +189,7 @@ export default function ResetPasswordPage() {
               
               <Input
                 type="password"
-                placeholder="Confirm new password"
+                placeholder={t('auth.confirmNewPassword')}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
@@ -185,13 +203,13 @@ export default function ResetPasswordPage() {
                 disabled={isLoading || !password || !confirmPassword}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3 font-medium transition-all duration-300 mt-6"
               >
-                {isLoading ? "Updating..." : "Update Password"}
+                {isLoading ? t('auth.updating') : t('auth.updatePassword')}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
               <a href="/auth/login" className="text-blue-600 hover:text-blue-700 text-sm">
-                Back to sign in
+                {t('auth.backToSignIn')}
               </a>
             </div>
           </div>
