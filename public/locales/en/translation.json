@@ -965,29 +965,6 @@
   "help": {
     "title": "Help Center",
     "subtitle": "Get help and find answers to common questions",
-    "search": {
-      "placeholder": "Search for help articles..."
-    },
-    "categories": {
-      "title": "Browse by Category",
-      "subtitle": "Find help organized by topic",
-      "gettingStarted": {
-        "title": "Getting Started",
-        "description": "Learn the basics of using LeadsUp"
-      },
-      "features": {
-        "title": "Platform Features",
-        "description": "Understand all available features"
-      },
-      "campaigns": {
-        "title": "Campaign Management",
-        "description": "Create and manage your campaigns"
-      },
-      "integrations": {
-        "title": "Integrations",
-        "description": "Connect with external services"
-      }
-    },
     "faq": {
       "title": "Frequently Asked Questions",
       "subtitle": "Quick answers to common questions",

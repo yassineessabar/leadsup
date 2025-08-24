@@ -244,7 +244,7 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-8 pt-6">
           {plans.map((plan, index) => (
             <div
               key={plan.name}
@@ -255,7 +255,7 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
               }`}
             >
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
                   <div className="bg-gray-900 text-white px-4 py-2 rounded-2xl text-xs font-medium flex items-center gap-2 shadow-lg">
                     <Star className="w-3 h-3 fill-white" />
                     {t('upgrade.plans.pro.mostPopular')}

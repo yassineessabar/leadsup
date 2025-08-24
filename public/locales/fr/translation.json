@@ -1385,29 +1385,6 @@
   "help": {
     "title": "Centre d'Aide",
     "subtitle": "Obtenez de l'aide et trouvez des réponses aux questions courantes",
-    "search": {
-      "placeholder": "Rechercher des articles d'aide..."
-    },
-    "categories": {
-      "title": "Parcourir par Catégorie",
-      "subtitle": "Trouvez de l'aide organisée par sujet",
-      "gettingStarted": {
-        "title": "Commencer",
-        "description": "Apprenez les bases de l'utilisation de LeadsUp"
-      },
-      "features": {
-        "title": "Fonctionnalités de la Plateforme",
-        "description": "Comprenez toutes les fonctionnalités disponibles"
-      },
-      "campaigns": {
-        "title": "Gestion des Campagnes",
-        "description": "Créez et gérez vos campagnes"
-      },
-      "integrations": {
-        "title": "Intégrations",
-        "description": "Connectez-vous avec des services externes"
-      }
-    },
     "faq": {
       "title": "Questions Fréquemment Posées",
       "subtitle": "Réponses rapides aux questions courantes",
