@@ -13,24 +13,32 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       try {
         // i18n is already initialized in lib/i18n.js, just wait for it to be ready
         if (i18n.isInitialized) {
-          console.log('i18n already initialized, language:', i18n.language);
+          console.log('✅ i18n already initialized, language:', i18n.language);
         } else {
-          console.log('Waiting for i18n to initialize...');
+          console.log('⏳ Waiting for i18n to initialize...');
           // Wait for it to be ready
           await i18n.init();
         }
         
-        // Force language from localStorage if available
-        const savedLanguage = localStorage.getItem('i18nextLng');
-        if (savedLanguage && savedLanguage !== i18n.language) {
-          console.log('Restoring saved language:', savedLanguage);
-          await i18n.changeLanguage(savedLanguage);
+        // Force French for now to test translations
+        if (i18n.language !== 'fr') {
+          console.log('🔄 Forcing French language...');
+          await i18n.changeLanguage('fr');
         }
         
-        console.log('i18n initialization complete, current language:', i18n.language);
+        // Check if translations are loaded
+        const hasEnglish = i18n.hasResourceBundle('en', 'translation');
+        const hasFrench = i18n.hasResourceBundle('fr', 'translation');
+        console.log('📚 Translation bundles loaded:', { en: hasEnglish, fr: hasFrench });
+        
+        // Test a specific key
+        const testKey = i18n.t('campaignManagement.targetTab.title');
+        console.log('🧪 Test translation for targetTab.title:', testKey);
+        
+        console.log('✅ i18n initialization complete, current language:', i18n.language);
         setIsI18nInitialized(true);
       } catch (error) {
-        console.error('Error initializing i18n:', error);
+        console.error('❌ Error initializing i18n:', error);
         setIsI18nInitialized(true); // Still set to true to prevent infinite loading
       }
     };
