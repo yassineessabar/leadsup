@@ -519,7 +519,8 @@
     "deleteDomain": "Delete Domain", 
     "deleting": "Deleting...",
     "cancel": "Cancel",
-    "deleteConfirmation": "This action cannot be undone. Type \"delete\" to confirm removal of <strong>{{domain}}</strong>.",
+    "deleteConfirmation": "This action cannot be undone. Type \"delete\" to confirm removal of ",
+    "deleteConfirmationEnd": ".",
     "deletePlaceholder": "Type 'delete' to confirm",
     "status": {
       "verified": "Verified",

@@ -717,7 +717,10 @@ export default function DomainsPage() {
               <DialogHeader>
                 <DialogTitle>{t('domains.deleteDomain')}</DialogTitle>
                 <DialogDescription>
-                  {t('domains.deleteConfirmation', { domain: domainToDelete?.domain })}
+                  <span>
+                    Cette action ne peut pas être annulée. Tapez "delete" pour confirmer la suppression de{' '}
+                    <strong className="font-semibold">{domainToDelete?.domain}</strong>.
+                  </span>
                 </DialogDescription>
               </DialogHeader>
               <Input

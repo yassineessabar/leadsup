@@ -272,7 +272,8 @@
     "deleteDomain": "Supprimer le domaine",
     "deleting": "Suppression...",
     "cancel": "Annuler",
-    "deleteConfirmation": "Cette action ne peut pas être annulée. Tapez \"delete\" pour confirmer la suppression de <strong>{{domain}}</strong>.",
+    "deleteConfirmation": "Cette action ne peut pas être annulée. Tapez \"delete\" pour confirmer la suppression de ",
+    "deleteConfirmationEnd": ".",
     "deletePlaceholder": "Tapez 'delete' pour confirmer",
     "status": {
       "verified": "Vérifié",
