@@ -29,7 +29,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useI18n } from "@/hooks/use-i18n"
-import { LanguageButtons } from "@/components/language-selector"
 
 interface SettingsPageProps {
   onSectionChange?: (section: string) => void
@@ -95,18 +94,21 @@ export function SettingsPage({ onSectionChange }: SettingsPageProps) {
           </button>
 
           {/* Language & Preferences Section */}
-          <div className="p-6 border-b border-gray-50">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-blue-100/50 flex items-center justify-center">
-                <Globe className="h-5 w-5 text-blue-600" />
+          <button
+            onClick={() => onSectionChange?.("language-preferences")}
+            className="w-full flex items-center justify-between p-6 hover:bg-gray-50/50 transition-all duration-200 group border-b border-gray-50"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-gray-100/50 flex items-center justify-center group-hover:bg-gray-200/50 transition-colors">
+                <Globe className="h-5 w-5 text-gray-600" />
               </div>
               <div className="text-left">
                 <h3 className="text-base font-medium text-gray-900">{t('settings.language.title')}</h3>
                 <p className="text-sm text-gray-500">{t('settings.language.description')}</p>
               </div>
             </div>
-            <LanguageButtons />
-          </div>
+            <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+          </button>
 
           {/* Billing Section */}
           <button
