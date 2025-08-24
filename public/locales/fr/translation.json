@@ -364,6 +364,11 @@
         "warning": "Cette action ne peut pas être annulée.",
         "deleteCampaign": "Supprimer la campagne"
       }
+    },
+    "validation": {
+      "requirementsNotMet": "Exigences non remplies",
+      "pleaseComplete": "Veuillez compléter les exigences suivantes avant de continuer :",
+      "importOrScraping": "Vous devez soit importer des contacts soit configurer le scraping automatique pour continuer"
     }
   },
   "leads": {

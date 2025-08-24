@@ -173,7 +173,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     // Target tab requirements (step 0) - need contacts or auto-scraping to proceed to sequence
     if (currentStep === 0) {
       if (!hasContacts && !hasAutoScraping) {
-        errors.push('You must either import contacts or set up auto-scraping to proceed')
+        errors.push(t('campaignManagement.validation.importOrScraping'))
       }
     }
     
@@ -205,7 +205,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     // Target tab requirements (step 0) - need contacts or auto-scraping to proceed to sequence
     if (currentStep === 0) {
       if (!currentHasContacts && !currentHasAutoScraping) {
-        errors.push('You must either import contacts or set up auto-scraping to proceed')
+        errors.push(t('campaignManagement.validation.importOrScraping'))
       }
     }
     
@@ -4347,10 +4347,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
-              Requirements Not Met
+              {t('campaignManagement.validation.requirementsNotMet')}
             </DialogTitle>
             <DialogDescription>
-              Please complete the following requirements before proceeding:
+              {t('campaignManagement.validation.pleaseComplete')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 my-4">

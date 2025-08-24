@@ -364,6 +364,11 @@
         "warning": "This action cannot be undone.",
         "deleteCampaign": "Delete Campaign"
       }
+    },
+    "validation": {
+      "requirementsNotMet": "Requirements Not Met",
+      "pleaseComplete": "Please complete the following requirements before proceeding:",
+      "importOrScraping": "You must either import contacts or set up auto-scraping to proceed"
     }
   },
   "leads": {
