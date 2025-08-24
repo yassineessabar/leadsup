@@ -290,6 +290,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({
             success: true,
             healthScores,
+            accounts: senderAccounts.map(account => ({ id: account.id, email: account.email })),
             message: `Health scores calculated for ${Object.keys(healthScores).length} sender accounts`,
             debug: {
               senderAccountsFound: senderAccounts.length,

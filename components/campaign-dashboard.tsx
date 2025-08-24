@@ -359,7 +359,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           const senderAssignments = sendersResult.assignments || []
           
           if (senderAssignments.length > 0) {
-            // Get sender emails
+            // Get sender emails (even though they're actually IDs, the API expects emails parameter)
             const senderEmails = senderAssignments.map((assignment: any) => assignment.email).filter(Boolean)
             
             if (senderEmails.length > 0) {
@@ -372,10 +372,19 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 const healthResult = await healthResponse.json()
                 const healthScores = healthResult.healthScores || {}
                 
+                // Build account ID to email mapping from the health response
+                const accountEmailMap: Record<string, string> = {}
+                if (healthResult.accounts) {
+                  healthResult.accounts.forEach((account: any) => {
+                    accountEmailMap[account.id] = account.email
+                  })
+                }
+                
                 // Check for low health scores (below 90%)
                 const lowScoreSenders: Array<{email: string, score: number}> = []
-                Object.entries(healthScores).forEach(([email, data]: [string, any]) => {
+                Object.entries(healthScores).forEach(([accountId, data]: [string, any]) => {
                   if (data.score < 90) {
+                    const email = accountEmailMap[accountId] || accountId
                     lowScoreSenders.push({ email, score: data.score })
                   }
                 })
