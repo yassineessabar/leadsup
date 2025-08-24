@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Check, ChevronRight, MessageSquare, X, Globe, Search, BarChart3, MapPin, Tag, FolderOpen, Send, Users, Brain, Target, Filter, ExternalLink, FileText, ChevronLeft, Edit, Save, XCircle, Eye, Info, Plus } from 'lucide-react'
 import { INDUSTRY_OPTIONS } from "@/lib/industry-options"
+import { useI18n } from "@/hooks/use-i18n"
 
 interface AddCampaignPopupProps {
   isOpen: boolean
@@ -23,11 +24,11 @@ interface AddCampaignPopupProps {
   existingCampaignId?: number
 }
 
-const steps = [
-  { id: "company", label: "Company name", completed: false },
-  { id: "target-audience", label: "Target Audience", completed: false },
-  { id: "pain-value", label: "Persona & Value props", completed: false },
-  { id: "sequence", label: "Sequence review", completed: false },
+const getSteps = (t: any) => [
+  { id: "company", label: t('campaignCreation.steps.companyName'), completed: false },
+  { id: "target-audience", label: t('campaignCreation.steps.targetAudience'), completed: false },
+  { id: "pain-value", label: t('campaignCreation.steps.personaValueProps'), completed: false },
+  { id: "sequence", label: t('campaignCreation.steps.sequenceReview'), completed: false },
 ]
 
 // Removed processingSteps - no longer needed for simplified loading
@@ -155,6 +156,8 @@ const getSuggestedRoles = (objective: string): string[] => {
 }
 
 export default function AddCampaignPopup({ isOpen, onClose, onComplete, existingCampaignId }: AddCampaignPopupProps) {
+  const { t, ready } = useI18n()
+  const steps = getSteps(t)
   const [currentStep, setCurrentStep] = useState("company")
   const [isProcessing, setIsProcessing] = useState(false)
   const [showForm, setShowForm] = useState(true)
@@ -336,6 +339,11 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
     }
   }, [campaignId, existingCampaignId])
   const [editingICP, setEditingICP] = useState(false)
+
+  // Wait for translations to be ready
+  if (!ready) {
+    return null
+  }
   const [editingPersona, setEditingPersona] = useState(false)
   const [editingPainPoint, setEditingPainPoint] = useState(false)
   const [editingValueProp, setEditingValueProp] = useState(false)
@@ -1034,15 +1042,15 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
 
       // Validate required fields before proceeding
       if (!formData.campaignName?.trim()) {
-        setError("Campaign name is required");
+        setError(t('campaignCreation.validation.campaignNameRequired'));
         return;
       }
       if (!formData.campaignObjective) {
-        setError("Campaign objective is required");
+        setError(t('campaignCreation.validation.campaignObjectiveRequired'));
         return;
       }
       if (!formData.companyName?.trim()) {
-        setError("Company name is required");
+        setError(t('campaignCreation.validation.companyNameRequired'));
         return;
       }
 
@@ -1195,9 +1203,9 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
         </div>
         <div className="text-center space-y-3">
           <span className="text-xl font-light text-gray-900 tracking-tight">
-            {currentStep === "company" ? "Generating AI campaign assets..." : "Processing..."}
+            {currentStep === "company" ? t('campaignCreation.processing.generatingAICampaignAssets') : t('campaignCreation.processing.processing')}
           </span>
-          <p className="text-sm text-gray-500 font-light">This may take a few seconds</p>
+          <p className="text-sm text-gray-500 font-light">{t('campaignCreation.processing.thisMayTakeFewSeconds')}</p>
           <div className="flex justify-center space-x-1 mt-4">
             <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
             <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce animation-delay-100"></div>
@@ -1212,9 +1220,9 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
     <div className="max-w-3xl mx-auto space-y-4">
       <div>
         <h2 className="text-2xl font-medium text-gray-900">
-          Your company name and website
+          {t('campaignCreation.form.yourCompanyWebsite')}
         </h2>
-        <p className="text-sm text-gray-500 mt-1">Let's start by getting to know your business</p>
+        <p className="text-sm text-gray-500 mt-1">{t('campaignCreation.form.letsStartGettingToKnow')}</p>
       </div>
 
       {/* Error Display */}
@@ -1246,31 +1254,31 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="campaign-name" className="text-sm font-medium text-gray-700">Campaign name</Label>
+            <Label htmlFor="campaign-name" className="text-sm font-medium text-gray-700">{t('campaignCreation.form.campaignName')}</Label>
             <Input
               id="campaign-name"
               value={formData.campaignName}
               onChange={(e) => setFormData(prev => ({ ...prev, campaignName: e.target.value }))}
               className="h-10 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-xl text-sm"
-              placeholder="Enter your campaign name"
+              placeholder={t('campaignCreation.form.enterCampaignName')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="campaign-objective" className="text-sm font-medium text-gray-700">Campaign objective</Label>
+            <Label htmlFor="campaign-objective" className="text-sm font-medium text-gray-700">{t('campaignCreation.form.campaignObjective')}</Label>
             <div className="relative">
               <select 
                 value={formData.campaignObjective} 
                 onChange={(e) => setFormData(prev => ({ ...prev, campaignObjective: e.target.value }))}
                 className="w-full h-10 border border-gray-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 text-sm rounded-xl px-3 bg-white appearance-none cursor-pointer"
               >
-                <option value="">Select your objective</option>
-                <option value="sell-service">💼 Sell your service</option>
-                <option value="raise-money">💰 Raise money</option>
-                <option value="book-meetings">📅 Book more meetings</option>
-                <option value="grow-brand">📢 Grow your brand awareness</option>
-                <option value="collect-reviews">⭐ Collect reviews/testimonials</option>
-                <option value="recruit">👥 Recruit candidates</option>
+                <option value="">{t('campaignCreation.objectives.selectYourObjective')}</option>
+                <option value="sell-service">{t('campaignCreation.objectives.sellService')}</option>
+                <option value="raise-money">{t('campaignCreation.objectives.raiseMoney')}</option>
+                <option value="book-meetings">{t('campaignCreation.objectives.bookMeetings')}</option>
+                <option value="grow-brand">{t('campaignCreation.objectives.growBrand')}</option>
+                <option value="collect-reviews">{t('campaignCreation.objectives.collectReviews')}</option>
+                <option value="recruit">{t('campaignCreation.objectives.recruit')}</option>
               </select>
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1283,13 +1291,13 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="company" className="text-sm font-medium text-gray-700">Company name</Label>
+            <Label htmlFor="company" className="text-sm font-medium text-gray-700">{t('campaignCreation.form.companyName')}</Label>
             <Input
               id="company"
               value={formData.companyName}
               onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
               className="h-10 border-gray-200 focus:border-blue-600 focus:ring-blue-600 transition-all duration-300 rounded-xl text-sm"
-              placeholder="Enter your company name"
+              placeholder={t('campaignCreation.form.enterCompanyName')}
             />
           </div>
           <div></div>
@@ -1297,7 +1305,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
         
         <div className="grid grid-cols-3 gap-4 items-end">
           <div className="col-span-2 space-y-2">
-            <Label htmlFor="website" className="text-sm font-medium text-gray-700">Website</Label>
+            <Label htmlFor="website" className="text-sm font-medium text-gray-700">{t('campaignCreation.form.website')}</Label>
             <div className="relative">
               <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
@@ -1323,40 +1331,40 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
               className="border-gray-300"
             />
             <Label htmlFor="no-website" className="text-xs text-gray-600 cursor-pointer">
-              No website
+              {t('campaignCreation.form.noWebsite')}
             </Label>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="location" className="text-sm font-medium text-gray-700">Location</Label>
+            <Label htmlFor="location" className="text-sm font-medium text-gray-700">{t('campaignCreation.form.location')}</Label>
             <Select value={formData.location} onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}>
               <SelectTrigger className="h-10 border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)] text-sm">
-                <SelectValue placeholder="Select location" />
+                <SelectValue placeholder={t('campaignCreation.form.selectLocation')} />
               </SelectTrigger>
               <SelectContent style={{ zIndex: 10000 }}>
-                <SelectItem value="Australia">🇦🇺 Australia</SelectItem>
-                <SelectItem value="United States">🇺🇸 United States</SelectItem>
-                <SelectItem value="United Kingdom">🇬🇧 United Kingdom</SelectItem>
-                <SelectItem value="Canada">🇨🇦 Canada</SelectItem>
-                <SelectItem value="Germany">🇩🇪 Germany</SelectItem>
-                <SelectItem value="France">🇫🇷 France</SelectItem>
-                <SelectItem value="Spain">🇪🇸 Spain</SelectItem>
-                <SelectItem value="Italy">🇮🇹 Italy</SelectItem>
-                <SelectItem value="Netherlands">🇳🇱 Netherlands</SelectItem>
-                <SelectItem value="Singapore">🇸🇬 Singapore</SelectItem>
-                <SelectItem value="India">🇮🇳 India</SelectItem>
-                <SelectItem value="Japan">🇯🇵 Japan</SelectItem>
-                <SelectItem value="Brazil">🇧🇷 Brazil</SelectItem>
-                <SelectItem value="Mexico">🇲🇽 Mexico</SelectItem>
-                <SelectItem value="South Africa">🇿🇦 South Africa</SelectItem>
+                <SelectItem value="Australia">{t('campaignCreation.countries.australia')}</SelectItem>
+                <SelectItem value="United States">{t('campaignCreation.countries.unitedStates')}</SelectItem>
+                <SelectItem value="United Kingdom">{t('campaignCreation.countries.unitedKingdom')}</SelectItem>
+                <SelectItem value="Canada">{t('campaignCreation.countries.canada')}</SelectItem>
+                <SelectItem value="Germany">{t('campaignCreation.countries.germany')}</SelectItem>
+                <SelectItem value="France">{t('campaignCreation.countries.france')}</SelectItem>
+                <SelectItem value="Spain">{t('campaignCreation.countries.spain')}</SelectItem>
+                <SelectItem value="Italy">{t('campaignCreation.countries.italy')}</SelectItem>
+                <SelectItem value="Netherlands">{t('campaignCreation.countries.netherlands')}</SelectItem>
+                <SelectItem value="Singapore">{t('campaignCreation.countries.singapore')}</SelectItem>
+                <SelectItem value="India">{t('campaignCreation.countries.india')}</SelectItem>
+                <SelectItem value="Japan">{t('campaignCreation.countries.japan')}</SelectItem>
+                <SelectItem value="Brazil">{t('campaignCreation.countries.brazil')}</SelectItem>
+                <SelectItem value="Mexico">{t('campaignCreation.countries.mexico')}</SelectItem>
+                <SelectItem value="South Africa">{t('campaignCreation.countries.southAfrica')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="industry" className="text-sm font-medium text-gray-700">Industry</Label>
+            <Label htmlFor="industry" className="text-sm font-medium text-gray-700">{t('campaignCreation.form.industry')}</Label>
             <Input
               id="industry"
               value={formData.industry}
@@ -1369,19 +1377,19 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
       
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="language" className="text-sm font-medium text-gray-700">Prospecting language</Label>
+            <Label htmlFor="language" className="text-sm font-medium text-gray-700">{t('campaignCreation.form.prospectingLanguage')}</Label>
             <select 
               id="language"
               value={formData.language} 
               onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
               className="w-full h-10 border border-gray-200 rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(87,140,255)] focus:border-[rgb(87,140,255)] transition-all"
             >
-              <option value="English">🇺🇸 English</option>
-              <option value="French">🇫🇷 French</option>
-              <option value="Spanish">🇪🇸 Spanish</option>
-              <option value="German">🇩🇪 German</option>
-              <option value="Italian">🇮🇹 Italian</option>
-              <option value="Portuguese">🇵🇹 Portuguese</option>
+              <option value="English">{t('campaignCreation.languages.english')}</option>
+              <option value="French">{t('campaignCreation.languages.french')}</option>
+              <option value="Spanish">{t('campaignCreation.languages.spanish')}</option>
+              <option value="German">{t('campaignCreation.languages.german')}</option>
+              <option value="Italian">{t('campaignCreation.languages.italian')}</option>
+              <option value="Portuguese">{t('campaignCreation.languages.portuguese')}</option>
             </select>
           </div>
           <div></div>
@@ -1398,7 +1406,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">{formData.companyName || "Company Name"}</h3>
-            <p className="text-sm text-gray-600">{formData.website || "Website not provided"}</p>
+            <p className="text-sm text-gray-600">{formData.website || t('campaignCreation.form.websiteNotProvided')}</p>
           </div>
           
           {formData.mainActivity && (
@@ -3345,12 +3353,12 @@ Best regards,
                 >
                   <span>
                     {isCreatingCampaign && currentStep === "company" && showForm
-                      ? "Generating..."
+                      ? t('campaignCreation.buttons.loading')
                       : isProcessing 
-                        ? "Loading..." 
+                        ? t('campaignCreation.buttons.loading')
                         : currentStep === "sequence" 
-                          ? "Create Campaign" 
-                          : "Continue"
+                          ? t('campaignCreation.buttons.createCampaign')
+                          : t('campaignCreation.buttons.continue')
                     }
                   </span>
                   {!isProcessing && !isCreatingCampaign && <ChevronRight className="w-4 h-4 ml-2" />}

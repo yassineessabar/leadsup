@@ -32,6 +32,7 @@ import {
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell } from 'recharts'
+import { useI18n } from '@/hooks/use-i18n'
 // Remove direct import of SendGrid service since it's server-side only
 // import { SendGridAnalyticsService, type SendGridMetrics } from "@/lib/sendgrid-analytics"
 
@@ -55,6 +56,7 @@ interface SendGridMetrics {
 }
 
 export function ComprehensiveDashboard() {
+  const { t, ready } = useI18n()
   const [stats, setStats] = useState({
     totalLeads: 0,
     contactedLeads: 0,
@@ -340,6 +342,18 @@ export function ComprehensiveDashboard() {
     }
   ] : []
 
+  // Wait for translations to be ready
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
       <div className="relative space-y-8">
@@ -349,8 +363,8 @@ export function ComprehensiveDashboard() {
           <div className="mb-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Dashboard</h1>
-                <p className="text-gray-500 font-light">Your campaign overview and performance metrics</p>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('dashboard.title')}</h1>
+                <p className="text-gray-500 font-light">{t('dashboard.subtitle')}</p>
               </div>
               
               <div className="flex gap-3">
@@ -388,8 +402,8 @@ export function ComprehensiveDashboard() {
                     <Users className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">Total Leads</h3>
-                    <p className="text-gray-500 text-sm">Last 30 days</p>
+                    <h3 className="text-lg font-medium text-gray-900">{t('dashboardStats.totalLeads')}</h3>
+                    <p className="text-gray-500 text-sm">{t('dashboardStats.last30Days')}</p>
                   </div>
                 </div>
                 <div className="flex items-end justify-between">
@@ -401,7 +415,7 @@ export function ComprehensiveDashboard() {
                     )}
                   </p>
                   <span className="text-sm text-gray-400 font-medium">
-                    Last 30 days
+                    {t('dashboardStats.last30Days')}
                   </span>
                 </div>
               </CardContent>
@@ -415,8 +429,8 @@ export function ComprehensiveDashboard() {
                     <Mail className="w-6 h-6 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">Contacted Leads</h3>
-                    <p className="text-gray-500 text-sm">Outreach activity</p>
+                    <h3 className="text-lg font-medium text-gray-900">{t('dashboardStats.contactedLeads')}</h3>
+                    <p className="text-gray-500 text-sm">{t('dashboardStats.outreachActivity')}</p>
                   </div>
                 </div>
                 <div className="flex items-end justify-between">
@@ -428,7 +442,7 @@ export function ComprehensiveDashboard() {
                     )}
                   </p>
                   <span className="text-sm text-gray-400 font-medium">
-                    Last 30 days
+                    {t('dashboardStats.last30Days')}
                   </span>
                 </div>
               </CardContent>
@@ -442,8 +456,8 @@ export function ComprehensiveDashboard() {
                     <Target className="w-6 h-6 text-violet-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">Active Campaigns</h3>
-                    <p className="text-gray-500 text-sm">Running smoothly</p>
+                    <h3 className="text-lg font-medium text-gray-900">{t('dashboardStats.activeCampaigns')}</h3>
+                    <p className="text-gray-500 text-sm">{t('dashboardStats.runningSmoothly')}</p>
                   </div>
                 </div>
                 <div className="flex items-end justify-between">
@@ -455,7 +469,7 @@ export function ComprehensiveDashboard() {
                     )}
                   </p>
                   <span className="text-sm text-gray-400 font-medium">
-                    Active now
+                    {t('dashboardStats.activeNow')}
                   </span>
                 </div>
               </CardContent>
@@ -469,8 +483,8 @@ export function ComprehensiveDashboard() {
                     <TrendingUp className="w-6 h-6 text-green-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">Response Rate</h3>
-                    <p className="text-gray-500 text-sm">Engagement metric</p>
+                    <h3 className="text-lg font-medium text-gray-900">{t('dashboardStats.responseRate')}</h3>
+                    <p className="text-gray-500 text-sm">{t('dashboardStats.engagementMetric')}</p>
                   </div>
                 </div>
                 <div className="flex items-end justify-between">
@@ -482,7 +496,7 @@ export function ComprehensiveDashboard() {
                     )}
                   </p>
                   <span className="text-sm text-gray-400 font-medium">
-                    All-time
+                    {t('dashboardStats.allTime')}
                   </span>
                 </div>
               </CardContent>
@@ -506,7 +520,7 @@ export function ComprehensiveDashboard() {
                         </div>
                         <div>
                           <h3 className="text-lg font-medium text-gray-900">{metric.title}</h3>
-                          <p className="text-gray-500 text-sm">Last 30 days</p>
+                          <p className="text-gray-500 text-sm">{t('dashboardStats.last30Days')}</p>
                         </div>
                       </div>
                       <div className="flex items-end justify-between">
@@ -536,9 +550,9 @@ export function ComprehensiveDashboard() {
                   <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Mail className="w-6 h-6 text-slate-400" />
                   </div>
-                  <h3 className="text-lg font-medium text-slate-900 mb-2">No Email Performance Data</h3>
+                  <h3 className="text-lg font-medium text-slate-900 mb-2">{t('dashboardAnalytics.noEmailPerformanceData')}</h3>
                   <p className="text-slate-500 text-sm mb-4">
-                    Campaign analytics will appear here once you launch your first campaign.
+                    {t('dashboardAnalytics.campaignAnalyticsWillAppear')}
                   </p>
                   <Button 
                     className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-4 py-2 text-sm"
@@ -547,7 +561,7 @@ export function ComprehensiveDashboard() {
                       window.dispatchEvent(event)
                     }}
                   >
-                    Create Your First Campaign
+                    {t('dashboardAnalytics.createYourFirstCampaign')}
                   </Button>
                 </CardContent>
               </Card>
@@ -647,8 +661,8 @@ export function ComprehensiveDashboard() {
                           <Brain className="w-6 h-6 text-slate-600" />
                         </div>
                         <div>
-                          <h3 className="text-xl font-medium text-slate-900">AI-Powered Insights</h3>
-                          <p className="text-slate-500 text-sm mt-1">Smart recommendations to boost performance</p>
+                          <h3 className="text-xl font-medium text-slate-900">{t('dashboardAnalytics.aiPoweredInsights')}</h3>
+                          <p className="text-slate-500 text-sm mt-1">{t('dashboardAnalytics.smartRecommendations')}</p>
                         </div>
                       </div>
                       <Button 
@@ -656,7 +670,7 @@ export function ComprehensiveDashboard() {
                         size="sm"
                         className="border-slate-200 hover:bg-slate-50 text-slate-600 font-normal px-4"
                       >
-                        View All
+                        {t('dashboardAnalytics.viewAll')}
                       </Button>
                     </div>
                     
@@ -668,22 +682,22 @@ export function ComprehensiveDashboard() {
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-3">
-                              <h4 className="text-base font-medium text-slate-900">Optimize Subject Lines</h4>
+                              <h4 className="text-base font-medium text-slate-900">{t('dashboardAnalytics.optimizeSubjectLines')}</h4>
                               <Badge className="bg-slate-100 text-slate-700 border-none text-xs font-normal px-2 py-1">
-                                High Impact
+                                {t('dashboardAnalytics.highImpact')}
                               </Badge>
                             </div>
                             <p className="text-sm text-slate-600 mb-4">
-                              Your open rate could improve by 15% with shorter, more personalized subject lines.
+                              {t('dashboardAnalytics.openRateImprovement')}
                             </p>
                             <ul className="text-sm text-slate-600 space-y-2">
                               <li className="flex items-start gap-2">
                                 <CheckCircle2 className="w-4 h-4 mt-0.5 text-slate-500 flex-shrink-0" />
-                                <span>Keep under 50 characters</span>
+                                <span>{t('dashboardAnalytics.keepUnder50Characters')}</span>
                               </li>
                               <li className="flex items-start gap-2">
                                 <CheckCircle2 className="w-4 h-4 mt-0.5 text-slate-500 flex-shrink-0" />
-                                <span>Add company name for personalization</span>
+                                <span>{t('dashboardAnalytics.addCompanyNamePersonalization')}</span>
                               </li>
                             </ul>
                           </div>
@@ -697,18 +711,18 @@ export function ComprehensiveDashboard() {
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-3">
-                              <h4 className="text-base font-medium text-slate-900">Perfect Timing</h4>
+                              <h4 className="text-base font-medium text-slate-900">{t('dashboardAnalytics.perfectTiming')}</h4>
                               <Badge className="bg-slate-100 text-slate-700 border-none text-xs font-normal px-2 py-1">
-                                Medium Impact
+                                {t('dashboardAnalytics.mediumImpact')}
                               </Badge>
                             </div>
                             <p className="text-sm text-slate-600 mb-4">
-                              Send emails on Tuesday-Thursday, 10-11 AM for best engagement.
+                              {t('dashboardAnalytics.bestEngagementTiming')}
                             </p>
                             <div className="text-sm text-slate-600">
                               <span className="inline-flex items-center gap-2">
                                 <Star className="w-4 h-4 text-slate-500" />
-                                Optimal time: 10:30 AM EST
+                                {t('dashboardAnalytics.optimalTime')}
                               </span>
                             </div>
                           </div>
@@ -732,8 +746,8 @@ export function ComprehensiveDashboard() {
                           <ShieldCheck className="w-6 h-6 text-slate-600" />
                         </div>
                         <div>
-                          <h3 className="text-xl font-medium text-slate-900">Deliverability</h3>
-                          <p className="text-slate-500 text-sm mt-1">Email health score</p>
+                          <h3 className="text-xl font-medium text-slate-900">{t('dashboardAnalytics.deliverability')}</h3>
+                          <p className="text-slate-500 text-sm mt-1">{t('dashboardAnalytics.emailHealthScore')}</p>
                         </div>
                         <div>
                           <div className="text-4xl font-light text-green-600 mb-3">{sendGridMetrics.deliveryRate.toFixed(0)}%</div>
@@ -762,12 +776,12 @@ export function ComprehensiveDashboard() {
                           <ShieldCheck className="w-6 h-6 text-slate-400" />
                         </div>
                         <div>
-                          <h3 className="text-xl font-medium text-slate-900">Deliverability</h3>
-                          <p className="text-slate-500 text-sm mt-1">Email health score</p>
+                          <h3 className="text-xl font-medium text-slate-900">{t('dashboardAnalytics.deliverability')}</h3>
+                          <p className="text-slate-500 text-sm mt-1">{t('dashboardAnalytics.emailHealthScore')}</p>
                         </div>
                         <div>
                           <p className="text-slate-500 text-sm mb-4">
-                            Connect an email account to see your deliverability score.
+                            {t('dashboardAnalytics.connectEmailAccountToSeeScore')}
                           </p>
                           <Button 
                             className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-4 py-2 text-sm"
@@ -776,7 +790,7 @@ export function ComprehensiveDashboard() {
                               window.dispatchEvent(event)
                             }}
                           >
-                            Connect Email Account
+                            {t('dashboardAnalytics.connectEmailAccount')}
                           </Button>
                         </div>
                       </div>
@@ -793,8 +807,8 @@ export function ComprehensiveDashboard() {
                         <Zap className="w-6 h-6 text-slate-600" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-medium text-slate-900">Quick Start</h3>
-                        <p className="text-slate-500 text-sm mt-1">Get things done</p>
+                        <h3 className="text-xl font-medium text-slate-900">{t('dashboardAnalytics.quickStart')}</h3>
+                        <p className="text-slate-500 text-sm mt-1">{t('dashboardAnalytics.getThingsDone')}</p>
                       </div>
                       <div className="space-y-3">
                         <button 
@@ -809,7 +823,7 @@ export function ComprehensiveDashboard() {
                           }}
                         >
                           <Shield className="w-4 h-4" style={{ color: '#ffffff' }} />
-                          Add Domains
+                          {t('dashboardAnalytics.addDomains')}
                         </button>
                         
                         <button 
@@ -825,7 +839,7 @@ export function ComprehensiveDashboard() {
                           }}
                         >
                           <Mail className="w-4 h-4" style={{ color: '#374151' }} />
-                          Create Campaign
+                          {t('dashboardAnalytics.createCampaign')}
                         </button>
                       </div>
                     </div>

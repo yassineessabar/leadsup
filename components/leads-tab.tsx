@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { useI18n } from "@/hooks/use-i18n"
 import { 
   Search, 
   Filter, 
@@ -67,6 +68,7 @@ interface Campaign {
 
 
 export function LeadsTab() {
+  const { t, ready } = useI18n()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(false)
@@ -126,8 +128,8 @@ export function LeadsTab() {
     } catch (error) {
       console.error('Error fetching contacts:', error)
       toast({
-        title: "Error",
-        description: "Failed to fetch contacts",
+        title: t('common.error'),
+        description: t('leads.errorFetchingContacts'),
         variant: "destructive"
       })
     } finally {
@@ -193,8 +195,8 @@ export function LeadsTab() {
   const handleCampaignAssignment = async (campaignId: string) => {
     if (selectedContacts.length === 0) {
       toast({
-        title: "No Selection",
-        description: "Please select contacts to assign to campaign",
+        title: t('leads.noSelection'),
+        description: t('leads.selectContactsForCampaign'),
         variant: "destructive"
       })
       return
@@ -204,8 +206,8 @@ export function LeadsTab() {
       const selectedCampaign = campaigns.find(c => c.id.toString() === campaignId)
       if (!selectedCampaign) {
         toast({
-          title: "Error",
-          description: "Campaign not found",
+          title: t('common.error'),
+          description: t('campaigns.campaignNotFound'),
           variant: "destructive"
         })
         return
@@ -270,8 +272,8 @@ export function LeadsTab() {
       }
 
       toast({
-        title: "Campaign Assignment",
-        description: `${selectedContacts.length} contacts assigned to campaign "${selectedCampaign.name}"`
+        title: t('leads.campaignAssignment'),
+        description: t('leads.contactsAssignedToCampaign', { count: selectedContacts.length, campaignName: selectedCampaign.name })
       })
 
       setSelectedContacts([])
@@ -279,8 +281,8 @@ export function LeadsTab() {
     } catch (error) {
       console.error('Error assigning contacts to campaign:', error)
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to assign contacts to campaign",
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('leads.failedToAssignContacts'),
         variant: "destructive"
       })
     }
@@ -319,8 +321,8 @@ export function LeadsTab() {
         })
         
         toast({
-          title: "Contact deleted",
-          description: `${contactToDelete.first_name} ${contactToDelete.last_name} has been deleted successfully`
+          title: t('leads.contactDeleted'),
+          description: t('leads.contactDeletedSuccessfully', { name: `${contactToDelete.first_name} ${contactToDelete.last_name}` })
         })
       } else {
         // Bulk deletion
@@ -334,8 +336,8 @@ export function LeadsTab() {
         await Promise.all(deletePromises)
 
         toast({
-          title: "Contacts deleted",
-          description: `${selectedContacts.length} contacts have been deleted successfully`
+          title: t('leads.contactsDeleted'),
+          description: t('leads.contactsDeletedSuccessfully', { count: selectedContacts.length })
         })
         
         setSelectedContacts([])
@@ -347,8 +349,8 @@ export function LeadsTab() {
     } catch (error) {
       console.error('Error deleting contacts:', error)
       toast({
-        title: "Error",
-        description: "Failed to delete contacts",
+        title: t('common.error'),
+        description: t('leads.failedToDeleteContacts'),
         variant: "destructive"
       })
     } finally {
@@ -363,8 +365,8 @@ export function LeadsTab() {
       
       if (lines.length < 2) {
         toast({
-          title: "Invalid CSV",
-          description: "CSV file must have at least a header and one data row",
+          title: t('leads.invalidCSV'),
+          description: t('leads.csvMustHaveHeaderAndRow'),
           variant: "destructive"
         })
         return
@@ -431,8 +433,8 @@ export function LeadsTab() {
 
       if (contacts.length === 0) {
         toast({
-          title: "No Valid Contacts",
-          description: "No valid contacts found in the CSV file",
+          title: t('leads.noValidContacts'),
+          description: t('leads.noValidContactsInCSV'),
           variant: "destructive"
         })
         return
@@ -456,8 +458,11 @@ export function LeadsTab() {
 
       if (response.ok) {
         toast({
-          title: "Import Successful",
-          description: `${data.imported || contacts.length} contacts imported successfully${data.scheduled > 0 ? `, ${data.scheduled} sequences scheduled` : ''}`
+          title: t('leads.importSuccessful'),
+          description: t('leads.contactsImportedSuccessfully', { 
+            count: data.imported || contacts.length,
+            sequences: data.scheduled > 0 ? t('leads.sequencesScheduled', { count: data.scheduled }) : ''
+          })
         })
         setShowImportModal(false)
         fetchContacts()
@@ -467,8 +472,8 @@ export function LeadsTab() {
     } catch (error) {
       console.error('Error importing CSV:', error)
       toast({
-        title: "Import Failed",
-        description: error instanceof Error ? error.message : "Failed to import CSV file",
+        title: t('leads.importFailed'),
+        description: error instanceof Error ? error.message : t('leads.failedToImportCSV'),
         variant: "destructive"
       })
     }
@@ -506,8 +511,8 @@ export function LeadsTab() {
     document.body.removeChild(link)
 
     toast({
-      title: "Export completed",
-      description: `${contactsToExport.length} contacts exported successfully`
+      title: t('leads.exportCompleted'),
+      description: t('leads.contactsExportedSuccessfully', { count: contactsToExport.length })
     })
   }
 
@@ -533,8 +538,8 @@ export function LeadsTab() {
 
       if (response.ok) {
         toast({
-          title: isEditing ? "Contact updated" : "Contact added",
-          description: `Contact has been ${isEditing ? 'updated' : 'added'} successfully`
+          title: isEditing ? t('leads.contactUpdated') : t('leads.contactAdded'),
+          description: isEditing ? t('leads.contactUpdatedSuccessfully') : t('leads.contactAddedSuccessfully')
         })
         
         setShowEditModal(false)
@@ -546,8 +551,8 @@ export function LeadsTab() {
     } catch (error) {
       console.error('Error saving contact:', error)
       toast({
-        title: "Error",
-        description: "Failed to save contact",
+        title: t('common.error'),
+        description: t('leads.failedToSaveContact'),
         variant: "destructive"
       })
     }
@@ -559,7 +564,17 @@ export function LeadsTab() {
     return first + last || '??'
   }
 
-
+  // Wait for translations to be ready
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-gray-50/30 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={`min-h-screen bg-gray-50/30 p-6 ${selectedContacts.length > 0 ? 'pb-32' : ''}`}>
@@ -573,8 +588,8 @@ export function LeadsTab() {
                   <Users className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-light text-gray-900 tracking-tight">All Contacts</h1>
-                  <p className="text-gray-600 text-sm">Manage your contact database</p>
+                  <h1 className="text-2xl font-light text-gray-900 tracking-tight">{t('leads.allContacts')}</h1>
+                  <p className="text-gray-600 text-sm">{t('leads.manageContactDatabase')}</p>
                 </div>
                 <Badge className="bg-blue-100 text-blue-700 rounded-xl px-3 py-1 font-medium">
                   {totalContacts}
@@ -586,7 +601,7 @@ export function LeadsTab() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
-                  placeholder="Search name, email, title..."
+                  placeholder={t('leads.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 w-64 border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
@@ -599,7 +614,7 @@ export function LeadsTab() {
                 onClick={() => setShowFilters(!showFilters)}
               >
                 <Filter className="w-4 h-4 mr-2" />
-                Filters
+                {t('common.filter')}
                 {filterCount > 0 && (
                   <Badge className="ml-2 bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-xl">
                     {filterCount}
@@ -612,7 +627,7 @@ export function LeadsTab() {
                 onClick={() => setShowImportModal(true)}
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Import new contacts
+                {t('leads.importNewContacts')}
               </Button>
             </div>
           </div>
@@ -626,10 +641,10 @@ export function LeadsTab() {
             <div className="flex flex-wrap gap-6">
               <div className="flex-1 min-w-48">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location Filter
+                  {t('leads.locationFilter')}
                 </label>
                 <Input
-                  placeholder="Filter by location..."
+                  placeholder={t('leads.filterByLocation')}
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
                   className="w-full border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
@@ -637,10 +652,10 @@ export function LeadsTab() {
               </div>
               <div className="flex-1 min-w-48">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Keyword Filter
+                  {t('leads.keywordFilter')}
                 </label>
                 <Input
-                  placeholder="Filter by keywords..."
+                  placeholder={t('leads.filterByKeywords')}
                   value={keywordFilter}
                   onChange={(e) => setKeywordFilter(e.target.value)}
                   className="w-full border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
@@ -648,10 +663,10 @@ export function LeadsTab() {
               </div>
               <div className="flex-1 min-w-48">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Industry Filter
+                  {t('leads.industryFilter')}
                 </label>
                 <Input
-                  placeholder="Filter by industry..."
+                  placeholder={t('leads.filterByIndustry')}
                   value={industryFilter}
                   onChange={(e) => setIndustryFilter(e.target.value)}
                   className="w-full border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
@@ -667,13 +682,13 @@ export function LeadsTab() {
                   }}
                   className="h-11 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-4 font-medium"
                 >
-                  Clear All
+                  {t('leads.clearAll')}
                 </Button>
               </div>
             </div>
             {filterCount > 0 && (
               <div className="mt-4 text-sm text-gray-600 bg-blue-50/50 border border-blue-100/50 rounded-2xl px-4 py-2">
-                <span className="font-medium">{filterCount}</span> filter{filterCount > 1 ? 's' : ''} applied
+                <span className="font-medium">{filterCount}</span> {t('leads.filtersApplied', { count: filterCount })}
               </div>
             )}
           </div>
@@ -693,14 +708,14 @@ export function LeadsTab() {
                     onCheckedChange={handleSelectAll}
                   />
                 </th>
-                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
-                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Campaign</th>
-                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Next Email</th>
-                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Company</th>
-                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
-                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Industry</th>
-                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('leads.contact')}</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('leads.campaign')}</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('common.status')}</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('leads.nextEmail')}</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('leads.company')}</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('leads.location')}</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('leads.industry')}</th>
+                <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
@@ -732,8 +747,8 @@ export function LeadsTab() {
                 <tr>
                   <td colSpan={9} className="p-12 text-center text-gray-500">
                     <Users2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-lg font-medium text-gray-900 mb-2">No contacts found</p>
-                    <p className="text-sm text-gray-500">Try adjusting your search or filters</p>
+                    <p className="text-lg font-medium text-gray-900 mb-2">{t('leads.noContactsFound')}</p>
+                    <p className="text-sm text-gray-500">{t('leads.tryAdjustingFilters')}</p>
                   </td>
                 </tr>
               ) : (
@@ -780,13 +795,13 @@ export function LeadsTab() {
                             : 'bg-green-50 text-green-700 border-green-200'
                         }`}
                       >
-                        {(contact.campaign_status === 'Paused' || contact.campaign_status === 'Warming') ? 'Pending' : (contact.email_status || 'Ready')}
+                        {(contact.campaign_status === 'Paused' || contact.campaign_status === 'Warming') ? t('common.pending') : (contact.email_status || t('leads.ready'))}
                       </Badge>
                     </td>
                     <td className="p-4">
                       {/* Next Email Column - Show "Pending" when campaign is paused or warming */}
                       <span className="text-sm text-gray-600">
-                        {(contact.campaign_status === 'Paused' || contact.campaign_status === 'Warming') ? 'Pending' : (contact.next_email || 'Ready')}
+                        {(contact.campaign_status === 'Paused' || contact.campaign_status === 'Warming') ? t('common.pending') : (contact.next_email || t('leads.ready'))}
                       </span>
                     </td>
                     <td className="p-4">
@@ -828,7 +843,7 @@ export function LeadsTab() {
                               className="text-red-600"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
+                              {t('button.delete')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -848,10 +863,10 @@ export function LeadsTab() {
         <DialogContent className="max-w-lg rounded-3xl border border-gray-100/20">
           <DialogHeader className="pb-6">
             <DialogTitle className="text-center text-2xl font-light text-gray-900 tracking-tight">
-              Import Contacts
+              {t('leads.importContacts')}
             </DialogTitle>
             <p className="text-center text-gray-500 text-sm mt-2">
-              Choose how you'd like to add contacts to your database
+              {t('leads.chooseImportMethod')}
             </p>
           </DialogHeader>
           
@@ -877,8 +892,8 @@ export function LeadsTab() {
                   <FileText className="w-6 h-6 text-green-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-medium text-gray-900">CSV Import</h3>
-                  <p className="text-sm text-gray-500">Upload a CSV file with your contacts</p>
+                  <h3 className="font-medium text-gray-900">{t('leads.csvImport')}</h3>
+                  <p className="text-sm text-gray-500">{t('leads.uploadCSVFile')}</p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
               </div>
@@ -890,42 +905,42 @@ export function LeadsTab() {
                   onClick={() => setShowCSVGuide(!showCSVGuide)}
                   className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 rounded-xl px-3 py-2 h-auto font-medium"
                 >
-                  {showCSVGuide ? 'Hide' : 'Show'} CSV Format Guide
+                  {showCSVGuide ? t('leads.hide') : t('leads.show')} {t('leads.csvFormatGuide')}
                   <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${showCSVGuide ? 'rotate-180' : ''}`} />
                 </Button>
                 
                 {showCSVGuide && (
                   <div className="mt-3 space-y-4">
                     <div className="bg-blue-50/50 border border-blue-100/50 rounded-2xl p-4">
-                      <h4 className="font-medium text-gray-900 mb-2 text-sm">Required Format</h4>
+                      <h4 className="font-medium text-gray-900 mb-2 text-sm">{t('leads.requiredFormat')}</h4>
                       <p className="text-xs text-gray-600 mb-3">
-                        Your CSV file should have column headers in the first row. We support these column names:
+                        {t('leads.csvFormatDescription')}
                       </p>
                       
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div>
-                          <p className="font-medium text-gray-700 mb-1">Name Fields:</p>
+                          <p className="font-medium text-gray-700 mb-1">{t('leads.nameFields')}:</p>
                           <ul className="text-gray-600 space-y-0.5">
                             <li>• first_name, firstname, "first name"</li>
                             <li>• last_name, lastname, "last name"</li>
                           </ul>
                         </div>
                         <div>
-                          <p className="font-medium text-gray-700 mb-1">Contact Fields:</p>
+                          <p className="font-medium text-gray-700 mb-1">{t('leads.contactFields')}:</p>
                           <ul className="text-gray-600 space-y-0.5">
                             <li>• email</li>
                             <li>• title, job_title, position</li>
                           </ul>
                         </div>
                         <div>
-                          <p className="font-medium text-gray-700 mb-1">Company Fields:</p>
+                          <p className="font-medium text-gray-700 mb-1">{t('leads.companyFields')}:</p>
                           <ul className="text-gray-600 space-y-0.5">
                             <li>• company, company_name</li>
                             <li>• industry</li>
                           </ul>
                         </div>
                         <div>
-                          <p className="font-medium text-gray-700 mb-1">Other Fields:</p>
+                          <p className="font-medium text-gray-700 mb-1">{t('leads.otherFields')}:</p>
                           <ul className="text-gray-600 space-y-0.5">
                             <li>• location, city</li>
                             <li>• linkedin, linkedin_url</li>
@@ -936,7 +951,7 @@ export function LeadsTab() {
                     </div>
                     
                     <div className="bg-green-50/50 border border-green-100/50 rounded-2xl p-4">
-                      <h4 className="font-medium text-gray-900 mb-2 text-sm">Example CSV Format</h4>
+                      <h4 className="font-medium text-gray-900 mb-2 text-sm">{t('leads.exampleCSVFormat')}</h4>
                       <div className="bg-white/80 rounded-xl p-3 text-xs font-mono">
                         <div className="text-gray-600">
                           first_name,last_name,email,title,company,location<br/>
@@ -949,14 +964,14 @@ export function LeadsTab() {
                     <div className="bg-yellow-50/50 border border-yellow-100/50 rounded-2xl p-4">
                       <h4 className="font-medium text-gray-900 mb-2 text-sm flex items-center">
                         <AlertCircle className="w-4 h-4 text-yellow-600 mr-2" />
-                        Important Notes
+                        {t('leads.importantNotes')}
                       </h4>
                       <ul className="text-xs text-gray-600 space-y-1">
-                        <li>• At minimum, contacts need either an email OR both first and last name</li>
-                        <li>• Column headers are case-insensitive and flexible (see supported names above)</li>
-                        <li>• Empty cells are okay - we'll skip missing information</li>
-                        <li>• Maximum file size: 10MB</li>
-                        <li>• Contacts will be automatically validated before import</li>
+                        <li>• {t('leads.minimumContactRequirement')}</li>
+                        <li>• {t('leads.columnHeadersFlexible')}</li>
+                        <li>• {t('leads.emptyCellsOk')}</li>
+                        <li>• {t('leads.maxFileSize')}</li>
+                        <li>• {t('leads.contactsValidatedBeforeImport')}</li>
                       </ul>
                     </div>
                   </div>
@@ -971,19 +986,19 @@ export function LeadsTab() {
                   <Target className="w-6 h-6 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-medium text-gray-900">Auto Scrapper</h3>
-                  <p className="text-sm text-gray-500">Automatically find and import leads from LinkedIn</p>
+                  <h3 className="font-medium text-gray-900">{t('leads.autoScrapper')}</h3>
+                  <p className="text-sm text-gray-500">{t('leads.autoScrapperDescription')}</p>
                 </div>
               </div>
               
               <div className="px-6 pb-6">
                 <div className="space-y-3">
                   <label className="block text-sm font-medium text-gray-700">
-                    Select Campaign
+                    {t('leads.selectCampaign')}
                   </label>
                   <Select value={selectedScrapperCampaign} onValueChange={setSelectedScrapperCampaign}>
                     <SelectTrigger className="w-full border-gray-200/50 rounded-2xl bg-white/50 h-11">
-                      <SelectValue placeholder="Choose a campaign for scraped contacts" />
+                      <SelectValue placeholder={t('leads.chooseCampaignForScraped')} />
                     </SelectTrigger>
                     <SelectContent>
                       {campaigns.length > 0 ? (
@@ -994,7 +1009,7 @@ export function LeadsTab() {
                         ))
                       ) : (
                         <SelectItem value="no-campaigns" disabled>
-                          No campaigns available
+                          {t('leads.noCampaignsAvailable')}
                         </SelectItem>
                       )}
                     </SelectContent>
@@ -1004,8 +1019,8 @@ export function LeadsTab() {
                     onClick={() => {
                       if (!selectedScrapperCampaign) {
                         toast({
-                          title: "Campaign Required",
-                          description: "Please select a campaign first",
+                          title: t('leads.campaignRequired'),
+                          description: t('leads.selectCampaignFirst'),
                           variant: "destructive"
                         })
                         return
@@ -1017,7 +1032,7 @@ export function LeadsTab() {
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
                     <Zap className="w-4 h-4 mr-2" />
-                    Start Auto Scrapping
+                    {t('leads.startAutoScrapping')}
                   </Button>
                 </div>
               </div>
@@ -1034,7 +1049,7 @@ export function LeadsTab() {
               className="text-sm text-gray-500 hover:text-gray-700 transition-colors rounded-2xl px-3 py-2 hover:bg-gray-50"
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
-              Back to contacts
+              {t('leads.backToContacts')}
             </Button>
           </div>
         </DialogContent>
@@ -1045,49 +1060,49 @@ export function LeadsTab() {
         <DialogContent className="max-w-2xl rounded-3xl border border-gray-100/20">
           <DialogHeader className="pb-6">
             <DialogTitle className="text-2xl font-light text-gray-900 tracking-tight">
-              {editingContact.id ? 'Edit Contact' : 'Add New Contact'}
+              {editingContact.id ? t('leads.editContact') : t('leads.addNewContact')}
             </DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-6 py-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">First Name</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">{t('leads.firstName')}</label>
               <Input
                 value={editingContact.first_name || ''}
                 onChange={(e) => setEditingContact({...editingContact, first_name: e.target.value})}
-                placeholder="First name"
+                placeholder={t('leads.firstNamePlaceholder')}
                 className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Last Name</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">{t('leads.lastName')}</label>
               <Input
                 value={editingContact.last_name || ''}
                 onChange={(e) => setEditingContact({...editingContact, last_name: e.target.value})}
-                placeholder="Last name"
+                placeholder={t('leads.lastNamePlaceholder')}
                 className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div className="col-span-2">
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Email</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">{t('auth.email')}</label>
               <Input
                 type="email"
                 value={editingContact.email || ''}
                 onChange={(e) => setEditingContact({...editingContact, email: e.target.value})}
-                placeholder="email@example.com"
+                placeholder={t('leads.emailPlaceholder')}
                 className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Campaign</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">{t('leads.campaign')}</label>
               <Select 
                 value={editingContact.campaign_id?.toString() || ''} 
                 onValueChange={(value) => setEditingContact({...editingContact, campaign_id: value ? parseInt(value) : undefined})}
               >
                 <SelectTrigger className="border-gray-200/50 rounded-2xl bg-white/50 h-11">
-                  <SelectValue placeholder="Select campaign" />
+                  <SelectValue placeholder={t('leads.selectCampaign')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No campaign</SelectItem>
+                  <SelectItem value="">{t('leads.noCampaign')}</SelectItem>
                   {campaigns.map(campaign => (
                     <SelectItem key={campaign.id} value={campaign.id.toString()}>{campaign.name}</SelectItem>
                   ))}
@@ -1095,56 +1110,56 @@ export function LeadsTab() {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Title</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">{t('leads.title')}</label>
               <Input
                 value={editingContact.title || ''}
                 onChange={(e) => setEditingContact({...editingContact, title: e.target.value})}
-                placeholder="Job title"
+                placeholder={t('leads.jobTitle')}
                 className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Company</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">{t('leads.company')}</label>
               <Input
                 value={editingContact.company || ''}
                 onChange={(e) => setEditingContact({...editingContact, company: e.target.value})}
-                placeholder="Company name"
+                placeholder={t('leads.companyName')}
                 className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Industry</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">{t('leads.industry')}</label>
               <Input
                 value={editingContact.industry || ''}
                 onChange={(e) => setEditingContact({...editingContact, industry: e.target.value})}
-                placeholder="Industry"
+                placeholder={t('leads.industryPlaceholder')}
                 className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Location</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">{t('leads.location')}</label>
               <Input
                 value={editingContact.location || ''}
                 onChange={(e) => setEditingContact({...editingContact, location: e.target.value})}
-                placeholder="City, Country"
+                placeholder={t('leads.cityCountry')}
                 className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div className="col-span-1">
-              <label className="text-sm font-medium text-gray-700 mb-2 block">LinkedIn</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">{t('leads.linkedin')}</label>
               <Input
                 value={editingContact.linkedin || ''}
                 onChange={(e) => setEditingContact({...editingContact, linkedin: e.target.value})}
-                placeholder="https://linkedin.com/in/username"
+                placeholder={t('leads.linkedinPlaceholder')}
                 className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
             <div className="col-span-1">
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Avatar URL</label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">{t('leads.avatarURL')}</label>
               <Input
                 value={editingContact.image_url || ''}
                 onChange={(e) => setEditingContact({...editingContact, image_url: e.target.value})}
-                placeholder="https://example.com/avatar.jpg"
+                placeholder={t('leads.avatarPlaceholder')}
                 className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white/50 h-11"
               />
             </div>
@@ -1155,13 +1170,13 @@ export function LeadsTab() {
               onClick={() => setShowEditModal(false)}
               className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium"
             >
-              Cancel
+              {t('button.cancel')}
             </Button>
             <Button 
               onClick={saveContact}
               className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-200 hover:scale-105"
             >
-              {editingContact.id ? 'Save Changes' : 'Add Contact'}
+              {editingContact.id ? t('leads.saveChanges') : t('leads.addContact')}
             </Button>
           </div>
         </DialogContent>
@@ -1172,7 +1187,7 @@ export function LeadsTab() {
         <DialogContent className="max-w-md rounded-3xl border border-gray-100/20">
           <DialogHeader className="pb-6">
             <DialogTitle className="text-center text-2xl font-light text-gray-900 tracking-tight">
-              Confirm Deletion
+              {t('leads.confirmDeletion')}
             </DialogTitle>
           </DialogHeader>
           
@@ -1185,14 +1200,14 @@ export function LeadsTab() {
               <div className="space-y-2">
                 <p className="text-gray-900 font-medium">
                   {contactToDelete 
-                    ? `Delete ${contactToDelete.first_name} ${contactToDelete.last_name}?`
-                    : `Delete ${selectedContacts.length} selected contacts?`
+                    ? t('leads.deleteContactConfirm', { name: `${contactToDelete.first_name} ${contactToDelete.last_name}` })
+                    : t('leads.deleteSelectedContactsConfirm', { count: selectedContacts.length })
                   }
                 </p>
                 <p className="text-sm text-gray-500">
                   {contactToDelete 
-                    ? "This contact will be permanently removed from your database."
-                    : "These contacts will be permanently removed from your database."
+                    ? t('leads.contactWillBeRemoved')
+                    : t('leads.contactsWillBeRemoved')
                   }
                 </p>
               </div>
@@ -1206,7 +1221,7 @@ export function LeadsTab() {
               disabled={isDeleting}
               className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium"
             >
-              Cancel
+              {t('button.cancel')}
             </Button>
             <Button 
               onClick={confirmDelete}
@@ -1216,10 +1231,10 @@ export function LeadsTab() {
               {isDeleting ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Deleting...
+                  {t('leads.deleting')}
                 </div>
               ) : (
-                "Delete"
+                t('button.delete')
               )}
             </Button>
           </div>
@@ -1237,16 +1252,16 @@ export function LeadsTab() {
                   className="text-sm text-red-600 hover:text-red-700 flex items-center transition-colors"
                 >
                   <X className="w-4 h-4 mr-1" />
-                  Clear selection
+                  {t('leads.clearSelection')}
                 </button>
                 <button 
                   onClick={handleSelectAll}
                   className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
                 >
-                  Select all
+                  {t('leads.selectAll')}
                 </button>
                 <span className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-xl">
-                  {selectedContacts.length} selected
+                  {t('leads.selectedCount', { count: selectedContacts.length })}
                 </span>
               </div>
               
@@ -1254,7 +1269,7 @@ export function LeadsTab() {
                 <Select onValueChange={handleCampaignAssignment}>
                   <SelectTrigger className="w-auto min-w-40 rounded-2xl border-gray-200 bg-white/50">
                     <Users2 className="w-4 h-4 mr-2" />
-                    <SelectValue placeholder={campaigns.length > 0 ? "Assign to Campaign" : "No campaigns found"} />
+                    <SelectValue placeholder={campaigns.length > 0 ? t('leads.assignToCampaign') : t('leads.noCampaignsFound')} />
                   </SelectTrigger>
                   <SelectContent>
                     {campaigns.length > 0 ? (
@@ -1265,7 +1280,7 @@ export function LeadsTab() {
                       ))
                     ) : (
                       <SelectItem value="no-campaigns" disabled>
-                        No campaigns available
+                        {t('leads.noCampaignsAvailable')}
                       </SelectItem>
                     )}
                   </SelectContent>
@@ -1273,12 +1288,12 @@ export function LeadsTab() {
                 
                 <Button variant="outline" className="text-gray-700 border-gray-200 rounded-2xl px-4 py-2 font-medium" onClick={handleExportCSV}>
                   <Download className="w-4 h-4 mr-2" />
-                  Export CSV
+                  {t('leads.exportCSV')}
                 </Button>
                 
                 <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 rounded-2xl px-4 py-2 font-medium" onClick={handleBulkDelete}>
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
+                  {t('button.delete')}
                 </Button>
               </div>
             </div>
@@ -1292,7 +1307,11 @@ export function LeadsTab() {
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-xl">
-                {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalContacts)} of {totalContacts} contacts
+                {t('leads.contactsPagination', {
+                  start: ((currentPage - 1) * pageSize) + 1,
+                  end: Math.min(currentPage * pageSize, totalContacts),
+                  total: totalContacts
+                })}
               </div>
               
               <div className="flex items-center space-x-2">
