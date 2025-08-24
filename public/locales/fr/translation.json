@@ -556,7 +556,9 @@
     "stopAnyway": "Arrêter quand même",
     "resumeAnyway": "Reprendre quand même",
     "stopCampaignDespiteHealth": "Arrêter la campagne maintenant malgré les scores de santé.",
-    "goActiveDespiteHealth": "Activer maintenant malgré les scores de santé faibles."
+    "goActiveDespiteHealth": "Activer maintenant malgré les scores de santé faibles.",
+    "responseRate": "Taux de réponse",
+    "conversionRate": "Taux de conversion"
   },
   "campaignManagement": {
     "loading": {
@@ -1420,6 +1422,50 @@
         "title": "Chat en Direct",
         "description": "Chattez avec notre équipe de support en temps réel"
       }
+    }
+  },
+  "emailTemplates": {
+    "firstSaasOutreach": {
+      "title": "Premier Contact SaaS", 
+      "subtitle": "Boostez vos conversions de 35% en 30 jours",
+      "category": "Communauté",
+      "subject": "Question rapide sur les objectifs de croissance de {{company}}",
+      "content": "Bonjour {{firstName}},\n\nJ'ai remarqué que {{company}} s'étend rapidement dans le secteur {{industry}}. Félicitations pour cette croissance récente !\n\nJe vous contacte parce que nous avons aidé des entreprises similaires à la vôtre à augmenter leurs taux de conversion de 35% en seulement 30 jours grâce à notre plateforme d'outreach automatisé.\n\nSeriez-vous intéressé par un appel rapide de 15 minutes pour voir comment cela pourrait fonctionner pour {{company}} ?\n\nCordialement,\n{{senderName}}\n\nP.S. Voici une étude de cas montrant comment nous avons aidé [Entreprise Similaire] à obtenir des résultats similaires : [lien]"
+    },
+    "warmFollowUp": {
+      "title": "Relance Chaleureuse",
+      "subtitle": "Re: Notre conversation sur {{company}}",
+      "category": "Communauté",
+      "subject": "Re: Notre conversation sur {{company}}",
+      "content": "Bonjour {{firstName}},\n\nJe voulais faire le suivi de notre conversation de la semaine dernière concernant les défis de {{company}} en matière de génération de prospects.\n\nDepuis notre échange, j'ai réfléchi à la façon dont notre plateforme pourrait spécifiquement aider avec les problèmes que vous avez mentionnés concernant la qualification des prospects et l'amélioration des taux de réponse.\n\nJ'aimerais vous montrer une démonstration rapide de la façon dont cela fonctionnerait exactement pour votre équipe. Êtes-vous disponible pour un bref appel cette semaine ?\n\nJ'ai hâte de continuer notre conversation.\n\nCordialement,\n{{senderName}}"
+    },
+    "productDemo": {
+      "title": "Demande de Démo Produit",
+      "subtitle": "Démo rapide de 15 min pour {{company}}",
+      "category": "Premium",
+      "subject": "Démo rapide de 15 min pour {{company}} ?",
+      "content": "Bonjour {{firstName}},\n\nJ'ai fait des recherches sur {{company}} et je suis impressionné par votre approche du secteur {{industry}}.\n\nJ'aimerais vous montrer comment des entreprises comme la vôtre utilisent notre plateforme pour rationaliser leur processus d'outreach et augmenter les prospects qualifiés de 40%.\n\nSeriez-vous ouvert à une démonstration rapide de 15 minutes cette semaine ? Je peux vous montrer :\n• Comment automatiser votre processus de qualification des prospects\n• Des façons de personnaliser l'outreach à grande échelle\n• Des résultats réels d'entreprises similaires dans votre secteur\n\nÀ quoi ressemble votre calendrier ?\n\nCordialement,\n{{senderName}}"
+    },
+    "reEngagement": {
+      "title": "Séquence de Ré-engagement",
+      "subtitle": "Je n'ai pas eu de nouvelles depuis un moment...",
+      "category": "Communauté",
+      "subject": "Je n'ai pas eu de nouvelles depuis un moment...",
+      "content": "Bonjour {{firstName}},\n\nJ'espère que ce message vous trouve en bonne santé. Je voulais vous contacter car nous n'avons pas été en contact depuis un moment.\n\nJe me souviens que vous étiez intéressé par l'amélioration du processus de génération de prospects pour {{company}}. Depuis notre dernier échange, nous avons lancé de nouvelles fonctionnalités qui pourraient être particulièrement pertinentes pour votre entreprise {{industry}}.\n\nSeriez-vous intéressé par un appel de rattrapage rapide pour voir les nouveautés ?\n\nCordialement,\n{{senderName}}"
+    },
+    "partnershipProposal": {
+      "title": "Proposition de Partenariat",
+      "subtitle": "Opportunité de partenariat stratégique",
+      "category": "Premium",
+      "subject": "Opportunité de partenariat stratégique pour {{company}}",
+      "content": "Bonjour {{firstName}},\n\nJ'ai suivi la croissance de {{company}} dans le secteur {{industry}}, et je suis impressionné par votre approche innovante.\n\nJe crois qu'il y a une forte opportunité de partenariat stratégique entre nos entreprises qui pourrait bénéficier à nos deux bases de clients.\n\nSeriez-vous ouvert à explorer cela davantage ? J'aimerais programmer un bref appel pour discuter de la façon dont nous pourrions travailler ensemble.\n\nCordialement,\n{{senderName}}"
+    },
+    "eventInvitation": {
+      "title": "Invitation à un Événement",
+      "subtitle": "Invitation exclusive à {{eventName}}",
+      "category": "Communauté", 
+      "subject": "Invitation exclusive : {{eventName}}",
+      "content": "Bonjour {{firstName}},\n\nJ'espère que vous allez bien ! Je voulais vous inviter personnellement à un événement exclusif que nous organisons : {{eventName}}.\n\nCet événement réunira des leaders de l'industrie du secteur {{industry}} pour discuter des dernières tendances et des opportunités de réseautage.\n\nSeriez-vous intéressé à y assister ? J'aimerais que {{company}} soit représentée.\n\nCordialement,\n{{senderName}}\n\nP.S. Faites-moi savoir si vous souhaitez plus de détails sur l'agenda et les intervenants."
     }
   },
   "settings": {

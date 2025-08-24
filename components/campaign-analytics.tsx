@@ -2390,7 +2390,7 @@ Sequence Info:
                           <Heart className="w-6 h-6 text-orange-600" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-medium text-gray-900">Sender Health</h3>
+                          <h3 className="text-lg font-medium text-gray-900">{t('analytics.senderHealth')}</h3>
                           <p className="text-gray-500 text-sm">{scores.length} selected sender{scores.length > 1 ? 's' : ''} • {getScoreStatus(avgScore)}</p>
                         </div>
                       </div>
@@ -2467,7 +2467,7 @@ Sequence Info:
                   <Heart className="w-6 h-6 text-orange-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">Sender Health</h3>
+                  <h3 className="text-lg font-medium text-gray-900">{t('analytics.senderHealth')}</h3>
                   <p className="text-gray-500 text-sm">No senders selected</p>
                 </div>
               </div>
@@ -2554,12 +2554,22 @@ Sequence Info:
                         <Button
                           variant="outline"
                           onClick={() => {
-                            // Navigate to campaign sender management
-                            const url = new URL(window.location.origin)
-                            url.searchParams.set('tab', 'campaigns-email')
-                            url.searchParams.set('campaignId', campaign.id.toString())
-                            url.searchParams.set('subtab', 'sender')
-                            window.location.href = url.toString()
+                            // First go back to campaigns tab, then navigate to edit with sender tab
+                            onBack()
+                            
+                            // Use setTimeout to ensure the campaigns tab loads first
+                            setTimeout(() => {
+                              const url = new URL(window.location.href)
+                              url.searchParams.set('campaignId', campaign.id.toString())
+                              url.searchParams.set('campaign', campaign.id.toString())
+                              url.searchParams.set('openCampaign', 'true')
+                              url.searchParams.set('subtab', 'sender')
+                              window.history.pushState({}, '', url.toString())
+                              
+                              // Dispatch a custom event to trigger the campaign tab to process URL params
+                              const event = new CustomEvent('url-params-changed')
+                              window.dispatchEvent(event)
+                            }, 100)
                           }}
                           className="flex items-center gap-2"
                         >

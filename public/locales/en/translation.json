@@ -193,7 +193,9 @@
     "pause": "Pause",
     "resume": "Resume",
     "viewWarming": "View Warming",
-    "delete": "Delete"
+    "delete": "Delete",
+    "responseRate": "Response Rate",
+    "conversionRate": "Conversion Rate"
   },
   "campaignManagement": {
     "targetTab": {
@@ -358,6 +360,7 @@
     "emailsDelivered": "Emails Delivered",
     "openRate": "Open Rate",
     "clickRate": "Click Rate",
+    "conversionRate": "Conversion Rate",
     "deliveryRate": "Delivery Rate",
     "bounceRate": "Bounce Rate",
     "responseRate": "Response Rate",
@@ -1000,6 +1003,50 @@
         "title": "Live Chat",
         "description": "Chat with our support team in real-time"
       }
+    }
+  },
+  "emailTemplates": {
+    "firstSaasOutreach": {
+      "title": "First SaaS Outreach",
+      "subtitle": "Boost your conversions by 35% in 30 days",
+      "category": "Community",
+      "subject": "Quick question about {{company}}'s growth goals",
+      "content": "Hi {{firstName}},\n\nI noticed {{company}} has been expanding rapidly in the {{industry}} space. Congratulations on the recent growth!\n\nI'm reaching out because we've helped similar companies like yours boost their conversion rates by 35% in just 30 days using our automated outreach platform.\n\nWould you be interested in a quick 15-minute call to see how this could work for {{company}}?\n\nBest regards,\n{{senderName}}\n\nP.S. Here's a case study showing how we helped [Similar Company] achieve similar results: [link]"
+    },
+    "warmFollowUp": {
+      "title": "Warm Follow-up",
+      "subtitle": "Re: Our conversation about {{company}}",
+      "category": "Community", 
+      "subject": "Re: Our conversation about {{company}}",
+      "content": "Hi {{firstName}},\n\nI wanted to follow up on our conversation last week about {{company}}'s challenges with lead generation.\n\nSince we spoke, I've been thinking about how our platform could specifically help with the issues you mentioned around qualifying leads and improving response rates.\n\nI'd love to show you a quick demo of exactly how this would work for your team. Are you available for a brief call this week?\n\nLooking forward to continuing our conversation.\n\nBest,\n{{senderName}}"
+    },
+    "productDemo": {
+      "title": "Product Demo Request",
+      "subtitle": "Quick 15-min demo for {{company}}",
+      "category": "Premium",
+      "subject": "Quick 15-min demo for {{company}}?",
+      "content": "Hi {{firstName}},\n\nI've been researching {{company}} and I'm impressed by your approach to {{industry}}.\n\nI'd love to show you how companies like yours are using our platform to streamline their outreach process and increase qualified leads by 40%.\n\nWould you be open to a quick 15-minute demo this week? I can show you:\n• How to automate your lead qualification process\n• Ways to personalize outreach at scale\n• Real results from similar companies in your space\n\nWhat does your calendar look like?\n\nBest,\n{{senderName}}"
+    },
+    "reEngagement": {
+      "title": "Re-engagement Sequence",
+      "subtitle": "Haven't heard from you in a while...",
+      "category": "Community",
+      "subject": "Haven't heard from you in a while...",
+      "content": "Hi {{firstName}},\n\nI hope this message finds you well. I wanted to reach out since we haven't connected in a while.\n\nI remember you were interested in improving your lead generation process for {{company}}. Since we last spoke, we've launched some new features that could be particularly relevant for your {{industry}} business.\n\nWould you be interested in a quick catch-up call to see what's new?\n\nBest regards,\n{{senderName}}"
+    },
+    "partnershipProposal": {
+      "title": "Partnership Proposal",
+      "subtitle": "Strategic partnership opportunity",
+      "category": "Premium",
+      "subject": "Strategic partnership opportunity for {{company}}",
+      "content": "Hi {{firstName}},\n\nI've been following {{company}}'s growth in the {{industry}} space, and I'm impressed by your innovative approach.\n\nI believe there's a strong opportunity for a strategic partnership between our companies that could benefit both of our customer bases.\n\nWould you be open to exploring this further? I'd love to schedule a brief call to discuss how we might work together.\n\nBest regards,\n{{senderName}}"
+    },
+    "eventInvitation": {
+      "title": "Event Invitation",
+      "subtitle": "Exclusive invite to {{eventName}}",
+      "category": "Community",
+      "subject": "Exclusive invitation: {{eventName}}",
+      "content": "Hi {{firstName}},\n\nI hope you're doing well! I wanted to personally invite you to an exclusive event we're hosting: {{eventName}}.\n\nThis event will bring together industry leaders from the {{industry}} space to discuss the latest trends and networking opportunities.\n\nWould you be interested in attending? I'd love to have {{company}} represented.\n\nBest regards,\n{{senderName}}\n\nP.S. Let me know if you'd like more details about the agenda and speakers."
     }
   },
   "settings": {
