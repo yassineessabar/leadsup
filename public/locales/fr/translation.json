@@ -270,6 +270,7 @@
       },
       "buttons": {
         "previous": "Précédent",
+        "saveNext": "Enregistrer et Suivant",
         "checking": "Vérification...",
         "launchCampaign": "Lancer la campagne"
       }
@@ -363,12 +364,19 @@
         "confirmation": "Êtes-vous sûr de vouloir supprimer la campagne \"{name}\" ?",
         "warning": "Cette action ne peut pas être annulée.",
         "deleteCampaign": "Supprimer la campagne"
+      },
+      "sequenceProgress": {
+        "title": "Confirmer la progression de séquence",
+        "description": "Êtes-vous sûr de vouloir passer à l'étape suivante ? Assurez-vous d'avoir enregistré vos modifications de séquence.",
+        "cancel": "Annuler",
+        "continue": "Continuer"
       }
     },
     "validation": {
       "requirementsNotMet": "Exigences non remplies",
       "pleaseComplete": "Veuillez compléter les exigences suivantes avant de continuer :",
-      "importOrScraping": "Vous devez soit importer des contacts soit configurer le scraping automatique pour continuer"
+      "importOrScraping": "Vous devez soit importer des contacts soit configurer le scraping automatique pour continuer",
+      "understand": "J'ai compris"
     },
     "sequence": {
       "title": "Séquence d'emails",
@@ -675,7 +683,6 @@
       "followUpMessage": "Message de suivi",
       "finalMessage": "Message final"
     },
-    "campaignManagement": {
       "loading": {
         "title": "Chargement de la campagne",
         "subtitle": "Configuration de votre tableau de bord de campagne"
@@ -890,7 +897,6 @@
         "maybeLater": "Peut-être plus tard",
         "upgradeNow": "Passer à Pro"
       }
-    }
   },
   "dashboardAnalytics": {
     "noEmailPerformanceData": "Aucune donnée de performance email",

@@ -4372,7 +4372,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              I Understand
+              {t('campaignManagement.validation.understand')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -4429,9 +4429,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       <Dialog open={showSequenceConfirmDialog} onOpenChange={setShowSequenceConfirmDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirm Sequence Progress</DialogTitle>
+            <DialogTitle>{t('campaignManagement.dialogs.sequenceProgress.title')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to move to the next step? Make sure you've saved your sequence changes.
+              {t('campaignManagement.dialogs.sequenceProgress.description')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -4442,7 +4442,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 setPendingNextStep(null)
               }}
             >
-              Cancel
+              {t('campaignManagement.dialogs.sequenceProgress.cancel')}
             </Button>
             <Button
               onClick={() => {
@@ -4462,7 +4462,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              Continue
+              {t('campaignManagement.dialogs.sequenceProgress.continue')}
             </Button>
           </DialogFooter>
         </DialogContent>
