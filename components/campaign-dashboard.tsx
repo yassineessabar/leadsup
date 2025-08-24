@@ -430,7 +430,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         case 'auto_warmup':
           // Start sending gradually with automatic warmup
           console.log('🔥 Starting auto warmup for campaign:', campaign.id)
-          onStatusUpdate(campaign.id, 'Active') // Set to active but with gradual sending
+          onStatusUpdate(campaign.id, 'Active')
           setIsGuidedFlow(false)
           console.log('✅ Auto warmup campaign started successfully')
           break
@@ -4315,19 +4315,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <ul className="space-y-1 text-xs">
                 <li>• <span className="font-medium">Auto Warmup:</span> Start sending gradually with automatic warmup (recommended)</li>
                 <li>• <span className="font-medium">Warmup Only:</span> Warm up accounts without sending campaign emails</li>
-                <li>• <span className="font-medium">No Warmup:</span> Start sending immediately (not recommended)</li>
               </ul>
             </div>
           </div>
           
-          <div className="flex gap-2 p-6 pt-3 border-t border-gray-100">
-            <Button
-              variant="outline"
-              onClick={() => handleWarmupDecision('no_warmup')}
-              className="flex-1 h-10 rounded-xl text-sm"
-            >
-              No Warmup
-            </Button>
+          <div className="flex gap-3 p-6 pt-3 border-t border-gray-100">
             <Button
               variant="outline"
               onClick={() => handleWarmupDecision('warmup_only')}
