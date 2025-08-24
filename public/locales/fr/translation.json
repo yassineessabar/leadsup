@@ -1,5 +1,41 @@
 {
   "greeting": "Bienvenue sur LeadsUp",
+  "common": {
+    "loading": "Chargement..."
+  },
+  "domains": {
+    "title": "Domaines",
+    "manageEmailDomains": "Gérez vos domaines de messagerie pour l'envoi de campagnes",
+    "addDomain": "Ajouter un domaine",
+    "searchDomains": "Rechercher dans les domaines",
+    "dateCreated": "Date de création",
+    "name": "Nom",
+    "statusLabel": "Statut",
+    "loadingDomains": "Chargement des domaines...",
+    "noDomainsYet": "Aucun domaine pour le moment",
+    "addFirstDomain": "Ajoutez votre premier domaine pour commencer l'envoi d'emails",
+    "manage": "Gérer",
+    "setup": "Configurer",
+    "delete": "Supprimer",
+    "deleteDomain": "Supprimer le domaine",
+    "deleting": "Suppression...",
+    "cancel": "Annuler",
+    "deleteConfirmation": "Cette action ne peut pas être annulée. Tapez \"delete\" pour confirmer la suppression de <strong>{{domain}}</strong>.",
+    "deletePlaceholder": "Tapez 'delete' pour confirmer",
+    "status": {
+      "verified": "Vérifié",
+      "pending": "En attente",
+      "failed": "Échec",
+      "settingUp": "Configuration en cours",
+      "unknown": "Inconnu"
+    },
+    "stats": {
+      "sent": "Envoyés",
+      "delivered": "Livrés", 
+      "rejected": "Rejetés",
+      "received": "Reçus"
+    }
+  },
   "welcome": "Bienvenue {{name}}",
   "button": {
     "save": "Enregistrer",
@@ -158,7 +194,7 @@
     "createCampaign": "Créer une campagne",
     "campaignName": "Nom de la campagne",
     "campaignType": "Type de campagne",
-    "status": "Statut",
+    "statusLabel": "Statut",
     "active": "Active",
     "paused": "En pause",
     "draft": "Brouillon",
@@ -439,7 +475,7 @@
     "email": "Email",
     "phone": "Téléphone",
     "company": "Entreprise",
-    "status": "Statut",
+    "statusLabel": "Statut",
     "source": "Source",
     "createdAt": "Créé le",
     "lastContact": "Dernier contact",
@@ -966,16 +1002,36 @@
   },
   "domains": {
     "title": "Domaines",
+    "manageEmailDomains": "Gérez vos domaines de messagerie pour l'envoi de campagnes",
     "addDomain": "Ajouter un domaine",
-    "domainName": "Nom de domaine",
-    "status": "Statut",
-    "verified": "Vérifié",
-    "pending": "En attente",
-    "failed": "Échoué",
-    "verify": "Vérifier le domaine",
-    "remove": "Supprimer le domaine",
-    "dnsRecords": "Enregistrements DNS",
-    "setupInstructions": "Instructions de configuration"
+    "searchDomains": "Rechercher dans les domaines",
+    "dateCreated": "Date de création",
+    "name": "Nom",
+    "statusLabel": "Statut",
+    "loadingDomains": "Chargement des domaines...",
+    "noDomainsYet": "Aucun domaine pour le moment",
+    "addFirstDomain": "Ajoutez votre premier domaine pour commencer l'envoi d'emails",
+    "manage": "Gérer",
+    "setup": "Configurer",
+    "delete": "Supprimer",
+    "deleteDomain": "Supprimer le domaine",
+    "deleting": "Suppression...",
+    "cancel": "Annuler",
+    "deleteConfirmation": "Cette action ne peut pas être annulée. Tapez \"delete\" pour confirmer la suppression de <strong>{{domain}}</strong>.",
+    "deletePlaceholder": "Tapez 'delete' pour confirmer",
+    "status": {
+      "verified": "Vérifié",
+      "pending": "En attente",
+      "failed": "Échec",
+      "settingUp": "Configuration en cours",
+      "unknown": "Inconnu"
+    },
+    "stats": {
+      "sent": "Envoyés",
+      "delivered": "Livrés", 
+      "rejected": "Rejetés",
+      "received": "Reçus"
+    }
   },
   "templates": {
     "title": "Modèles",
@@ -1022,7 +1078,7 @@
     "invoices": "Factures",
     "nextBilling": "Prochaine date de facturation",
     "amount": "Montant",
-    "status": "Statut",
+    "statusLabel": "Statut",
     "downloadInvoice": "Télécharger la facture"
   },
   "common": {
@@ -1055,7 +1111,7 @@
     "date": "Date",
     "time": "Heure",
     "duration": "Durée",
-    "status": "Statut",
+    "statusLabel": "Statut",
     "progress": "Progression",
     "completed": "Terminé",
     "pending": "En attente",
@@ -1115,5 +1171,149 @@
     "tomorrow": "Demain",
     "now": "Maintenant",
     "never": "Jamais"
+  },
+  "senderManagement": {
+    "loading": {
+      "title": "Chargement des comptes expéditeurs",
+      "description": "Veuillez patienter pendant que nous récupérons vos comptes de domaine..."
+    },
+    "noVerifiedDomains": {
+      "title": "Aucun domaine vérifié",
+      "description": "Vous devez configurer et vérifier au moins un domaine avant de pouvoir sélectionner des comptes expéditeurs pour les campagnes.",
+      "setupButton": "Configurer le domaine"
+    },
+    "header": {
+      "title": "Comptes expéditeurs",
+      "description": "Sélectionnez les comptes qui enverront des emails pour cette campagne"
+    },
+    "buttons": {
+      "editAccounts": "Modifier les comptes",
+      "saving": "Enregistrement...",
+      "save": "Enregistrer",
+      "saved": "Enregistré",
+      "addDomain": "Ajouter un domaine",
+      "delete": "Supprimer"
+    },
+    "selectAll": "Tout sélectionner",
+    "noSenderAccounts": {
+      "title": "Aucun compte expéditeur",
+      "description": "Ajoutez des comptes expéditeurs à ce domaine pour les utiliser dans les campagnes",
+      "addButton": "Ajouter des expéditeurs"
+    },
+    "dailyLimit": "Limite quotidienne",
+    "emailsPerDay": "emails/jour",
+    "healthScore": "Score de santé",
+    "testModal": {
+      "title": "Envoyer un email de test",
+      "description": "Testez votre email de campagne",
+      "emailPlaceholder": "Entrez l'adresse email",
+      "note": "Envoie votre premier email de campagne avec des variables de test (John Doe, Acme Corp)",
+      "cancel": "Annuler",
+      "sending": "Envoi...",
+      "sendTest": "Envoyer le test"
+    },
+    "errors": {
+      "pleaseEnterEmail": "Veuillez entrer une adresse email pour envoyer le test.",
+      "noSenderSelected": "Aucun expéditeur sélectionné pour l'email de test.",
+      "failedToSendTest": "Échec de l'envoi de l'email de test",
+      "failedToSendTestTryAgain": "Échec de l'envoi de l'email de test. Veuillez réessayer.",
+      "failedToLoadDomains": "Échec du chargement des comptes de domaine. Veuillez réessayer.",
+      "failedToLoadSenders": "Échec du chargement des comptes expéditeurs"
+    },
+    "success": {
+      "testEmailSent": "Email de test envoyé de {{senderEmail}} vers {{testEmail}}. Répondez pour tester le flux complet !",
+      "createdPresetAccounts": "{{count}} comptes email prédéfinis créés",
+      "savedSenders": "{{count}} expéditeur(s) enregistré(s) dans la campagne"
+    }
+  },
+  "domainSetup": {
+    "title": "Ajouter un nouveau domaine",
+    "description": "Entrez votre domaine pour commencer à envoyer des emails",
+    "checking": "Vérification de la configuration du domaine...",
+    "domainName": "Nom de domaine",
+    "domainPlaceholder": "exemple.com",
+    "replySubdomain": "Sous-domaine de réponse",
+    "replySubdomainNote": "où les réponses seront acheminées",
+    "fullAddressWillBe": "L'adresse complète sera :",
+    "yourDomainExample": "votredomaine.com",
+    "cancel": "Annuler",
+    "addButton": "Ajouter un domaine",
+    "validation": {
+      "invalidDomain": "Veuillez entrer un domaine valide (ex: exemple.com)"
+    },
+    "manual": {
+      "title": "Configuration manuelle",
+      "description": "Nous vous guiderons dans la configuration manuelle de votre domaine",
+      "steps": {
+        "title": "Ce qui va suivre :",
+        "createConfig": "Nous créerons la configuration de votre domaine",
+        "getInstructions": "Vous obtiendrez des instructions de configuration DNS étape par étape",
+        "copyRecords": "Copiez les enregistrements DNS vers votre fournisseur de domaine",
+        "verifyDomain": "Vérifiez votre domaine quand vous êtes prêt"
+      },
+      "continueButton": "Continuer avec la configuration manuelle",
+      "backButton": "← Revenir en arrière et réessayer"
+    },
+    "login": {
+      "title": "Se connecter à {{provider}}",
+      "connectWith": "Se connecter avec {{provider}}",
+      "description": "Connectez-vous pour configurer automatiquement votre domaine",
+      "username": "Nom d'utilisateur",
+      "usernamePlaceholder": "Entrez le nom d'utilisateur",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "Entrez le mot de passe",
+      "authenticating": "Authentification...",
+      "connectButton": "Connecter le domaine",
+      "cantLogin": "Impossible de se connecter ?",
+      "useManualSetup": "Utiliser la configuration manuelle à la place",
+      "errors": {
+        "usernameRequired": "Le nom d'utilisateur est requis",
+        "passwordRequired": "Le mot de passe est requis",
+        "authFailed": "Authentification échouée. Veuillez vérifier vos identifiants.",
+        "connectionFailed": "Connexion échouée. Veuillez réessayer."
+      }
+    },
+    "analyzing": {
+      "title": "Analyse du domaine",
+      "description": "Vérification de la configuration de votre domaine",
+      "steps": {
+        "validation": "Validation du domaine",
+        "verified": "{{domain}} vérifié",
+        "detection": "Détection du fournisseur",
+        "checking": "Vérification du support de configuration automatisée...",
+        "preparation": "Préparation de la configuration",
+        "preparing": "Préparation de votre configuration"
+      }
+    }
+  },
+  "dnsSetup": {
+    "title": "Configuration de {{domain}}",
+    "subtitle": "Suivez ces étapes pour connecter votre domaine",
+    "loading": "Chargement de vos paramètres...",
+    "backToDomains": "Retour aux domaines",
+    "quickSteps": {
+      "title": "Étapes rapides",
+      "step1": "Accédez à votre fournisseur de domaine (GoDaddy, Namecheap, etc.)",
+      "step2": "Cherchez \"Paramètres DNS\" ou \"Gestion des domaines\"",
+      "step3": "Copiez et collez chaque paramètre ci-dessous",
+      "step4": "Enregistrez et revenez vérifier"
+    },
+    "dnsRecords": "Enregistrements DNS",
+    "mxRecords": "Enregistrements MX (Échange de courrier)",
+    "table": {
+      "type": "Type",
+      "host": "Hôte",
+      "value": "Valeur",
+      "priority": "Priorité"
+    },
+    "copyHost": "Copier l'hôte",
+    "copyValue": "Copier la valeur",
+    "copyPriority": "Copier la priorité",
+    "verification": {
+      "addedSettings": "J'ai ajouté tous les paramètres ci-dessus à mon fournisseur de domaine",
+      "checking": "Vérification de la connexion...",
+      "checkDomain": "Vérifier mon domaine",
+      "timeNote": "Les changements peuvent prendre jusqu'à 24 heures pour prendre effet"
+    }
   }
 }

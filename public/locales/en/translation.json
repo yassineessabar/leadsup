@@ -1,4 +1,40 @@
 {
+  "common": {
+    "loading": "Loading..."
+  },
+  "domains": {
+    "title": "Domains",
+    "manageEmailDomains": "Manage your email domains for sending campaigns",
+    "addDomain": "Add Domain",
+    "searchDomains": "Search domains",
+    "dateCreated": "Date Created",
+    "name": "Name",
+    "statusLabel": "Status",
+    "loadingDomains": "Loading domains...",
+    "noDomainsYet": "No domains yet",
+    "addFirstDomain": "Add your first domain to start sending emails",
+    "manage": "Manage",
+    "setup": "Setup",
+    "delete": "Delete",
+    "deleteDomain": "Delete Domain", 
+    "deleting": "Deleting...",
+    "cancel": "Cancel",
+    "deleteConfirmation": "This action cannot be undone. Type \"delete\" to confirm removal of <strong>{{domain}}</strong>.",
+    "deletePlaceholder": "Type 'delete' to confirm",
+    "status": {
+      "verified": "Verified",
+      "pending": "Pending", 
+      "failed": "Failed",
+      "settingUp": "Setting up",
+      "unknown": "Unknown"
+    },
+    "stats": {
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "rejected": "Rejected", 
+      "received": "Received"
+    }
+  },
   "campaignManagement": {
     "guidedFlow": {
       "buttons": {
@@ -21,6 +57,150 @@
     },
     "validation": {
       "understand": "I Understand"
+    }
+  },
+  "senderManagement": {
+    "loading": {
+      "title": "Loading Sender Accounts",
+      "description": "Please wait while we fetch your domain accounts..."
+    },
+    "noVerifiedDomains": {
+      "title": "No Verified Domains",
+      "description": "You need to set up and verify at least one domain before you can select sender accounts for campaigns.",
+      "setupButton": "Set Up Domain"
+    },
+    "header": {
+      "title": "Sender Accounts",
+      "description": "Select which accounts will send emails for this campaign"
+    },
+    "buttons": {
+      "editAccounts": "Edit Accounts",
+      "saving": "Saving...",
+      "save": "Save",
+      "saved": "Saved",
+      "addDomain": "Add Domain",
+      "delete": "Delete"
+    },
+    "selectAll": "Select All",
+    "noSenderAccounts": {
+      "title": "No Sender Accounts",
+      "description": "Add sender accounts to this domain to use them in campaigns",
+      "addButton": "Add Senders"
+    },
+    "dailyLimit": "Daily Limit",
+    "emailsPerDay": "emails/day",
+    "healthScore": "Health Score",
+    "testModal": {
+      "title": "Send Test Email",
+      "description": "Test your campaign email",
+      "emailPlaceholder": "Enter email address",
+      "note": "Sends your first campaign email with test variables (John Doe, Acme Corp)",
+      "cancel": "Cancel",
+      "sending": "Sending...",
+      "sendTest": "Send Test"
+    },
+    "errors": {
+      "pleaseEnterEmail": "Please enter an email address to send the test to.",
+      "noSenderSelected": "No sender selected for test email.",
+      "failedToSendTest": "Failed to send test email",
+      "failedToSendTestTryAgain": "Failed to send test email. Please try again.",
+      "failedToLoadDomains": "Failed to load domain accounts. Please try again.",
+      "failedToLoadSenders": "Failed to load sender accounts"
+    },
+    "success": {
+      "testEmailSent": "Test email sent from {{senderEmail}} to {{testEmail}}. Reply to test the complete flow!",
+      "createdPresetAccounts": "Created {{count}} preset email accounts",
+      "savedSenders": "✅ Saved {{count}} sender(s) to campaign"
+    }
+  },
+  "domainSetup": {
+    "title": "Add New Domain",
+    "description": "Enter your domain to start sending emails",
+    "checking": "Checking domain configuration...",
+    "domainName": "Domain Name",
+    "domainPlaceholder": "example.com",
+    "replySubdomain": "Reply Subdomain",
+    "replySubdomainNote": "where replies will be routed",
+    "fullAddressWillBe": "Full address will be:",
+    "yourDomainExample": "yourdomain.com",
+    "cancel": "Cancel",
+    "addButton": "Add Domain",
+    "validation": {
+      "invalidDomain": "Please enter a valid domain (e.g., example.com)"
+    },
+    "manual": {
+      "title": "Manual Setup",
+      "description": "We'll guide you through setting up your domain manually",
+      "steps": {
+        "title": "What happens next:",
+        "createConfig": "We'll create your domain configuration",
+        "getInstructions": "You'll get step-by-step DNS setup instructions",
+        "copyRecords": "Copy the DNS records to your domain provider",
+        "verifyDomain": "Verify your domain when ready"
+      },
+      "continueButton": "Continue with Manual Setup",
+      "backButton": "← Go back and try again"
+    },
+    "login": {
+      "title": "Login to {{provider}}",
+      "connectWith": "Connect with {{provider}}",
+      "description": "Login to automatically configure your domain",
+      "username": "Username",
+      "usernamePlaceholder": "Enter username",
+      "password": "Password",
+      "passwordPlaceholder": "Enter password",
+      "authenticating": "Authenticating...",
+      "connectButton": "Connect Domain",
+      "cantLogin": "Can't login?",
+      "useManualSetup": "Use manual setup instead",
+      "errors": {
+        "usernameRequired": "Username is required",
+        "passwordRequired": "Password is required",
+        "authFailed": "Authentication failed. Please check your credentials.",
+        "connectionFailed": "Connection failed. Please try again."
+      }
+    },
+    "analyzing": {
+      "title": "Analyzing Domain",
+      "description": "Checking your domain configuration",
+      "steps": {
+        "validation": "Domain Validation",
+        "verified": "Verified {{domain}}",
+        "detection": "Provider Detection",
+        "checking": "Checking automated setup support...",
+        "preparation": "Setup Preparation",
+        "preparing": "Preparing your configuration"
+      }
+    }
+  },
+  "dnsSetup": {
+    "title": "Setup {{domain}}",
+    "subtitle": "Follow these steps to connect your domain",
+    "loading": "Loading your settings...",
+    "backToDomains": "Back to Domains",
+    "quickSteps": {
+      "title": "Quick Steps",
+      "step1": "Go to your domain provider (GoDaddy, Namecheap, etc.)",
+      "step2": "Look for \"DNS Settings\" or \"Domain Management\"",
+      "step3": "Copy and paste each setting below",
+      "step4": "Save and come back to verify"
+    },
+    "dnsRecords": "DNS Records",
+    "mxRecords": "MX Records (Mail Exchange)",
+    "table": {
+      "type": "Type",
+      "host": "Host",
+      "value": "Value",
+      "priority": "Priority"
+    },
+    "copyHost": "Copy Host",
+    "copyValue": "Copy Value",
+    "copyPriority": "Copy Priority",
+    "verification": {
+      "addedSettings": "I've added all the settings above to my domain provider",
+      "checking": "Checking connection...",
+      "checkDomain": "Check My Domain",
+      "timeNote": "Changes can take up to 24 hours to take effect"
     }
   }
 }

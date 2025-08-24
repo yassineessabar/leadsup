@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useI18n } from '@/hooks/use-i18n'
 import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe, Trash2, Save, Copy, Loader2, CheckCircle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -68,6 +69,7 @@ export default function CampaignSenderSelection({
   selectedDomainForSenders,
   onDomainSelected
 }: CampaignSenderSelectionProps) {
+  const { t, ready: translationsReady } = useI18n()
   console.log('🎯 CampaignSenderSelection props:', { campaignId, initialSelectedSenders });
   const [domainsWithSenders, setDomainsWithSenders] = useState<DomainWithSenders[]>([])
   const [selectedSenders, setSelectedSenders] = useState<Set<string>>(() => {
@@ -210,8 +212,8 @@ export default function CampaignSenderSelection({
 
     } catch (error) {
       console.error('Error fetching domains and senders:', error)
-      setError('Failed to load domain accounts. Please try again.')
-      toast.error('Failed to load sender accounts')
+      setError(t('senderManagement.errors.failedToLoadDomains'))
+      toast.error(t('senderManagement.errors.failedToLoadSenders'))
     } finally {
       setLoading(false)
     }
@@ -244,7 +246,7 @@ export default function CampaignSenderSelection({
       const successCount = responses.filter(r => r.ok).length
       
       if (successCount > 0) {
-        toast.success(`Created ${successCount} preset email accounts`)
+        toast.success(t('senderManagement.success.createdPresetAccounts', { count: successCount }))
         console.log(`✅ Created ${successCount} preset sender accounts for ${domainName}`)
       }
     } catch (error) {
@@ -485,7 +487,7 @@ export default function CampaignSenderSelection({
       }
 
       console.log(`✅ Saved ${selectedSenderIds.length} sender(s) to campaign`)
-      toast.success(`✅ Saved ${selectedSenderIds.length} sender(s) to campaign`)
+      toast.success(t('senderManagement.success.savedSenders', { count: selectedSenderIds.length }))
 
       // Update tracking state
       setLastSavedSelection(new Set(selectedSenderIds))
@@ -689,12 +691,12 @@ export default function CampaignSenderSelection({
   // Send test email
   const sendTestEmail = async () => {
     if (!testModalEmail.trim()) {
-      toast.error("Please enter an email address to send the test to.")
+      toast.error(t('senderManagement.errors.pleaseEnterEmail'))
       return
     }
 
     if (!testModalSender) {
-      toast.error("No sender selected for test email.")
+      toast.error(t('senderManagement.errors.noSenderSelected'))
       return
     }
 
@@ -713,15 +715,18 @@ export default function CampaignSenderSelection({
       const data = await response.json()
       
       if (response.ok) {
-        toast.success(`Test email sent from ${testModalSender.email} to ${testModalEmail}. Reply to test the complete flow!`)
+        toast.success(t('senderManagement.success.testEmailSent', { 
+          senderEmail: testModalSender.email, 
+          testEmail: testModalEmail 
+        }))
         setShowTestModal(false)
         setTestModalEmail('')
       } else {
-        throw new Error(data.error || 'Failed to send test email')
+        throw new Error(data.error || t('senderManagement.errors.failedToSendTest'))
       }
     } catch (error) {
       console.error('Test email error:', error)
-      toast.error(error instanceof Error ? error.message : "Failed to send test email. Please try again.")
+      toast.error(error instanceof Error ? error.message : t('senderManagement.errors.failedToSendTestTryAgain'))
     } finally {
       setTestModalLoading(false)
     }
@@ -936,15 +941,15 @@ export default function CampaignSenderSelection({
   }
 
 
-  if (loading) {
+  if (loading || !translationsReady) {
     return (
       <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center min-h-[500px]">
             <div className="text-center">
               <div className="w-12 h-12 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Sender Accounts</h3>
-              <p className="text-gray-600">Please wait while we fetch your domain accounts...</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('senderManagement.loading.title')}</h3>
+              <p className="text-gray-600">{t('senderManagement.loading.description')}</p>
             </div>
           </div>
         </div>
@@ -1393,9 +1398,9 @@ export default function CampaignSenderSelection({
               <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <Globe className="h-10 w-10 text-gray-400" />
               </div>
-              <h3 className="text-2xl font-medium text-gray-900 mb-4">No Verified Domains</h3>
+              <h3 className="text-2xl font-medium text-gray-900 mb-4">{t('senderManagement.noVerifiedDomains.title')}</h3>
               <p className="text-gray-600 mb-8 max-w-md mx-auto leading-relaxed">
-                You need to set up and verify at least one domain before you can select sender accounts for campaigns.
+                {t('senderManagement.noVerifiedDomains.description')}
               </p>
               <Button 
                 onClick={() => {
@@ -1405,7 +1410,7 @@ export default function CampaignSenderSelection({
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-8 py-4 text-lg"
               >
                 <Plus className="h-5 w-5 mr-3" />
-                Set Up Domain
+                {t('senderManagement.noVerifiedDomains.setupButton')}
               </Button>
             </div>
           </div>
@@ -1437,9 +1442,9 @@ export default function CampaignSenderSelection({
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-medium text-gray-900 mb-2">Sender Accounts</h1>
+              <h1 className="text-2xl font-medium text-gray-900 mb-2">{t('senderManagement.header.title')}</h1>
               <p className="text-gray-500 text-sm">
-                Select which accounts will send emails for this campaign
+                {t('senderManagement.header.description')}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -1460,7 +1465,7 @@ export default function CampaignSenderSelection({
                   className="border-gray-300 text-gray-700 hover:bg-gray-50 rounded-2xl px-5 py-2.5 font-medium transition-colors"
                 >
                   <Settings className="h-4 w-4 mr-2" />
-                  Edit Accounts
+                  {t('senderManagement.buttons.editAccounts')}
                 </Button>
               )}
               
@@ -1477,12 +1482,12 @@ export default function CampaignSenderSelection({
                   {isSaving ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
-                      Saving...
+                      {t('senderManagement.buttons.saving')}
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      {hasUnsavedChanges ? 'Save' : 'Saved'}
+                      {hasUnsavedChanges ? t('senderManagement.buttons.save') : t('senderManagement.buttons.saved')}
                     </>
                   )}
                 </Button>
@@ -1497,7 +1502,7 @@ export default function CampaignSenderSelection({
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-5 py-2.5 font-medium"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Domain
+                {t('senderManagement.buttons.addDomain')}
               </Button>
             </div>
           </div>
@@ -1565,7 +1570,7 @@ export default function CampaignSenderSelection({
                             }}
                           />
                           <label className="text-xs text-gray-600 cursor-pointer font-medium">
-                            Select All
+                            {t('senderManagement.selectAll')}
                           </label>
                         </div>
                       )}
@@ -1580,7 +1585,7 @@ export default function CampaignSenderSelection({
                         className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 rounded-xl"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
+                        {t('senderManagement.buttons.delete')}
                       </Button>
                     </div>
                   </div>
@@ -1594,9 +1599,9 @@ export default function CampaignSenderSelection({
                           <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
                             <User className="h-8 w-8 text-gray-400" />
                           </div>
-                          <h4 className="text-lg font-medium text-gray-900 mb-3">No Sender Accounts</h4>
+                          <h4 className="text-lg font-medium text-gray-900 mb-3">{t('senderManagement.noSenderAccounts.title')}</h4>
                           <p className="text-gray-600 mb-6 max-w-sm mx-auto">
-                            Add sender accounts to this domain to use them in campaigns
+                            {t('senderManagement.noSenderAccounts.description')}
                           </p>
                           <Button
                             onClick={() => {
@@ -1611,7 +1616,7 @@ export default function CampaignSenderSelection({
                             className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
                           >
                             <Plus className="h-4 w-4 mr-2" />
-                            Add Senders
+                            {t('senderManagement.noSenderAccounts.addButton')}
                           </Button>
                         </div>
                       ) : (
@@ -1669,12 +1674,12 @@ export default function CampaignSenderSelection({
 
                                 <div className="flex items-center gap-8">
                                   <div className="text-center">
-                                    <div className="text-sm text-gray-500 mb-1">Daily Limit</div>
+                                    <div className="text-sm text-gray-500 mb-1">{t('senderManagement.dailyLimit')}</div>
                                     <div className="font-semibold text-gray-900 text-lg">{sender.daily_limit || 50}</div>
-                                    <div className="text-xs text-gray-500">emails/day</div>
+                                    <div className="text-xs text-gray-500">{t('senderManagement.emailsPerDay')}</div>
                                   </div>
                                   <div className="text-center">
-                                    <div className="text-sm text-gray-500 mb-1">Health Score</div>
+                                    <div className="text-sm text-gray-500 mb-1">{t('senderManagement.healthScore')}</div>
                                     {healthScoresLoading ? (
                                       <div className="font-semibold text-xl text-gray-400">
                                         <div className="animate-pulse">--</div>
@@ -1723,10 +1728,10 @@ export default function CampaignSenderSelection({
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
-                      Send Test Email
+                      {t('senderManagement.testModal.title')}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      Test your campaign email
+                      {t('senderManagement.testModal.description')}
                     </p>
                   </div>
                   <button
@@ -1766,14 +1771,14 @@ export default function CampaignSenderSelection({
                     type="email"
                     value={testModalEmail}
                     onChange={(e) => setTestModalEmail(e.target.value)}
-                    placeholder="Enter email address"
+                    placeholder={t('senderManagement.testModal.emailPlaceholder')}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm"
                   />
                 </div>
 
                 <div className="bg-amber-50/50 rounded-xl p-3 mb-4">
                   <p className="text-xs text-amber-800">
-                    Sends your first campaign email with test variables (John Doe, Acme Corp)
+                    {t('senderManagement.testModal.note')}
                   </p>
                 </div>
               </div>
@@ -1785,7 +1790,7 @@ export default function CampaignSenderSelection({
                   variant="outline"
                   className="flex-1 rounded-xl text-sm"
                 >
-                  Cancel
+                  {t('senderManagement.testModal.cancel')}
                 </Button>
                 <Button
                   onClick={sendTestEmail}
@@ -1795,10 +1800,10 @@ export default function CampaignSenderSelection({
                   {testModalLoading ? (
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      Sending...
+                      {t('senderManagement.testModal.sending')}
                     </div>
                   ) : (
-                    'Send Test'
+                    t('senderManagement.testModal.sendTest')
                   )}
                 </Button>
               </div>

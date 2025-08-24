@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react";
+import { useI18n } from '@/hooks/use-i18n';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ interface DomainSetupModalProps {
 }
 
 export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetupModalProps) {
+  const { t, ready: translationsReady } = useI18n()
   const [domain, setDomain] = useState("");
   const [replySubdomain, setReplySubdomain] = useState("reply");
   const [isChecking, setIsChecking] = useState(false);
@@ -41,7 +43,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
     
     // Show validation error if domain is not empty and invalid
     if (value.trim() && !validateDomain(value.trim())) {
-      setValidationError("Please enter a valid domain (e.g., example.com)");
+      setValidationError(t('domainSetup.validation.invalidDomain'));
     }
   };
 
@@ -177,12 +179,12 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
     
     // Validation
     if (!trimmedUsername) {
-      setAuthError("Username is required");
+      setAuthError(t('domainSetup.login.errors.usernameRequired'));
       return;
     }
     
     if (!trimmedPassword) {
-      setAuthError("Password is required");
+      setAuthError(t('domainSetup.login.errors.passwordRequired'));
       return;
     }
     
@@ -210,11 +212,11 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
         handleClose();
       } else {
         // Authentication failed
-        setAuthError(data.error || 'Authentication failed. Please check your credentials.');
+        setAuthError(data.error || t('domainSetup.login.errors.authFailed'));
       }
     } catch (error) {
       console.error('Login failed:', error);
-      setAuthError('Connection failed. Please try again.');
+      setAuthError(t('domainSetup.login.errors.connectionFailed'));
     } finally {
       setAuthenticating(false);
     }
@@ -255,14 +257,18 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
     }
   };
 
+  if (!translationsReady) {
+    return null
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg bg-white rounded-xl border border-gray-200 shadow-xl p-0">
         <DialogTitle className="sr-only">
-          {showLogin ? `Login to ${detectedProvider}` : 
-           showManualSetup ? 'Manual Setup Required' :
-           isAnalyzing ? 'Analyzing Domain' : 
-           'Add Domain'}
+          {showLogin ? t('domainSetup.login.title', { provider: detectedProvider }) : 
+           showManualSetup ? t('domainSetup.manual.title') :
+           isAnalyzing ? t('domainSetup.analyzing.title') : 
+           t('domainSetup.title')}
         </DialogTitle>
         <div className="relative p-6">
           {/* Content */}
@@ -270,31 +276,31 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
             <div className="space-y-6">
               {/* Header */}
               <div className="text-center space-y-3">
-                <h2 className="text-2xl font-light text-gray-900">Manual Setup</h2>
+                <h2 className="text-2xl font-light text-gray-900">{t('domainSetup.manual.title')}</h2>
                 <p className="text-gray-500">
-                  We'll guide you through setting up your domain manually
+                  {t('domainSetup.manual.description')}
                 </p>
               </div>
 
               {/* Steps */}
               <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-medium text-gray-900 mb-3">What happens next:</h3>
+                <h3 className="font-medium text-gray-900 mb-3">{t('domainSetup.manual.steps.title')}</h3>
                 <ul className="space-y-2 text-sm text-gray-700">
                   <li className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
-                    We'll create your domain configuration
+                    {t('domainSetup.manual.steps.createConfig')}
                   </li>
                   <li className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
-                    You'll get step-by-step DNS setup instructions
+                    {t('domainSetup.manual.steps.getInstructions')}
                   </li>
                   <li className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
-                    Copy the DNS records to your domain provider
+                    {t('domainSetup.manual.steps.copyRecords')}
                   </li>
                   <li className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
-                    Verify your domain when ready
+                    {t('domainSetup.manual.steps.verifyDomain')}
                   </li>
                 </ul>
               </div>
@@ -355,7 +361,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                     e.currentTarget.style.backgroundColor = 'rgb(87, 140, 255)'
                   }}
                 >
-                  Continue with Manual Setup
+                  {t('domainSetup.manual.continueButton')}
                 </Button>
 
                 <button 
@@ -367,7 +373,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                   }}
                   className="w-full text-gray-500 hover:text-gray-700 text-sm py-2 transition-colors"
                 >
-                  ← Go back and try again
+                  {t('domainSetup.manual.backButton')}
                 </button>
               </div>
             </div>
@@ -381,20 +387,20 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                 >
                   <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>
-                <h2 className="text-2xl font-light text-gray-900">Connect with {detectedProvider}</h2>
+                <h2 className="text-2xl font-light text-gray-900">{t('domainSetup.login.connectWith', { provider: detectedProvider })}</h2>
               </div>
 
               {/* Provider description */}
               <div className="text-center">
                 <p className="text-gray-500">
-                  Login to automatically configure your domain
+                  {t('domainSetup.login.description')}
                 </p>
               </div>
 
               {/* Login form */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('domainSetup.login.username')}</label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <Input
@@ -403,14 +409,14 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                         setUsername(e.target.value);
                         setAuthError(""); 
                       }}
-                      placeholder="Enter username"
+                      placeholder={t('domainSetup.login.usernamePlaceholder')}
                       className="h-12 border-gray-300 rounded-lg pl-10 focus:ring-2 focus:ring-black focus:border-black transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('domainSetup.login.password')}</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <Input
@@ -420,7 +426,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                         setPassword(e.target.value);
                         setAuthError("");
                       }}
-                      placeholder="Enter password"
+                      placeholder={t('domainSetup.login.passwordPlaceholder')}
                       className="h-12 border-gray-300 rounded-lg pl-10 pr-10 focus:ring-2 focus:ring-black focus:border-black transition-colors"
                       onKeyPress={(e) => e.key === 'Enter' && !authenticating && username.trim() && password.trim() && handleLogin()}
                     />
@@ -458,24 +464,24 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                   {authenticating ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Authenticating...
+                      {t('domainSetup.login.authenticating')}
                     </>
                   ) : (
-                    'Connect Domain'
+                    t('domainSetup.login.connectButton')
                   )}
                 </Button>
 
                 {/* Manual setup option */}
                 <div className="text-center pt-4">
                   <p className="text-sm text-gray-600">
-                    Can't login?{" "}
+                    {t('domainSetup.login.cantLogin')}{" "}
                     <button 
                       onClick={async () => {
                         await createDomainManually();
                       }}
                       className="text-gray-900 hover:text-black font-medium"
                     >
-                      Use manual setup instead
+                      {t('domainSetup.login.useManualSetup')}
                     </button>
                   </p>
                 </div>
@@ -491,9 +497,9 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                   <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-blue-400 animate-spin animate-reverse"></div>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-light text-gray-900 mb-2">Analyzing Domain</h2>
+                  <h2 className="text-2xl font-light text-gray-900 mb-2">{t('domainSetup.analyzing.title')}</h2>
                   <p className="text-gray-500">
-                    Checking your domain configuration
+                    {t('domainSetup.analyzing.description')}
                   </p>
                 </div>
               </div>
@@ -506,8 +512,8 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                       <Check className="w-4 h-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900">Domain Validation</div>
-                      <div className="text-sm text-gray-500">Verified {domain}</div>
+                      <div className="font-medium text-gray-900">{t('domainSetup.analyzing.steps.validation')}</div>
+                      <div className="text-sm text-gray-500">{t('domainSetup.analyzing.steps.verified', { domain })}</div>
                     </div>
                   </div>
                   
@@ -516,8 +522,8 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                       <div className="w-3 h-3 rounded-full bg-white animate-pulse"></div>
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900">Provider Detection</div>
-                      <div className="text-sm text-gray-500">Checking automated setup support...</div>
+                      <div className="font-medium text-gray-900">{t('domainSetup.analyzing.steps.detection')}</div>
+                      <div className="text-sm text-gray-500">{t('domainSetup.analyzing.steps.checking')}</div>
                     </div>
                   </div>
                   
@@ -526,8 +532,8 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                       <div className="w-2 h-2 rounded-full bg-gray-500"></div>
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-gray-500">Setup Preparation</div>
-                      <div className="text-sm text-gray-400">Preparing your configuration</div>
+                      <div className="font-medium text-gray-500">{t('domainSetup.analyzing.steps.preparation')}</div>
+                      <div className="text-sm text-gray-400">{t('domainSetup.analyzing.steps.preparing')}</div>
                     </div>
                   </div>
                 </div>
@@ -537,10 +543,10 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
             <div className="space-y-6">
               {/* Header */}
               <div className="text-center space-y-3">
-                <h2 className="text-2xl font-light text-gray-900">Add New Domain</h2>
+                <h2 className="text-2xl font-light text-gray-900">{t('domainSetup.title')}</h2>
                 {!isChecking && (
                   <p className="text-gray-500">
-                    Enter your domain to start sending emails
+                    {t('domainSetup.description')}
                   </p>
                 )}
               </div>
@@ -551,7 +557,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                   <div className="flex items-center gap-3">
                     <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                     <p className="text-gray-700">
-                      Checking domain configuration...
+                      {t('domainSetup.checking')}
                     </p>
                   </div>
                 </div>
@@ -560,12 +566,12 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Domain Name
+                    {t('domainSetup.domainName')}
                   </label>
                   <Input
                     value={domain}
                     onChange={(e) => handleDomainChange(e.target.value)}
-                    placeholder="example.com"
+                    placeholder={t('domainSetup.domainPlaceholder')}
                     className={`h-12 border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-colors ${
                       validationError ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : ''
                     }`}
@@ -578,8 +584,8 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Reply Subdomain
-                    <span className="text-gray-500 text-xs ml-2">(where replies will be routed)</span>
+                    {t('domainSetup.replySubdomain')}
+                    <span className="text-gray-500 text-xs ml-2">({t('domainSetup.replySubdomainNote')})</span>
                   </label>
                   <div className="flex items-center">
                     <Input
@@ -590,11 +596,11 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                       style={{ maxWidth: '120px' }}
                     />
                     <div className="bg-gray-50 border border-l-0 border-gray-300 h-12 px-3 flex items-center rounded-r-lg">
-                      <span className="text-gray-600 text-sm">.{domain || 'yourdomain.com'}</span>
+                      <span className="text-gray-600 text-sm">.{domain || t('domainSetup.yourDomainExample')}</span>
                     </div>
                   </div>
                   <p className="text-gray-500 text-xs mt-2">
-                    Full address will be: <strong>{replySubdomain}.{domain || 'yourdomain.com'}</strong>
+                    {t('domainSetup.fullAddressWillBe')} <strong>{replySubdomain}.{domain || t('domainSetup.yourDomainExample')}</strong>
                   </p>
                 </div>
 
@@ -604,7 +610,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                     onClick={handleCancel}
                     className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 py-2.5 rounded-lg font-medium transition-colors"
                   >
-                    Cancel
+                    {t('domainSetup.cancel')}
                   </Button>
                   <Button
                     onClick={handleAddDomain}
@@ -622,7 +628,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                       }
                     }}
                   >
-                    {isChecking ? 'Checking...' : 'Add Domain'}
+                    {isChecking ? t('domainSetup.checking') : t('domainSetup.addButton')}
                   </Button>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useI18n } from '@/hooks/use-i18n'
 import {
   Search,
   ArrowUpDown,
@@ -49,6 +50,7 @@ interface Domain {
 }
 
 export default function DomainsPage() {
+  const { t, ready } = useI18n()
   const [currentView, setCurrentView] = useState<ViewType>("domains")
   const [selectedDomain, setSelectedDomain] = useState<string>("")
   const [selectedDomainId, setSelectedDomainId] = useState<string>("")
@@ -76,6 +78,43 @@ export default function DomainsPage() {
   const [showVerificationResults, setShowVerificationResults] = useState(false)
   const [copiedStates, setCopiedStates] = useState<{[key: string]: boolean}>({})
 
+  // Define all useCallback hooks first
+  const fetchDomains = useCallback(async () => {
+    try {
+      setLoading(true)
+      console.log('Fetching domains from /api/domains...')
+      const response = await fetch('/api/domains', {
+        credentials: 'include', // Ensure cookies are sent
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      const data = await response.json()
+      
+      console.log('Domains API response:', { status: response.status, data })
+      
+      if (response.ok) {
+        const domainsData = data.domains || []
+        console.log('Setting domains data:', domainsData)
+        setDomains(domainsData)
+        console.log(`Successfully loaded ${domainsData.length} domains`)
+      } else {
+        console.error('Domains API error:', data)
+        if (response.status === 401) {
+          toast.error('Authentication required. Please sign in again.')
+        } else {
+          toast.error(data.error || 'Failed to load domains')
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching domains:', error)
+      toast.error('Failed to load domains')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Define all useEffect hooks
   useEffect(() => {
     fetchDomains()
   }, []) // Remove domains dependency to prevent infinite loop
@@ -134,40 +173,6 @@ export default function DomainsPage() {
     }
   }, [domains]) // Keep domains dependency only for the event listener
 
-  const fetchDomains = useCallback(async () => {
-    try {
-      setLoading(true)
-      console.log('Fetching domains from /api/domains...')
-      const response = await fetch('/api/domains', {
-        credentials: 'include', // Ensure cookies are sent
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-      const data = await response.json()
-      
-      console.log('Domains API response:', { status: response.status, data })
-      
-      if (response.ok) {
-        const domainsData = data.domains || []
-        console.log('Setting domains data:', domainsData)
-        setDomains(domainsData)
-        console.log(`Successfully loaded ${domainsData.length} domains`)
-      } else {
-        console.error('Domains API error:', data)
-        if (response.status === 401) {
-          toast.error('Authentication required. Please sign in again.')
-        } else {
-          toast.error(data.error || 'Failed to load domains')
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching domains:', error)
-      toast.error('Failed to load domains')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   const handleManageDomain = (domain: Domain) => {
     setSelectedDomain(domain.domain)
@@ -522,14 +527,21 @@ export default function DomainsPage() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'verified':
-        return 'Connected'
+        return t('domains.status.verified')
       case 'pending':
-        return 'Setting up'
+        return t('domains.status.settingUp')
       case 'failed':
-        return 'Failed'
+        return t('domains.status.failed')
       default:
-        return 'Unknown'
+        return t('domains.status.unknown')
     }
+  }
+
+  // Translation loading check - must come after all hooks
+  if (!ready) {
+    return <div className="flex items-center justify-center h-64">
+      <div className="text-gray-500">{t ? t('common.loading') : 'Loading...'}</div>
+    </div>
   }
 
   // Domains list view
@@ -541,9 +553,9 @@ export default function DomainsPage() {
           <div className="mb-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Domains</h1>
+                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('domains.title')}</h1>
                 <p className="text-gray-500 font-light">
-                  Manage your email domains and sender accounts
+                  {t('domains.manageEmailDomains')}
                 </p>
               </div>
 
@@ -552,7 +564,7 @@ export default function DomainsPage() {
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Domain
+                {t('domains.addDomain')}
               </Button>
             </div>
           </div>
@@ -562,7 +574,7 @@ export default function DomainsPage() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search domains..."
+                placeholder={t('domains.searchDomains')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 h-10 bg-white border-gray-200 rounded-2xl"
@@ -573,9 +585,9 @@ export default function DomainsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="rounded-2xl border-gray-200">
-                <SelectItem value="date-created">Date Created</SelectItem>
-                <SelectItem value="name">Name</SelectItem>
-                <SelectItem value="status">Status</SelectItem>
+                <SelectItem value="date-created">{t('domains.dateCreated')}</SelectItem>
+                <SelectItem value="name">{t('domains.name')}</SelectItem>
+                <SelectItem value="status">{t('domains.statusLabel')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -585,7 +597,7 @@ export default function DomainsPage() {
             <div className="flex items-center justify-center py-16">
               <div className="flex items-center gap-3">
                 <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                <span className="text-gray-600">Loading domains...</span>
+                <span className="text-gray-600">{t('domains.loadingDomains')}</span>
               </div>
             </div>
           ) : domains.length === 0 ? (
@@ -593,16 +605,16 @@ export default function DomainsPage() {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Globe className="h-8 w-8 text-gray-400" />
               </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">No domains yet</h3>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">{t('domains.noDomainsYet')}</h3>
               <p className="text-gray-500 mb-8 font-light max-w-md mx-auto">
-                Add your first domain to start sending emails. We'll help you set it up step by step.
+                {t('domains.addFirstDomain')}
               </p>
               <Button 
                 onClick={() => setShowAddDomain(true)} 
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-6 py-3 font-medium transition-all duration-300 rounded-2xl"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Your First Domain
+                {t('domains.addFirstDomain')}
               </Button>
             </div>
           ) : (
@@ -674,7 +686,7 @@ export default function DomainsPage() {
                           onClick={() => handleManageDomain(domain)}
                           className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                         >
-                          {domain.status === 'verified' ? 'Manage' : 'Setup'}
+                          {domain.status === 'verified' ? t('domains.manage') : t('domains.setup')}
                         </Button>
                         
                         <Button
@@ -682,7 +694,7 @@ export default function DomainsPage() {
                           onClick={() => handleDeleteDomain(domain)}
                           className="border-red-300 hover:bg-red-50 text-red-600 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                         >
-                          Delete
+                          {t('domains.delete')}
                         </Button>
                         </div>
                       </div>
@@ -703,19 +715,19 @@ export default function DomainsPage() {
           <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Delete Domain</DialogTitle>
+                <DialogTitle>{t('domains.deleteDomain')}</DialogTitle>
                 <DialogDescription>
-                  This action cannot be undone. Type "delete" to confirm removal of <strong>{domainToDelete?.domain}</strong>.
+                  {t('domains.deleteConfirmation', { domain: domainToDelete?.domain })}
                 </DialogDescription>
               </DialogHeader>
               <Input
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="Type 'delete' to confirm"
+                placeholder={t('domains.deletePlaceholder')}
               />
               <DialogFooter>
                 <Button variant="outline" onClick={cancelDeleteDomain}>
-                  Cancel
+                  {t('domains.cancel')}
                 </Button>
                 <Button
                   variant="destructive"
@@ -725,10 +737,10 @@ export default function DomainsPage() {
                   {isDeleting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Deleting...
+                      {t('domains.deleting')}
                     </>
                   ) : (
-                    "Delete Domain"
+                    t('domains.deleteDomain')
                   )}
                 </Button>
               </DialogFooter>
@@ -750,13 +762,13 @@ export default function DomainsPage() {
             className="text-gray-600 hover:text-gray-900 -ml-2 mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Domains
+            {t('dnsSetup.backToDomains')}
           </Button>
           
           <div className="mb-8">
-            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Setup {selectedDomain}</h1>
+            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('dnsSetup.title', { domain: selectedDomain })}</h1>
             <p className="text-gray-500 font-light">
-              Follow these steps to connect your domain
+              {t('dnsSetup.subtitle')}
             </p>
           </div>
 
@@ -767,12 +779,12 @@ export default function DomainsPage() {
                 <span className="text-gray-600 font-medium text-sm">?</span>
               </div>
               <div>
-                <h3 className="font-medium text-gray-900 mb-3">Quick Steps</h3>
+                <h3 className="font-medium text-gray-900 mb-3">{t('dnsSetup.quickSteps.title')}</h3>
                 <ol className="space-y-2 text-gray-700 text-sm">
-                  <li><span className="font-medium">1.</span> Go to your domain provider (GoDaddy, Namecheap, etc.)</li>
-                  <li><span className="font-medium">2.</span> Look for "DNS Settings" or "Domain Management"</li>
-                  <li><span className="font-medium">3.</span> Copy and paste each setting below</li>
-                  <li><span className="font-medium">4.</span> Save and come back to verify</li>
+                  <li><span className="font-medium">1.</span> {t('dnsSetup.quickSteps.step1')}</li>
+                  <li><span className="font-medium">2.</span> {t('dnsSetup.quickSteps.step2')}</li>
+                  <li><span className="font-medium">3.</span> {t('dnsSetup.quickSteps.step3')}</li>
+                  <li><span className="font-medium">4.</span> {t('dnsSetup.quickSteps.step4')}</li>
                 </ol>
               </div>
             </div>
@@ -783,7 +795,7 @@ export default function DomainsPage() {
             <div className="bg-white rounded-xl border p-8 mb-8">
               <div className="flex items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                <span className="ml-3 text-gray-600">Loading your settings...</span>
+                <span className="ml-3 text-gray-600">{t('dnsSetup.loading')}</span>
               </div>
             </div>
           ) : dnsRecords.length > 0 ? (
@@ -791,14 +803,14 @@ export default function DomainsPage() {
               {/* Regular DNS Records (non-MX) */}
               {dnsRecords.filter(r => r.type !== 'MX').length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-3">DNS Records</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">{t('dnsSetup.dnsRecords')}</h3>
                   <div className="bg-white rounded-xl border overflow-hidden">
                     <table className="w-full">
                       <thead className="bg-gray-50 border-b">
                         <tr>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Type</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Host</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Value</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.type')}</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.host')}</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.value')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -819,7 +831,7 @@ export default function DomainsPage() {
                                   size="sm"
                                   onClick={() => copyToClipboard(record.host, `host-regular-${index}`)}
                                   className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6"
-                                  title="Copy Host"
+                                  title={t('dnsSetup.copyHost')}
                                 >
                                   {copiedStates[`host-regular-${index}`] ? (
                                     <Check className="w-3 h-3" />
@@ -839,7 +851,7 @@ export default function DomainsPage() {
                                   size="sm"
                                   onClick={() => copyToClipboard(record.value, `value-regular-${index}`)}
                                   className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6 flex-shrink-0"
-                                  title="Copy Value"
+                                  title={t('dnsSetup.copyValue')}
                                 >
                                   {copiedStates[`value-regular-${index}`] ? (
                                     <Check className="w-3 h-3" />
@@ -860,15 +872,15 @@ export default function DomainsPage() {
               {/* MX Records with Priority */}
               {dnsRecords.filter(r => r.type === 'MX').length > 0 && (
                 <div className="mb-8">
-                  <h3 className="text-lg font-medium text-gray-900 mb-3">MX Records (Mail Exchange)</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">{t('dnsSetup.mxRecords')}</h3>
                   <div className="bg-white rounded-xl border overflow-hidden">
                     <table className="w-full">
                       <thead className="bg-gray-50 border-b">
                         <tr>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Type</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Host</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Priority</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Value</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.type')}</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.host')}</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.priority')}</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.value')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -889,7 +901,7 @@ export default function DomainsPage() {
                                   size="sm"
                                   onClick={() => copyToClipboard(record.host, `host-mx-${index}`)}
                                   className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6"
-                                  title="Copy Host"
+                                  title={t('dnsSetup.copyHost')}
                                 >
                                   {copiedStates[`host-mx-${index}`] ? (
                                     <Check className="w-3 h-3" />
@@ -909,7 +921,7 @@ export default function DomainsPage() {
                                   size="sm"
                                   onClick={() => copyToClipboard(String(record.priority || '10'), `priority-mx-${index}`)}
                                   className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6"
-                                  title="Copy Priority"
+                                  title={t('dnsSetup.copyPriority')}
                                 >
                                   {copiedStates[`priority-mx-${index}`] ? (
                                     <Check className="w-3 h-3" />
@@ -929,7 +941,7 @@ export default function DomainsPage() {
                                   size="sm"
                                   onClick={() => copyToClipboard(record.value, `value-mx-${index}`)}
                                   className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6 flex-shrink-0"
-                                  title="Copy Value"
+                                  title={t('dnsSetup.copyValue')}
                                 >
                                   {copiedStates[`value-mx-${index}`] ? (
                                     <Check className="w-3 h-3" />
@@ -1001,7 +1013,7 @@ export default function DomainsPage() {
                       className="mt-1"
                     />
                     <label htmlFor="dns-added" className="text-gray-700 font-medium leading-relaxed">
-                      I've added all the settings above to my domain provider
+                      {t('dnsSetup.verification.addedSettings')}
                     </label>
                   </div>
 
@@ -1029,17 +1041,17 @@ export default function DomainsPage() {
                       {verifying ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Checking connection...
+                          {t('dnsSetup.verification.checking')}
                         </>
                       ) : (
-                        'Check My Domain'
+                        t('dnsSetup.verification.checkDomain')
                       )}
                     </Button>
                   </div>
                   
                   <div className="text-center">
                     <p className="text-sm text-gray-500">
-                      Changes can take up to 24 hours to take effect
+                      {t('dnsSetup.verification.timeNote')}
                     </p>
                   </div>
                 </div>
@@ -1091,7 +1103,7 @@ export default function DomainsPage() {
                         onClick={handleBackToDomains}
                         className="border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2 rounded-lg font-medium transition-colors"
                       >
-                        Back to Domains
+                        {t('dnsSetup.backToDomains')}
                       </Button>
                     </div>
                   </div>
@@ -1160,7 +1172,7 @@ export default function DomainsPage() {
                           onClick={handleBackToDomains}
                           className="border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2 rounded-lg font-medium transition-colors"
                         >
-                          Back to Domains
+                          {t('dnsSetup.backToDomains')}
                         </Button>
                       </div>
                     </div>
