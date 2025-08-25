@@ -259,7 +259,11 @@
         "freePlanLimit": "Free Plan Limit: 100",
         "scrapingStarted": "Scraping Started",
         "pause": "Pause Scraping",
-        "processRunning": "Process Running..."
+        "processRunning": "Process Running...",
+        "startScraping": "Start Scraping",
+        "fillRequiredFields": "Please fill in all required fields",
+        "confirmationTitle": "Start Scraping Confirmation",
+        "confirmStart": "Are you sure you want to start scraping with these settings?"
       },
       "import": {
         "title": "Import Contacts from File",
@@ -310,7 +314,9 @@
         "emailContent": "Email Content",
         "preview": "Preview",
         "variables": "Variables",
-        "insertSignature": "Insert Signature"
+        "insertSignature": "Insert Signature",
+        "sendSchedule": "Send Schedule",
+        "minimumDays": "Minimum Days"
       }
     },
     "loading": {
@@ -335,6 +341,18 @@
       },
       "progress": {
         "stepOf": "Step {current} of {total}"
+      },
+      "steps": {
+        "addTargetAudience": "Add Target Audience",
+        "createEmailSequences": "Create Email Sequences",
+        "selectSenderAccounts": "Select Sender Accounts",
+        "configureSettings": "Configure Settings"
+      },
+      "descriptions": {
+        "importContacts": "Import your contacts or use auto-scraping to find new prospects",
+        "designMessages": "Design personalized email sequences for your campaign",
+        "chooseEmailAccounts": "Choose which email accounts will send your campaigns",
+        "setSendingSchedule": "Set your sending schedule and campaign timing"
       }
     },
     "validation": {
@@ -399,6 +417,11 @@
         "description": "Are you sure you want to move to the next step? Make sure you've saved your sequence changes.",
         "cancel": "Cancel",
         "continue": "Continue"
+      },
+      "preview": {
+        "title": "Email Preview",
+        "immediately": "Send immediately",
+        "subject": "Subject"
       }
     }
   },

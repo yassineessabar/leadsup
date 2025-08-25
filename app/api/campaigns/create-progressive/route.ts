@@ -573,15 +573,16 @@ Pain Points: ${JSON.stringify(aiAssets.pain_points?.[0])}
 Value Proposition: ${JSON.stringify(aiAssets.value_propositions?.[0])}
 
 CRITICAL PERSONALIZATION REQUIREMENTS - YOU MUST FOLLOW THESE:
-1. **ANALYZE THE PAIN POINT**: Take the exact pain point description and impact from the data above - reference it specifically in your emails, don't use generic problems
-2. **SOLVE WITH VALUE PROP**: Use the exact value proposition description and benefits to show HOW you solve their specific problem
-3. **SPEAK TO THE PERSONA**: Address the persona by their exact title/role, reference their specific goals and challenges from the data
-4. **USE ICP CONTEXT**: Mention their industry, company size, and decision-maker context from the ICP data
-5. **WEBSITE AUTHENTICITY**: ${websiteContent ? 'Extract key phrases, services, and tone from the website content to make emails sound authentic to this specific company' : 'Use professional language that matches the company context'}
-6. **SPECIFIC BENEFITS**: Don't say "improve efficiency" - use the EXACT benefits listed in the value proposition
-7. **PROBLEM-SOLUTION FIT**: Each email should clearly connect their specific problem to your specific solution
+1. **USE VARIABLES**: ALWAYS use {{firstName}} and {{companyName}} variables. NEVER write hardcoded names like "Jean" or "Bonjour Jean" - always use "Hi {{firstName}}" or "Hello {{firstName}}"
+2. **ANALYZE THE PAIN POINT**: Take the exact pain point description and impact from the data above - reference it specifically in your emails, don't use generic problems
+3. **SOLVE WITH VALUE PROP**: Use the exact value proposition description and benefits to show HOW you solve their specific problem
+4. **SPEAK TO THE PERSONA**: Address the persona by their exact title/role, reference their specific goals and challenges from the data
+5. **USE ICP CONTEXT**: Mention their industry, company size, and decision-maker context from the ICP data
+6. **WEBSITE AUTHENTICITY**: ${websiteContent ? 'Extract key phrases, services, and tone from the website content to make emails sound authentic to this specific company' : 'Use professional language that matches the company context'}
+7. **SPECIFIC BENEFITS**: Don't say "improve efficiency" - use the EXACT benefits listed in the value proposition
+8. **PROBLEM-SOLUTION FIT**: Each email should clearly connect their specific problem to your specific solution
 
-**MANDATORY**: Every email MUST reference specific data from the context above. NO generic language allowed.
+**MANDATORY VARIABLES**: EVERY email MUST start with "Hi {{firstName}}," or "Hello {{firstName}}," and reference {{companyName}} in the content. NEVER use hardcoded names.
 
 TONE & STYLE:
 - Professional but conversational
@@ -611,8 +612,13 @@ LANGUAGE REQUIREMENT:
 - Adapt tone and expressions to be culturally appropriate for ${formData.language || 'English'}-speaking business contexts
 
 **EXAMPLE OF PERSONALIZATION**:
-Instead of: "I noticed {{companyName}} and thought you might be interested..."
-Write: "Hi {{firstName}}, I noticed [PERSONA TITLE] at [ICP INDUSTRY] companies like {{companyName}} often struggle with [EXACT PAIN POINT]. Our [VALUE PROP SOLUTION] helps [PERSONA GOALS] by [SPECIFIC BENEFITS]."
+WRONG: "Bonjour Jean," or "Hello John," - NEVER use hardcoded names!
+CORRECT: "Hi {{firstName}}," or "Hello {{firstName}},"
+
+Full example:
+"Hi {{firstName}}, I noticed [PERSONA TITLE] at [ICP INDUSTRY] companies like {{companyName}} often struggle with [EXACT PAIN POINT]. Our [VALUE PROP SOLUTION] helps [PERSONA GOALS] by [SPECIFIC BENEFITS]."
+
+REMEMBER: {{firstName}} and {{companyName}} will be replaced with actual names when emails are sent.
 
 FINAL REMINDER: Generate ALL content (subjects, email bodies, CTAs) in ${formData.language || 'English'}. Make it sound natural and professional.
 
