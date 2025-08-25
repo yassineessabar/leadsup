@@ -168,7 +168,7 @@ function generateSequencesForStrategy(strategy: string, campaignId: string) {
           subject: "Collaborate?",
           content: `Hi {{firstName}},
 
-I hope this email finds you well. I came across your work at {{companyName}} and was impressed by your approach to {{industry}}.
+I hope this email finds you well. I came across your work at {{company}} and was impressed by your approach to {{industry}}.
 
 I'd love to explore how we can collaborate and potentially help you overcome some of the challenges you might be facing with {{painPoint}}.
 
@@ -183,12 +183,12 @@ Best regards,
         {
           campaign_id: campaignId,
           step_number: 2,
-          subject: "Following up - {{companyName}}",
+          subject: "Following up - {{company}}",
           content: `Hi {{firstName}},
 
 I wanted to follow up on my previous email about potential collaboration opportunities.
 
-I understand you're probably busy, but I believe our solution could significantly help with {{painPoint}} that many companies like {{companyName}} face.
+I understand you're probably busy, but I believe our solution could significantly help with {{painPoint}} that many companies like {{company}} face.
 
 Would you have 10 minutes for a quick call this week?
 
@@ -201,7 +201,7 @@ Best regards,
         {
           campaign_id: campaignId,
           step_number: 3,
-          subject: "Last attempt - {{companyName}}",
+          subject: "Last attempt - {{company}}",
           content: `Hi {{firstName}},
 
 This will be my final email regarding our potential collaboration.
@@ -226,7 +226,7 @@ Best regards,
           subject: "Collaborate?",
           content: `Hi {{firstName}},
 
-I hope this email finds you well. I came across your work at {{companyName}} and was impressed by your approach to {{industry}}.
+I hope this email finds you well. I came across your work at {{company}} and was impressed by your approach to {{industry}}.
 
 I'd love to explore how we can collaborate and potentially help you overcome some of the challenges you might be facing with {{painPoint}}.
 
@@ -244,7 +244,7 @@ Best regards,
           subject: "Connection Request",
           content: `Hi {{firstName}},
 
-I came across your profile and was impressed by your work at {{companyName}}. I'd love to connect and share some insights that could help with {{painPoint}}.
+I came across your profile and was impressed by your work at {{company}}. I'd love to connect and share some insights that could help with {{painPoint}}.
 
 Looking forward to connecting!
 
@@ -264,7 +264,7 @@ Best regards,
           subject: "Collaborate?",
           content: `Hi {{firstName}},
 
-I hope this email finds you well. I came across your work at {{companyName}} and was impressed by your approach to {{industry}}.
+I hope this email finds you well. I came across your work at {{company}} and was impressed by your approach to {{industry}}.
 
 I'd love to explore how we can collaborate and potentially help you overcome some of the challenges you might be facing with {{painPoint}}.
 
@@ -282,7 +282,7 @@ Best regards,
           subject: "Follow-up Connection",
           content: `Hi {{firstName}},
 
-I sent you an email recently about collaborating with {{companyName}}. I'd love to connect here on LinkedIn and continue our conversation.
+I sent you an email recently about collaborating with {{company}}. I'd love to connect here on LinkedIn and continue our conversation.
 
 Let me know if you're interested in discussing {{painPoint}} solutions.
 
@@ -298,7 +298,7 @@ Best regards,
           subject: "Phone Follow-up",
           content: `Hi {{firstName}},
 
-I wanted to follow up on my email and LinkedIn message about helping {{companyName}} with {{painPoint}}.
+I wanted to follow up on my email and LinkedIn message about helping {{company}} with {{painPoint}}.
 
 I'll give you a call to discuss how we can collaborate and provide value to your business.
 
