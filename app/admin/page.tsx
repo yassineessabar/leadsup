@@ -41,6 +41,7 @@ interface AutomationLog {
 
 interface SenderHealth {
   email: string
+  warmup_status: string
   stats: {
     sent: number
     delivered: number
@@ -381,6 +382,7 @@ export default function AdminPanel() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Sender Email</TableHead>
+                    <TableHead>Warmup Status</TableHead>
                     <TableHead>Sent</TableHead>
                     <TableHead>Delivered</TableHead>
                     <TableHead>Opened</TableHead>
@@ -395,6 +397,17 @@ export default function AdminPanel() {
                   {senderHealth.map((sender, index) => (
                     <TableRow key={`sender-${sender.email}-${index}`}>
                       <TableCell className="font-medium">{sender.email}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            sender.warmup_status === 'completed' ? 'default' : 
+                            sender.warmup_status === 'in_progress' ? 'secondary' : 
+                            'outline'
+                          }
+                        >
+                          {sender.warmup_status}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{sender.stats.sent}</TableCell>
                       <TableCell>{sender.stats.delivered}</TableCell>
                       <TableCell>{sender.stats.opened}</TableCell>

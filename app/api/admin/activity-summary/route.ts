@@ -299,17 +299,36 @@ export async function GET(request: NextRequest) {
       console.log('Admin API: Could not get automation logs:', error.message)
     }
 
-    // STEP 4: Calculate real sender health scores from email data
-    console.log('Admin API: Calculating real sender health scores...')
+    // STEP 4: Get real sender health data from campaign_senders table
+    console.log('Admin API: Getting real sender health data from campaign_senders table...')
     
     if (allSenderAccounts && allSenderAccounts.length > 0) {
+      console.log('Admin API: Found', allSenderAccounts.length, 'sender accounts to process')
       senderHealthScores = await Promise.all(
         allSenderAccounts.map(async (sender) => {
-          // Get email stats for this sender
-          const { data: emailStats } = await supabaseAdmin
+          console.log('Admin API: Processing sender:', sender.email)
+          
+          // Get campaign_senders data for this sender email  
+          const { data: campaignSenderData, error: campaignSenderError } = await supabaseAdmin
+            .from('campaign_senders')
+            .select('*')
+            .eq('email', sender.email)
+          
+          console.log('Admin API: Campaign sender data for', sender.email, ':', campaignSenderData?.length || 0, 'records')
+          if (campaignSenderError) {
+            console.log('Admin API: Campaign sender error:', campaignSenderError.message)
+          }
+          
+          // Get email stats for this sender from email_tracking
+          const { data: emailStats, error: emailStatsError } = await supabaseAdmin
             .from('email_tracking')
             .select('*')
             .eq('sender_email', sender.email)
+          
+          console.log('Admin API: Email stats for', sender.email, ':', emailStats?.length || 0, 'records')
+          if (emailStatsError) {
+            console.log('Admin API: Email stats error:', emailStatsError.message)
+          }
           
           const stats = {
             sent: emailStats?.length || 0,
@@ -324,13 +343,21 @@ export async function GET(request: NextRequest) {
           const openRate = stats.delivered > 0 ? ((stats.opened / stats.delivered) * 100).toFixed(1) : '0.0'
           const bounceRate = stats.sent > 0 ? ((stats.bounced / stats.sent) * 100).toFixed(1) : '0.0'
           
-          // Calculate health score based on delivery rate, open rate, and bounce rate
-          const healthScore = stats.sent > 0 ? 
-            Math.max(0, 100 - (parseFloat(bounceRate) * 2) - (100 - parseFloat(deliveryRate))).toFixed(0) : 
-            '0'
+          // Use health_score from campaign_senders table, fallback to calculated if not available
+          const campaignSender = campaignSenderData?.[0]
+          console.log('Admin API: Campaign sender record for', sender.email, ':', campaignSender ? 'Found' : 'Not found')
+          if (campaignSender) {
+            console.log('Admin API: Health score:', campaignSender.health_score, 'Warmup status:', campaignSender.warmup_status)
+          }
           
-          return {
+          const healthScore = campaignSender?.health_score?.toString() || 
+            (stats.sent > 0 ? 
+              Math.max(0, 100 - (parseFloat(bounceRate) * 2) - (100 - parseFloat(deliveryRate))).toFixed(0) : 
+              '0')
+          
+          const result = {
             email: sender.email,
+            warmup_status: campaignSender?.warmup_status || 'unknown',
             stats,
             metrics: {
               deliveryRate,
@@ -339,9 +366,12 @@ export async function GET(request: NextRequest) {
               healthScore
             }
           }
+          
+          console.log('Admin API: Final result for', sender.email, '- Warmup:', result.warmup_status, 'Health:', result.metrics.healthScore)
+          return result
         })
       )
-      console.log('Admin API: Calculated health scores for', senderHealthScores.length, 'senders')
+      console.log('Admin API: Got health data for', senderHealthScores.length, 'senders from campaign_sender table')
     }
 
     // Return ONLY real data
