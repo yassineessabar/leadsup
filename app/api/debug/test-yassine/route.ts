@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
       },
       subject: personalizedSubject,
       html: personalizedContent,
-      text: personalizedContent.replace(/<[^>]*>/g, '')
+      text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')
     }
     
     try {
@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
           contact_name: `${contact?.first_name} ${contact?.last_name}`,
           sender_email: senderEmail,
           subject: personalizedSubject,
-          body_text: personalizedContent.replace(/<[^>]*>/g, ''),
+          body_text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''),
           body_html: personalizedContent,
           direction: 'outbound',
           channel: 'email',

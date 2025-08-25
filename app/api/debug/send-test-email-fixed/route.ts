@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       replyTo: replyToEmail,
       subject: subject,
       html: content,
-      text: content.replace(/<[^>]*>/g, '')
+      text: content.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')
     }
     
     const result = await sgMail.send(msg)
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       contact_name: 'Yassine Test',
       sender_email: sender.email,
       subject: subject,
-      body_text: content.replace(/<[^>]*>/g, ''),
+      body_text: content.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''),
       body_html: content,
       direction: 'outbound',
       channel: 'email',

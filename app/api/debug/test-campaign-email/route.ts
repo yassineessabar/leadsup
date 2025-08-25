@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       replyTo: replyToEmail,
       subject: subject,
       html: content,
-      text: content.replace(/<[^>]*>/g, '')
+      text: content.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')
     }
     
     console.log(`📧 Sending test email with proper campaign linking...`)
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       contact_name: 'Test Contact',
       sender_email: sender.email,
       subject: subject,
-      body_text: content.replace(/<[^>]*>/g, ''),
+      body_text: content.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''),
       body_html: content,
       direction: 'outbound',
       channel: 'email',
