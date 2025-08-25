@@ -21,28 +21,41 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
         console.log('Current i18n language:', i18n.language);
         console.log('Stored language preference:', storedLanguage);
         
-        // Always set to stored language if it differs from current
-        if (i18n.language !== storedLanguage) {
+        // Only set to stored language if it differs from current AND is a valid language
+        if (i18n.language !== storedLanguage && ['en', 'fr'].includes(storedLanguage)) {
           console.log('🔄 Setting language to stored preference:', storedLanguage);
           await i18n.changeLanguage(storedLanguage);
           console.log('✅ Language set to:', i18n.language);
         } else {
-          console.log('✅ Language already matches stored preference:', i18n.language);
+          console.log('✅ Language already matches stored preference or invalid stored language:', i18n.language);
         }
         
-        // Check if translations are loaded
-        const hasEnglish = i18n.hasResourceBundle('en', 'translation');
-        const hasFrench = i18n.hasResourceBundle('fr', 'translation');
-        console.log('📚 Translation bundles loaded:', { en: hasEnglish, fr: hasFrench });
+        // Wait for initial translations to be ready
+        let attempts = 0;
+        const maxAttempts = 10;
         
-        // Force load translations if not already loaded
-        if (!hasEnglish || !hasFrench) {
-          console.log('🔄 Force loading missing translation bundles...');
-          await i18n.reloadResources();
-        }
+        const waitForTranslations = async () => {
+          const hasCurrentLangResources = i18n.hasResourceBundle(i18n.language, 'translation');
+          
+          if (hasCurrentLangResources || attempts >= maxAttempts) {
+            console.log('📚 Translation resources ready for:', i18n.language);
+            setIsI18nInitialized(true);
+            return;
+          }
+          
+          attempts++;
+          console.log(`⏳ Waiting for translations... (${attempts}/${maxAttempts})`);
+          
+          // Try to reload resources for current language
+          if (attempts <= 3) {
+            await i18n.reloadResources([i18n.language]);
+          }
+          
+          setTimeout(waitForTranslations, 200);
+        };
         
+        await waitForTranslations();
         console.log('✅ i18n setup complete, current language:', i18n.language);
-        setIsI18nInitialized(true);
       } catch (error) {
         console.error('❌ Error setting up i18n:', error);
         setIsI18nInitialized(true); // Still set to true to prevent infinite loading
@@ -50,8 +63,14 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Listen for language changes
-    const handleLanguageChange = () => {
-      console.log('Language changed to:', i18n.language);
+    const handleLanguageChange = (lng: string) => {
+      console.log('🌍 Language changed to:', lng);
+      // Update storage to keep it in sync
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('i18nextLng', lng);
+        sessionStorage.setItem('i18nextLng', lng);
+        document.cookie = `i18nextLng=${lng}; path=/; max-age=31536000`;
+      }
     };
 
     i18n.on('languageChanged', handleLanguageChange);

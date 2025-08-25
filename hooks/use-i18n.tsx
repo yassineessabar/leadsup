@@ -4,15 +4,25 @@ import { useEffect, useState } from 'react';
 export function useI18n(namespace?: string) {
   const { t, i18n, ready } = useTranslation(namespace);
   const [isFullyReady, setIsFullyReady] = useState(false);
+  const [currentLang, setCurrentLang] = useState(i18n.language);
   
   // Wait for translations to be fully loaded
   useEffect(() => {
-    const checkTranslations = () => {
-      if (ready && i18n.hasResourceBundle(i18n.language, 'translation')) {
+    const checkTranslations = (lng?: string) => {
+      const currentLanguage = lng || i18n.language;
+      const hasResources = i18n.hasResourceBundle(currentLanguage, 'translation');
+      if (ready && hasResources) {
         setIsFullyReady(true);
-        console.log('✅ Translations fully loaded for language:', i18n.language);
+        setCurrentLang(currentLanguage);
+        console.log('✅ Translations fully loaded for language:', currentLanguage);
       } else {
-        console.log('⏳ Waiting for translations to load...', { ready, language: i18n.language });
+        console.log('⏳ Waiting for translations to load...', { ready, language: currentLanguage, hasResources });
+        setIsFullyReady(false);
+        // Force reload resources if needed
+        if (ready && !hasResources) {
+          console.log('🔄 Forcing resource reload for language:', currentLanguage);
+          i18n.reloadResources([currentLanguage]);
+        }
       }
     };
 
@@ -35,10 +45,23 @@ export function useI18n(namespace?: string) {
     t,
     i18n,
     ready: isFullyReady,
-    currentLanguage: i18n.language,
-    changeLanguage: (lng: string) => {
-      console.log('Changing language to:', lng);
-      i18n.changeLanguage(lng);
+    currentLanguage: currentLang,
+    changeLanguage: async (lng: string) => {
+      console.log('useI18n - Changing language to:', lng);
+      try {
+        // Update storage first
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('i18nextLng', lng);
+          sessionStorage.setItem('i18nextLng', lng);
+          document.cookie = `i18nextLng=${lng}; path=/; max-age=31536000`;
+        }
+        
+        await i18n.changeLanguage(lng);
+        setCurrentLang(lng);
+        console.log('useI18n - Language changed successfully to:', i18n.language);
+      } catch (error) {
+        console.error('useI18n - Error changing language:', error);
+      }
     },
     isRTL: i18n.dir() === 'rtl',
     languages: i18n.languages,

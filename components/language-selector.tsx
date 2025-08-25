@@ -21,18 +21,23 @@ export function LanguageSelector() {
   const [currentLang, setCurrentLang] = useState(i18n.language);
 
   useEffect(() => {
+    const handleLanguageChange = (lng: string) => {
+      setCurrentLang(lng);
+    };
+
     setCurrentLang(i18n.language);
-  }, [i18n.language]);
+    i18n.on('languageChanged', handleLanguageChange);
+
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18n]);
 
   const changeLanguage = async (lng: string) => {
     try {
       console.log('🔄 LanguageSelector changing language to:', lng);
       
-      // Clear and set storage
-      localStorage.removeItem('i18nextLng');
-      sessionStorage.removeItem('i18nextLng');
-      document.cookie = 'i18nextLng=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      
+      // Set storage consistently
       localStorage.setItem('i18nextLng', lng);
       sessionStorage.setItem('i18nextLng', lng);
       document.cookie = `i18nextLng=${lng}; path=/; max-age=31536000`;
@@ -40,9 +45,6 @@ export function LanguageSelector() {
       await i18n.changeLanguage(lng);
       setCurrentLang(lng);
       console.log('✅ LanguageSelector language changed to:', i18n.language);
-      
-      // Force page reload to ensure all components update
-      setTimeout(() => window.location.reload(), 300);
     } catch (error) {
       console.error('❌ LanguageSelector error:', error);
     }
@@ -83,16 +85,25 @@ export function LanguageSelectorCompact() {
   const { i18n } = useTranslation();
   const [currentLang, setCurrentLang] = useState(i18n.language);
 
+  useEffect(() => {
+    const handleLanguageChange = (lng: string) => {
+      setCurrentLang(lng);
+    };
+
+    setCurrentLang(i18n.language);
+    i18n.on('languageChanged', handleLanguageChange);
+
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18n]);
+
   const toggleLanguage = async () => {
     try {
       const newLang = currentLang === 'en' ? 'fr' : 'en';
       console.log('🔄 LanguageSelectorCompact toggling to:', newLang);
       
-      // Clear and set storage
-      localStorage.removeItem('i18nextLng');
-      sessionStorage.removeItem('i18nextLng');
-      document.cookie = 'i18nextLng=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      
+      // Set storage consistently
       localStorage.setItem('i18nextLng', newLang);
       sessionStorage.setItem('i18nextLng', newLang);
       document.cookie = `i18nextLng=${newLang}; path=/; max-age=31536000`;
@@ -100,9 +111,6 @@ export function LanguageSelectorCompact() {
       await i18n.changeLanguage(newLang);
       setCurrentLang(newLang);
       console.log('✅ LanguageSelectorCompact language changed to:', i18n.language);
-      
-      // Force page reload to ensure all components update
-      setTimeout(() => window.location.reload(), 300);
     } catch (error) {
       console.error('❌ LanguageSelectorCompact error:', error);
     }
@@ -131,8 +139,17 @@ export function LanguageButtons() {
   const [isChanging, setIsChanging] = useState(false);
 
   useEffect(() => {
+    const handleLanguageChange = (lng: string) => {
+      setCurrentLang(lng);
+    };
+
     setCurrentLang(i18n.language);
-  }, [i18n.language]);
+    i18n.on('languageChanged', handleLanguageChange);
+
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18n]);
 
   const changeLanguage = async (lng: string) => {
     if (isChanging || lng === currentLang) return;
@@ -142,13 +159,7 @@ export function LanguageButtons() {
       console.log('🔄 Changing language from', currentLang, 'to:', lng);
       console.log('🔍 Before change - Current i18n language:', i18n.language);
       
-      // Clear any conflicting storage first
-      console.log('🧹 Clearing existing language preferences');
-      localStorage.removeItem('i18nextLng');
-      sessionStorage.removeItem('i18nextLng');
-      document.cookie = 'i18nextLng=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      
-      // Set the new language preference
+      // Set the new language preference consistently
       console.log('💾 Setting new language preference to:', lng);
       localStorage.setItem('i18nextLng', lng);
       sessionStorage.setItem('i18nextLng', lng);
@@ -161,12 +172,7 @@ export function LanguageButtons() {
       
       setCurrentLang(lng);
       console.log('✅ Language change completed successfully');
-      
-      // Force page reload to ensure all components update
-      setTimeout(() => {
-        console.log('🔄 Reloading page to apply language changes');
-        window.location.reload();
-      }, 300);
+      setIsChanging(false);
     } catch (error) {
       console.error('❌ Error changing language:', error);
       setIsChanging(false);
