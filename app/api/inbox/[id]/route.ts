@@ -204,7 +204,7 @@ export async function PATCH(
   }
 }
 
-// DELETE - Soft delete message (move to trash)
+// DELETE - Soft delete (move to trash) or permanent delete
 export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -219,46 +219,88 @@ export async function DELETE(
     const params = await context.params
     const messageId = params.id
 
-    console.log('🗑️ Soft deleting inbox message:', messageId)
+    // Check if this is a permanent delete request (from trash folder)
+    const url = new URL(request.url)
+    const permanent = url.searchParams.get('permanent') === 'true'
 
-    // Soft delete by moving to trash folder and setting status to deleted
-    const { data: message, error } = await supabaseServer
-      .from('inbox_messages')
-      .update({
-        status: 'deleted',
-        folder: 'trash',
-        updated_at: new Date().toISOString()
+    console.log(`🗑️ ${permanent ? 'Permanently' : 'Soft'} deleting inbox message:`, messageId)
+
+    if (permanent) {
+      // Permanent delete - actually remove from database
+      const { data: message, error } = await supabaseServer
+        .from('inbox_messages')
+        .delete()
+        .eq('id', messageId)
+        .eq('user_id', userId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('❌ Error permanently deleting message:', error)
+        return NextResponse.json({ success: false, error: 'Failed to permanently delete message' }, { status: 500 })
+      }
+
+      // Log the permanent delete action
+      const { error: actionError } = await supabaseServer
+        .from('inbox_actions')
+        .insert({
+          user_id: userId,
+          message_id: messageId,
+          action_type: 'permanent_delete',
+          action_data: { permanently_deleted: true },
+          status: 'completed'
+        })
+
+      if (actionError) {
+        console.error('❌ Error logging permanent delete action:', actionError)
+        // Don't fail the delete if action logging fails
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Message permanently deleted successfully'
       })
-      .eq('id', messageId)
-      .eq('user_id', userId)
-      .select()
-      .single()
 
-    if (error) {
-      console.error('❌ Error deleting message:', error)
-      return NextResponse.json({ success: false, error: 'Failed to delete message' }, { status: 500 })
-    }
+    } else {
+      // Soft delete by moving to trash folder and setting status to deleted
+      const { data: message, error } = await supabaseServer
+        .from('inbox_messages')
+        .update({
+          status: 'deleted',
+          folder: 'trash',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', messageId)
+        .eq('user_id', userId)
+        .select()
+        .single()
 
-    // Log the delete action
-    const { error: actionError } = await supabaseServer
-      .from('inbox_actions')
-      .insert({
-        user_id: userId,
-        message_id: messageId,
-        action_type: 'delete',
-        action_data: { folder: 'trash' },
-        status: 'completed'
+      if (error) {
+        console.error('❌ Error deleting message:', error)
+        return NextResponse.json({ success: false, error: 'Failed to delete message' }, { status: 500 })
+      }
+
+      // Log the delete action
+      const { error: actionError } = await supabaseServer
+        .from('inbox_actions')
+        .insert({
+          user_id: userId,
+          message_id: messageId,
+          action_type: 'delete',
+          action_data: { folder: 'trash' },
+          status: 'completed'
+        })
+
+      if (actionError) {
+        console.error('❌ Error logging delete action:', actionError)
+        // Don't fail the delete if action logging fails
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Message moved to trash successfully'
       })
-
-    if (actionError) {
-      console.error('❌ Error logging delete action:', actionError)
-      // Don't fail the delete if action logging fails
     }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Message moved to trash successfully'
-    })
 
   } catch (error) {
     console.error('❌ Error in inbox DELETE:', error)

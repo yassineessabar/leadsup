@@ -577,16 +577,45 @@ export default function InboxPage() {
       
       if (selectedFolder === 'trash') {
         // Permanently delete if already in trash
-        const deletePromises = emailsToDelete.map(email => {
-          const messageId = email.latest_message?.id || email.id
-          return fetch(`/api/inbox/${messageId}`, { method: 'DELETE' })
-        })
+        console.log('💀 Permanently deleting emails...', emailsToDelete)
+        const deleteResults = []
         
-        await Promise.all(deletePromises)
+        for (const email of emailsToDelete) {
+          try {
+            // Use the actual message ID from the email object
+            const messageId = email.latest_message?.id || email.message_id || email.id
+            console.log(`🗑️ Permanently deleting message: ${messageId} (from email: ${email.id})`)
+            
+            const response = await fetch(`/api/inbox/${messageId}?permanent=true`, { 
+              method: 'DELETE' 
+            })
+            const result = await response.json()
+            
+            if (!response.ok) {
+              console.error(`❌ Failed to delete message ${messageId}:`, result)
+              throw new Error(result.error || 'Delete failed')
+            }
+            
+            deleteResults.push({ success: true, messageId, email: email.id })
+            console.log(`✅ Successfully deleted message: ${messageId}`)
+            
+          } catch (error) {
+            console.error(`❌ Error deleting email ${email.id}:`, error)
+            deleteResults.push({ success: false, error: error.message, email: email.id })
+          }
+        }
+        
+        const successCount = deleteResults.filter(r => r.success).length
+        const failCount = deleteResults.filter(r => !r.success).length
+        
+        console.log(`🎯 Delete results: ${successCount} success, ${failCount} failed`)
         
         toast({
-          title: "Emails permanently deleted",
-          description: `${selectedEmails.length} emails have been permanently deleted`
+          title: successCount > 0 ? "Emails permanently deleted" : "Delete failed",
+          description: successCount > 0 ? 
+            `${successCount} emails permanently deleted` + (failCount > 0 ? ` (${failCount} failed)` : '') :
+            `Failed to delete ${failCount} emails`,
+          variant: failCount > 0 && successCount === 0 ? "destructive" : "default"
         })
       } else {
         // Move to trash if not in trash
@@ -616,15 +645,10 @@ export default function InboxPage() {
         })
       }
       
-      // Remove from current list and clear selection
-      const newEmails = emails.filter(e => !selectedEmails.includes(e.id))
-      setEmails(newEmails)
+      // Refresh emails and clear selection
       setSelectedEmails([])
-      setSelectedEmail(newEmails[0] || null)
-      
-      // Update folder counts and refresh
+      await fetchEmails()
       fetchFolderStats()
-      setTimeout(() => fetchEmails(), 500)
       
     } catch (error) {
       console.error('Error handling bulk delete:', error)
