@@ -264,7 +264,7 @@
         "startScraping": "Start Scraping",
         "fillRequiredFields": "Please fill in all required fields",
         "confirmationTitle": "Start Scraping Confirmation",
-        "confirmStart": "Are you sure you want to start scraping with these settings?"
+        "confirmStart": "Start scraping?"
       },
       "import": {
         "title": "Import Contacts from File",
@@ -1290,11 +1290,17 @@
         "name": "Basic",
         "description": "Perfect for small teams and startups.",
         "features": [
-          "Multi-channel collection (SMS, Email)",
-          "Custom review page",
-          "Choice of action for each review",
-          "Basic analytics dashboard",
-          "Email support"
+          "Email Campaign Creation & Management",
+          "Unlimited Sender Account Creation", 
+          "Email Domain Setup & Verification",
+          "Email Warmup & Deliverability",
+          "Email Automation & Sequences",
+          "Contact Management & Import",
+          "Basic Email Analytics",
+          "Inbox Management & Reply Tracking",
+          "Email Template System",
+          "3,000 qualified emails per month",
+          "Standard Support"
         ]
       },
       "pro": {
@@ -1303,12 +1309,16 @@
         "mostPopular": "Most Popular",
         "features": [
           "Everything in Basic +",
-          "CSV import & export",
-          "WhatsApp integration",
-          "Multi-channel follow-ups",
-          "Dynamic routing of reviews",
-          "Advanced analytics",
-          "Priority support"
+          "10,000 qualified emails per month",
+          "Email Personalization (AI-powered)",
+          "Advanced Campaign Analytics", 
+          "A/B Testing for Email Sequences",
+          "Advanced Sender Health Scoring",
+          "Multi-Domain Management",
+          "Advanced Automation Rules",
+          "Campaign Performance Insights",
+          "Team Collaboration Features",
+          "Priority Support"
         ]
       },
       "enterprise": {
@@ -1316,13 +1326,16 @@
         "description": "Built for large organization needs.",
         "features": [
           "Everything in Pro +",
-          "Checkout & in-store QR code reviews",
-          "AI responses to Google reviews",
-          "Automated Trustpilot responses",
-          "AI suggestions for negative reviews",
-          "Monthly strategic review with success manager",
-          "Custom integrations",
-          "24/7 phone support"
+          "30,000 qualified emails per month",
+          "Advanced Email Warming Dashboard",
+          "White-label Solution",
+          "Advanced Team Management",
+          "Custom Domain Branding",
+          "Advanced Analytics & Reporting",
+          "Dedicated Account Manager",
+          "Custom Integrations",
+          "Phone Support",
+          "99.9% SLA Guarantee"
         ]
       }
     },
