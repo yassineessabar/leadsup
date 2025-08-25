@@ -948,7 +948,7 @@ export default function InboxPage() {
             <div className="flex items-center space-x-3">
               <Checkbox
                 checked={selectedEmails.length > 0 && selectedEmails.length === emails.length}
-                indeterminate={selectedEmails.length > 0 && selectedEmails.length < emails.length ? true : undefined}
+                indeterminate={selectedEmails.length > 0 && selectedEmails.length < emails.length}
                 onCheckedChange={handleSelectAll}
               />
               <span className="text-sm text-gray-600">
