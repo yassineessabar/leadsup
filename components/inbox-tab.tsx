@@ -242,6 +242,58 @@ export default function InboxPage() {
   }
 
 
+  // Helper function to replace template variables with actual values
+  const replaceTemplateVariables = (content: string, email: Email): string => {
+    if (!content) return content
+    
+    // Extract data from email object
+    const firstName = email.contact_name?.split(' ')[0] || 'there'
+    const lastName = email.contact_name?.split(' ')[1] || ''
+    // Try to get company name from various sources
+    const companyName = (email as any).latest_message?.campaign?.company_name || 
+                       (email as any).campaign?.company_name || 
+                       (email as any).company_name || 
+                       'your company'
+    const contactEmail = email.contact_email || ''
+    
+    // Replace variables (case insensitive)
+    let replacedContent = content
+      .replace(/\{\{firstName\}\}/gi, firstName)
+      .replace(/\{\{first_name\}\}/gi, firstName)
+      .replace(/\{\{lastName\}\}/gi, lastName) 
+      .replace(/\{\{last_name\}\}/gi, lastName)
+      .replace(/\{\{company\}\}/gi, companyName)
+      .replace(/\{\{companyName\}\}/gi, companyName)
+      .replace(/\{\{company_name\}\}/gi, companyName)
+      .replace(/\{\{email\}\}/gi, contactEmail)
+      .replace(/\{\{contactEmail\}\}/gi, contactEmail)
+      .replace(/\{\{contact_email\}\}/gi, contactEmail)
+    
+    return replacedContent
+  }
+
+  // Helper function to get full email content with variable replacement
+  const getFullEmailContent = (email: Email): string => {
+    // For sent emails (outbound), we want to show the full content with variables replaced
+    if (email.direction === 'outbound' || (email as any).folder === 'sent') {
+      // Try to get the full body content from latest_message first, then fallback to thread data
+      let fullContent = (email as any).latest_message?.body_text || 
+                       (email as any).latest_message?.body_html || 
+                       email.content ||
+                       email.preview ||
+                       'No content available'
+      
+      // Replace template variables with actual values for sent emails
+      return replaceTemplateVariables(fullContent, email)
+    } else {
+      // For received emails (inbound), show content as-is
+      return (email as any).latest_message?.body_text || 
+             email.content?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '') || 
+             email.preview ||
+             'No content available'
+    }
+  }
+
   const handleEmailSelect = async (email: Email) => {
     setSelectedEmail(email)
     
@@ -1308,7 +1360,7 @@ export default function InboxPage() {
                       className="text-gray-900 whitespace-pre-wrap" 
                       style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}
                     >
-                      {selectedEmail.preview || selectedEmail.content?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '') || selectedEmail.latest_message?.body_text}
+                      {getFullEmailContent(selectedEmail)}
                     </div>
                   ) : (
                     <>
@@ -1368,7 +1420,7 @@ export default function InboxPage() {
                               className="whitespace-pre-wrap" 
                               style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}
                             >
-                              {message.body_text}
+                              {message.direction === 'outbound' ? replaceTemplateVariables(message.body_text, selectedEmail) : message.body_text}
                             </div>
                           </div>
                         </div>

@@ -101,7 +101,8 @@ async function getThreadMessages(userId: string, conversationId: string) {
       .select(`
         id, message_id, subject, body_text, body_html, direction, status, 
         sent_at, received_at, sender_email, contact_name, contact_email, 
-        has_attachments, folder, created_at, provider_data
+        has_attachments, folder, created_at, provider_data,
+        campaign:campaigns(company_name)
       `)
       .eq('user_id', userId)
       .eq('conversation_id', conversationId)
@@ -413,7 +414,11 @@ async function getThreadedMessages(userId: string, filters: any) {
         try {
           const { data: message, error: messageError } = await supabaseServer
             .from('inbox_messages')
-            .select('id, subject, body_text, body_html, direction, status, sent_at, received_at, sender_id, sender_email, contact_name, contact_email, has_attachments, folder')
+            .select(`
+              id, subject, body_text, body_html, direction, status, sent_at, received_at, 
+              sender_id, sender_email, contact_name, contact_email, has_attachments, folder,
+              campaign:campaigns(company_name)
+            `)
             .eq('user_id', userId)
             .eq('conversation_id', thread.conversation_id)
             .order('sent_at', { ascending: false, nullsLast: true })
@@ -503,7 +508,7 @@ async function getIndividualMessages(userId: string, filters: any) {
       .from('inbox_messages')
       .select(`
         *,
-        campaign:campaigns(id, name),
+        campaign:campaigns(id, name, company_name),
         sequence:campaign_sequences(id, step_number, subject),
         contact:contacts(id, first_name, last_name, email)
       `)
