@@ -236,7 +236,8 @@
     "delete": "Delete",
     "responseRate": "Response Rate",
     "conversionRate": "Conversion Rate",
-    "notStarted": "Not Started"
+    "notStarted": "Not Started",
+    "readyToStart": "Ready to Start"
   },
   "campaignManagement": {
     "targetTab": {

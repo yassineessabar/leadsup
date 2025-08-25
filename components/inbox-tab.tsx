@@ -90,7 +90,7 @@ export default function InboxPage() {
   const [selectedFolder, setSelectedFolder] = useState("inbox")
   const [dateRange, setDateRange] = useState("30")
   
-  // Folder counts state
+  // Folder counts state - these are unread counts for badges
   const [folderCounts, setFolderCounts] = useState({
     inbox: 0,
     sent: 0,
@@ -281,7 +281,16 @@ export default function InboxPage() {
               e.id === email.id ? { ...e, isRead: true, is_read: true } : e
             ))
             
-            // Refresh folder stats to update badge counts
+            // Update folder counts immediately for real-time badge updates
+            setFolderCounts(prev => ({
+              ...prev,
+              [selectedFolder]: Math.max(0, prev[selectedFolder] - 1)
+            }))
+            
+            // Dispatch inbox update event for sidebar badge refresh
+            window.dispatchEvent(new CustomEvent('inbox-updated'))
+            
+            // Refresh folder stats to sync with server
             fetchFolderStats()
           } else {
             console.error('Failed to mark thread as read:', response.status)
@@ -301,6 +310,16 @@ export default function InboxPage() {
               setEmails(prev => prev.map(e => 
                 e.id === email.id ? { ...e, isRead: true, is_read: true } : e
               ))
+              
+              // Update folder counts immediately for real-time badge updates
+              setFolderCounts(prev => ({
+                ...prev,
+                [selectedFolder]: Math.max(0, prev[selectedFolder] - 1)
+              }))
+              
+              // Dispatch inbox update event for sidebar badge refresh
+              window.dispatchEvent(new CustomEvent('inbox-updated'))
+              
               fetchFolderStats()
             }
           }
@@ -681,11 +700,7 @@ export default function InboxPage() {
                   <span>{folder.name}</span>
                 </div>
                 {folder.count > 0 && (
-                  <span className={`text-xs px-2 py-1 rounded-xl font-medium ${
-                    selectedFolder === folder.key 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
+                  <span className="text-xs px-2 py-1 rounded-xl font-medium bg-blue-500 text-white">
                     {folder.count}
                   </span>
                 )}
@@ -828,6 +843,8 @@ export default function InboxPage() {
                     className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 border ${
                       selectedEmail?.id === email.id 
                         ? 'bg-blue-50/80 border-blue-200/50 shadow-sm' 
+                        : !isRead 
+                        ? 'bg-blue-50/60 border-blue-200/30 shadow-sm' // Unread emails get blue background
                         : 'border-transparent hover:bg-gray-50/80 hover:border-gray-100/50'
                     }`}
                     onClick={() => handleEmailSelect(email)}

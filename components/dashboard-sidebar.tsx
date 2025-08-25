@@ -291,7 +291,7 @@ export function DashboardSidebar({
                       <div className="relative">
                         <Icon className="h-4 w-4 flex-shrink-0" />
                         {item.badgeCount !== undefined && item.badgeCount > 0 && isCollapsed && (
-                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-0.5 border-2 border-white shadow-sm">
+                          <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-0.5 border-2 border-white shadow-sm">
                             {item.badgeCount > 99 ? '99+' : item.badgeCount}
                           </span>
                         )}
@@ -299,7 +299,7 @@ export function DashboardSidebar({
                       {!isCollapsed && <span>{item.label}</span>}
                     </div>
                     {item.badgeCount !== undefined && item.badgeCount > 0 && !isCollapsed && (
-                      <Badge className="ml-auto bg-red-500 hover:bg-red-500 text-white border-0 px-2 h-5 text-xs font-semibold">
+                      <Badge className="ml-auto bg-blue-500 hover:bg-blue-500 text-white border-0 px-2 h-5 text-xs font-semibold">
                         {item.badgeCount > 99 ? '99+' : item.badgeCount}
                       </Badge>
                     )}
@@ -508,7 +508,7 @@ export function DashboardSidebar({
                   <Icon className="w-5 h-5 mr-3" />
                   <span className="truncate text-base">{item.label}</span>
                   {item.badgeCount !== undefined && item.badgeCount > 0 && (
-                    <Badge className="ml-auto bg-red-500 hover:bg-red-500 text-white border-0 px-2 h-5 text-xs font-semibold">
+                    <Badge className="ml-auto bg-blue-500 hover:bg-blue-500 text-white border-0 px-2 h-5 text-xs font-semibold">
                       {item.badgeCount > 99 ? '99+' : item.badgeCount}
                     </Badge>
                   )}
