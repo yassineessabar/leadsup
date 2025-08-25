@@ -1,3 +1,5 @@
+import { INDUSTRY_TRANSLATIONS } from './industry-translations'
+
 // Predefined list of valid industries - used across the application
 export const INDUSTRY_OPTIONS = [
   "Abrasives and Nonmetallic Minerals Manufacturing",
@@ -422,3 +424,16 @@ export const INDUSTRY_OPTIONS = [
   "Writing and Editing",
   "Zoos and Botanical Gardens"
 ]
+
+// Helper function to get translated industry name
+export const getTranslatedIndustry = (industry: string, language: string = 'en'): string => {
+  return INDUSTRY_TRANSLATIONS[language]?.[industry] || industry
+}
+
+// Helper function to get all industries with translations
+export const getTranslatedIndustries = (language: string = 'en'): string[] => {
+  const translations = INDUSTRY_TRANSLATIONS[language]
+  if (!translations) return INDUSTRY_OPTIONS
+  
+  return INDUSTRY_OPTIONS.map(industry => translations[industry] || industry)
+}

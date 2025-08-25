@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { INDUSTRY_OPTIONS } from '@/lib/industry-options'
+import { INDUSTRY_OPTIONS, getTranslatedIndustries, getTranslatedIndustry } from '@/lib/industry-options'
+import { LOCATION_OPTIONS, getTranslatedLocations, getTranslatedLocation } from '@/lib/location-options'
 import { useI18n } from '@/hooks/use-i18n'
 
 interface TargetTabProps {
@@ -20,7 +21,7 @@ export function TargetTab({
   campaignId,
   onContactsImported
 }: TargetTabProps) {
-  const { t, ready: translationsReady } = useI18n()
+  const { t, ready: translationsReady, currentLanguage } = useI18n()
   // CSV Upload state
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -57,16 +58,9 @@ export function TargetTab({
   const [showIndustryError, setShowIndustryError] = useState(false)
   const [showLocationError, setShowLocationError] = useState(false)
 
-  // Using shared industry options from lib
-
-  const LOCATION_OPTIONS = [
-    "United States", "Canada", "United Kingdom", "Germany", "France", "Italy", "Spain", "Netherlands",
-    "Belgium", "Switzerland", "Austria", "Sweden", "Norway", "Denmark", "Finland", "Poland",
-    "Australia", "New Zealand", "Japan", "South Korea", "Singapore", "Hong Kong", "India", "China",
-    "Brazil", "Mexico", "Argentina", "Chile", "Colombia", "Peru", "South Africa", "Nigeria",
-    "Israel", "United Arab Emirates", "Saudi Arabia", "Turkey", "Russia", "Ukraine", "Czech Republic",
-    "Europe", "North America", "Asia Pacific", "Latin America", "Middle East", "Africa", "Global"
-  ]
+  // Get translated options
+  const translatedIndustries = getTranslatedIndustries(currentLanguage)
+  const translatedLocations = getTranslatedLocations(currentLanguage)
 
   // Load campaign data when component mounts or campaignId changes
   useEffect(() => {
@@ -339,21 +333,21 @@ export function TargetTab({
   const addICPIndustry = () => {
     const trimmedIndustry = newICPIndustry.trim()
     
-    // Check if the industry exists in our predefined list (case-insensitive)
-    const isValidIndustry = INDUSTRY_OPTIONS.some(industry => 
+    // Check if the industry exists in our translated list (case-insensitive)
+    const translatedIndex = translatedIndustries.findIndex(industry => 
       industry.toLowerCase() === trimmedIndustry.toLowerCase()
     )
     
-    if (trimmedIndustry && isValidIndustry && !icpIndustries.includes(trimmedIndustry)) {
-      // Find the exact match from the list to maintain proper casing
-      const exactMatch = INDUSTRY_OPTIONS.find(industry => 
-        industry.toLowerCase() === trimmedIndustry.toLowerCase()
-      )
+    if (trimmedIndustry && translatedIndex !== -1) {
+      // Get the original English key for storage
+      const originalIndustry = INDUSTRY_OPTIONS[translatedIndex]
       
-      setICPIndustries([...icpIndustries, exactMatch!])
-      setNewICPIndustry("")
-      setShowIndustryDropdown(false)
-    } else if (trimmedIndustry && !isValidIndustry) {
+      if (!icpIndustries.includes(originalIndustry)) {
+        setICPIndustries([...icpIndustries, originalIndustry])
+        setNewICPIndustry("")
+        setShowIndustryDropdown(false)
+      }
+    } else if (trimmedIndustry) {
       // Show error indicator for invalid industry
       setShowIndustryError(true)
       setTimeout(() => setShowIndustryError(false), 3000) // Hide after 3 seconds
@@ -368,21 +362,21 @@ export function TargetTab({
   const addICPLocation = () => {
     const trimmedLocation = newICPLocation.trim()
     
-    // Check if the location exists in our predefined list (case-insensitive)
-    const isValidLocation = LOCATION_OPTIONS.some(location => 
+    // Check if the location exists in our translated list (case-insensitive)
+    const translatedIndex = translatedLocations.findIndex(location => 
       location.toLowerCase() === trimmedLocation.toLowerCase()
     )
     
-    if (trimmedLocation && isValidLocation && !icpLocations.includes(trimmedLocation)) {
-      // Find the exact match from the list to maintain proper casing
-      const exactMatch = LOCATION_OPTIONS.find(location => 
-        location.toLowerCase() === trimmedLocation.toLowerCase()
-      )
+    if (trimmedLocation && translatedIndex !== -1) {
+      // Get the original English key for storage
+      const originalLocation = LOCATION_OPTIONS[translatedIndex]
       
-      setICPLocations([...icpLocations, exactMatch!])
-      setNewICPLocation("")
-      setShowLocationDropdown(false)
-    } else if (trimmedLocation && !isValidLocation) {
+      if (!icpLocations.includes(originalLocation)) {
+        setICPLocations([...icpLocations, originalLocation])
+        setNewICPLocation("")
+        setShowLocationDropdown(false)
+      }
+    } else if (trimmedLocation) {
       // Show error indicator for invalid location
       setShowLocationError(true)
       setTimeout(() => setShowLocationError(false), 3000) // Hide after 3 seconds
@@ -398,7 +392,7 @@ export function TargetTab({
     setNewICPIndustry(value)
     
     if (value.length > 0) {
-      const filtered = INDUSTRY_OPTIONS.filter(industry => 
+      const filtered = translatedIndustries.filter(industry => 
         industry.toLowerCase().includes(value.toLowerCase())
       ).slice(0, 10) // Limit to 10 suggestions
       setFilteredIndustries(filtered)
@@ -409,9 +403,13 @@ export function TargetTab({
     }
   }
 
-  const selectIndustryFromDropdown = (industry: string) => {
-    if (!icpIndustries.includes(industry)) {
-      setICPIndustries([...icpIndustries, industry])
+  const selectIndustryFromDropdown = (translatedIndustry: string) => {
+    // Find the original English industry from the translated one
+    const translatedIndex = translatedIndustries.findIndex(industry => industry === translatedIndustry)
+    const originalIndustry = INDUSTRY_OPTIONS[translatedIndex]
+    
+    if (originalIndustry && !icpIndustries.includes(originalIndustry)) {
+      setICPIndustries([...icpIndustries, originalIndustry])
     }
     setNewICPIndustry("")
     setShowIndustryDropdown(false)
@@ -423,7 +421,7 @@ export function TargetTab({
     setNewICPLocation(value)
     
     if (value.length > 0) {
-      const filtered = LOCATION_OPTIONS.filter(location => 
+      const filtered = translatedLocations.filter(location => 
         location.toLowerCase().includes(value.toLowerCase())
       ).slice(0, 10) // Limit to 10 suggestions
       setFilteredLocations(filtered)
@@ -434,9 +432,13 @@ export function TargetTab({
     }
   }
 
-  const selectLocationFromDropdown = (location: string) => {
-    if (!icpLocations.includes(location)) {
-      setICPLocations([...icpLocations, location])
+  const selectLocationFromDropdown = (translatedLocation: string) => {
+    // Find the original English location from the translated one
+    const translatedIndex = translatedLocations.findIndex(location => location === translatedLocation)
+    const originalLocation = LOCATION_OPTIONS[translatedIndex]
+    
+    if (originalLocation && !icpLocations.includes(originalLocation)) {
+      setICPLocations([...icpLocations, originalLocation])
     }
     setNewICPLocation("")
     setShowLocationDropdown(false)
@@ -887,7 +889,7 @@ export function TargetTab({
                                 variant="secondary"
                                 className="bg-blue-100 text-blue-800 hover:bg-blue-200"
                               >
-                                {industry}
+                                {getTranslatedIndustry(industry, currentLanguage)}
                                 <button
                                   onClick={() => removeICPIndustry(industry)}
                                   disabled={isScrappingActive || isLoadingConfig}
@@ -1015,7 +1017,7 @@ export function TargetTab({
                                 variant="secondary"
                                 className="bg-green-100 text-green-800 hover:bg-green-200"
                               >
-                                {location}
+                                {getTranslatedLocation(location, currentLanguage)}
                                 <button
                                   onClick={() => removeICPLocation(location)}
                                   disabled={isScrappingActive || isLoadingConfig}

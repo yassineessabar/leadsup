@@ -215,6 +215,12 @@ export function LeadsTab() {
 
       console.log(`Assigning ${selectedContacts.length} contacts to campaign "${selectedCampaign.name}" (ID: ${campaignId})`)
 
+      // Test API accessibility first
+      console.log(`🔍 Testing API accessibility for contact updates...`)
+      const testContactId = selectedContacts[0]
+      const testUrl = `/api/contacts/${testContactId}`
+      console.log(`🔗 Test URL: ${testUrl}`)
+      
       // Update each selected contact to assign them to the campaign
       const updatePromises = selectedContacts.map(async (contactId) => {
         console.log(`🔄 Updating contact ${contactId} with campaign_id: ${campaignId} (type: ${typeof campaignId})`)
@@ -222,6 +228,7 @@ export function LeadsTab() {
         // Campaign IDs are UUIDs (strings), not integers
         const requestBody = { campaign_id: campaignId }
         console.log(`📋 Request body:`, requestBody)
+        console.log(`🔗 API URL: /api/contacts/${contactId}`)
         
         const response = await fetch(`/api/contacts/${contactId}`, {
           method: 'PATCH',
@@ -230,18 +237,42 @@ export function LeadsTab() {
           body: JSON.stringify(requestBody)
         })
         
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error(`❌ Failed to update contact ${contactId}:`, {
+            status: response.status,
+            statusText: response.statusText,
+            errorText: errorText.substring(0, 500) // Truncate for logging
+          })
+          
+          // Check if response is HTML (likely 404/500 error page)
+          if (errorText.includes('<!DOCTYPE') || errorText.includes('<html>')) {
+            throw new Error(`API endpoint returned HTML instead of JSON (status: ${response.status}). This usually indicates the API route was not found or there's a server error. URL: /api/contacts/${contactId}`)
+          }
+          
+          // Try to parse as JSON for proper error message
+          try {
+            const errorJson = JSON.parse(errorText)
+            throw new Error(`Failed to update contact ${contactId}: ${errorJson.error || 'Unknown error'}`)
+          } catch (parseError) {
+            throw new Error(`Failed to update contact ${contactId}: ${response.status} ${response.statusText}`)
+          }
+        }
+        
+        const contentType = response.headers.get('content-type')
+        if (!contentType || !contentType.includes('application/json')) {
+          const responseText = await response.text()
+          console.error(`❌ Invalid response content type for contact ${contactId}:`, contentType, responseText.substring(0, 500))
+          throw new Error(`API returned invalid content type: ${contentType}. Expected JSON.`)
+        }
+        
         const result = await response.json()
         console.log(`📊 Update result for contact ${contactId}:`, {
           success: response.ok,
           status: response.status,
           contact_name: result.contact ? `${result.contact.first_name} ${result.contact.last_name}` : 'Unknown',
-          old_campaign_id: result.contact?.campaign_id,
-          error: result.error
+          old_campaign_id: result.contact?.campaign_id
         })
-        
-        if (!response.ok) {
-          throw new Error(`Failed to update contact ${contactId}: ${result.error || 'Unknown error'}`)
-        }
         
         return result
       })
@@ -264,6 +295,18 @@ export function LeadsTab() {
           const verifyResponse = await fetch(`/api/contacts?campaign_id=${campaignId}&limit=5`, {
             credentials: 'include'
           })
+          
+          if (!verifyResponse.ok) {
+            console.error(`❌ Verification request failed: ${verifyResponse.status} ${verifyResponse.statusText}`)
+            return
+          }
+          
+          const contentType = verifyResponse.headers.get('content-type')
+          if (!contentType || !contentType.includes('application/json')) {
+            console.error(`❌ Verification returned invalid content type: ${contentType}`)
+            return
+          }
+          
           const verifyData = await verifyResponse.json()
           console.log(`✅ Verification: Found ${verifyData.contacts?.length || 0} contacts for campaign ${campaignId}`)
         } catch (verifyError) {

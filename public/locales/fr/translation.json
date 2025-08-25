@@ -1387,7 +1387,7 @@
       "companyNameRequired": "Le nom de l'entreprise est requis"
     },
     "processing": {
-      "generatingAICampaignAssets": "🤖 Génération d'actifs de campagne IA...",
+      "generatingAICampaignAssets": "Génération d'actifs de campagne IA...",
       "processing": "Traitement...",
       "thisMayTakeFewSeconds": "Cela peut prendre quelques secondes"
     },
