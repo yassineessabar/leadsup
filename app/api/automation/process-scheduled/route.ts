@@ -886,10 +886,13 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
       }
     }
     
-    // Real email sending via SendGrid
+    // Real email sending via SendGrid WITH TRACKING
     if (process.env.SENDGRID_API_KEY) {
       const sgMail = require('@sendgrid/mail')
       sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+      
+      // Import tracking utilities
+      const { addEmailTracking, generateTrackingId } = await import('@/lib/email-tracking')
       
       // Force reply@reply.domain format for webhook capture
       const senderDomain = senderEmail.split('@')[1]
@@ -903,10 +906,16 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
         .replace(/\{\{lastName\}\}/g, contact.last_name || '')
         .replace(/\{\{company\}\}/g, contact.company || 'your company')
       
-      const personalizedContent = sequence.content
+      let personalizedContent = sequence.content
         .replace(/\{\{firstName\}\}/g, contact.first_name || 'there')
         .replace(/\{\{lastName\}\}/g, contact.last_name || '')
         .replace(/\{\{company\}\}/g, contact.company || 'your company')
+      
+      // ✅ ADD TRACKING TO EMAIL CONTENT
+      const trackingId = generateTrackingId()
+      personalizedContent = addEmailTracking(personalizedContent, { trackingId })
+      
+      console.log(`📊 Added tracking to email: ${trackingId}`)
       
       const msg = {
         to: contact.email_address,
@@ -920,13 +929,35 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
         text: personalizedContent.replace(/<[^>]*>/g, '') // Strip HTML
       }
       
-      console.log(`📧 SENDING SEQUENCE EMAIL:`)
+      console.log(`📧 SENDING SEQUENCE EMAIL WITH TRACKING:`)
       console.log(`   From: ${senderEmail}`)
       console.log(`   To: ${contact.email}`)
       console.log(`   Subject: ${personalizedSubject}`)
       console.log(`   Step: ${sequence.step_number}`)
+      console.log(`   Tracking ID: ${trackingId}`)
       
       const result = await sgMail.send(msg)
+      
+      // ✅ LOG TO EMAIL_TRACKING TABLE
+      try {
+        await supabase
+          .from('email_tracking')
+          .insert({
+            id: trackingId,
+            user_id: campaign.user_id,
+            campaign_id: campaign.id,
+            email: contact.email_address,
+            sg_message_id: result[0]?.headers?.['x-message-id'] || `sg_${Date.now()}_${contact.id}`,
+            subject: personalizedSubject,
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+            category: ['automation', 'campaign', `step_${sequence.step_number}`]
+          })
+        
+        console.log(`📊 Logged to email_tracking table: ${trackingId}`)
+      } catch (trackingError) {
+        console.error('⚠️ Failed to log to email_tracking table:', trackingError)
+      }
       
       // Log sent email to inbox system for unified email management
       try {

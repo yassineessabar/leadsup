@@ -170,7 +170,9 @@ export function ComprehensiveDashboard() {
       }
       
       const result = await response.json()
-      console.log('🔍 Full SendGrid API response:', result)
+      console.log('🔍 Full Analytics API response:', result)
+      console.log('🔍 Analytics source used:', result.data?.source)
+      console.log('🔍 Analytics debug info:', result.data?.debug)
       
       if (result.success && result.data?.metrics) {
         const metrics = result.data.metrics
