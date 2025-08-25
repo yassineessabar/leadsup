@@ -47,6 +47,9 @@ interface Domain {
   domain_connect_supported: boolean
   verification_method: string
   created_at: string
+  inbound_parse_configured?: boolean
+  inbound_parse_hostname?: string
+  inbound_parse_error?: string
 }
 
 export default function DomainsPage() {
@@ -639,6 +642,16 @@ export default function DomainsPage() {
                               <span className={`text-sm font-medium ${getStatusColor(domain.status)}`}>
                                 {getStatusText(domain.status)}
                               </span>
+                              {domain.status === 'verified' && domain.inbound_parse_configured && (
+                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-lg">
+                                  Reply Capture ✓
+                                </span>
+                              )}
+                              {domain.status === 'verified' && domain.inbound_parse_configured === false && (
+                                <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-lg">
+                                  Reply Setup Needed
+                                </span>
+                              )}
                               {domain.status === 'verified' && (
                                 <button
                                   onClick={(e) => {

@@ -490,10 +490,13 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // THIRD: If still no match, check if this is a reply address
+    // THIRD: If still no match, check if this is a reply address for any domain
     if (!campaignSenders) {
-      if (toEmail === 'reply@leadsup.io' || toEmail === 'test@reply.leadsup.io' || toEmail.includes('@reply.leadsup.io')) {
-        console.log(`🔄 Email to ${toEmail} is a reply address, using fallback logic`)
+      // Check if this is a reply address format: reply@reply.domain.com or reply@domain.com
+      const isReplyAddress = toEmail.includes('@reply.') || toEmail.startsWith('reply@')
+      
+      if (isReplyAddress) {
+        console.log(`🔄 Email to ${toEmail} is a reply address format, using fallback logic`)
         
         // Use fallback: any active campaign sender
         const { data: anyCampaignSender, error: anyError } = await supabaseServer

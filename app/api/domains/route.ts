@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     const { data: domains, error } = await supabase
       .from('domains')
-      .select('id, domain, status, description, is_test_domain, verification_type, created_at, emails_sent, emails_delivered, emails_rejected, emails_received')
+      .select('id, domain, status, description, is_test_domain, verification_type, created_at, emails_sent, emails_delivered, emails_rejected, emails_received, inbound_parse_configured, inbound_parse_hostname, inbound_parse_error')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(10)
@@ -80,6 +80,9 @@ export async function GET(request: NextRequest) {
       isTestDomain: domain.is_test_domain || false,
       verification_type: domain.verification_type,
       created_at: domain.created_at,
+      inbound_parse_configured: domain.inbound_parse_configured || false,
+      inbound_parse_hostname: domain.inbound_parse_hostname || null,
+      inbound_parse_error: domain.inbound_parse_error || null,
       stats: {
         sent: domain.emails_sent || 0,
         delivered: domain.emails_delivered || 0,
@@ -427,7 +430,7 @@ export async function POST(request: NextRequest) {
         // Only configure inbound parse if domain is actually validated
         if (isValidated) {
           console.log(`🔧 Configuring SendGrid inbound parse for ${replyHostname}`)
-          const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://leadsup.com'}/api/webhooks/sendgrid`
+          const webhookUrl = 'https://app.leadsup.io/api/webhooks/sendgrid'
           
           inboundParseResult = await configureInboundParse({
             hostname: replyHostname,

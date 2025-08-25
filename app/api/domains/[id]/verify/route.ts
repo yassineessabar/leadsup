@@ -677,12 +677,15 @@ async function setupSendGridIntegration(domain: any) {
     console.log(`🚀 Setting up SendGrid integration for ${domain.domain}`)
     
     // Import SendGrid functions
-    const { createSenderIdentity, getDomainAuthentication, createDomainAuthentication, validateDomainAuthentication } = await import('@/lib/sendgrid')
+    const { createSenderIdentity, getDomainAuthentication, createDomainAuthentication, validateDomainAuthentication, configureInboundParse } = await import('@/lib/sendgrid')
     
     // Step 1: Force SendGrid domain authentication
     await forceSendGridDomainAuthentication(domain.domain, getDomainAuthentication, createDomainAuthentication, validateDomainAuthentication)
     
-    // Step 2: Get all existing sender accounts for this domain
+    // Step 2: Configure Inbound Parse for reply handling
+    await setupInboundParseConfiguration(domain, configureInboundParse)
+    
+    // Step 3: Get all existing sender accounts for this domain
     // Process all senders, including those with failed status (to retry)
     const { data: senderAccounts, error: fetchError } = await supabase
       .from('sender_accounts')
@@ -841,5 +844,77 @@ async function forceSendGridDomainAuthentication(domainName: string, getDomainAu
     console.error(`❌ Failed to force domain authentication for ${domainName}:`, error.message)
     // Don't throw - continue with sender identity creation even if domain auth fails
     return null
+  }
+}
+
+async function setupInboundParseConfiguration(domain: any, configureInboundParse: any) {
+  try {
+    console.log(`📧 Setting up Inbound Parse for ${domain.domain}`)
+    
+    // Construct the reply hostname for inbound parse
+    const replyHostname = `reply.${domain.domain}`
+    const webhookUrl = 'https://app.leadsup.io/api/webhooks/sendgrid'
+    
+    console.log(`🔧 Configuring Inbound Parse:`)
+    console.log(`   Hostname: ${replyHostname}`)
+    console.log(`   Webhook URL: ${webhookUrl}`)
+    
+    // Configure SendGrid Inbound Parse
+    const parseResult = await configureInboundParse({
+      hostname: replyHostname,
+      url: webhookUrl,
+      spam_check: true,
+      send_raw: false
+    })
+    
+    if (parseResult.success) {
+      console.log(`✅ Inbound Parse configured successfully for ${replyHostname}`)
+      
+      // Update domain record to indicate Inbound Parse is configured
+      await supabase
+        .from('domains')
+        .update({
+          inbound_parse_configured: true,
+          inbound_parse_hostname: replyHostname,
+          inbound_parse_webhook_id: parseResult.webhook_id || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', domain.id)
+      
+      console.log(`✅ Domain record updated with Inbound Parse configuration`)
+    } else {
+      throw new Error('Inbound Parse configuration failed')
+    }
+    
+  } catch (error: any) {
+    console.error(`❌ Failed to setup Inbound Parse for ${domain.domain}:`, error.message)
+    
+    // Handle duplicate entry as success (already configured)
+    if (error.message?.includes('duplicate entry')) {
+      console.log(`✅ Inbound Parse already configured for reply.${domain.domain}`)
+      
+      // Still update domain record to indicate it's configured
+      await supabase
+        .from('domains')
+        .update({
+          inbound_parse_configured: true,
+          inbound_parse_hostname: `reply.${domain.domain}`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', domain.id)
+    } else {
+      // Log error but don't fail domain verification
+      console.error(`⚠️ Inbound Parse setup failed for ${domain.domain}, but domain verification continues`)
+      
+      // Update domain record to indicate Inbound Parse failed
+      await supabase
+        .from('domains')
+        .update({
+          inbound_parse_configured: false,
+          inbound_parse_error: error.message.substring(0, 500),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', domain.id)
+    }
   }
 }
