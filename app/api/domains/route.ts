@@ -234,8 +234,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate domain format
-    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.[a-zA-Z]{2,}$/
+    // Validate domain format (supports multi-level domains like .com.au, .co.uk)
+    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.([a-zA-Z0-9-]+\.)*[a-zA-Z]{2,}$/
     if (!domainRegex.test(domain)) {
       return NextResponse.json(
         { success: false, error: "Invalid domain format" },

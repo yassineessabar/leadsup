@@ -31,8 +31,8 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
   const [domainError, setDomainError] = useState("");
 
   const validateDomain = (domain: string): boolean => {
-    // More lenient domain validation regex
-    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.[a-zA-Z]{2,}$/;
+    // More lenient domain validation regex (supports multi-level domains like .com.au, .co.uk)
+    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.([a-zA-Z0-9-]+\.)*[a-zA-Z]{2,}$/;
     const trimmed = domain.trim();
     return domainRegex.test(trimmed);
   };
