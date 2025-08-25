@@ -338,6 +338,16 @@ export default function InboxPage() {
     )
   }
 
+  const handleSelectAll = () => {
+    if (selectedEmails.length === emails.length) {
+      // Deselect all
+      setSelectedEmails([])
+    } else {
+      // Select all
+      setSelectedEmails(emails.map(email => email.id))
+    }
+  }
+
   const handleStatusChange = async (newStatus: string) => {
     if (!selectedEmail) return
     
@@ -554,6 +564,124 @@ export default function InboxPage() {
         description: selectedFolder === 'trash' 
           ? "Failed to permanently delete email"
           : "Failed to move email to trash",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedEmails.length === 0) return
+    
+    try {
+      const emailsToDelete = emails.filter(email => selectedEmails.includes(email.id))
+      
+      if (selectedFolder === 'trash') {
+        // Permanently delete if already in trash
+        const deletePromises = emailsToDelete.map(email => {
+          const messageId = email.latest_message?.id || email.id
+          return fetch(`/api/inbox/${messageId}`, { method: 'DELETE' })
+        })
+        
+        await Promise.all(deletePromises)
+        
+        toast({
+          title: "Emails permanently deleted",
+          description: `${selectedEmails.length} emails have been permanently deleted`
+        })
+      } else {
+        // Move to trash if not in trash
+        const movePromises = emailsToDelete.map(email => {
+          const conversationId = email.conversation_id
+          if (conversationId) {
+            return fetch(`/api/inbox/threads/${conversationId}/move-folder`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ folder: 'trash' })
+            })
+          } else {
+            const messageId = email.latest_message?.id || email.id
+            return fetch(`/api/inbox/${messageId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ folder: 'trash' })
+            })
+          }
+        })
+        
+        await Promise.all(movePromises)
+        
+        toast({
+          title: "Emails moved to trash",
+          description: `${selectedEmails.length} emails have been moved to trash`
+        })
+      }
+      
+      // Remove from current list and clear selection
+      const newEmails = emails.filter(e => !selectedEmails.includes(e.id))
+      setEmails(newEmails)
+      setSelectedEmails([])
+      setSelectedEmail(newEmails[0] || null)
+      
+      // Update folder counts and refresh
+      fetchFolderStats()
+      setTimeout(() => fetchEmails(), 500)
+      
+    } catch (error) {
+      console.error('Error handling bulk delete:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete emails",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleBulkRestore = async () => {
+    if (selectedEmails.length === 0) return
+    
+    try {
+      const emailsToRestore = emails.filter(email => selectedEmails.includes(email.id))
+      
+      const restorePromises = emailsToRestore.map(email => {
+        const conversationId = email.conversation_id
+        if (conversationId) {
+          return fetch(`/api/inbox/threads/${conversationId}/move-folder`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder: 'inbox' })
+          })
+        } else {
+          const messageId = email.latest_message?.id || email.id
+          return fetch(`/api/inbox/${messageId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder: 'inbox' })
+          })
+        }
+      })
+      
+      await Promise.all(restorePromises)
+      
+      toast({
+        title: "Emails restored",
+        description: `${selectedEmails.length} emails have been restored to inbox`
+      })
+      
+      // Remove from current list and clear selection
+      const newEmails = emails.filter(e => !selectedEmails.includes(e.id))
+      setEmails(newEmails)
+      setSelectedEmails([])
+      setSelectedEmail(newEmails[0] || null)
+      
+      // Update folder counts and refresh
+      fetchFolderStats()
+      setTimeout(() => fetchEmails(), 500)
+      
+    } catch (error) {
+      console.error('Error handling bulk restore:', error)
+      toast({
+        title: "Error",
+        description: "Failed to restore emails",
         variant: "destructive"
       })
     }
@@ -813,6 +941,80 @@ export default function InboxPage() {
             />
           </div>
         </div>
+
+        {/* Select All Bar */}
+        {emails.length > 0 && (
+          <div className="px-6 py-3 border-b border-gray-100/50">
+            <div className="flex items-center space-x-3">
+              <Checkbox
+                checked={selectedEmails.length > 0 && selectedEmails.length === emails.length}
+                indeterminate={selectedEmails.length > 0 && selectedEmails.length < emails.length ? true : undefined}
+                onCheckedChange={handleSelectAll}
+              />
+              <span className="text-sm text-gray-600">
+                {selectedEmails.length === 0 
+                  ? `Select all ${emails.length} emails` 
+                  : selectedEmails.length === emails.length
+                  ? `All ${emails.length} emails selected`
+                  : `${selectedEmails.length} of ${emails.length} emails selected`
+                }
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk Actions Bar */}
+        {selectedEmails.length > 0 && (
+          <div className="px-6 py-3 border-b border-gray-100/50 bg-blue-50/50">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700 font-medium">
+                {selectedEmails.length} email{selectedEmails.length > 1 ? 's' : ''} selected
+              </span>
+              <div className="flex items-center space-x-2">
+                {selectedFolder === 'trash' ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBulkRestore}
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Restore
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBulkDelete}
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Forever
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBulkDelete}
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Move to Trash
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedEmails([])}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Email List */}
         <div className="flex-1 overflow-y-auto">
