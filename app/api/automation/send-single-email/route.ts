@@ -121,7 +121,6 @@ export async function POST(request: NextRequest) {
           .from('inbox_messages')
           .update({
             sent_at: new Date().toISOString(),
-            provider_message_id: `sg_${Date.now()}`,
             updated_at: new Date().toISOString()
           })
           .eq('id', reply_message_id)
