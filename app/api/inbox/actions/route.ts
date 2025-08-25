@@ -123,7 +123,17 @@ async function handleReply(userId: string, messageId: string, data: any) {
     throw new Error('Original message not found')
   }
 
-  // Create new outbound message
+  // Get the user's sender email
+  const { data: senderAccount } = await supabaseServer
+    .from('sender_accounts')
+    .select('email')
+    .eq('user_id', userId)
+    .eq('is_default', true)
+    .single()
+  
+  const senderEmail = senderAccount?.email || originalMessage.sender_email || 'noreply@leadsup.io'
+
+  // Create new outbound message with pending status (will be updated after sending)
   const { data: replyMessage, error: createError } = await supabaseServer
     .from('inbox_messages')
     .insert({
@@ -132,15 +142,16 @@ async function handleReply(userId: string, messageId: string, data: any) {
       conversation_id: originalMessage.conversation_id,
       campaign_id: originalMessage.campaign_id,
       sequence_id: originalMessage.sequence_id,
-      contact_email: originalMessage.contact_email,
+      contact_email: to_email || originalMessage.contact_email,
       contact_name: originalMessage.contact_name,
       sender_id: originalMessage.sender_id,
-      sender_email: originalMessage.sender_email,
+      sender_email: senderEmail,
       subject: subject.startsWith('Re:') ? subject : `Re: ${subject}`,
       body_text: body,
+      body_html: body.replace(/\n/g, '<br>'), // Convert newlines to HTML breaks
       direction: 'outbound',
       channel: originalMessage.channel,
-      status: 'read',
+      status: 'read', // Outbound messages are marked as read by default
       folder: 'sent',
       provider: originalMessage.provider,
       sent_at: new Date().toISOString(),
@@ -153,6 +164,17 @@ async function handleReply(userId: string, messageId: string, data: any) {
     throw new Error(`Failed to create reply: ${createError.message}`)
   }
 
+  // Update the thread's last message info
+  await supabaseServer
+    .from('inbox_threads')
+    .update({
+      last_message_at: new Date().toISOString(),
+      last_message_preview: body.substring(0, 100),
+      updated_at: new Date().toISOString()
+    })
+    .eq('conversation_id', originalMessage.conversation_id)
+    .eq('user_id', userId)
+
   // Log the reply action
   await supabaseServer
     .from('inbox_actions')
@@ -160,7 +182,7 @@ async function handleReply(userId: string, messageId: string, data: any) {
       user_id: userId,
       message_id: messageId,
       action_type: 'reply',
-      action_data: { reply_id: replyMessage.id, subject, body },
+      action_data: { reply_id: replyMessage.id, subject, body, to_email: to_email || originalMessage.contact_email },
       status: 'completed'
     })
 

@@ -556,17 +556,71 @@ export default function InboxPage() {
     if (!selectedEmail || !replyContent.trim()) return
     
     try {
-      // Here you would normally send the email via your email service
-      toast({
-        title: "Reply sent",
-        description: `Your reply to ${selectedEmail.sender} has been sent`
+      // Get the actual message ID and contact email
+      const messageId = (selectedEmail as any).latest_message?.id || selectedEmail.id
+      const toEmail = (selectedEmail as any).contact_email || selectedEmail.sender
+      
+      // Call the inbox actions API to save and send the reply
+      const response = await fetch('/api/inbox/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          action: 'reply',
+          message_id: messageId,
+          data: {
+            subject: selectedEmail.subject,
+            body: replyContent,
+            to_email: toEmail
+          }
+        })
       })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Now actually send the email via SendGrid
+        const sendResponse = await fetch('/api/automation/send-single-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            to_email: toEmail,
+            subject: `Re: ${selectedEmail.subject}`,
+            body_html: replyContent.replace(/\n/g, '<br>'),
+            body_text: replyContent,
+            from_email: (selectedEmail as any).sender_email || 'noreply@leadsup.io',
+            reply_message_id: result.data?.results?.[0]?.reply_id
+          })
+        })
+
+        const sendResult = await sendResponse.json()
+        
+        if (sendResult.success) {
+          toast({
+            title: "Reply sent successfully",
+            description: `Your reply to ${toEmail} has been sent and saved`
+          })
+          
+          // Refresh the emails list to show the new reply
+          fetchEmails()
+          
+          // Dispatch inbox update event for badge refresh
+          window.dispatchEvent(new CustomEvent('inbox-updated'))
+        } else {
+          throw new Error(sendResult.error || 'Failed to send email')
+        }
+      } else {
+        throw new Error(result.error || 'Failed to save reply')
+      }
+      
       setComposeMode(null)
       setReplyContent("")
     } catch (error) {
+      console.error('Error sending reply:', error)
       toast({
         title: "Error",
-        description: "Failed to send reply",
+        description: error instanceof Error ? error.message : "Failed to send reply",
         variant: "destructive"
       })
     }

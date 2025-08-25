@@ -178,18 +178,38 @@ async function getThreadedMessages(userId: string, filters: any) {
       .eq('user_id', userId)
       .order('last_message_at', { ascending: false })
 
-    // Get conversations with outbound messages for sent folder filtering
+    // Get conversations by direction for folder filtering
     let outboundConversationIds: string[] = []
-    if (folder === 'sent') {
-      const { data: outboundConversations } = await supabaseServer
-        .from('inbox_messages')
-        .select('conversation_id')
-        .eq('user_id', userId)
-        .eq('direction', 'outbound')
-        .neq('folder', 'trash');
+    let inboundConversationIds: string[] = []
+    
+    // Always fetch these IDs if we're filtering by folder
+    if (folder === 'sent' || folder === 'inbox') {
+      // Get outbound conversations for sent folder
+      if (folder === 'sent') {
+        const { data: outboundConversations } = await supabaseServer
+          .from('inbox_messages')
+          .select('conversation_id')
+          .eq('user_id', userId)
+          .eq('direction', 'outbound')
+          .neq('folder', 'trash');
+        
+        if (outboundConversations && outboundConversations.length > 0) {
+          outboundConversationIds = [...new Set(outboundConversations.map(m => m.conversation_id))];
+        }
+      }
       
-      if (outboundConversations && outboundConversations.length > 0) {
-        outboundConversationIds = [...new Set(outboundConversations.map(m => m.conversation_id))];
+      // Get inbound conversations for inbox folder
+      if (folder === 'inbox') {
+        const { data: inboundConversations } = await supabaseServer
+          .from('inbox_messages')
+          .select('conversation_id')
+          .eq('user_id', userId)
+          .eq('direction', 'inbound')
+          .neq('folder', 'trash');
+        
+        if (inboundConversations && inboundConversations.length > 0) {
+          inboundConversationIds = [...new Set(inboundConversations.map(m => m.conversation_id))];
+        }
       }
     }
 
@@ -256,9 +276,15 @@ async function getThreadedMessages(userId: string, filters: any) {
         
         // Apply folder-specific logic
         if (folder === 'inbox') {
-          // Show ALL conversations in inbox (both read and unread)
-          // Don't filter by unread_count - users want to see all their emails
-          console.log('📥 + showing all inbox conversations (read and unread)');
+          // Show only conversations that have inbound messages (emails received)
+          console.log('📥 + filtering for conversations with inbound messages');
+          
+          if (inboundConversationIds.length > 0) {
+            query = query.in('conversation_id', inboundConversationIds);
+          } else {
+            // No inbound messages, return no results
+            query = query.in('conversation_id', ['no-matches']);
+          }
         } else if (folder === 'sent') {
           // For sent folder, filter threads that have outbound messages
           console.log('📤 + filtering for threads with outbound messages');
@@ -343,8 +369,12 @@ async function getThreadedMessages(userId: string, filters: any) {
         }
         
         if (folder === 'inbox') {
-          // Count ALL conversations in inbox (both read and unread)
-          // Don't filter by unread_count for the count either
+          // Count only conversations with inbound messages
+          if (inboundConversationIds.length > 0) {
+            countQuery = countQuery.in('conversation_id', inboundConversationIds);
+          } else {
+            countQuery = countQuery.in('conversation_id', ['no-matches']);
+          }
         } else if (folder === 'sent') {
           // Apply the same sent folder filtering to count query
           if (outboundConversationIds.length > 0) {
