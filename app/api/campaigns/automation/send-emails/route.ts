@@ -36,7 +36,7 @@ async function sendEmail(senderData: any, mailOptions: any) {
       fromName: senderData.name || senderData.email,
       subject: mailOptions.subject,
       html: mailOptions.html,
-      text: mailOptions.html?.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+      text: mailOptions.html?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''), // Convert br tags to line breaks, then strip HTML
       replyTo: `reply@reply.${senderData.email.split('@')[1]}`
     })
 
@@ -356,7 +356,7 @@ export async function POST(request: NextRequest) {
                 contact_name: `${contact.firstName} ${contact.lastName}`.trim(),
                 sender_email: senderData.email,
                 subject: subject,
-                body_text: formattedHtmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+                body_text: formattedHtmlContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''), // Convert br tags to line breaks, then strip HTML
                 body_html: formattedHtmlContent,
                 direction: 'outbound',
                 channel: 'email',

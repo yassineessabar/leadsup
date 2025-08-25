@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       },
       replyTo: replyToEmail,
       subject: subject,
-      text: body_text || body_html.replace(/<[^>]*>/g, ''), // Strip HTML tags for text version
+      text: body_text || body_html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''), // Convert br tags to line breaks, then strip HTML tags
       html: finalHtmlContent,
       ...(cc && { cc }),
       ...(bcc && { bcc })

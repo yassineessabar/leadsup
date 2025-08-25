@@ -791,7 +791,7 @@ async function sendEmail({ from, to, template, campaign }: any) {
         from: from.email,
         subject: personalizedSubject,
         html: personalizedContent,
-        text: personalizedContent.replace(/<[^>]*>/g, '') // Strip HTML for text version
+        text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '') // Convert br tags to line breaks, then strip HTML
       }
       
       console.log(`📧 SENDING REAL EMAIL:`)

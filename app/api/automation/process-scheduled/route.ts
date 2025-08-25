@@ -931,7 +931,7 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
         replyTo: replyToEmail,
         subject: personalizedSubject,
         html: personalizedContent,
-        text: personalizedContent.replace(/<[^>]*>/g, '') // Strip HTML
+        text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '') // Convert br tags to line breaks, then strip HTML
       }
       
       console.log(`📧 SENDING SEQUENCE EMAIL WITH TRACKING:`)
@@ -997,7 +997,7 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
           contact_name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown',
           sender_email: senderEmail,
           subject: personalizedSubject,
-          body_text: personalizedContent.replace(/<[^>]*>/g, ''),
+          body_text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''),
           body_html: personalizedContent,
           direction: 'outbound',
           channel: 'email',

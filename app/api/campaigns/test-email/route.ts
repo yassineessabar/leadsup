@@ -319,7 +319,7 @@ export async function POST(request: NextRequest) {
         fromName: senderData.name || senderEmail,
         subject: subject,
         html: trackedHtmlContent, // Use tracked HTML
-        text: htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+        text: htmlContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''), // Convert br tags to line breaks, then strip HTML
         replyTo: replyToEmail // Use dynamic reply address based on domain config
       })
 
@@ -378,7 +378,7 @@ export async function POST(request: NextRequest) {
           contact_name: 'Test Contact',
           sender_email: senderEmail,
           subject: subject,
-          body_text: htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+          body_text: htmlContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''), // Convert br tags to line breaks, then strip HTML
           body_html: htmlContent,
           direction: 'outbound',
           channel: 'email',
