@@ -55,21 +55,28 @@ export async function fetchSendGridEventsForUser(userId: string, startDate: stri
       return null
     }
     
-    // Query SendGrid Events API
-    const query = new URLSearchParams({
-      start_time: Math.floor(new Date(startDate + 'T00:00:00Z').getTime() / 1000).toString(),
-      end_time: Math.floor(new Date(endDate + 'T23:59:59Z').getTime() / 1000).toString(),
-      limit: '1000'
-    })
+    // Query SendGrid Messages API with proper filter syntax
+    const startTimestamp = new Date(startDate + 'T00:00:00Z').toISOString()
+    const endTimestamp = new Date(endDate + 'T23:59:59Z').toISOString()
     
-    // Add email filter if we have specific recipients (API has limits on query length)
-    if (emailAddresses.length <= 10) {
-      emailAddresses.forEach(email => {
-        query.append('email', email)
-      })
+    // Build the query filter using SendGrid's query language
+    let queryFilter = `last_event_time BETWEEN TIMESTAMP "${startTimestamp}" AND TIMESTAMP "${endTimestamp}"`
+    
+    // Add email filter if we have specific recipients (limit to avoid URL length issues)
+    if (emailAddresses.length <= 5) {
+      const emailFilters = emailAddresses.map(email => `to_email="${email}"`).join(' OR ')
+      queryFilter += ` AND (${emailFilters})`
     }
     
-    const response = await fetch(`https://api.sendgrid.com/v3/messages?${query}`, {
+    const queryParams = new URLSearchParams({
+      limit: '1000',
+      query: queryFilter
+    })
+    
+    console.log(`🔍 SendGrid query filter: ${queryFilter}`)
+    console.log(`📡 SendGrid API URL: https://api.sendgrid.com/v3/messages?${queryParams}`)
+    
+    const response = await fetch(`https://api.sendgrid.com/v3/messages?${queryParams}`, {
       headers: {
         'Authorization': `Bearer ${sendGridApiKey}`,
         'Content-Type': 'application/json'
@@ -77,12 +84,15 @@ export async function fetchSendGridEventsForUser(userId: string, startDate: stri
     })
     
     if (!response.ok) {
+      const errorText = await response.text()
       console.error(`❌ SendGrid API error: ${response.status} ${response.statusText}`)
+      console.error(`❌ Error details: ${errorText}`)
       return null
     }
     
     const data = await response.json()
     console.log(`✅ SendGrid API response: ${data.messages?.length || 0} messages`)
+    console.log(`🔍 Response structure keys: ${Object.keys(data).join(', ')}`)
     
     if (!data.messages || data.messages.length === 0) {
       console.log('⚠️ No messages found in SendGrid for this period')

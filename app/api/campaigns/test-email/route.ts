@@ -303,10 +303,14 @@ export async function POST(request: NextRequest) {
       const { addEmailTracking, generateTrackingId } = await import('@/lib/email-tracking')
       const trackingId = generateTrackingId()
       
+      console.log(`🔍 HTML before tracking (first 500 chars):`, htmlContent.substring(0, 500))
+      
       // Add tracking to HTML content
       const trackedHtmlContent = addEmailTracking(htmlContent, { trackingId })
       
       console.log(`📊 Added tracking to test email: ${trackingId}`)
+      console.log(`🔍 HTML after tracking (last 500 chars):`, trackedHtmlContent.substring(trackedHtmlContent.length - 500))
+      console.log(`✅ Tracking pixel present:`, trackedHtmlContent.includes(`/api/track/open?id=${trackingId}`))
       
       // Send email via SendGrid WITH TRACKING
       const result = await sendEmailWithSendGrid({
@@ -321,21 +325,31 @@ export async function POST(request: NextRequest) {
 
       // ✅ LOG TO EMAIL_TRACKING TABLE
       try {
-        await supabaseServer
-          .from('email_tracking')
-          .insert({
-            id: trackingId,
-            user_id: userId,
-            campaign_id: campaignId || null,
-            email: testEmail,
-            sg_message_id: result.messageId || `test_${Date.now()}`,
-            subject: subject,
-            status: 'sent',
-            sent_at: new Date().toISOString(),
-            category: ['test_email', 'manual_test']
-          })
+        const trackingInsert = {
+          id: trackingId,
+          user_id: userId,
+          campaign_id: campaignId || null,
+          contact_id: null,
+          sequence_id: null,
+          email: testEmail,
+          sg_message_id: result.messageId || `test_${Date.now()}`,
+          subject: subject,
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+          category: ['test_email', 'manual_test']
+        }
         
-        console.log(`📊 Logged test email to tracking table: ${trackingId}`)
+        console.log('📊 Inserting tracking record:', trackingInsert)
+        
+        const { error: insertError } = await supabaseServer
+          .from('email_tracking')
+          .insert(trackingInsert)
+        
+        if (insertError) {
+          console.error('❌ Error inserting tracking record:', insertError)
+        } else {
+          console.log(`📊 Logged test email to tracking table: ${trackingId}`)
+        }
       } catch (trackingError) {
         console.error('⚠️ Failed to log test email to tracking table:', trackingError)
       }

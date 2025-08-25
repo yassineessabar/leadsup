@@ -913,9 +913,14 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
       
       // ✅ ADD TRACKING TO EMAIL CONTENT
       const trackingId = generateTrackingId()
-      personalizedContent = addEmailTracking(personalizedContent, { trackingId })
+      // Use production URL for automation emails (they run on GitHub servers)
+      const baseUrl = 'https://app.leadsup.io'
+      personalizedContent = addEmailTracking(personalizedContent, { 
+        trackingId,
+        baseUrl 
+      })
       
-      console.log(`📊 Added tracking to email: ${trackingId}`)
+      console.log(`📊 Added tracking to email: ${trackingId} with base URL: ${baseUrl}`)
       
       const msg = {
         to: contact.email_address,
@@ -940,21 +945,32 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
       
       // ✅ LOG TO EMAIL_TRACKING TABLE
       try {
-        await supabase
-          .from('email_tracking')
-          .insert({
-            id: trackingId,
-            user_id: campaign.user_id,
-            campaign_id: campaign.id,
-            email: contact.email_address,
-            sg_message_id: result[0]?.headers?.['x-message-id'] || `sg_${Date.now()}_${contact.id}`,
-            subject: personalizedSubject,
-            status: 'sent',
-            sent_at: new Date().toISOString(),
-            category: ['automation', 'campaign', `step_${sequence.step_number}`]
-          })
+        const trackingInsert = {
+          id: trackingId,
+          user_id: campaign.user_id,
+          campaign_id: campaign.id,
+          contact_id: contact.id,
+          sequence_id: sequence.id,
+          sequence_step: sequence.step_number,
+          email: contact.email_address,
+          sg_message_id: result[0]?.headers?.['x-message-id'] || `sg_${Date.now()}_${contact.id}`,
+          subject: personalizedSubject,
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+          category: ['automation', 'campaign', `step_${sequence.step_number}`]
+        }
         
-        console.log(`📊 Logged to email_tracking table: ${trackingId}`)
+        console.log('📊 Inserting tracking record for automation email:', trackingInsert)
+        
+        const { error: insertError } = await supabase
+          .from('email_tracking')
+          .insert(trackingInsert)
+        
+        if (insertError) {
+          console.error('❌ Error inserting tracking record:', insertError)
+        } else {
+          console.log(`📊 Logged to email_tracking table: ${trackingId}`)
+        }
       } catch (trackingError) {
         console.error('⚠️ Failed to log to email_tracking table:', trackingError)
       }
