@@ -1303,137 +1303,79 @@ export default function InboxPage() {
             </div>
 
             {/* Email Content or Compose View */}
-            <div className={`flex-1 flex flex-col ${composeMode ? '' : 'p-8 overflow-y-auto'}`}>
+            <div className="flex-1 p-8 overflow-y-auto">
               {composeMode ? (
-                // Compose View with scrollable content and fixed buttons
-                <div className="flex flex-col h-full">
-                  {/* Scrollable content area */}
-                  <div className="flex-1 overflow-y-auto p-8">
-                    <div className="flex items-center justify-end mb-4">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={cancelCompose}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    
-                    {/* Show original email content when replying */}
-                    <div className="prose max-w-none mb-8">
-                      <div 
-                        className="text-gray-900 whitespace-pre-wrap" 
-                        style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}
-                      >
-                        {getFullEmailContent(selectedEmail)}
-                      </div>
-                    </div>
-
-                    {/* Thread Messages (when in compose mode) */}
-                    {selectedEmail && expandedThreads.has(selectedEmail.conversation_id) && threadMessages[selectedEmail.conversation_id] && (
-                      <div className="border-t border-gray-100/50 mt-8">
-                        <div className="py-6">
-                          <h3 className="text-lg font-medium text-gray-900 mb-6">
-                            {t('inbox.threadMessages', { count: threadMessages[selectedEmail.conversation_id].length })}
-                          </h3>
-                          <div className="space-y-4">
-                            {threadMessages[selectedEmail.conversation_id].map((message, index) => (
-                              <div key={message.id} className={`p-6 rounded-2xl border transition-all duration-200 ${
-                                message.direction === 'outbound' 
-                                  ? 'bg-blue-50/80 border-blue-200/50 ml-8 shadow-sm' 
-                                  : 'bg-gray-50/80 border-gray-200/50 mr-8 shadow-sm'
-                              }`}>
-                                <div className="flex items-center justify-between mb-3">
-                                  <div className="flex items-center space-x-2">
-                                    <span className={`text-xs px-3 py-1 rounded-xl font-medium ${
-                                      message.direction === 'outbound'
-                                        ? 'bg-blue-100 text-blue-800'
-                                        : 'bg-gray-100 text-gray-800'
-                                    }`}>
-                                      {message.direction === 'outbound' ? t('inbox.sent') : t('inbox.received')}
-                                    </span>
-                                    <span className="text-xs text-gray-500">
-                                      {message.formatted_date}
-                                    </span>
-                                  </div>
-                                </div>
-                                
-                                <div 
-                                  className="whitespace-pre-wrap" 
-                                  style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}
-                                >
-                                  {message.direction === 'outbound' ? replaceTemplateVariables(message.body_text, selectedEmail, message) : message.body_text}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                // Compose View - same as original but with sticky buttons
+                <div className="relative h-full">
+                  <div className="flex items-center justify-end mb-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelCompose}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
                   </div>
                   
-                  {/* Fixed compose form at bottom of frame */}
-                  <div className="border-t border-gray-100/50 bg-white p-6">
-                    <div className="space-y-4">
-                      {composeMode === 'forward' && (
-                        <div className="flex items-center">
-                          <span className="mr-2 text-sm text-gray-600">To:</span>
-                          <Input 
-                            value={forwardTo}
-                            onChange={(e) => setForwardTo(e.target.value)}
-                            placeholder="Enter recipient email"
-                            className="flex-1 text-sm border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 h-8 bg-white/50"
-                          />
-                        </div>
-                      )}
-                      
-                      <div className="flex flex-col h-full">
-                        <div 
-                          className="flex-1 w-full p-4 text-gray-900 bg-transparent border-none outline-none resize-none"
-                          style={{ 
-                            minHeight: '120px',
-                            whiteSpace: 'pre-wrap',
-                            lineHeight: '1.6',
-                            fontFamily: 'inherit'
-                          }}
-                        >
-                          <textarea
-                            ref={replyTextareaRef}
-                            value={composeMode === 'reply' ? replyContent : forwardContent}
-                            onChange={(e) => composeMode === 'reply' 
-                              ? setReplyContent(e.target.value) 
-                              : setForwardContent(e.target.value)
-                            }
-                            className="w-full h-full bg-transparent border-none outline-none resize-none text-gray-900"
-                            style={{
-                              minHeight: '120px',
-                              whiteSpace: 'pre-wrap',
-                              lineHeight: '1.6',
-                              fontFamily: 'inherit',
-                              fontSize: '14px'
-                            }}
-                            placeholder={composeMode === 'reply' ? t('inbox.typeReply') : t('inbox.addMessage')}
-                          />
-                        </div>
-                        
-                        <div className="flex items-center space-x-3 pt-6 border-t border-gray-100/50">
-                          <Button 
-                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-200 hover:scale-105"
-                            onClick={composeMode === 'reply' ? sendReply : sendForward}
-                          >
-                            <Send className="w-4 h-4 mr-2" />
-                            {composeMode === 'reply' ? t('inbox.sendReply') : t('inbox.forward')}
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium"
-                            onClick={cancelCompose}
-                          >
-                            {t('button.cancel')}
-                          </Button>
-                        </div>
+                  <div className="flex flex-col" style={{ height: 'calc(100% - 120px)' }}>
+                    {composeMode === 'forward' && (
+                      <div className="flex items-center mb-4">
+                        <span className="mr-2">To:</span>
+                        <Input 
+                          value={forwardTo}
+                          onChange={(e) => setForwardTo(e.target.value)}
+                          placeholder="Enter recipient email"
+                          className="flex-1 text-sm border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 h-8 bg-white/50"
+                        />
                       </div>
+                    )}
+                    
+                    <div className="flex-1 w-full p-4 text-gray-900 bg-transparent border-none outline-none resize-none"
+                      style={{ 
+                        minHeight: '400px',
+                        whiteSpace: 'pre-wrap',
+                        lineHeight: '1.6',
+                        fontFamily: 'inherit'
+                      }}
+                    >
+                      <textarea
+                        ref={replyTextareaRef}
+                        value={composeMode === 'reply' ? replyContent : forwardContent}
+                        onChange={(e) => composeMode === 'reply' 
+                          ? setReplyContent(e.target.value) 
+                          : setForwardContent(e.target.value)
+                        }
+                        className="w-full h-full bg-transparent border-none outline-none resize-none text-gray-900"
+                        style={{
+                          minHeight: '400px',
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: '1.6',
+                          fontFamily: 'inherit',
+                          fontSize: '14px'
+                        }}
+                        placeholder={composeMode === 'reply' ? t('inbox.typeReply') : t('inbox.addMessage')}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Sticky buttons at bottom of compose view */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100/50 pt-6">
+                    <div className="flex items-center space-x-3">
+                      <Button 
+                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl px-6 py-3 font-medium transition-all duration-200 hover:scale-105"
+                        onClick={composeMode === 'reply' ? sendReply : sendForward}
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        {composeMode === 'reply' ? t('inbox.sendReply') : t('inbox.forward')}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium"
+                        onClick={cancelCompose}
+                      >
+                        {t('button.cancel')}
+                      </Button>
                     </div>
                   </div>
                 </div>
