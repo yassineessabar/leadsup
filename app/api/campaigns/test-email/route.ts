@@ -405,7 +405,7 @@ export async function POST(request: NextRequest) {
             contact_name: 'Test Contact',
             subject: subject,
             last_message_at: new Date().toISOString(),
-            last_message_preview: htmlContent.replace(/<[^>]*>/g, '').substring(0, 150),
+            last_message_preview: htmlContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').substring(0, 150),
             status: 'active'
           }, {
             onConflict: 'conversation_id,user_id'

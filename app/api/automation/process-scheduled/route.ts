@@ -1028,7 +1028,7 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
             contact_name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown',
             subject: personalizedSubject,
             last_message_at: new Date().toISOString(),
-            last_message_preview: personalizedContent.replace(/<[^>]*>/g, '').substring(0, 150),
+            last_message_preview: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').substring(0, 150),
             status: 'active'
           }, {
             onConflict: 'conversation_id,user_id'
