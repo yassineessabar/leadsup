@@ -306,8 +306,8 @@ export default function InboxPage() {
         ? threadMessagesForEmail.length 
         : (email as any).message_count
       
-      // Auto-expand if there are multiple messages and not already expanded
-      if (totalMessages > 1 && !expandedThreads.has(conversationId)) {
+      // Always auto-expand thread to show full conversation context
+      if (conversationId && !expandedThreads.has(conversationId)) {
         // Fetch thread messages if not already loaded
         if (!threadMessages[conversationId]) {
           await fetchThreadMessages(conversationId)
