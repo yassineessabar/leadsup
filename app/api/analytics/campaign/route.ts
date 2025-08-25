@@ -78,13 +78,51 @@ export async function GET(request: NextRequest) {
     const selectedSenderEmails = campaignSenders?.map(s => s.email).filter(Boolean) || []
     console.log(`📧 Campaign ${campaignId} selected senders:`, selectedSenderEmails)
 
-    // Get campaign metrics (filtered by selected senders)
-    const metrics = await SendGridAnalyticsService.getCampaignMetrics({
-      campaignId,
-      userId,
-      dateRange,
-      selectedSenderEmails
-    })
+    // Use campaign-specific email tracking analytics
+    let metrics
+    try {
+      const { getCampaignEmailTrackingMetrics } = await import('@/lib/campaign-email-tracking-analytics')
+      
+      // Get campaign-specific metrics
+      const trackingMetrics = await getCampaignEmailTrackingMetrics(
+        campaignId,
+        startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        endDate || new Date().toISOString().split('T')[0]
+      )
+      
+      console.log('📊 Campaign-specific analytics - tracking metrics:', trackingMetrics)
+      
+      if (trackingMetrics && trackingMetrics.emailsSent > 0) {
+        console.log('✅ Using campaign-specific email tracking metrics:', {
+          campaignId: campaignId,
+          emailsSent: trackingMetrics.emailsSent,
+          openRate: trackingMetrics.openRate,
+          clickRate: trackingMetrics.clickRate,
+          deliveryRate: trackingMetrics.deliveryRate
+        })
+        metrics = trackingMetrics
+      } else if (trackingMetrics) {
+        console.log('⚠️ No emails found for this specific campaign')
+        metrics = trackingMetrics // Return empty metrics for this campaign
+      } else {
+        // Fallback to SendGrid service if no local tracking data
+        metrics = await SendGridAnalyticsService.getCampaignMetrics({
+          campaignId,
+          userId,
+          dateRange,
+          selectedSenderEmails
+        })
+      }
+    } catch (error) {
+      console.error('Error getting tracking metrics, using SendGrid service:', error)
+      // Fallback to SendGrid service
+      metrics = await SendGridAnalyticsService.getCampaignMetrics({
+        campaignId,
+        userId,
+        dateRange,
+        selectedSenderEmails
+      })
+    }
 
     // Get time series data for charts (filtered by selected senders)
     const timeSeries = await SendGridAnalyticsService.getCampaignMetricsTimeSeries({

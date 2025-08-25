@@ -369,11 +369,17 @@ export class SendGridAnalyticsService {
       console.log("📊 Calculating metrics from email_tracking table...")
       const supabase = getSupabaseClient()
       
-      // Build query for email_tracking
+      // Build query for email_tracking - use user_id instead of campaign_id if campaign_id is null
       let query = supabase
         .from('email_tracking')
         .select('*')
-        .eq('campaign_id', campaignId)
+      
+      // Try to filter by campaign_id first, but also include user_id
+      if (campaignId) {
+        query = query.or(`campaign_id.eq.${campaignId},and(user_id.eq.${userId},campaign_id.is.null)`)
+      } else {
+        query = query.eq('user_id', userId)
+      }
       
       // Apply date range if provided
       if (dateRange) {

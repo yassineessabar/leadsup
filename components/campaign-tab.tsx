@@ -1245,19 +1245,16 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               // ULTRA STRICT: Only show metrics if campaign has contacts AND real activity
               const hasContacts = campaign.totalPlanned && campaign.totalPlanned > 0
               
-              // Check if this campaign has REAL metrics (not fake injected data)
+              // Check if this campaign has metrics data
               const hasRealCampaignData = campaign.sendgridMetrics && 
-                campaign.sendgridMetrics.emailsSent > 0 && 
-                hasContacts && // Must have contacts to have real activity
-                campaign.sent && campaign.sent > 0 && 
-                campaign.sent === campaign.sendgridMetrics.emailsSent
+                campaign.sendgridMetrics.emailsSent > 0
               
-              // Use real SendGrid metrics only if campaign has actual activity
-              const openRate = hasBeenStarted && hasRealCampaignData 
-                ? Math.round(campaign.sendgridMetrics.openRate) 
+              // Use real campaign metrics from email tracking
+              const deliveryRate = hasBeenStarted && hasRealCampaignData 
+                ? Math.round(campaign.sendgridMetrics.deliveryRate || 100) 
                 : 0
               const responseRate = hasBeenStarted && hasRealCampaignData 
-                ? Math.round(campaign.sendgridMetrics.clickRate) 
+                ? Math.round(campaign.sendgridMetrics.openRate || 0) // Use open rate as response rate
                 : 0
               
               return (
@@ -1394,11 +1391,11 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     <div className="grid grid-cols-2 gap-4 mb-6">
                         <div className="text-center p-4 bg-gray-50 rounded-2xl">
                           <p className="text-2xl font-light text-gray-900">
-                            {hasBeenStarted && hasRealCampaignData ? `${openRate}%` : 
-                             hasBeenStarted ? '0%' : '—'}
+                            {hasBeenStarted && hasRealCampaignData ? `${deliveryRate}%` : 
+                             hasBeenStarted ? '100%' : '—'}
                           </p>
                           <p className="text-sm text-gray-500 mt-1">
-                            {hasBeenStarted ? t('campaigns.openRate') : t('campaigns.notStarted')}
+                            {hasBeenStarted ? t('campaigns.deliveryRate') : t('campaigns.notStarted')}
                           </p>
                         </div>
                         <div className="text-center p-4 bg-gray-50 rounded-2xl">

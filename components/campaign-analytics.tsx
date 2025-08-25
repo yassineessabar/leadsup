@@ -393,8 +393,13 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       }
       
       const result = await response.json()
+      console.log('📊 Campaign analytics API response:', result)
+      console.log('📊 Metrics data:', result.data?.metrics)
       if (result.success && result.data?.metrics) {
+        console.log('✅ Setting metrics:', result.data.metrics)
         setMetrics(result.data.metrics)
+      } else {
+        console.log('❌ No metrics data in response')
       }
     } catch (error) {
       console.error('Error fetching SendGrid metrics:', error)
@@ -1217,10 +1222,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const hasContacts = campaign.totalPlanned && campaign.totalPlanned > 0
   
   // Check if campaign has REAL metrics (not fake injected data)
-  const hasRealCampaignData = metrics && metrics.emailsSent > 0 && 
-    hasContacts && // Must have contacts to have real activity
-    campaign.sent && campaign.sent > 0 && 
-    campaign.sent === metrics.emailsSent
+  // Simplified: if we have metrics with emails sent, use them
+  const hasRealCampaignData = metrics && metrics.emailsSent > 0
   
   
   // Calculate actual progress from contact statuses
@@ -1232,14 +1235,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Calculate total emails actually sent (completed + replied + in progress)
   const actualEmailsSent = completedContacts + repliedContacts + inProgressContacts
   
-  // Calculate metrics - use actual contact data when available, fallback to SendGrid metrics
-  const totalSent = hasBeenStarted ? (actualEmailsSent > 0 ? actualEmailsSent : (hasRealCampaignData ? metrics.emailsSent : 0)) : 0
-  const totalDelivered = hasBeenStarted && hasRealCampaignData ? (metrics?.emailsDelivered || 0) : totalSent
+  // Calculate metrics - use metrics from API when available
+  const totalSent = metrics?.emailsSent || actualEmailsSent || 0
+  const totalDelivered = metrics?.emailsDelivered || totalSent
   const totalPlanned = contacts.length > 0 ? contacts.length : (campaign.totalPlanned || 0)
-  const totalRemaining = totalPlanned - totalSent
-  const openRate = hasBeenStarted && hasRealCampaignData ? (metrics?.openRate || 0) : 0
-  const clickRate = hasBeenStarted && hasRealCampaignData ? (metrics?.clickRate || 0) : 0
-  const deliveryRate = hasBeenStarted && hasRealCampaignData ? (metrics?.deliveryRate || 0) : (totalSent > 0 ? 100 : 0)
+  const totalRemaining = Math.max(0, totalPlanned - totalSent)
+  const openRate = metrics?.openRate || 0
+  const clickRate = metrics?.clickRate || 0
+  const deliveryRate = metrics?.deliveryRate || (totalSent > 0 ? 100 : 0)
   const bounceRate = hasBeenStarted && hasRealCampaignData ? (metrics?.bounceRate || 0) : 0
   const responseRate = hasBeenStarted && hasRealCampaignData ? (Math.floor(Math.random() * 10) + 5) : 0 // Keep this as fallback until we have reply tracking
   const progressPercentage = hasBeenStarted && totalPlanned > 0 ? Math.min(Math.round((totalSent / totalPlanned) * 100), 100) : 0

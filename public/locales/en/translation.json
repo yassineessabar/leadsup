@@ -217,6 +217,7 @@
   },
   "campaigns": {
     "openRate": "Open Rate",
+    "deliveryRate": "Delivery Rate",
     "title": "Campaigns",
     "manageMonitorCampaigns": "Manage & Monitor Campaigns",
     "createCampaign": "Create Campaign",
@@ -234,7 +235,8 @@
     "viewWarming": "View Warming",
     "delete": "Delete",
     "responseRate": "Response Rate",
-    "conversionRate": "Conversion Rate"
+    "conversionRate": "Conversion Rate",
+    "notStarted": "Not Started"
   },
   "campaignManagement": {
     "targetTab": {
@@ -289,7 +291,10 @@
       },
       "steps": {
         "immediately": "Immediately",
-        "day": "Day"
+        "day": "Day",
+        "day66": "Day 66",
+        "day69": "Day 69", 
+        "day72": "Day 72"
       },
       "buttons": {
         "addEmail": "Add Email"
@@ -308,6 +313,77 @@
         "insertSignature": "Insert Signature"
       }
     },
+    "loading": {
+      "title": "Loading Campaign",
+      "subtitle": "Setting up your campaign dashboard"
+    },
+    "header": {
+      "campaignType": "{type} Campaign"
+    },
+    "tabs": {
+      "target": "Target",
+      "sequence": "Sequence",
+      "sender": "Sender",
+      "settings": "Settings"
+    },
+    "guidedFlow": {
+      "buttons": {
+        "previous": "Previous",
+        "saveNext": "Save & Next",
+        "checking": "Checking...",
+        "launchCampaign": "Launch Campaign"
+      },
+      "progress": {
+        "stepOf": "Step {current} of {total}"
+      }
+    },
+    "validation": {
+      "understand": "I Understand"
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Configure timing, scheduling, and sender information",
+      "saveSettings": "Save Settings",
+      "sendingSchedule": {
+        "title": "Sending Schedule",
+        "subtitle": "When and how often to send emails",
+        "activeDays": "Active Days",
+        "sendingHours": "Sending Hours",
+        "to": "to"
+      },
+      "senderInformation": {
+        "title": "Sender Information",
+        "subtitle": "Your details and email signature",
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "company": "Company",
+        "website": "Website",
+        "emailSignature": "Email Signature"
+      },
+      "placeholders": {
+        "firstName": "Enter first name",
+        "lastName": "Enter last name", 
+        "company": "Enter company name",
+        "website": "Enter website URL",
+        "emailSignature": "Enter your email signature"
+      },
+      "defaultValues": {
+        "firstName": "Loop",
+        "lastName": "Review",
+        "company": "LeadsUp",
+        "website": "https://www.leadsup.com",
+        "signatureTemplate": "<br/><br/>Best regards,<br/><strong>{{firstName}} {{lastName}}</strong><br/>{{company}}<br/><a href=\"{{website}}\" target=\"_blank\">{{website}}</a>"
+      },
+      "days": {
+        "mon": "Mon",
+        "tue": "Tue", 
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      }
+    },
     "dialogs": {
       "deleteCampaign": {
         "title": "Delete Campaign",
@@ -317,6 +393,12 @@
       },
       "delete": {
         "cancel": "Cancel"
+      },
+      "sequenceProgress": {
+        "title": "Confirm Sequence Progress",
+        "description": "Are you sure you want to move to the next step? Make sure you've saved your sequence changes.",
+        "cancel": "Cancel",
+        "continue": "Continue"
       }
     }
   },
@@ -582,87 +664,6 @@
     },
     "verification": {
       "readyToSend": "Your domain is ready to send emails. You can now create sender accounts."
-    }
-  },
-  "campaignManagement": {
-    "loading": {
-      "title": "Loading Campaign",
-      "subtitle": "Setting up your campaign dashboard"
-    },
-    "header": {
-      "campaignType": "{type} Campaign"
-    },
-    "tabs": {
-      "target": "Target",
-      "sequence": "Sequence",
-      "sender": "Sender",
-      "settings": "Settings"
-    },
-    "guidedFlow": {
-      "buttons": {
-        "previous": "Previous",
-        "saveNext": "Save & Next",
-        "checking": "Checking...",
-        "launchCampaign": "Launch Campaign"
-      },
-      "progress": {
-        "stepOf": "Step {current} of {total}"
-      }
-    },
-    "dialogs": {
-      "sequenceProgress": {
-        "title": "Confirm Sequence Progress",
-        "description": "Are you sure you want to move to the next step? Make sure you've saved your sequence changes.",
-        "cancel": "Cancel",
-        "continue": "Continue"
-      }
-    },
-    "validation": {
-      "understand": "I Understand"
-    },
-    "settings": {
-      "title": "Settings",
-      "subtitle": "Configure timing, scheduling, and sender information",
-      "saveSettings": "Save Settings",
-      "sendingSchedule": {
-        "title": "Sending Schedule",
-        "subtitle": "When and how often to send emails",
-        "activeDays": "Active Days",
-        "sendingHours": "Sending Hours",
-        "to": "to"
-      },
-      "senderInformation": {
-        "title": "Sender Information",
-        "subtitle": "Your details and email signature",
-        "firstName": "First Name",
-        "lastName": "Last Name",
-        "company": "Company",
-        "website": "Website",
-        "emailSignature": "Email Signature"
-      },
-      "placeholders": {
-        "firstName": "Enter first name",
-        "lastName": "Enter last name", 
-        "company": "Enter company name",
-        "website": "Enter website URL",
-        "emailSignature": "Enter your email signature"
-      },
-      "defaultValues": {
-        "firstName": "Loop",
-        "lastName": "Review",
-        "company": "LeadsUp",
-        "website": "https://www.leadsup.com",
-        "signatureTemplate": "<br/><br/>Best regards,<br/><strong>{{firstName}} {{lastName}}</strong><br/>{{company}}<br/><a href=\"{{website}}\" target=\"_blank\">{{website}}</a>"
-      },
-      "days": {
-        "mon": "Mon",
-        "tue": "Tue", 
-        "wed": "Wed",
-        "thu": "Thu",
-        "fri": "Fri",
-        "sat": "Sat",
-        "sun": "Sun"
-      }
     }
   },
   "senderManagement": {
