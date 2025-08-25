@@ -644,7 +644,7 @@ export default function DomainsPage() {
                               </span>
                               {domain.status === 'verified' && domain.inbound_parse_configured && (
                                 <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-lg">
-                                  Reply Capture ✓
+                                  {t('domains.replyCapture')}
                                 </span>
                               )}
                               {domain.status === 'verified' && (
