@@ -347,7 +347,7 @@ export async function POST(request: NextRequest) {
               const inboxMessageData = {
                 user_id: campaignInfo.user_id,
                 message_id: emailResult.messageId,
-                provider_message_id: emailResult.messageId, // Store SendGrid message ID for tracking
+                // provider_message_id: emailResult.messageId, // Column doesn't exist, removed
                 thread_id: emailResult.threadId,
                 conversation_id: conversationId,
                 campaign_id: campaignData.id,

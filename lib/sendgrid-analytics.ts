@@ -396,14 +396,14 @@ export class SendGridAnalyticsService {
       
       console.log(`📧 Found ${emailTracking.length} email tracking records`)
       
-      // Calculate metrics from email_tracking data
-      const emailsSent = emailTracking.filter(email => email.status === 'sent').length
+      // Calculate metrics from email_tracking data using correct field names
+      const emailsSent = emailTracking.filter(email => email.status === 'sent' || email.sent_at).length
       const emailsDelivered = emailTracking.filter(email => email.delivered_at !== null).length
-      const uniqueOpens = emailTracking.filter(email => email.opened_at !== null).length
-      const uniqueClicks = emailTracking.filter(email => email.clicked_at !== null).length
-      const emailsBounced = emailTracking.filter(email => email.bounced_at !== null).length
-      const spamReports = emailTracking.filter(email => email.spam_reported_at !== null).length
-      const unsubscribes = emailTracking.filter(email => email.unsubscribed_at !== null).length
+      const uniqueOpens = emailTracking.filter(email => email.first_opened_at !== null).length
+      const uniqueClicks = emailTracking.filter(email => email.first_clicked_at !== null).length
+      const emailsBounced = emailTracking.filter(email => email.status === 'bounce').length
+      const spamReports = emailTracking.filter(email => email.status === 'spam').length
+      const unsubscribes = emailTracking.filter(email => email.status === 'unsubscribed').length
       
       // Calculate rates
       const deliveryRate = emailsSent > 0 ? (emailsDelivered / emailsSent) * 100 : 0

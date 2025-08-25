@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { supabase } from "@/lib/supabase"
 import nodemailer from "nodemailer"
+import { addEmailTracking, generateTrackingId } from "@/lib/email-tracking"
 
 async function getUserIdFromSession(): Promise<string | null> {
   try {
@@ -151,7 +152,10 @@ The [Company] Team`
           .replace(/\[reviewUrl\]/g, trackableReviewUrl)
 
         // Create modern email template with gradient design
-        const htmlContent = `
+        // Generate tracking ID for this email
+        const trackingId = generateTrackingId()
+        
+        let htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -234,6 +238,31 @@ The [Company] Team`
 </body>
 </html>
         `
+
+        // Add tracking to HTML content
+        htmlContent = addEmailTracking(htmlContent, { trackingId })
+
+        // Create tracking record BEFORE sending email
+        const { data: trackingRecord, error: trackingError } = await supabase
+          .from("email_tracking")
+          .insert({
+            id: trackingId,
+            user_id: userId,
+            campaign_id: null, // Review requests are not part of campaigns
+            email: contact.email, // Field name is 'email' not 'contact_email'
+            sg_message_id: `smtp_${trackingId}`, // Required field
+            subject: personalizedSubject,
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+            category: ['review_request'] // Array field
+          })
+          .select('id')
+          .single()
+
+        if (trackingError) {
+          console.error("❌ Failed to create tracking record:", trackingError)
+          // Continue with sending even if tracking fails
+        }
 
         // Send Email via SMTP
         const mailOptions = {

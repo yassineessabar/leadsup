@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { supabaseServer } from "@/lib/supabase"
 import sgMail from '@sendgrid/mail'
+import { addEmailTracking, generateTrackingId } from "@/lib/email-tracking"
 
 // Initialize SendGrid
 if (process.env.SENDGRID_API_KEY) {
@@ -116,6 +117,15 @@ export async function POST(request: NextRequest) {
     
     const replyToEmail = `reply@reply.${senderDomain}`
 
+    // Generate tracking ID
+    const trackingId = generateTrackingId()
+    
+    // Process HTML content and add tracking
+    let finalHtmlContent = body_html || body_text.replace(/\n/g, '<br>')
+    if (finalHtmlContent && (finalHtmlContent.includes('<') || finalHtmlContent.includes('http'))) {
+      finalHtmlContent = addEmailTracking(finalHtmlContent, { trackingId })
+    }
+
     // Prepare the email message
     const msg = {
       to: to_email,
@@ -126,7 +136,7 @@ export async function POST(request: NextRequest) {
       replyTo: replyToEmail,
       subject: subject,
       text: body_text || body_html.replace(/<[^>]*>/g, ''), // Strip HTML tags for text version
-      html: body_html || body_text.replace(/\n/g, '<br>'), // Convert newlines to br for HTML
+      html: finalHtmlContent,
       ...(cc && { cc }),
       ...(bcc && { bcc })
     }
@@ -148,23 +158,19 @@ export async function POST(request: NextRequest) {
           .eq('user_id', userId)
       }
 
-      // Log email activity
+      // Log email activity with tracking ID
       await supabaseServer
         .from('email_tracking')
         .insert({
+          id: trackingId,
           user_id: userId,
           campaign_id: null, // Not part of a campaign
-          contact_email: to_email,
-          sender_email: senderEmail,
+          email: to_email, // Field name is 'email' not 'contact_email'
+          sg_message_id: `sendgrid_${trackingId}`, // Required field
           subject: subject,
           status: 'sent',
           sent_at: new Date().toISOString(),
-          provider: 'sendgrid',
-          message_type: 'single', // Distinguish from campaign emails
-          metadata: {
-            reply_to: reply_message_id,
-            from_inbox: true
-          }
+          category: ['single_email', 'inbox_reply'] // Array field
         })
 
       return NextResponse.json({
