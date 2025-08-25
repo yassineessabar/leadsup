@@ -1274,6 +1274,98 @@
       "failedToInitiate": "Failed to initiate upgrade. Please try again."
     }
   },
+  "adminPanel": {
+    "title": "Admin Panel",
+    "subtitle": "Monitor all account activities and system health",
+    "refresh": "Refresh",
+    "summary": {
+      "totalAccounts": "Total Accounts",
+      "activeToday": "active today",
+      "emailsToday": "Emails Today",
+      "sentAcrossAllAccounts": "Sent across all accounts",
+      "activeCampaigns": "Active Campaigns",
+      "currentlyRunning": "Currently running",
+      "systemHealth": "System Health",
+      "operational": "Operational",
+      "allSystemsRunning": "All systems running"
+    },
+    "tabs": {
+      "accountActivity": "Account Activity",
+      "senderHealth": "Sender Health",
+      "automationLogs": "Automation Logs"
+    },
+    "accountActivity": {
+      "title": "Account Activity Summary",
+      "description": "Overview of all account activities including scraping and email campaigns",
+      "columns": {
+        "userEmail": "User Email",
+        "campaigns": "Campaigns",
+        "contacts": "Contacts",
+        "scraping": "Scraping",
+        "emailsToday": "Emails Today",
+        "senderAccounts": "Sender Accounts",
+        "lastActivity": "Last Activity",
+        "admin": "Admin"
+      },
+      "badges": {
+        "total": "total",
+        "active": "active",
+        "draft": "draft",
+        "running": "running",
+        "completed": "completed",
+        "admin": "Admin"
+      },
+      "never": "Never"
+    },
+    "senderHealth": {
+      "title": "Sender Account Health",
+      "description": "Monitor email sender reputation and delivery metrics",
+      "columns": {
+        "senderEmail": "Sender Email",
+        "sent": "Sent",
+        "delivered": "Delivered",
+        "opened": "Opened",
+        "bounced": "Bounced",
+        "failed": "Failed",
+        "deliveryRate": "Delivery Rate",
+        "openRate": "Open Rate",
+        "healthScore": "Health Score"
+      }
+    },
+    "automationLogs": {
+      "title": "Recent Automation Logs",
+      "description": "Track all automation activities across the platform",
+      "columns": {
+        "time": "Time",
+        "action": "Action",
+        "campaign": "Campaign",
+        "details": "Details",
+        "userId": "User ID"
+      },
+      "actions": {
+        "email_sent": "email sent",
+        "email_failed": "email failed",
+        "scraping_completed": "scraping completed",
+        "scraping_started": "scraping started",
+        "campaign_started": "campaign started",
+        "campaign_paused": "campaign paused",
+        "campaign_completed": "campaign completed",
+        "sender_account_added": "sender account added",
+        "sender_account_removed": "sender account removed",
+        "sender_account_verified": "sender account verified",
+        "contacts_imported": "contacts imported",
+        "contacts_enriched": "contacts enriched",
+        "sequence_created": "sequence created",
+        "sequence_updated": "sequence updated",
+        "admin_action": "admin action"
+      }
+    },
+    "access": {
+      "unauthorized": "Unauthorized",
+      "accessDenied": "Access denied. Admin only.",
+      "redirecting": "Redirecting..."
+    }
+  },
   "emailSenders": {
     "title": "Email Senders",
     "description": "Manage who can send emails from this domain",

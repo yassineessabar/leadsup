@@ -990,6 +990,98 @@
     "saveChanges": "Enregistrer les modifications",
     "changesSaved": "Modifications enregistrées avec succès"
   },
+  "adminPanel": {
+    "title": "Panneau d'Administration",
+    "subtitle": "Surveillez toutes les activités des comptes et l'état du système",
+    "refresh": "Actualiser",
+    "summary": {
+      "totalAccounts": "Comptes Totaux",
+      "activeToday": "actifs aujourd'hui",
+      "emailsToday": "Emails Aujourd'hui",
+      "sentAcrossAllAccounts": "Envoyés sur tous les comptes",
+      "activeCampaigns": "Campagnes Actives",
+      "currentlyRunning": "En cours d'exécution",
+      "systemHealth": "État du Système",
+      "operational": "Opérationnel",
+      "allSystemsRunning": "Tous les systèmes fonctionnent"
+    },
+    "tabs": {
+      "accountActivity": "Activité des Comptes",
+      "senderHealth": "Santé des Expéditeurs",
+      "automationLogs": "Journaux d'Automation"
+    },
+    "accountActivity": {
+      "title": "Résumé d'Activité des Comptes",
+      "description": "Aperçu de toutes les activités des comptes y compris le scraping et les campagnes email",
+      "columns": {
+        "userEmail": "Email Utilisateur",
+        "campaigns": "Campagnes",
+        "contacts": "Contacts",
+        "scraping": "Scraping",
+        "emailsToday": "Emails Aujourd'hui",
+        "senderAccounts": "Comptes Expéditeur",
+        "lastActivity": "Dernière Activité",
+        "admin": "Admin"
+      },
+      "badges": {
+        "total": "total",
+        "active": "actif",
+        "draft": "brouillon",
+        "running": "en cours",
+        "completed": "terminé",
+        "admin": "Admin"
+      },
+      "never": "Jamais"
+    },
+    "senderHealth": {
+      "title": "Santé des Comptes Expéditeur",
+      "description": "Surveillez la réputation des expéditeurs email et les métriques de livraison",
+      "columns": {
+        "senderEmail": "Email Expéditeur",
+        "sent": "Envoyé",
+        "delivered": "Livré",
+        "opened": "Ouvert",
+        "bounced": "Rejeté",
+        "failed": "Échoué",
+        "deliveryRate": "Taux de Livraison",
+        "openRate": "Taux d'Ouverture",
+        "healthScore": "Score de Santé"
+      }
+    },
+    "automationLogs": {
+      "title": "Journaux d'Automation Récents",
+      "description": "Suivez toutes les activités d'automation sur la plateforme",
+      "columns": {
+        "time": "Heure",
+        "action": "Action",
+        "campaign": "Campagne",
+        "details": "Détails",
+        "userId": "ID Utilisateur"
+      },
+      "actions": {
+        "email_sent": "email envoyé",
+        "email_failed": "email échoué",
+        "scraping_completed": "scraping terminé",
+        "scraping_started": "scraping commencé",
+        "campaign_started": "campagne commencée",
+        "campaign_paused": "campagne mise en pause",
+        "campaign_completed": "campagne terminée",
+        "sender_account_added": "compte expéditeur ajouté",
+        "sender_account_removed": "compte expéditeur supprimé",
+        "sender_account_verified": "compte expéditeur vérifié",
+        "contacts_imported": "contacts importés",
+        "contacts_enriched": "contacts enrichis",
+        "sequence_created": "séquence créée",
+        "sequence_updated": "séquence mise à jour",
+        "admin_action": "action admin"
+      }
+    },
+    "access": {
+      "unauthorized": "Non autorisé",
+      "accessDenied": "Accès refusé. Admin seulement.",
+      "redirecting": "Redirection..."
+    }
+  },
   "billing": {
     "title": "Facturation et Abonnement",
     "currentPlan": "Plan actuel",
