@@ -243,14 +243,15 @@ export default function InboxPage() {
 
 
   // Helper function to replace template variables with actual values
-  const replaceTemplateVariables = (content: string, email: Email): string => {
+  const replaceTemplateVariables = (content: string, email: Email, message?: any): string => {
     if (!content) return content
     
-    // Extract data from email object
+    // Extract data from email object and message if provided
     const firstName = email.contact_name?.split(' ')[0] || 'there'
     const lastName = email.contact_name?.split(' ')[1] || ''
-    // Try to get company name from various sources
-    const companyName = (email as any).latest_message?.campaign?.company_name || 
+    // Try to get company name from message first, then email sources
+    const companyName = message?.campaign?.company_name ||
+                       (email as any).latest_message?.campaign?.company_name || 
                        (email as any).campaign?.company_name || 
                        (email as any).company_name || 
                        'your company'
@@ -1420,7 +1421,7 @@ export default function InboxPage() {
                               className="whitespace-pre-wrap" 
                               style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}
                             >
-                              {message.direction === 'outbound' ? replaceTemplateVariables(message.body_text, selectedEmail) : message.body_text}
+                              {message.direction === 'outbound' ? replaceTemplateVariables(message.body_text, selectedEmail, message) : message.body_text}
                             </div>
                           </div>
                         </div>

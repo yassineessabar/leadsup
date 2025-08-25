@@ -101,8 +101,7 @@ async function getThreadMessages(userId: string, conversationId: string) {
       .select(`
         id, message_id, subject, body_text, body_html, direction, status, 
         sent_at, received_at, sender_email, contact_name, contact_email, 
-        has_attachments, folder, created_at, provider_data,
-        campaign:campaigns(company_name)
+        has_attachments, folder, created_at, provider_data, campaign_id
       `)
       .eq('user_id', userId)
       .eq('conversation_id', conversationId)
@@ -113,6 +112,24 @@ async function getThreadMessages(userId: string, conversationId: string) {
     if (error) {
       console.error('❌ Error fetching thread messages:', error)
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    }
+
+    // Get unique campaign IDs for company name lookup
+    const campaignIds = [...new Set(messages.map(msg => msg.campaign_id).filter(Boolean))]
+    let campaignData = {}
+    
+    if (campaignIds.length > 0) {
+      const { data: campaigns } = await supabaseServer
+        .from('campaigns')
+        .select('id, company_name')
+        .in('id', campaignIds)
+      
+      if (campaigns) {
+        campaignData = campaigns.reduce((acc, campaign) => {
+          acc[campaign.id] = campaign
+          return acc
+        }, {} as any)
+      }
     }
 
     // Format messages for frontend
@@ -133,6 +150,8 @@ async function getThreadMessages(userId: string, conversationId: string) {
       folder: message.folder,
       created_at: message.created_at,
       provider_data: message.provider_data,
+      campaign_id: message.campaign_id,
+      campaign: message.campaign_id ? campaignData[message.campaign_id] : null,
       // Format date for display
       formatted_date: message.sent_at ? new Date(message.sent_at).toLocaleDateString('en-US', {
         weekday: 'long',
@@ -416,8 +435,7 @@ async function getThreadedMessages(userId: string, filters: any) {
             .from('inbox_messages')
             .select(`
               id, subject, body_text, body_html, direction, status, sent_at, received_at, 
-              sender_id, sender_email, contact_name, contact_email, has_attachments, folder,
-              campaign:campaigns(company_name)
+              sender_id, sender_email, contact_name, contact_email, has_attachments, folder, campaign_id
             `)
             .eq('user_id', userId)
             .eq('conversation_id', thread.conversation_id)
@@ -426,7 +444,19 @@ async function getThreadedMessages(userId: string, filters: any) {
             .limit(1)
             .single()
             
-          if (!messageError) {
+          if (!messageError && message) {
+            // Fetch campaign data if needed for this message
+            if (message.campaign_id) {
+              const { data: campaign } = await supabaseServer
+                .from('campaigns')
+                .select('id, company_name')
+                .eq('id', message.campaign_id)
+                .single()
+              
+              if (campaign) {
+                message.campaign = campaign
+              }
+            }
             latestMessage = message
           }
         } catch (e) {
