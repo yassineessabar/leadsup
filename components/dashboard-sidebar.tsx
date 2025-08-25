@@ -3,6 +3,7 @@ import { BarChart3, MessageSquare, User, Plug, Mail, Link, LogOut, Send, Crown, 
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { useCompanyLogo } from "@/hooks/useCompanyLogo"

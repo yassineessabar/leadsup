@@ -96,6 +96,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Create Reply-To email in format: reply@reply.senderaccount
+    // Extract the domain from sender email for proper reply-to format
+    let senderDomain = senderEmail.split('@')[1] || 'leadsup.io'
+    
+    // If using fallback noreply email, try to get user's actual sender domain
+    if (senderEmail === 'noreply@leadsup.io') {
+      const { data: userSender } = await supabaseServer
+        .from('sender_accounts')
+        .select('email')
+        .eq('user_id', userId)
+        .limit(1)
+        .single()
+      
+      if (userSender?.email) {
+        senderDomain = userSender.email.split('@')[1]
+      }
+    }
+    
+    const replyToEmail = `reply@reply.${senderDomain}`
+
     // Prepare the email message
     const msg = {
       to: to_email,
@@ -103,6 +123,7 @@ export async function POST(request: NextRequest) {
         email: senderEmail,
         name: 'LeadsUp'
       },
+      replyTo: replyToEmail,
       subject: subject,
       text: body_text || body_html.replace(/<[^>]*>/g, ''), // Strip HTML tags for text version
       html: body_html || body_text.replace(/\n/g, '<br>'), // Convert newlines to br for HTML
