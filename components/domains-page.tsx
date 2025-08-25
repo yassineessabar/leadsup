@@ -647,11 +647,6 @@ export default function DomainsPage() {
                                   Reply Capture ✓
                                 </span>
                               )}
-                              {domain.status === 'verified' && domain.inbound_parse_configured === false && (
-                                <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-lg">
-                                  Reply Setup Needed
-                                </span>
-                              )}
                               {domain.status === 'verified' && (
                                 <button
                                   onClick={(e) => {
