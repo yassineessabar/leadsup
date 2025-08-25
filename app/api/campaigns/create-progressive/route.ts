@@ -573,7 +573,7 @@ Pain Points: ${JSON.stringify(aiAssets.pain_points?.[0])}
 Value Proposition: ${JSON.stringify(aiAssets.value_propositions?.[0])}
 
 CRITICAL PERSONALIZATION REQUIREMENTS - YOU MUST FOLLOW THESE:
-1. **USE VARIABLES**: ALWAYS use {{firstName}} and {{companyName}} variables. NEVER write hardcoded names like "Jean" or "Bonjour Jean" - always use "Hi {{firstName}}" or "Hello {{firstName}}"
+1. **USE VARIABLES**: ALWAYS use {{firstName}} and {{company}} variables. NEVER write hardcoded names like "Jean" or "Bonjour Jean" - always use "Hi {{firstName}}" or "Hello {{firstName}}"
 2. **ANALYZE THE PAIN POINT**: Take the exact pain point description and impact from the data above - reference it specifically in your emails, don't use generic problems
 3. **SOLVE WITH VALUE PROP**: Use the exact value proposition description and benefits to show HOW you solve their specific problem
 4. **SPEAK TO THE PERSONA**: Address the persona by their exact title/role, reference their specific goals and challenges from the data
@@ -582,7 +582,7 @@ CRITICAL PERSONALIZATION REQUIREMENTS - YOU MUST FOLLOW THESE:
 7. **SPECIFIC BENEFITS**: Don't say "improve efficiency" - use the EXACT benefits listed in the value proposition
 8. **PROBLEM-SOLUTION FIT**: Each email should clearly connect their specific problem to your specific solution
 
-**MANDATORY VARIABLES**: EVERY email MUST start with "Hi {{firstName}}," or "Hello {{firstName}}," and reference {{companyName}} in the content. NEVER use hardcoded names.
+**MANDATORY VARIABLES**: EVERY email MUST start with "Hi {{firstName}}," or "Hello {{firstName}}," and reference {{company}} in the content. NEVER use hardcoded names.
 
 TONE & STYLE:
 - Professional but conversational
@@ -595,7 +595,7 @@ SUBJECT LINE STRATEGY:
 - Use the SAME subject for emails 1-3 (initial sequence) - generate based on their pain point, short and intriguing
 - Use a DIFFERENT subject for emails 4-6 (re-engagement sequence) - also based on pain point/value prop, short and intriguing
 - Make subjects specific to their pain point and industry, NOT generic like "Quick question about {{companyName}}"
-- Examples: "Struggling with [PAIN POINT]?" or "[BENEFIT] for {{companyName}}" or "Fix [SPECIFIC PROBLEM] in 30 days"
+- Examples: "Struggling with [PAIN POINT]?" or "[BENEFIT] for {{company}}" or "Fix [SPECIFIC PROBLEM] in 30 days"
 - CRITICAL: Write ALL subject lines in ${formData.language || 'English'} - they must be natural and professional in this language
 
 EMAIL STRATEGY - BE SPECIFIC WITH CONTEXT:
@@ -616,9 +616,9 @@ WRONG: "Bonjour Jean," or "Hello John," - NEVER use hardcoded names!
 CORRECT: "Hi {{firstName}}," or "Hello {{firstName}},"
 
 Full example:
-"Hi {{firstName}}, I noticed [PERSONA TITLE] at [ICP INDUSTRY] companies like {{companyName}} often struggle with [EXACT PAIN POINT]. Our [VALUE PROP SOLUTION] helps [PERSONA GOALS] by [SPECIFIC BENEFITS]."
+"Hi {{firstName}}, I noticed [PERSONA TITLE] at [ICP INDUSTRY] companies like {{company}} often struggle with [EXACT PAIN POINT]. Our [VALUE PROP SOLUTION] helps [PERSONA GOALS] by [SPECIFIC BENEFITS]."
 
-REMEMBER: {{firstName}} and {{companyName}} will be replaced with actual names when emails are sent.
+REMEMBER: {{firstName}} and {{company}} will be replaced with actual names when emails are sent.
 
 FINAL REMINDER: Generate ALL content (subjects, email bodies, CTAs) in ${formData.language || 'English'}. Make it sound natural and professional.
 
@@ -628,14 +628,14 @@ Return JSON in this exact format:
     {
       "step": 1,
       "subject": "Struggling with campaign measurement?",
-      "content": "Hi {{firstName}},\n\nI noticed {{companyName}} works in advertising, and most agencies struggle with accurately measuring campaign effectiveness.\n\nOur precision measurement solution helps agencies like yours make data-driven budget decisions.\n\nWorth a quick chat?",
+      "content": "Hi {{firstName}},\n\nI noticed {{company}} works in advertising, and most agencies struggle with accurately measuring campaign effectiveness.\n\nOur precision measurement solution helps agencies like yours make data-driven budget decisions.\n\nWorth a quick chat?",
       "purpose": "Introduction/awareness",
       "timing_days": 0
     },
     {
       "step": 2, 
       "subject": "Struggling with campaign measurement?",
-      "content": "Hi {{firstName}},\n\nFollowing up on accurate campaign measurement for {{companyName}}.\n\nWe've helped agencies reduce measurement uncertainty by 90% using device ID tracking and control groups.\n\nInterested in seeing how this works?",
+      "content": "Hi {{firstName}},\n\nFollowing up on accurate campaign measurement for {{company}}.\n\nWe've helped agencies reduce measurement uncertainty by 90% using device ID tracking and control groups.\n\nInterested in seeing how this works?",
       "purpose": "Value demonstration",
       "timing_days": 3
     },
@@ -648,22 +648,22 @@ Return JSON in this exact format:
     },
     {
       "step": 4,
-      "subject": "Boost client satisfaction at {{companyName}}",
-      "content": "Hi {{firstName}},\n\nSaw some industry news and thought of {{companyName}} - agencies using our precision measurement are seeing 40% higher client retention.\n\nWorth exploring for your team?",
+      "subject": "Boost client satisfaction at {{company}}",
+      "content": "Hi {{firstName}},\n\nSaw some industry news and thought of {{company}} - agencies using our precision measurement are seeing 40% higher client retention.\n\nWorth exploring for your team?",
       "purpose": "Re-engagement",
       "timing_days": 66
     },
     {
       "step": 5,
-      "subject": "Boost client satisfaction at {{companyName}}",
-      "content": "Hi {{firstName}},\n\nQuick follow-up - just helped another agency director reduce budget allocation uncertainty by 85%.\n\nSame challenges at {{companyName}}?",
+      "subject": "Boost client satisfaction at {{company}}",
+      "content": "Hi {{firstName}},\n\nQuick follow-up - just helped another agency director reduce budget allocation uncertainty by 85%.\n\nSame challenges at {{company}}?",
       "purpose": "Renewed value proposition",
       "timing_days": 69
     },
     {
       "step": 6,
-      "subject": "Boost client satisfaction at {{companyName}}",
-      "content": "Hi {{firstName}},\n\nFinal note - if campaign measurement accuracy matters to {{companyName}}, I'm here to help.\n\nOtherwise, I'll leave you be.",
+      "subject": "Boost client satisfaction at {{company}}",
+      "content": "Hi {{firstName}},\n\nFinal note - if campaign measurement accuracy matters to {{company}}, I'm here to help.\n\nOtherwise, I'll leave you be.",
       "purpose": "Last call to action",
       "timing_days": 72
     }
@@ -893,42 +893,42 @@ function getFallbackEmailSequence() {
       {
         step: 1,
         subject: "Struggling with lead generation?",
-        content: "Hi {{firstName}},\n\nI noticed {{companyName}} and thought you might be interested in how we've helped similar companies improve their operations.\n\nWould you be open to a brief conversation?",
+        content: "Hi {{firstName}},\n\nI noticed {{company}} and thought you might be interested in how we've helped similar companies improve their operations.\n\nWould you be open to a brief conversation?",
         purpose: "Introduction",
         timing_days: 0
       },
       {
         step: 2,
         subject: "Struggling with lead generation?",
-        content: "Hi {{firstName}},\n\nI wanted to follow up on my previous email. I understand you're busy, but I believe we could really help {{companyName}} streamline operations.\n\nCould we schedule a quick 15-minute call?",
+        content: "Hi {{firstName}},\n\nI wanted to follow up on my previous email. I understand you're busy, but I believe we could really help {{company}} streamline operations.\n\nCould we schedule a quick 15-minute call?",
         purpose: "Value demonstration",
         timing_days: 3
       },
       {
         step: 3,
         subject: "Struggling with lead generation?",
-        content: "Hi {{firstName}},\n\nThis will be my last email in this sequence. I genuinely believe we can help {{companyName}} save significant time and resources.\n\nIf you're interested, I'm here. Otherwise, I won't bother you further.",
+        content: "Hi {{firstName}},\n\nThis will be my last email in this sequence. I genuinely believe we can help {{company}} save significant time and resources.\n\nIf you're interested, I'm here. Otherwise, I won't bother you further.",
         purpose: "Call to action",
         timing_days: 6
       },
       {
         step: 4,
-        subject: "Boost revenue at {{companyName}}",
-        content: "Hi {{firstName}},\n\nIt's been a while since we last connected. We've recently launched some new features that I think would be perfect for {{companyName}}.\n\nWould you be interested in learning more?",
+        subject: "Boost revenue at {{company}}",
+        content: "Hi {{firstName}},\n\nIt's been a while since we last connected. We've recently launched some new features that I think would be perfect for {{company}}.\n\nWould you be interested in learning more?",
         purpose: "Re-engagement",
         timing_days: 66
       },
       {
         step: 5,
-        subject: "Boost revenue at {{companyName}}",
-        content: "Hi {{firstName}},\n\nI wanted to share an exclusive opportunity we're offering to companies like {{companyName}}. \n\nWe're seeing incredible results with similar businesses in your industry.",
+        subject: "Boost revenue at {{company}}",
+        content: "Hi {{firstName}},\n\nI wanted to share an exclusive opportunity we're offering to companies like {{company}}. \n\nWe're seeing incredible results with similar businesses in your industry.",
         purpose: "Renewed value proposition",
         timing_days: 69
       },
       {
         step: 6,
-        subject: "Boost revenue at {{companyName}}",
-        content: "Hi {{firstName}},\n\nThis is my final outreach. We've helped dozens of companies similar to {{companyName}} achieve remarkable results.\n\nIf there's any interest, I'd love to connect. Otherwise, I'll close your file.",
+        subject: "Boost revenue at {{company}}",
+        content: "Hi {{firstName}},\n\nThis is my final outreach. We've helped dozens of companies similar to {{company}} achieve remarkable results.\n\nIf there's any interest, I'd love to connect. Otherwise, I'll close your file.",
         purpose: "Last call to action",
         timing_days: 72
       }

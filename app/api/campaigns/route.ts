@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
         campaign_id: campaign.id,
         step_number: 1,
         subject: null,
-        content: "Hi {{firstName}}! Thanks for choosing {{companyName}}. We'd love your feedback! Reply with a quick review or click here: bit.ly/review-link",
+        content: "Hi {{firstName}}! Thanks for choosing {{company}}. We'd love your feedback! Reply with a quick review or click here: bit.ly/review-link",
         timing_days: 1,
         variants: 1
       }

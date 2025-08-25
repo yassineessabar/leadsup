@@ -181,7 +181,6 @@ export async function POST(request: NextRequest) {
         firstName: 'John',
         lastName: 'Doe', 
         company: 'Acme Corp',
-        companyName: 'Acme Corp',
         title: 'Marketing Manager',
         senderName: senderData.name || senderEmail.split('@')[0]
       }
