@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // For now, fallback to payment link if price IDs aren't configured
     // TODO: Replace the price IDs above with your actual Stripe price IDs
-    const paymentLink = process.env.STRIPE_PAYMENT_LINK || "https://buy.stripe.com/test_4gM9AVakE1gzcE54Lvf3a00"
+    const paymentLink = process.env.STRIPE_PAYMENT_LINK || "https://buy.stripe.com/dRm28t50k3oHgUl91Lf3a0c"
 
     // Create a proper checkout session with trial configuration
     try {

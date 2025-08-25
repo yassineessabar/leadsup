@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, Activity, Mail, Users, TrendingUp, LogOut } from 'lucide-react'
+import { RefreshCw, Activity, Mail, Users, TrendingUp, LogOut, Clock } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 
@@ -29,6 +29,7 @@ interface AccountActivity {
 
 interface SenderHealth {
   email: string
+  accountEmail: string
   warmup_status: string
   stats: {
     sent: number
@@ -531,6 +532,7 @@ export default function AdminPanel() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Sender Email</TableHead>
+                    <TableHead>Account Email</TableHead>
                     <TableHead>Warmup Status</TableHead>
                     <TableHead>Sent</TableHead>
                     <TableHead>Delivered</TableHead>
@@ -546,6 +548,7 @@ export default function AdminPanel() {
                   {senderHealth.map((sender, index) => (
                     <TableRow key={`sender-${sender.email}-${index}`}>
                       <TableCell className="font-medium">{sender.email}</TableCell>
+                      <TableCell className="text-sm text-gray-600">{sender.accountEmail}</TableCell>
                       <TableCell>
                         <Badge 
                           variant={
@@ -619,6 +622,110 @@ export default function AdminPanel() {
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <div className="text-sm font-medium text-gray-600">Showing Runs</div>
                       <div className="text-2xl font-bold text-gray-900">{githubAutomation.runs.length}</div>
+                    </div>
+                  </div>
+
+                  {/* Next Run Times */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-100">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
+                      <Clock className="w-5 h-5 mr-2" />
+                      Next Scheduled Runs
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-white p-4 rounded-lg border border-blue-200">
+                        <div className="text-sm font-medium text-blue-600 mb-1">Email Processing</div>
+                        <div className="text-lg font-bold text-blue-900">
+                          {(() => {
+                            const now = new Date()
+                            const nextHour = new Date(now)
+                            nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0)
+                            return nextHour.toLocaleTimeString([], { 
+                              hour: '2-digit', 
+                              minute: '2-digit',
+                              hour12: false 
+                            })
+                          })()}
+                        </div>
+                        <div className="text-xs text-blue-600 mt-1">
+                          {(() => {
+                            const now = new Date()
+                            const nextHour = new Date(now)
+                            nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0)
+                            const minutes = Math.floor((nextHour.getTime() - now.getTime()) / 60000)
+                            return `in ${minutes} minutes (every hour)`
+                          })()}
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white p-4 rounded-lg border border-blue-200">
+                        <div className="text-sm font-medium text-orange-600 mb-1">Warmup Scheduler</div>
+                        <div className="text-lg font-bold text-orange-900">
+                          {(() => {
+                            const now = new Date()
+                            const next9AM = new Date(now)
+                            next9AM.setUTCHours(9, 0, 0, 0)
+                            if (next9AM <= now) {
+                              next9AM.setUTCDate(next9AM.getUTCDate() + 1)
+                            }
+                            return next9AM.toLocaleTimeString([], { 
+                              hour: '2-digit', 
+                              minute: '2-digit',
+                              hour12: false 
+                            }) + ' UTC'
+                          })()}
+                        </div>
+                        <div className="text-xs text-orange-600 mt-1">
+                          {(() => {
+                            const now = new Date()
+                            const next9AM = new Date(now)
+                            next9AM.setUTCHours(9, 0, 0, 0)
+                            if (next9AM <= now) {
+                              next9AM.setUTCDate(next9AM.getUTCDate() + 1)
+                            }
+                            const hours = Math.floor((next9AM.getTime() - now.getTime()) / 3600000)
+                            return hours < 24 ? `in ${hours} hours (daily)` : `tomorrow (daily)`
+                          })()}
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white p-4 rounded-lg border border-blue-200">
+                        <div className="text-sm font-medium text-purple-600 mb-1">Warmup Execution</div>
+                        <div className="text-lg font-bold text-purple-900">
+                          {(() => {
+                            const now = new Date()
+                            const next6PM = new Date(now)
+                            next6PM.setUTCHours(18, 0, 0, 0)
+                            if (next6PM <= now) {
+                              next6PM.setUTCDate(next6PM.getUTCDate() + 1)
+                            }
+                            return next6PM.toLocaleTimeString([], { 
+                              hour: '2-digit', 
+                              minute: '2-digit',
+                              hour12: false 
+                            }) + ' UTC'
+                          })()}
+                        </div>
+                        <div className="text-xs text-purple-600 mt-1">
+                          {(() => {
+                            const now = new Date()
+                            const next6PM = new Date(now)
+                            next6PM.setUTCHours(18, 0, 0, 0)
+                            if (next6PM <= now) {
+                              next6PM.setUTCDate(next6PM.getUTCDate() + 1)
+                            }
+                            const hours = Math.floor((next6PM.getTime() - now.getTime()) / 3600000)
+                            return hours < 24 ? `in ${hours} hours (daily)` : `tomorrow (daily)`
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 p-3 bg-blue-100 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        <strong>📧 Email Processing</strong> runs every hour and processes scheduled campaign emails. 
+                        <strong>🌡️ Warmup Scheduler</strong> plans warming tasks daily at 9 AM UTC. 
+                        <strong>📤 Warmup Execution</strong> sends warming emails daily at 6 PM UTC.
+                      </p>
                     </div>
                   </div>
 

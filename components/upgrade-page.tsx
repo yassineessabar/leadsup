@@ -61,16 +61,16 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
       // Payment links for both monthly and yearly billing
       const paymentLinks = {
         basic: {
-          monthly: "https://buy.stripe.com/dRm6oJ1O8cZh1Zr1zjf3a09",
-          yearly: "https://buy.stripe.com/00waEZ1O88J1eMddi1f3a08"
+          monthly: "https://buy.stripe.com/dRm28t50k3oHgUl91Lf3a0c",
+          yearly: "https://buy.stripe.com/5kQ3cx0K4bVdavXa5Pf3a0d"
         },
         pro: {
-          monthly: "https://buy.stripe.com/cNibJ31O86AT9rTb9Tf3a07",
-          yearly: "https://buy.stripe.com/5kQ00l50k9N57jLdi1f3a06"
+          monthly: "https://buy.stripe.com/4gM3cxakEgbt33vb9Tf3a0h",
+          yearly: "https://buy.stripe.com/28EbJ3gJ29N57jL2Dnf3a0g"
         },
         enterprise: {
-          monthly: "https://buy.stripe.com/cNidRb9gAbVdcE5cdXf3a05",
-          yearly: "https://buy.stripe.com/00wfZjeAU9N533vdi1f3a04"
+          monthly: "https://buy.stripe.com/6oUaEZ0K44sLdI93Hrf3a0f",
+          yearly: "https://buy.stripe.com/aFa14p0K4aR9avX3Hrf3a0e"
         }
       }
 

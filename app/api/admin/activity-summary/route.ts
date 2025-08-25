@@ -308,6 +308,31 @@ export async function GET(request: NextRequest) {
         allSenderAccounts.map(async (sender) => {
           console.log('Admin API: Processing sender:', sender.email)
           
+          // Get user email for this sender account
+          let accountEmail = 'Unknown Account'
+          try {
+            if (sender.user_id) {
+              // First try to get from users table
+              const { data: userData } = await supabaseAdmin
+                .from('users')
+                .select('email')
+                .eq('id', sender.user_id)
+                .single()
+              
+              if (userData?.email) {
+                accountEmail = userData.email
+              } else {
+                // Fallback to auth data if we have it
+                const authUser = authData?.users?.find(u => u.id === sender.user_id)
+                if (authUser?.email) {
+                  accountEmail = authUser.email
+                }
+              }
+            }
+          } catch (error) {
+            console.log('Admin API: Could not get user email for sender:', sender.email, 'user_id:', sender.user_id)
+          }
+          
           // Get campaign_senders data for this sender email  
           const { data: campaignSenderData, error: campaignSenderError } = await supabaseAdmin
             .from('campaign_senders')
@@ -357,6 +382,7 @@ export async function GET(request: NextRequest) {
           
           const result = {
             email: sender.email,
+            accountEmail: accountEmail,
             warmup_status: campaignSender?.warmup_status || 'unknown',
             stats,
             metrics: {
