@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       case 'create-campaign':
         return await createCampaignAndICPs(userId, formData)
       case 'generate-pain-value': {
-        const result = await generatePainPointsAndValueProps(campaignId, aiAssets)
+        const result = await generatePainPointsAndValueProps(campaignId, aiAssets, formData)
         return NextResponse.json({ success: true, ...result })
       }
       case 'generate-sequence': {
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
         
         // NEW: Generate pain points and email sequence in parallel for speed
         const [painValueResult, sequenceResult] = await Promise.all([
-          generatePainPointsAndValueProps(campaignId, aiAssets),
+          generatePainPointsAndValueProps(campaignId, aiAssets, formData),
           generateEmailSequence(campaignId, formData, aiAssets)
         ])
         
@@ -316,7 +316,7 @@ Language: ${formData.language || 'English'}
       messages: [
         {
           role: "system",
-          content: `Generate 1 ICP and 1 persona. ${websiteContent ? 'Use website content.' : ''} CRITICAL: For target_industries provide 3-5 different industries as an array. For target_locations provide 3-5 different locations as an array. Return JSON only.`
+          content: `Generate 1 ICP and 1 persona in ${formData.language || 'English'}. ${websiteContent ? 'Use website content.' : ''} CRITICAL: For target_industries provide 3-5 different industries as an array. For target_locations provide 3-5 different locations as an array. Return JSON only.`
         },
         {
           role: "user",
@@ -332,6 +332,7 @@ IMPORTANT:
 
 Valid Industries (select from these ONLY): ${VALID_INDUSTRIES.join(", ")}
 3. For target_locations: Not needed - will be set from company location.
+4. Write ALL descriptive content (name, title, demographics, goals, challenges, etc.) in ${formData.language || 'English'}. Be natural and professional in this language.
 
 Return JSON in this exact format:
 {
@@ -405,7 +406,7 @@ Return JSON in this exact format:
   }
 }
 
-async function generatePainPointsAndValueProps(campaignId: string | number, aiAssets: any) {
+async function generatePainPointsAndValueProps(campaignId: string | number, aiAssets: any, formData?: CampaignFormData) {
   try {
     console.log("💡 Generating Pain Points & Value Props...")
 
@@ -435,11 +436,11 @@ async function generatePainPointsAndValueProps(campaignId: string | number, aiAs
       messages: [
         {
           role: "system",
-          content: `Generate 1 pain point and 1 value proposition. ${websiteContent ? 'Use website content.' : ''} Return JSON only.`
+          content: `Generate 1 pain point and 1 value proposition in ${formData?.language || 'English'}. ${websiteContent ? 'Use website content.' : ''} Return JSON only.`
         },
         {
           role: "user",
-          content: `Based on this ICP and persona, create 1 pain point and 1 value proposition:
+          content: `Based on this ICP and persona, create 1 pain point and 1 value proposition in ${formData?.language || 'English'}:
 
 ICP: ${JSON.stringify(aiAssets.icps?.[0])}
 Persona: ${JSON.stringify(aiAssets.personas?.[0])}
@@ -448,6 +449,8 @@ ${campaign ? `Company Context: ${campaign.company_name} - ${campaign.industry ||
 ${websiteContent ? `Website Content: ${websiteContent}` : ''}
 
 ${websiteContent ? 'Use the website content to understand what problems this company solves and create pain points that align with their solutions.' : ''}
+
+IMPORTANT: Write all content (titles, descriptions, benefits, etc.) in ${formData?.language || 'English'}. Be natural and professional in this language.
 
 Return JSON in this exact format:
 {
@@ -554,7 +557,7 @@ Language: ${formData.language || 'English'}
       messages: [
         {
           role: "system",
-          content: `You are an expert B2B sales copywriter. Your task is to create highly personalized, problem-solving email sequences. Use ALL the provided context data to create specific, relevant emails that directly address the target audience's pain points with concrete solutions. ${websiteContent ? 'Use website content to ensure authenticity.' : ''} Return JSON only.`
+          content: `You are an expert B2B sales copywriter. Your task is to create highly personalized, problem-solving email sequences in ${formData.language || 'English'}. Use ALL the provided context data to create specific, relevant emails that directly address the target audience's pain points with concrete solutions. IMPORTANT: Write ALL content (subject lines, email body, calls to action) in ${formData.language || 'English'}. Be natural and fluent in this language. ${websiteContent ? 'Use website content to ensure authenticity.' : ''} Return JSON only.`
         },
         {
           role: "user",
@@ -592,6 +595,7 @@ SUBJECT LINE STRATEGY:
 - Use a DIFFERENT subject for emails 4-6 (re-engagement sequence) - also based on pain point/value prop, short and intriguing
 - Make subjects specific to their pain point and industry, NOT generic like "Quick question about {{companyName}}"
 - Examples: "Struggling with [PAIN POINT]?" or "[BENEFIT] for {{companyName}}" or "Fix [SPECIFIC PROBLEM] in 30 days"
+- CRITICAL: Write ALL subject lines in ${formData.language || 'English'} - they must be natural and professional in this language
 
 EMAIL STRATEGY - BE SPECIFIC WITH CONTEXT:
 - Email 1: Open with their EXACT pain point from the data, mention their role/industry, brief intro about how you solve it
@@ -601,9 +605,16 @@ EMAIL STRATEGY - BE SPECIFIC WITH CONTEXT:
 - Email 5: Specific case study/results for their persona type and industry context
 - Email 6: Final offer with urgency, summarizing the exact problem-solution fit
 
+LANGUAGE REQUIREMENT:
+- Write ALL email content in ${formData.language || 'English'} - including greetings, body text, and call-to-action buttons
+- Use natural, professional language that sounds native in ${formData.language || 'English'}
+- Adapt tone and expressions to be culturally appropriate for ${formData.language || 'English'}-speaking business contexts
+
 **EXAMPLE OF PERSONALIZATION**:
 Instead of: "I noticed {{companyName}} and thought you might be interested..."
 Write: "Hi {{firstName}}, I noticed [PERSONA TITLE] at [ICP INDUSTRY] companies like {{companyName}} often struggle with [EXACT PAIN POINT]. Our [VALUE PROP SOLUTION] helps [PERSONA GOALS] by [SPECIFIC BENEFITS]."
+
+FINAL REMINDER: Generate ALL content (subjects, email bodies, CTAs) in ${formData.language || 'English'}. Make it sound natural and professional.
 
 Return JSON in this exact format:
 {

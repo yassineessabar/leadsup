@@ -2,6 +2,9 @@
   "logo": {
     "leadsUp": "LeadsUp Logo"
   },
+  "buttons": {
+    "back": "Back"
+  },
   "auth": {
     "signupTitle": "Create Your Account",
     "signupSubtitle": "Sign up to start generating leads effortlessly",

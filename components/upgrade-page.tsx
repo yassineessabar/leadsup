@@ -180,47 +180,6 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
           <TrialBanner userInfo={userInfo} />
         </div>
 
-        {/* Features Overview */}
-        <div className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-3xl p-8 mb-8">
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gray-100/50 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-gray-600" />
-              </div>
-              <h2 className="text-2xl font-light text-gray-900">{t('upgrade.whyUpgrade')}</h2>
-            </div>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              {t('upgrade.whyUpgradeDescription')}
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-6 bg-gray-50/50 rounded-2xl border border-gray-100/50">
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-7 h-7 text-gray-600" />
-              </div>
-              <h3 className="font-medium text-gray-900 mb-2">{t('upgrade.features.secureReliable')}</h3>
-              <p className="text-sm text-gray-600">{t('upgrade.features.secureDescription')}</p>
-            </div>
-            
-            <div className="text-center p-6 bg-gray-50/50 rounded-2xl border border-gray-100/50">
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="w-7 h-7 text-gray-600" />
-              </div>
-              <h3 className="font-medium text-gray-900 mb-2">{t('upgrade.features.provenResults')}</h3>
-              <p className="text-sm text-gray-600">{t('upgrade.features.resultsDescription')}</p>
-            </div>
-            
-            <div className="text-center p-6 bg-gray-50/50 rounded-2xl border border-gray-100/50">
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                <Users className="w-7 h-7 text-gray-600" />
-              </div>
-              <h3 className="font-medium text-gray-900 mb-2">{t('upgrade.features.expertSupport')}</h3>
-              <p className="text-sm text-gray-600">{t('upgrade.features.supportDescription')}</p>
-            </div>
-          </div>
-        </div>
-
         {/* Billing Toggle */}
         <div className="flex items-center justify-center gap-4 mb-8">
           <span className={`text-sm font-medium ${!isYearly ? 'text-gray-900' : 'text-gray-500'}`}>
@@ -350,6 +309,47 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Features Overview - Why Upgrade? */}
+        <div className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-3xl p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gray-100/50 flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-gray-600" />
+              </div>
+              <h2 className="text-2xl font-light text-gray-900">{t('upgrade.whyUpgrade')}</h2>
+            </div>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              {t('upgrade.whyUpgradeDescription')}
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center p-6 bg-gray-50/50 rounded-2xl border border-gray-100/50">
+              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-7 h-7 text-gray-600" />
+              </div>
+              <h3 className="font-medium text-gray-900 mb-2">{t('upgrade.features.secureReliable')}</h3>
+              <p className="text-sm text-gray-600">{t('upgrade.features.secureDescription')}</p>
+            </div>
+            
+            <div className="text-center p-6 bg-gray-50/50 rounded-2xl border border-gray-100/50">
+              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="w-7 h-7 text-gray-600" />
+              </div>
+              <h3 className="font-medium text-gray-900 mb-2">{t('upgrade.features.provenResults')}</h3>
+              <p className="text-sm text-gray-600">{t('upgrade.features.resultsDescription')}</p>
+            </div>
+            
+            <div className="text-center p-6 bg-gray-50/50 rounded-2xl border border-gray-100/50">
+              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <Users className="w-7 h-7 text-gray-600" />
+              </div>
+              <h3 className="font-medium text-gray-900 mb-2">{t('upgrade.features.expertSupport')}</h3>
+              <p className="text-sm text-gray-600">{t('upgrade.features.supportDescription')}</p>
+            </div>
+          </div>
         </div>
 
         {/* Enterprise CTA */}

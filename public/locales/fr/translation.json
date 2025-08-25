@@ -1,5 +1,8 @@
 {
   "greeting": "Bienvenue sur LeadsUp",
+  "buttons": {
+    "back": "Retour"
+  },
   "common": {
     "loading": "Chargement...",
     "error": "Erreur",
