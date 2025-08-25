@@ -299,16 +299,46 @@ export async function POST(request: NextRequest) {
         console.log(`⚠️ Error fetching domain config for ${senderDomain}:`, error.message)
       }
       
-      // Send email via SendGrid
+      // ✅ ADD TRACKING TO TEST EMAIL
+      const { addEmailTracking, generateTrackingId } = await import('@/lib/email-tracking')
+      const trackingId = generateTrackingId()
+      
+      // Add tracking to HTML content
+      const trackedHtmlContent = addEmailTracking(htmlContent, { trackingId })
+      
+      console.log(`📊 Added tracking to test email: ${trackingId}`)
+      
+      // Send email via SendGrid WITH TRACKING
       const result = await sendEmailWithSendGrid({
         to: testEmail,
         from: senderEmail,
         fromName: senderData.name || senderEmail,
         subject: subject,
-        html: htmlContent,
+        html: trackedHtmlContent, // Use tracked HTML
         text: htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text version
         replyTo: replyToEmail // Use dynamic reply address based on domain config
       })
+
+      // ✅ LOG TO EMAIL_TRACKING TABLE
+      try {
+        await supabaseServer
+          .from('email_tracking')
+          .insert({
+            id: trackingId,
+            user_id: userId,
+            campaign_id: campaignId || null,
+            email: testEmail,
+            sg_message_id: result.messageId || `test_${Date.now()}`,
+            subject: subject,
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+            category: ['test_email', 'manual_test']
+          })
+        
+        console.log(`📊 Logged test email to tracking table: ${trackingId}`)
+      } catch (trackingError) {
+        console.error('⚠️ Failed to log test email to tracking table:', trackingError)
+      }
 
       console.log(`✅ Test email sent - Message ID: ${result.messageId}`)
 
