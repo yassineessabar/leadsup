@@ -15,15 +15,15 @@ export async function fetchSendGridEventsForUser(userId: string, startDate: stri
   try {
     console.log(`🔍 Fetching SendGrid events for user ${userId} from ${startDate} to ${endDate}`)
     
-    // Get user's sent emails with SendGrid message IDs
+    // Get user's sent emails - use message_id since provider_message_id doesn't exist
     const { data: sentEmails, error: emailError } = await supabaseServer
       .from('inbox_messages')
-      .select('provider_message_id, contact_email')
+      .select('message_id, contact_email')
       .eq('user_id', userId)
       .eq('direction', 'outbound')
       .gte('created_at', startDate + 'T00:00:00Z')
       .lte('created_at', endDate + 'T23:59:59Z')
-      .not('provider_message_id', 'is', null)
+      .not('message_id', 'is', null)
     
     if (emailError) {
       console.error('❌ Error fetching emails:', emailError)
