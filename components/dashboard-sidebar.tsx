@@ -16,6 +16,7 @@ interface MenuItem {
   icon: any
   subItems?: MenuItem[]
   isPremium?: boolean
+  badgeCount?: number
 }
 
 interface DashboardSidebarProps {
@@ -46,6 +47,7 @@ export function DashboardSidebar({
   const [userInfo, setUserInfo] = useState<{ email?: string; id?: string }>({})
   const [lastFetchTime, setLastFetchTime] = useState(0)
   const [campaignsExpanded, setCampaignsExpanded] = useState(true)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   const fetchUserData = useCallback(async (force = false) => {
     // Prevent duplicate API calls within 30 seconds unless forced
@@ -89,9 +91,38 @@ export function DashboardSidebar({
     }
   }, [lastFetchTime])
 
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const response = await fetch("/api/inbox/stats", {
+        credentials: "include",
+        cache: "no-cache"
+      })
+      const result = await response.json()
+
+      if (result.success && result.data) {
+        // Get the unread count from folder distribution
+        const inboxUnread = result.data.folder_distribution?.inbox || 0
+        setUnreadCount(inboxUnread)
+      }
+    } catch (error) {
+      console.error("Error fetching unread count:", error)
+      setUnreadCount(0)
+    }
+  }, [])
+
   useEffect(() => {
     fetchUserData()
-  }, [fetchUserData])
+    fetchUnreadCount() // Fetch unread count on mount
+  }, [fetchUserData, fetchUnreadCount])
+
+  // Poll for unread count updates every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchUnreadCount()
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [fetchUnreadCount])
 
   // Listen for subscription changes and tab switches
   useEffect(() => {
@@ -103,15 +134,25 @@ export function DashboardSidebar({
         // Handle campaign sub-tab navigation
         setCampaignsExpanded(true) // Ensure campaigns is expanded
         onTabChange(e.detail, true) // Pass skipEvent=true to prevent infinite loop
+      } else if (e.detail === 'inbox') {
+        // Refresh unread count when switching to inbox
+        fetchUnreadCount()
       }
     }
 
     window.addEventListener('tab-switched', handleTabSwitch as EventListener)
     
+    // Listen for inbox updates
+    const handleInboxUpdate = () => {
+      fetchUnreadCount()
+    }
+    window.addEventListener('inbox-updated', handleInboxUpdate)
+    
     return () => {
       window.removeEventListener('tab-switched', handleTabSwitch as EventListener)
+      window.removeEventListener('inbox-updated', handleInboxUpdate)
     }
-  }, [fetchUserData]) // Removed onTabChange from dependencies to fix the error
+  }, [fetchUserData, fetchUnreadCount]) // Removed onTabChange from dependencies to fix the error
 
   const mainMenuItems = [
     { 
@@ -126,7 +167,7 @@ export function DashboardSidebar({
     { id: "dashboard", label: t("navigation.dashboard"), icon: BarChart3 },
     { id: "leads", label: t("navigation.leads"), icon: Users },
     { id: "templates", label: t("navigation.templates"), icon: FileText },
-    { id: "inbox", label: t("navigation.inbox"), icon: Inbox },
+    { id: "inbox", label: t("navigation.inbox"), icon: Inbox, badgeCount: unreadCount },
   ]
 
   const toolsMenuItems = [
@@ -245,8 +286,22 @@ export function DashboardSidebar({
                     }}
                     title={isCollapsed ? item.label : undefined}
                   >
-                    <Icon className="h-4 w-4" />
-                    {!isCollapsed && item.label}
+                    <div className="relative flex items-center gap-2">
+                      <div className="relative">
+                        <Icon className="h-4 w-4 flex-shrink-0" />
+                        {item.badgeCount !== undefined && item.badgeCount > 0 && isCollapsed && (
+                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-0.5 border-2 border-white shadow-sm">
+                            {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                          </span>
+                        )}
+                      </div>
+                      {!isCollapsed && <span>{item.label}</span>}
+                    </div>
+                    {item.badgeCount !== undefined && item.badgeCount > 0 && !isCollapsed && (
+                      <Badge className="ml-auto bg-red-500 hover:bg-red-500 text-white border-0 px-2 h-5 text-xs font-semibold">
+                        {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                      </Badge>
+                    )}
                   </Button>
 
                 </div>
@@ -451,6 +506,11 @@ export function DashboardSidebar({
                 >
                   <Icon className="w-5 h-5 mr-3" />
                   <span className="truncate text-base">{item.label}</span>
+                  {item.badgeCount !== undefined && item.badgeCount > 0 && (
+                    <Badge className="ml-auto bg-red-500 hover:bg-red-500 text-white border-0 px-2 h-5 text-xs font-semibold">
+                      {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                    </Badge>
+                  )}
                 </Button>
 
               </li>

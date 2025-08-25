@@ -256,8 +256,9 @@ async function getThreadedMessages(userId: string, filters: any) {
         
         // Apply folder-specific logic
         if (folder === 'inbox') {
-          query = query.gt('unread_count', 0);
-          console.log('📥 + filtering for unread conversations');
+          // Show ALL conversations in inbox (both read and unread)
+          // Don't filter by unread_count - users want to see all their emails
+          console.log('📥 + showing all inbox conversations (read and unread)');
         } else if (folder === 'sent') {
           // For sent folder, filter threads that have outbound messages
           console.log('📤 + filtering for threads with outbound messages');
@@ -342,7 +343,8 @@ async function getThreadedMessages(userId: string, filters: any) {
         }
         
         if (folder === 'inbox') {
-          countQuery = countQuery.gt('unread_count', 0)
+          // Count ALL conversations in inbox (both read and unread)
+          // Don't filter by unread_count for the count either
         } else if (folder === 'sent') {
           // Apply the same sent folder filtering to count query
           if (outboundConversationIds.length > 0) {
