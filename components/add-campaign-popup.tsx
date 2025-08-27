@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Check, ChevronRight, MessageSquare, X, Globe, Search, BarChart3, MapPin, Tag, FolderOpen, Send, Users, Brain, Target, Filter, ExternalLink, FileText, ChevronLeft, Edit, Save, XCircle, Eye, Info, Plus } from 'lucide-react'
-import { INDUSTRY_OPTIONS } from "@/lib/industry-options"
+import { INDUSTRY_OPTIONS, getTranslatedIndustries, getTranslatedIndustry } from "@/lib/industry-options"
+import { LOCATION_OPTIONS, getTranslatedLocations, getTranslatedLocation } from "@/lib/location-options"
 import { useI18n } from "@/hooks/use-i18n"
 
 interface AddCampaignPopupProps {
@@ -52,16 +53,7 @@ const samplePersonas = [
   }
 ]
 
-// Using shared industry options from lib
-
-const LOCATION_OPTIONS = [
-  "United States", "Canada", "United Kingdom", "Germany", "France", "Italy", "Spain", "Netherlands",
-  "Belgium", "Switzerland", "Austria", "Sweden", "Norway", "Denmark", "Finland", "Poland",
-  "Australia", "New Zealand", "Japan", "South Korea", "Singapore", "Hong Kong", "India", "China",
-  "Brazil", "Mexico", "Argentina", "Chile", "Colombia", "Peru", "South Africa", "Nigeria",
-  "Israel", "United Arab Emirates", "Saudi Arabia", "Turkey", "Russia", "Ukraine", "Czech Republic",
-  "Europe", "North America", "Asia Pacific", "Latin America", "Middle East", "Africa", "Global"
-]
+// Using shared industry and location options from lib
 
 const samplePainPoints = [
   {
@@ -156,8 +148,11 @@ const getSuggestedRoles = (objective: string): string[] => {
 }
 
 export default function AddCampaignPopup({ isOpen, onClose, onComplete, existingCampaignId }: AddCampaignPopupProps) {
-  const { t, ready } = useI18n()
+  const { t, ready, currentLanguage } = useI18n()
   const steps = getSteps(t)
+  
+  // Get translated industries for the current language
+  const translatedIndustries = getTranslatedIndustries(currentLanguage)
   const [currentStep, setCurrentStep] = useState("company")
   const [isProcessing, setIsProcessing] = useState(false)
   const [showForm, setShowForm] = useState(true)
@@ -785,25 +780,29 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
   // Simple functions for main ICP management
   const addMainICPIndustry = () => {
     const trimmed = newICPIndustry.trim()
-    const isValid = INDUSTRY_OPTIONS.some(industry => 
+    // Check if the industry exists in our translated list (case-insensitive)
+    const translatedIndex = translatedIndustries.findIndex(industry => 
       industry.toLowerCase() === trimmed.toLowerCase()
     )
     
-    if (trimmed && isValid && !mainICPIndustries.includes(trimmed)) {
-      const exactMatch = INDUSTRY_OPTIONS.find(industry => 
-        industry.toLowerCase() === trimmed.toLowerCase()
-      )
-      const newIndustries = [...mainICPIndustries, exactMatch!]
-      setMainICPIndustries(newIndustries)
-      setNewICPIndustry("")
-      setShowIndustryDropdown(false)
+    if (trimmed && translatedIndex !== -1) {
+      // Get the original English key for storage
+      const originalIndustry = INDUSTRY_OPTIONS[translatedIndex]
       
-      // Save to database if campaign exists
-      if (campaignId) {
-        console.log('💾 [Frontend] Saving new industries after add:', newIndustries);
-        updateCampaignIndustriesAndLocations(newIndustries, mainICPLocations);
+      if (!mainICPIndustries.includes(originalIndustry)) {
+        const newIndustries = [...mainICPIndustries, originalIndustry]
+        setMainICPIndustries(newIndustries)
+        setNewICPIndustry("")
+        setShowIndustryDropdown(false)
+        
+        // Save to database if campaign exists
+        if (campaignId) {
+          console.log('💾 [Frontend] Saving new industries after add:', newIndustries);
+          updateCampaignIndustriesAndLocations(newIndustries, mainICPLocations);
+        }
       }
-    } else if (trimmed && !isValid) {
+    } else if (trimmed) {
+      // Show error indicator for invalid industry
       setShowIndustryError(true)
       setTimeout(() => setShowIndustryError(false), 3000)
     }
@@ -816,9 +815,13 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
     // Will be saved when moving to next step
   }
   
-  const selectMainIndustry = (industry: string) => {
-    if (!mainICPIndustries.includes(industry)) {
-      const newIndustries = [...mainICPIndustries, industry]
+  const selectMainIndustry = (translatedIndustry: string) => {
+    // Find the original English industry from the translated one
+    const translatedIndex = translatedIndustries.findIndex(industry => industry === translatedIndustry)
+    const originalIndustry = INDUSTRY_OPTIONS[translatedIndex]
+    
+    if (originalIndustry && !mainICPIndustries.includes(originalIndustry)) {
+      const newIndustries = [...mainICPIndustries, originalIndustry]
       setMainICPIndustries(newIndustries)
       
       // Will be saved when moving to next step
@@ -901,25 +904,23 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
   const addICPIndustry = () => {
     const trimmedIndustry = newICPIndustry.trim()
     
-    // Check if the industry exists in our predefined list (case-insensitive)
-    const isValidIndustry = INDUSTRY_OPTIONS.some(industry => 
+    // Check if the industry exists in our translated list (case-insensitive)
+    const translatedIndex = translatedIndustries.findIndex(industry => 
       industry.toLowerCase() === trimmedIndustry.toLowerCase()
     )
     
-    if (trimmedIndustry && editedData.icp && isValidIndustry && (!editedData.icp.industries || !editedData.icp.industries.includes(trimmedIndustry))) {
-      // Find the exact match from the list to maintain proper casing
-      const exactMatch = INDUSTRY_OPTIONS.find(industry => 
-        industry.toLowerCase() === trimmedIndustry.toLowerCase()
-      )
+    if (trimmedIndustry && editedData.icp && translatedIndex !== -1 && (!editedData.icp.industries || !editedData.icp.industries.includes(trimmedIndustry))) {
+      // Get the original English key for storage
+      const originalIndustry = INDUSTRY_OPTIONS[translatedIndex]
       
-      const newIndustries = [...(editedData.icp.industries || []), exactMatch!];
+      const newIndustries = [...(editedData.icp.industries || []), originalIndustry];
       setEditedData(prev => ({ 
         ...prev, 
         icp: { ...prev.icp!, industries: newIndustries }
       }))
       setNewICPIndustry("")
       setShowIndustryDropdown(false)
-    } else if (trimmedIndustry && !isValidIndustry) {
+    } else if (trimmedIndustry) {
       // Show error indicator for invalid industry
       setShowIndustryError(true)
       setTimeout(() => setShowIndustryError(false), 3000) // Hide after 3 seconds
@@ -979,7 +980,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
     setNewICPIndustry(value)
     
     if (value.length > 0) {
-      const filtered = INDUSTRY_OPTIONS.filter(industry => 
+      const filtered = translatedIndustries.filter(industry => 
         industry.toLowerCase().includes(value.toLowerCase())
       ).slice(0, 10) // Limit to 10 suggestions
       setFilteredIndustries(filtered)
@@ -990,9 +991,13 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
     }
   }
 
-  const selectIndustryFromDropdown = (industry: string) => {
-    if (editedData.icp && (!editedData.icp.industries || !editedData.icp.industries.includes(industry))) {
-      const newIndustries = [...(editedData.icp.industries || []), industry];
+  const selectIndustryFromDropdown = (translatedIndustry: string) => {
+    // Find the original English industry from the translated one
+    const translatedIndex = translatedIndustries.findIndex(industry => industry === translatedIndustry)
+    const originalIndustry = INDUSTRY_OPTIONS[translatedIndex]
+    
+    if (editedData.icp && originalIndustry && (!editedData.icp.industries || !editedData.icp.industries.includes(originalIndustry))) {
+      const newIndustries = [...(editedData.icp.industries || []), originalIndustry];
       setEditedData(prev => ({ 
         ...prev, 
         icp: { ...prev.icp!, industries: newIndustries }
@@ -1495,7 +1500,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                       key={index}
                       className="text-sm bg-indigo-100 text-indigo-800 border border-indigo-200 py-1.5 px-3"
                     >
-                      {industry}
+                      {getTranslatedIndustry(industry, currentLanguage)}
                       <button
                         onClick={() => removeMainICPIndustry(industry)}
                         className="ml-2 hover:text-indigo-900"
@@ -1736,7 +1741,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                                 key={index}
                                 className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"
                               >
-                                {industry}
+                                {getTranslatedIndustry(industry, currentLanguage)}
                               </span>
                             ))}
                           </div>
@@ -2029,7 +2034,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                           key={index}
                           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 border border-blue-200"
                         >
-                          {industry}
+                          {getTranslatedIndustry(industry, currentLanguage)}
                           <button
                             type="button"
                             onClick={() => removeICPIndustry(industry)}
@@ -2501,7 +2506,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                       <div className="flex flex-wrap gap-1">
                         {icp.industries.slice(0, 3).map((industry: string, index: number) => (
                           <span key={index} className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                            {industry}
+                            {getTranslatedIndustry(industry, currentLanguage)}
                           </span>
                         ))}
                         {icp.industries.length > 3 && (

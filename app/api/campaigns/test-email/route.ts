@@ -284,7 +284,7 @@ export async function POST(request: NextRequest) {
               record.host === 'reply' && record.type === 'MX'
             )
             if (replyMxRecord) {
-              replyToEmail = `reply@${domainConfig.domain}`
+              replyToEmail = `reply@reply.${domainConfig.domain}`
             }
           }
           

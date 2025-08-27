@@ -248,7 +248,7 @@ export async function GET(request: NextRequest) {
           // Build health scores mapping sender_account_id -> health_score_data
           const healthScores: Record<string, any> = {}
           
-          senderAccounts.forEach(senderAccount => {
+          await Promise.all(senderAccounts.map(async (senderAccount) => {
             // Find matching campaign sender by email
             const campaignSender = campaignSenders?.find(cs => cs.email === senderAccount.email)
             
@@ -267,25 +267,48 @@ export async function GET(request: NextRequest) {
               }
               console.log(`✅ Health score for ${senderAccount.email}: ${campaignSender.health_score}%`)
             } else {
-              // Calculate health score for this sender
-              console.log(`🔄 Calculating health score for ${senderAccount.email}...`)
+              // Calculate health score for this sender using real data
+              console.log(`🔄 Calculating real health score for ${senderAccount.email}...`)
               
-              // For now, use a default score calculation
-              const defaultScore = 75 // Default health score
-              healthScores[senderAccount.id] = {
-                score: defaultScore,
-                breakdown: {
-                  warmupScore: defaultScore,
-                  deliverabilityScore: defaultScore,
-                  engagementScore: defaultScore,
-                  volumeScore: defaultScore,
-                  reputationScore: defaultScore
-                },
-                lastUpdated: new Date().toISOString()
+              try {
+                // Calculate real health score using the imported function
+                const realHealthScores = await calculateHealthScoresFromRealData(userId, [senderAccount.id])
+                
+                if (realHealthScores[senderAccount.id]) {
+                  healthScores[senderAccount.id] = realHealthScores[senderAccount.id]
+                  console.log(`📊 Calculated real health score for ${senderAccount.email}: ${realHealthScores[senderAccount.id].score}%`)
+                } else {
+                  // Fallback to manual calculation if the function fails
+                  console.log(`⚠️ Real calculation failed, using manual calculation for ${senderAccount.email}`)
+                  const stats = await getRealSenderStats(userId, senderAccount.email, 30)
+                  const { score, breakdown } = calculateRealHealthScore(stats)
+                  
+                  healthScores[senderAccount.id] = {
+                    score,
+                    breakdown,
+                    lastUpdated: new Date().toISOString()
+                  }
+                  console.log(`📊 Manual calculation health score for ${senderAccount.email}: ${score}%`)
+                }
+              } catch (error) {
+                console.error(`❌ Error calculating health score for ${senderAccount.email}:`, error)
+                // Only use default as final fallback
+                const defaultScore = 75
+                healthScores[senderAccount.id] = {
+                  score: defaultScore,
+                  breakdown: {
+                    warmupScore: defaultScore,
+                    deliverabilityScore: defaultScore,
+                    engagementScore: defaultScore,
+                    volumeScore: defaultScore,
+                    reputationScore: defaultScore
+                  },
+                  lastUpdated: new Date().toISOString()
+                }
+                console.log(`📊 Fallback health score for ${senderAccount.email}: ${defaultScore}%`)
               }
-              console.log(`📊 Default health score for ${senderAccount.email}: ${defaultScore}%`)
             }
-          })
+          }))
           
           return NextResponse.json({
             success: true,

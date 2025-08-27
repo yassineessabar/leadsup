@@ -1,14 +1,8 @@
 import { LOCATION_TRANSLATIONS } from './location-translations'
+import linkedinLocations from '@/scripts/linkedin_locations.json'
 
-// Predefined list of valid locations - used across the application
-export const LOCATION_OPTIONS = [
-  "United States", "Canada", "United Kingdom", "Germany", "France", "Italy", "Spain", "Netherlands",
-  "Belgium", "Switzerland", "Austria", "Sweden", "Norway", "Denmark", "Finland", "Poland",
-  "Australia", "New Zealand", "Japan", "South Korea", "Singapore", "Hong Kong", "India", "China",
-  "Brazil", "Mexico", "Argentina", "Chile", "Colombia", "Peru", "South Africa", "Nigeria",
-  "Israel", "United Arab Emirates", "Saudi Arabia", "Turkey", "Russia", "Ukraine", "Czech Republic",
-  "Europe", "North America", "Asia Pacific", "Latin America", "Middle East", "Africa", "Global"
-]
+// Use LinkedIn locations from JSON file
+export const LOCATION_OPTIONS = linkedinLocations
 
 // Helper function to get translated location name
 export const getTranslatedLocation = (location: string, language: string = 'en'): string => {
