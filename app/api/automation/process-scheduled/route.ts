@@ -971,43 +971,18 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
         text: personalizedContent  // Send as pure plain text with line breaks
       }
       
-      console.log(`📧 SENDING SEQUENCE EMAIL WITH TRACKING:`)
+      console.log(`📧 SENDING SEQUENCE EMAIL:`)
       console.log(`   From: ${senderEmail}`)
       console.log(`   To: ${contact.email}`)
       console.log(`   Subject: ${personalizedSubject}`)
       console.log(`   Step: ${sequence.step_number}`)
-      console.log(`   Tracking ID: ${trackingId}`)
       
       const result = await sgMail.send(msg)
       
-      // ✅ LOG TO EMAIL_TRACKING TABLE
+      // ✅ LOG TO EMAIL_TRACKING TABLE - DISABLED FOR PLAIN TEXT
       try {
-        const trackingInsert = {
-          id: trackingId,
-          user_id: campaign.user_id,
-          campaign_id: campaign.id,
-          contact_id: contact.id,
-          sequence_id: sequence.id,
-          sequence_step: sequence.step_number,
-          email: contact.email_address,
-          sg_message_id: result[0]?.headers?.['x-message-id'] || `sg_${Date.now()}_${contact.id}`,
-          subject: personalizedSubject,
-          status: 'sent',
-          sent_at: new Date().toISOString(),
-          category: ['automation', 'campaign', `step_${sequence.step_number}`]
-        }
-        
-        console.log('📊 Inserting tracking record for automation email:', trackingInsert)
-        
-        const { error: insertError } = await supabase
-          .from('email_tracking')
-          .insert(trackingInsert)
-        
-        if (insertError) {
-          console.error('❌ Error inserting tracking record:', insertError)
-        } else {
-          console.log(`📊 Logged to email_tracking table: ${trackingId}`)
-        }
+        // Tracking disabled for plain text emails to preserve formatting
+        console.log('📊 Email tracking skipped for plain text format')
       } catch (trackingError) {
         console.error('⚠️ Failed to log to email_tracking table:', trackingError)
       }
