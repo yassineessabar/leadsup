@@ -49,6 +49,7 @@ export function DashboardSidebar({
   const [lastFetchTime, setLastFetchTime] = useState(0)
   const [campaignsExpanded, setCampaignsExpanded] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [newLeadsCount, setNewLeadsCount] = useState(0)
 
   const fetchUserData = useCallback(async (force = false) => {
     // Prevent duplicate API calls within 30 seconds unless forced
@@ -111,19 +112,40 @@ export function DashboardSidebar({
     }
   }, [])
 
+  const fetchNewLeadsCount = useCallback(async () => {
+    try {
+      const response = await fetch("/api/leads/stats", {
+        credentials: "include",
+        cache: "no-cache"
+      })
+      const result = await response.json()
+
+      if (result.success && result.data) {
+        // Get the new leads count from the API response
+        const newLeads = result.data.newLeadsCount || 0
+        setNewLeadsCount(newLeads)
+      }
+    } catch (error) {
+      console.error("Error fetching new leads count:", error)
+      setNewLeadsCount(0)
+    }
+  }, [])
+
   useEffect(() => {
     fetchUserData()
     fetchUnreadCount() // Fetch unread count on mount
-  }, [fetchUserData, fetchUnreadCount])
+    fetchNewLeadsCount() // Fetch new leads count on mount
+  }, [fetchUserData, fetchUnreadCount, fetchNewLeadsCount])
 
-  // Poll for unread count updates every 30 seconds
+  // Poll for unread count and leads count updates every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       fetchUnreadCount()
+      fetchNewLeadsCount()
     }, 30000) // 30 seconds
 
     return () => clearInterval(interval)
-  }, [fetchUnreadCount])
+  }, [fetchUnreadCount, fetchNewLeadsCount])
 
   // Listen for subscription changes and tab switches
   useEffect(() => {
@@ -138,10 +160,20 @@ export function DashboardSidebar({
       } else if (e.detail === 'inbox') {
         // Refresh unread count when switching to inbox
         fetchUnreadCount()
+      } else if (e.detail === 'leads') {
+        // Refresh leads count when switching to leads
+        fetchNewLeadsCount()
       }
     }
 
     window.addEventListener('tab-switched', handleTabSwitch as EventListener)
+    
+    // Listen for leads updates
+    const handleLeadsUpdate = () => {
+      fetchNewLeadsCount()
+    }
+    
+    window.addEventListener('leads-updated', handleLeadsUpdate)
     
     // Listen for inbox updates
     const handleInboxUpdate = () => {
@@ -151,9 +183,10 @@ export function DashboardSidebar({
     
     return () => {
       window.removeEventListener('tab-switched', handleTabSwitch as EventListener)
+      window.removeEventListener('leads-updated', handleLeadsUpdate)
       window.removeEventListener('inbox-updated', handleInboxUpdate)
     }
-  }, [fetchUserData, fetchUnreadCount]) // Removed onTabChange from dependencies to fix the error
+  }, [fetchUserData, fetchUnreadCount, fetchNewLeadsCount]) // Removed onTabChange from dependencies to fix the error
 
   const mainMenuItems = [
     { 
@@ -166,7 +199,7 @@ export function DashboardSidebar({
       ]
     },
     { id: "dashboard", label: t("navigation.dashboard"), icon: BarChart3 },
-    { id: "leads", label: t("navigation.leads"), icon: Users },
+    { id: "leads", label: t("navigation.leads"), icon: Users, badgeCount: newLeadsCount },
     { id: "templates", label: t("navigation.templates"), icon: FileText },
     { id: "inbox", label: t("navigation.inbox"), icon: Inbox, badgeCount: unreadCount },
   ]

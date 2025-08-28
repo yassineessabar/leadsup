@@ -69,6 +69,32 @@ interface Campaign {
 
 export function LeadsTab() {
   const { t, ready } = useI18n()
+
+  // Helper function to translate status values
+  const translateStatus = (status: string) => {
+    if (!status) return t('leads.notContacted', 'Not Contacted')
+    
+    if (status === 'Paused') return t('leads.status.paused', 'Paused')
+    if (status === 'Warming Up') return t('leads.status.warmingUp', 'Warming Up')
+    if (status === 'Pending') return t('leads.status.pending', 'Pending')
+    if (status === 'Completed') return t('leads.status.completed', 'Completed')
+    if (status === 'Ready') return t('leads.status.ready', 'Ready')
+    if (status === 'Scheduled') return t('leads.status.scheduled', 'Scheduled')
+    
+    // Handle "Email X Scheduled" and "Email X Ready" patterns
+    const emailScheduledMatch = status.match(/^Email (\d+) Scheduled$/)
+    if (emailScheduledMatch) {
+      return t('leads.status.emailScheduled', 'Email {{step}} Scheduled', { step: emailScheduledMatch[1] })
+    }
+    
+    const emailReadyMatch = status.match(/^Email (\d+) Ready$/)
+    if (emailReadyMatch) {
+      return t('leads.status.emailReady', 'Email {{step}} Ready', { step: emailReadyMatch[1] })
+    }
+    
+    // Fallback to original status if no translation found
+    return status
+  }
   const [contacts, setContacts] = useState<Contact[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(false)
@@ -114,12 +140,70 @@ export function LeadsTab() {
       const data = await response.json()
       
       if (data.contacts) {
-        // Enhance contacts with campaign status information
-        const contactsWithCampaignStatus = data.contacts.map(contact => ({
-          ...contact,
-          campaign_status: contact.campaign_status || 'Active', // Default to Active if not provided
-          next_email: contact.next_email || null // Next email timing if available
-        }))
+        // Get unique campaign IDs from contacts
+        const campaignIds = [...new Set(data.contacts.map(c => c.campaign_id).filter(Boolean))]
+        const sequenceStatusMap = new Map()
+        
+        // Fetch sequence status for each campaign
+        if (campaignIds.length > 0) {
+          const sequenceStatusPromises = campaignIds.map(async (campaignId) => {
+            try {
+              const statusResponse = await fetch(`/api/contacts/sequence-status?campaignId=${campaignId}`, {
+                credentials: 'include'
+              })
+              if (statusResponse.ok) {
+                const statusData = await statusResponse.json()
+                if (statusData.success && statusData.contacts) {
+                  statusData.contacts.forEach(contact => {
+                    sequenceStatusMap.set(contact.email, contact)
+                  })
+                }
+              }
+            } catch (error) {
+              console.error(`Error fetching sequence status for campaign ${campaignId}:`, error)
+            }
+          })
+          
+          await Promise.all(sequenceStatusPromises)
+        }
+        
+        // Enhance contacts with campaign status and calculated sequence status
+        const contactsWithCampaignStatus = data.contacts.map(contact => {
+          let calculatedStatus = contact.email_status
+          
+          // If contact has a campaign, calculate status like campaign analytics does
+          if (contact.campaign_id && contact.campaign_status) {
+            const sequenceStatus = sequenceStatusMap.get(contact.email)
+            
+            if (contact.campaign_status === 'Paused' || contact.email_status === 'Paused') {
+              calculatedStatus = "Paused"
+            } else if (contact.campaign_status === 'Warming') {
+              calculatedStatus = "Warming Up"
+            } else if (sequenceStatus) {
+              // Use real sequence status if campaign is active
+              if (sequenceStatus.sequences_sent === 0) {
+                calculatedStatus = "Pending"
+              } else if (sequenceStatus.status === 'completed') {
+                calculatedStatus = "Completed"
+              } else if (sequenceStatus.sequences_scheduled > 0) {
+                calculatedStatus = `Email ${sequenceStatus.sequences_sent + 1} Scheduled`
+              } else {
+                calculatedStatus = `Email ${sequenceStatus.sequences_sent + 1} Ready`
+              }
+            } else if (contact.campaign_id) {
+              // Contact is assigned to campaign but no sequence status yet
+              calculatedStatus = "Pending"
+            }
+          }
+          
+          return {
+            ...contact,
+            campaign_status: contact.campaign_status || null,
+            calculated_status: calculatedStatus, // This is the status we'll display
+            next_email: contact.next_email || null,
+            sequence_data: sequenceStatusMap.get(contact.email) || null
+          }
+        })
         
         setContacts(contactsWithCampaignStatus)
         setTotalContacts(data.total)
@@ -509,6 +593,11 @@ export function LeadsTab() {
         })
         setShowImportModal(false)
         fetchContacts()
+        
+        // Dispatch leads update event for sidebar badge refresh
+        if (data.imported && data.imported > 0) {
+          window.dispatchEvent(new CustomEvent('leads-updated'))
+        }
       } else {
         throw new Error(data.error || 'Import failed')
       }
@@ -588,6 +677,11 @@ export function LeadsTab() {
         setShowEditModal(false)
         setEditingContact({})
         fetchContacts()
+        
+        // Dispatch leads update event for sidebar badge refresh
+        if (!isEditing) {
+          window.dispatchEvent(new CustomEvent('leads-updated'))
+        }
       } else {
         throw new Error(data.error || 'Failed to save contact')
       }
@@ -833,18 +927,83 @@ export function LeadsTab() {
                       <Badge 
                         variant="outline" 
                         className={`text-xs border rounded-full px-2 py-1 ${
-                          (contact.campaign_status === 'Paused' || contact.campaign_status === 'Warming') 
-                            ? 'bg-blue-50 text-blue-700 border-blue-200' 
-                            : 'bg-green-50 text-green-700 border-green-200'
+                          contact.calculated_status === 'Paused' 
+                            ? 'bg-red-50 text-red-700 border-red-200' 
+                            : contact.calculated_status === 'Warming Up'
+                              ? 'bg-orange-50 text-orange-700 border-orange-200'
+                              : contact.calculated_status === 'Pending'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : contact.calculated_status === 'Completed'
+                                  ? 'bg-green-50 text-green-700 border-green-200'
+                                  : contact.calculated_status?.includes('Scheduled')
+                                    ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                    : contact.calculated_status?.includes('Ready')
+                                      ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                      : 'bg-gray-50 text-gray-700 border-gray-200'
                         }`}
                       >
-                        {(contact.campaign_status === 'Paused' || contact.campaign_status === 'Warming') ? t('common.pending') : (contact.email_status || t('leads.ready'))}
+                        {translateStatus(contact.calculated_status)}
                       </Badge>
                     </td>
                     <td className="p-4">
-                      {/* Next Email Column - Show "Pending" when campaign is paused or warming */}
+                      {/* Next Email Column - Show timing/scheduling details instead of duplicating status */}
                       <span className="text-sm text-gray-600">
-                        {(contact.campaign_status === 'Paused' || contact.campaign_status === 'Warming') ? t('common.pending') : (contact.next_email || t('leads.ready'))}
+                        {(() => {
+                          const sequenceData = contact.sequence_data
+                          
+                          // If campaign is paused or warming, show that info
+                          if (contact.calculated_status === 'Paused') {
+                            return t('common.paused', 'Paused')
+                          }
+                          if (contact.calculated_status === 'Warming Up') {
+                            return t('leads.warmingInProgress', 'Warming in progress')
+                          }
+                          if (contact.calculated_status === 'Completed') {
+                            return t('leads.sequenceComplete', 'Sequence complete')
+                          }
+                          
+                          // If we have sequence data, show specific timing info
+                          if (sequenceData) {
+                            if (sequenceData.next_send_time) {
+                              const nextSendDate = new Date(sequenceData.next_send_time)
+                              const now = new Date()
+                              const diffHours = Math.round((nextSendDate.getTime() - now.getTime()) / (1000 * 60 * 60))
+                              
+                              if (diffHours < 0) {
+                                return t('leads.overdue', 'Overdue')
+                              } else if (diffHours < 24) {
+                                return t('leads.inHours', 'In {{hours}}h', { hours: diffHours })
+                              } else {
+                                const diffDays = Math.round(diffHours / 24)
+                                return t('leads.inDays', 'In {{days}} day{{days, plural, one {} other {s}}}', { days: diffDays })
+                              }
+                            }
+                            
+                            if (sequenceData.sequences_sent === 0) {
+                              return t('leads.notStarted', 'Not started')
+                            }
+                            
+                            if (contact.calculated_status?.includes('Scheduled')) {
+                              return t('leads.scheduled', 'Scheduled')
+                            }
+                            
+                            if (contact.calculated_status?.includes('Ready')) {
+                              return t('leads.readyToSend', 'Ready to send')
+                            }
+                          }
+                          
+                          // Default cases
+                          if (!contact.campaign_id) {
+                            return t('leads.noCampaign', 'No campaign')
+                          }
+                          
+                          if (contact.calculated_status === 'Pending') {
+                            return t('leads.awaitingStart', 'Awaiting start')
+                          }
+                          
+                          // Fallback
+                          return contact.next_email || '-'
+                        })()}
                       </span>
                     </td>
                     <td className="p-4">

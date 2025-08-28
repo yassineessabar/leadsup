@@ -109,7 +109,7 @@ interface CampaignAnalyticsProps {
 
 export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: CampaignAnalyticsProps) {
   const router = useRouter()
-  const { t } = useI18n()
+  const { t, ready } = useI18n()
   
   console.log('🚨🚨🚨 CAMPAIGN ANALYTICS COMPONENT LOADED 🚨🚨🚨')
   console.log('🚨 Campaign prop:', campaign)
@@ -2381,9 +2381,10 @@ Sequence Info:
                   }
                   
                   const getScoreStatus = (score: number) => {
-                    if (score >= 80) return 'Excellent'
-                    if (score >= 60) return 'Good'
-                    return 'Needs Attention'
+                    if (!ready) return score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : 'Needs Attention'
+                    if (score >= 80) return t('analytics.scoreStatus.excellent')
+                    if (score >= 60) return t('analytics.scoreStatus.good')
+                    return t('analytics.scoreStatus.needsAttention')
                   }
                   
                   return (
@@ -2394,7 +2395,7 @@ Sequence Info:
                         </div>
                         <div>
                           <h3 className="text-lg font-medium text-gray-900">{t('analytics.senderHealth')}</h3>
-                          <p className="text-gray-500 text-sm">{scores.length} selected sender{scores.length > 1 ? 's' : ''} • {getScoreStatus(avgScore)}</p>
+                          <p className="text-gray-500 text-sm">{scores.length} {scores.length > 1 ? (ready ? t('analytics.selectedSenders') : 'selected senders') : (ready ? t('analytics.selectedSender') : 'selected sender')} • {getScoreStatus(avgScore)}</p>
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
@@ -2496,7 +2497,7 @@ Sequence Info:
                       </div>
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">{t('analytics.dailyLimit')}</h3>
-                        <p className="text-gray-500 text-sm">{selectedSenderCount} selected sender{selectedSenderCount > 1 ? 's' : ''} • Variable limits per sender</p>
+                        <p className="text-gray-500 text-sm">{selectedSenderCount} {selectedSenderCount > 1 ? (ready ? t('analytics.selectedSenders') : 'selected senders') : (ready ? t('analytics.selectedSender') : 'selected sender')} • {ready ? t('analytics.variableLimitsPerSender') : 'Variable limits per sender'}</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">

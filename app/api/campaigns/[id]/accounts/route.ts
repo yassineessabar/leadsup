@@ -116,9 +116,20 @@ async function fetchGmailAccounts(userId: string, campaignId?: string) {
         enrichedAccount.health_score = senderAccount.health_score || 75
         enrichedAccount.warmup_status = senderAccount.warmup_status || 'inactive'
       } else {
-        // If no sender_account record, use defaults
-        enrichedAccount.health_score = 75
-        enrichedAccount.warmup_status = 'inactive'
+        // If no sender_account record, calculate health score
+        try {
+          console.log(`🔄 Calculating health score for new account: ${account.email}`)
+          // This is a fallback - in practice, sender accounts should be created first
+          enrichedAccount.health_score = 75 // Safe default for new accounts
+          enrichedAccount.warmup_status = 'inactive'
+          
+          // Note: We could trigger health score calculation here, but that would slow down the API response
+          // Better to handle this asynchronously or ensure sender_accounts are created properly
+        } catch (err) {
+          console.log(`Error calculating health score for ${account.email}:`, err)
+          enrichedAccount.health_score = 75
+          enrichedAccount.warmup_status = 'inactive'
+        }
       }
     } catch (err) {
       console.log(`No sender_account record found for ${account.email}, using defaults`)
@@ -163,10 +174,10 @@ async function fetchMicrosoft365Accounts(userId: string) {
         .single()
       
       if (senderAccount) {
-        enrichedAccount.health_score = senderAccount.health_score || 85
+        enrichedAccount.health_score = senderAccount.health_score || 75
         enrichedAccount.warmup_status = senderAccount.warmup_status || 'inactive'
       } else {
-        enrichedAccount.health_score = 85
+        enrichedAccount.health_score = 75
         enrichedAccount.warmup_status = 'inactive'
       }
     } catch (err) {

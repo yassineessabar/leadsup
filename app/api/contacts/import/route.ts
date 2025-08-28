@@ -59,8 +59,8 @@ function parseCSV(csvText: string) {
       }
     })
 
-    // Set defaults
-    contact.email_status = contact.email ? 'Unknown' : null
+    // Set defaults - this will be overridden by sequence status calculation
+    contact.email_status = contact.email ? 'Ready' : null
     contact.privacy = 'Normal'
     
     // Only add contact if at least email or both first/last name exist

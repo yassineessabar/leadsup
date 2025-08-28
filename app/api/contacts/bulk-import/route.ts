@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       first_name: contact.first_name || contact.firstName || '',
       last_name: contact.last_name || contact.lastName || '',
       email: contact.email || '',
-      email_status: 'Unknown', // Will be verified later
+      email_status: 'Ready', // Will be overridden by sequence status calculation
       title: contact.title || contact.position || '',
       company: contact.company || '',
       location: contact.location || '',

@@ -69,7 +69,12 @@
     "loading": "Loading...",
     "filter": "Filter",
     "status": "Status",
-    "progress": "Progress"
+    "progress": "Progress",
+    "pending": "Pending",
+    "completed": "Completed",
+    "paused": "Paused",
+    "ready": "Ready",
+    "scheduled": "Scheduled"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -204,7 +209,29 @@
     "deleteSelectedContactsConfirm": "Delete Selected Contacts",
     "contactsWillBeRemoved": "{{count}} contact will be removed from your database.|{{count}} contacts will be removed from your database.",
     "noContactsFound": "No contacts found",
-    "tryAdjustingFilters": "Try adjusting your search filters or import new contacts."
+    "tryAdjustingFilters": "Try adjusting your search filters or import new contacts.",
+    "notContacted": "Not Contacted",
+    "ready": "Ready",
+    "status": {
+      "paused": "Paused",
+      "warmingUp": "Warming Up",
+      "pending": "Pending",
+      "completed": "Completed",
+      "scheduled": "Scheduled",
+      "ready": "Ready",
+      "emailScheduled": "Email {{step}} Scheduled",
+      "emailReady": "Email {{step}} Ready"
+    },
+    "warmingInProgress": "Warming in progress",
+    "sequenceComplete": "Sequence complete",
+    "overdue": "Overdue",
+    "inHours": "In {{hours}}h",
+    "inDays": "In {{days}} day{{days, plural, one {} other {s}}}",
+    "notStarted": "Not started",
+    "readyToSend": "Ready to send",
+    "noCampaign": "No campaign",
+    "awaitingStart": "Awaiting start",
+    "scheduled": "Scheduled"
   },
   "button": {
     "cancel": "Cancel",
@@ -544,6 +571,14 @@
     "closingSequence": "Closing Sequence",
     "last7Days": "Last 7 days",
     "last30Days": "Last 30 days",
+    "selectedSenders": "selected senders",
+    "selectedSender": "selected sender",
+    "variableLimitsPerSender": "Variable limits per sender",
+    "scoreStatus": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "needsAttention": "Needs Attention"
+    },
     "last90Days": "Last 90 days",
     "customRange": "Custom Range",
     "allStatus": "All Status",
