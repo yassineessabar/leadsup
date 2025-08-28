@@ -629,10 +629,13 @@ export async function GET(request: NextRequest) {
             })
           } else {
             // For integer IDs from contacts table, update both legacy table AND create progression record
+            // Update to next step since current step was just sent
+            const nextStep = currentStep + 1
             await supabase
               .from('contacts')
               .update({
-                sequence_step: currentStep,
+                sequence_step: nextStep,
+                last_contacted_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               })
               .eq('id', parseInt(contact.id))
@@ -655,7 +658,7 @@ export async function GET(request: NextRequest) {
             if (progressError) {
               console.error(`❌ Failed to create progression record for contact ${contact.id}:`, progressError)
             } else {
-              console.log(`📝 Updated contact ${contact.id} to step ${currentStep} and created progression record`)
+              console.log(`📝 Updated contact ${contact.id} to step ${nextStep} and created progression record`)
             }
           }
           
