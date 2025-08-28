@@ -318,13 +318,13 @@ export async function GET(request: NextRequest) {
         .eq('campaign_id', campaign.id)
         // Note: No status filtering since contacts table doesn't have 'status' column
       
-      const { data: sequences } = await supabase
+      const { data: campaignSequences } = await supabase
         .from('campaign_sequences')
-        .select('step_number')
+        .select('*')
         .eq('campaign_id', campaign.id)
-        .order('step_number')
+        .order('step_number', { ascending: true })
       
-      const maxStep = sequences?.length || 0
+      const maxStep = campaignSequences?.length || 0
       
       console.log(`📋 Campaign ${campaign.name}: Found ${campaignContacts?.length || 0} "Due next" contacts`)
       
