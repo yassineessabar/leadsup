@@ -271,6 +271,35 @@ export async function GET(request: NextRequest) {
     
     let analyticsContacts: any[] = []
     
+    // Get contacts that are "Due next" by checking sequence_step vs campaign sequences
+    for (const campaign of activeCampaigns) {
+      const { data: campaignContacts } = await supabase
+        .from('contacts')
+        .select('id, first_name, last_name, email, sequence_step, campaign_id, created_at')
+        .eq('campaign_id', campaign.id)
+      
+      const { data: sequences } = await supabase
+        .from('campaign_sequences')
+        .select('step_number')
+        .eq('campaign_id', campaign.id)
+        .order('step_number')
+      
+      const maxStep = sequences?.length || 0
+      
+      // Find contacts that haven't completed all sequences
+      const dueContacts = campaignContacts?.filter(contact => {
+        const currentStep = contact.sequence_step || 0
+        return currentStep < maxStep  // Still has sequences to receive
+      }) || []
+      
+      analyticsContacts.push(...dueContacts.map(contact => ({
+        ...contact,
+        email_address: contact.email,
+        campaign_name: campaign.name,
+        sequence_step: contact.sequence_step || 0
+      })))
+    }
+    
     // Get all active campaigns
     const { data: activeCampaigns, error: campaignsError } = await supabase
       .from('campaigns')
