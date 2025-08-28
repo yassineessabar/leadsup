@@ -926,13 +926,7 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
         .replace(/\n\n+/g, '__PARAGRAPH_BREAK__')  // Double newlines to paragraph marker
         .replace(/\n/g, '__LINE_BREAK__')  // Single newlines to line marker
       
-      // Add intelligent sentence-based paragraph breaks
-      personalizedContent = personalizedContent
-        .replace(/\.\s+([A-Z])/g, '.__PARAGRAPH_BREAK__$1')
-        .replace(/\?\s+([A-Z])/g, '?__PARAGRAPH_BREAK__$1')
-        .replace(/!\s+([A-Z])/g, '!__PARAGRAPH_BREAK__$1')
-      
-      // Convert markers to line breaks - try different spacing approaches
+      // Convert markers back to line breaks
       personalizedContent = personalizedContent
         .replace(/__PARAGRAPH_BREAK__/g, '\n\n')  // Double newlines 
         .replace(/__LINE_BREAK__/g, '\n')
