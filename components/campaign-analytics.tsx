@@ -120,6 +120,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedContacts, setSelectedContacts] = useState<string[]>([])
+  const [allContactsSelected, setAllContactsSelected] = useState(false) // Track if all contacts in campaign are selected
+  const [totalContactsCount, setTotalContactsCount] = useState(0) // Track total contacts in campaign
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [sequenceModalContact, setSequenceModalContact] = useState<Contact | null>(null)
@@ -127,7 +129,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [contactDetailsModal, setContactDetailsModal] = useState<Contact | null>(null)
   const [displayLimit, setDisplayLimit] = useState(20) // Track how many contacts to display
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
-  const [deleteConfirmation, setDeleteConfirmation] = useState<{ type: 'single' | 'bulk', contactId?: string, count?: number } | null>(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ type: 'single' | 'bulk' | 'removeAll', contactId?: string, count?: number } | null>(null)
   const [campaignSenders, setCampaignSenders] = useState<string[]>([])
   const [campaignSequences, setCampaignSequences] = useState<any[]>([])
   const [sequencesLastUpdated, setSequencesLastUpdated] = useState<number>(Date.now())
@@ -468,6 +470,67 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     }
   }
 
+  // Remove selected contacts from campaign (doesn't delete from leads)
+  const removeSelectedContactsFromCampaign = async () => {
+    if (!campaign?.id || selectedContacts.length === 0) return
+
+    setIsDeleting('removeAll')
+    try {
+      console.log(`Removing contacts from campaign ${campaign.id}:`, selectedContacts)
+      console.log(`All contacts selected: ${allContactsSelected}`)
+      
+      // If all contacts are selected, use the remove-all endpoint for better performance
+      const endpoint = allContactsSelected 
+        ? `/api/campaigns/${campaign.id}/contacts/remove-all`
+        : `/api/campaigns/${campaign.id}/contacts/remove-selected`
+      
+      const body = allContactsSelected 
+        ? undefined 
+        : JSON.stringify({ contactIds: selectedContacts })
+      
+      const response = await fetch(endpoint, {
+        method: 'DELETE',
+        headers: allContactsSelected ? {} : {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body
+      })
+
+      console.log('Response status:', response.status)
+      
+      if (!response.ok) {
+        let errorMessage = 'Failed to remove contacts from campaign'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch (e) {
+          // If response is not JSON, use default error message
+        }
+        throw new Error(errorMessage)
+      }
+
+      const result = await response.json()
+      
+      // Refresh the contacts list
+      await fetchCampaignContacts()
+      
+      // Clear selected contacts and reset states
+      setSelectedContacts([])
+      setAllContactsSelected(false)
+      
+      console.log(`Successfully removed ${result.removed} contacts from campaign`)
+      
+      // Show success message (you can add a toast here if you have a toast library)
+      
+    } catch (error) {
+      console.error('Error removing contacts from campaign:', error)
+      // Show error message (you can add a toast here if you have a toast library)
+    } finally {
+      setIsDeleting(null)
+    }
+  }
+
   // Delete multiple contacts (bulk delete)
   const deleteSelectedContacts = async () => {
     if (selectedContacts.length === 0) return
@@ -506,6 +569,31 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     }
   }
 
+  // Function to get all contact IDs for the campaign (for bulk operations)
+  const getAllContactIds = async () => {
+    if (!campaign?.id) return []
+    
+    try {
+      const allContactsParams = new URLSearchParams()
+      allContactsParams.append('campaign_id', campaign.id.toString())
+      allContactsParams.append('limit', '1000') // Get more contacts for bulk operations
+      allContactsParams.append('offset', '0')
+
+      const response = await fetch(`/api/contacts?${allContactsParams.toString()}`, {
+        credentials: "include"
+      })
+      
+      const result = await response.json()
+      if (result.contacts) {
+        return result.contacts.map((c: any) => c.id)
+      }
+      return []
+    } catch (error) {
+      console.error('Error fetching all contact IDs:', error)
+      return []
+    }
+  }
+
   // Fetch real contacts with sequence progress from database
   const fetchCampaignContacts = async () => {
     setLoading(true)
@@ -527,6 +615,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       
       const contactsResult = await contactsResponse.json()
       const sequenceStatusResult = await sequenceStatusResponse.json()
+
+      // Update total count from the contacts response
+      if (contactsResult.total !== undefined) {
+        setTotalContactsCount(contactsResult.total)
+      }
 
       console.log('📊 Fetched sequence status:', sequenceStatusResult)
 
@@ -2636,15 +2729,26 @@ Sequence Info:
                 </DropdownMenuContent>
               </DropdownMenu>
               {selectedContacts.length > 0 && (
-                <Button 
-                  variant="outline" 
-                  className="h-10 px-4 border-red-300 hover:bg-red-50 text-red-600 font-medium transition-all duration-300 rounded-2xl"
-                  onClick={showBulkDeleteConfirmation}
-                  disabled={isDeleting === 'bulk'}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {isDeleting === 'bulk' ? t('analytics.deleting') : `${t('analytics.delete')} (${selectedContacts.length})`}
-                </Button>
+                <>
+                  <Button 
+                    variant="outline" 
+                    className="h-10 px-4 border-orange-300 hover:bg-orange-50 text-orange-600 font-medium transition-all duration-300 rounded-2xl"
+                    onClick={() => setDeleteConfirmation({ type: 'removeAll', count: selectedContacts.length })}
+                    disabled={isDeleting === 'removeAll'}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    {isDeleting === 'removeAll' ? 'Removing...' : `Remove ${allContactsSelected ? `All (${totalContactsCount})` : `(${selectedContacts.length})`} from Campaign`}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-10 px-4 border-red-300 hover:bg-red-50 text-red-600 font-medium transition-all duration-300 rounded-2xl"
+                    onClick={showBulkDeleteConfirmation}
+                    disabled={isDeleting === 'bulk'}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {isDeleting === 'bulk' ? t('analytics.deleting') : `${t('analytics.delete')} (${selectedContacts.length})`}
+                  </Button>
+                </>
               )}
             </div>
             
@@ -2655,12 +2759,16 @@ Sequence Info:
                     <tr className="border-b border-gray-200/60">
                       <th className="text-left p-4">
                         <Checkbox
-                          checked={selectedContacts.length === filteredContacts.length && filteredContacts.length > 0}
-                          onCheckedChange={(checked) => {
+                          checked={allContactsSelected || (selectedContacts.length === filteredContacts.length && filteredContacts.length > 0)}
+                          onCheckedChange={async (checked) => {
                             if (checked) {
-                              setSelectedContacts(filteredContacts.map(c => c.id))
+                              // Select ALL contacts in the campaign, not just visible ones
+                              const allIds = await getAllContactIds()
+                              setSelectedContacts(allIds)
+                              setAllContactsSelected(true)
                             } else {
                               setSelectedContacts([])
+                              setAllContactsSelected(false)
                             }
                           }}
                         />
@@ -2716,6 +2824,7 @@ Sequence Info:
                                   setSelectedContacts([...selectedContacts, contact.id])
                                 } else {
                                   setSelectedContacts(selectedContacts.filter(id => id !== contact.id))
+                                  setAllContactsSelected(false) // Clear "all selected" state when deselecting individual contacts
                                 }
                               }}
                             />
@@ -3672,6 +3781,8 @@ Sequence Info:
             <p className="text-gray-600">
               {deleteConfirmation?.type === 'single' 
                 ? 'Are you sure you want to delete this contact? This action cannot be undone.'
+                : deleteConfirmation?.type === 'removeAll'
+                ? `Are you sure you want to remove ${deleteConfirmation?.count} selected contacts from this campaign? They will remain in your leads database but won't be associated with this campaign anymore.`
                 : `Are you sure you want to delete ${deleteConfirmation?.count} contacts? This action cannot be undone.`
               }
             </p>
@@ -3691,13 +3802,15 @@ Sequence Info:
                     deleteContact(deleteConfirmation.contactId)
                   } else if (deleteConfirmation?.type === 'bulk') {
                     deleteSelectedContacts()
+                  } else if (deleteConfirmation?.type === 'removeAll') {
+                    removeSelectedContactsFromCampaign()
                   }
                   setDeleteConfirmation(null)
                 }}
                 disabled={isDeleting !== null}
                 className="flex-1 h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white"
               >
-                {isDeleting !== null ? 'Deleting...' : 'Delete'}
+                {isDeleting !== null ? (deleteConfirmation?.type === 'removeAll' ? 'Removing...' : 'Deleting...') : (deleteConfirmation?.type === 'removeAll' ? 'Remove from Campaign' : 'Delete')}
               </Button>
             </div>
           </div>
