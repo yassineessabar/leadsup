@@ -633,6 +633,7 @@ export async function GET(request: NextRequest) {
               .from('contacts')
               .update({
                 sequence_step: currentStep,
+                last_contacted_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               })
               .eq('id', parseInt(contact.id))
