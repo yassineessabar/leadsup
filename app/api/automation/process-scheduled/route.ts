@@ -571,6 +571,10 @@ export async function GET(request: NextRequest) {
         let selectedSender = null
         let selectionReason = ''
         
+        // Check if we have a UUID (prospects) or integer (contacts) ID - define early for later use
+        const contactIdStr = String(contact.id)
+        const isUUID = contactIdStr.includes('-') && contactIdStr.length > 10
+        
         // Timeline uses: const senderIndex = contactIdNum % campaignSenders.length
         // Match this exactly for consistency (no conversation continuity override)
         const contactIdNum = parseInt(String(contact.id)) || 0
@@ -609,10 +613,8 @@ export async function GET(request: NextRequest) {
         })
         
         if (sendResult.success) {
-          // Update sequence progression using proper API
-          // Check if we have a UUID (prospects) or integer (contacts) ID  
-          const contactIdStr = String(contact.id)
-          const isUUID = contactIdStr.includes('-') && contactIdStr.length > 10
+          // Update sequence progression using proper API  
+          // Use the isUUID check defined earlier in the function
           
           if (isUUID) {
             // Use prospect sequence progression for UUID IDs
