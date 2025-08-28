@@ -556,12 +556,14 @@ export async function GET(request: NextRequest) {
           .order('email', { ascending: true })
         
         if (sendersError || !senders || senders.length === 0) {
+          console.log(`❌ No senders found for campaign ${contact.campaign_id}:`, sendersError)
           errorCount++
           results.push({
             contactId: contact.id,
             contactEmail: contact.email_address || contact.email,
             status: 'failed',
-            reason: 'No selected senders found for campaign (timeline shows no senders)'
+            error: 'No selected senders found for campaign',
+            debug: `Campaign: ${contact.campaign_id} | SendersError: ${sendersError?.message || 'None'} | SenderCount: ${senders?.length || 0}`
           })
           continue
         }
@@ -759,7 +761,8 @@ export async function GET(request: NextRequest) {
             status: 'failed',
             error: sendResult.error,
             senderEmail: selectedSender.email,
-            debug: `Sender: ${selectedSender.email} | Error: ${sendResult.error}`
+            debug: `Sender: ${selectedSender.email} | Error: ${sendResult.error}`,
+            sendGridError: sendResult.details || null
           })
           
           // Update analytics contact status if this came from analytics (failed case)
@@ -1074,11 +1077,24 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
       simulation: true
     }
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error sending sequence email:', error)
+    
+    // Extract detailed SendGrid error information
+    const detailedError = {
+      message: error.message || 'Failed to send email',
+      code: error.code || 'UNKNOWN',
+      statusCode: error.response?.statusCode || null,
+      body: error.response?.body || null,
+      headers: error.response?.headers || null
+    }
+    
+    console.error('❌ Detailed SendGrid error:', JSON.stringify(detailedError, null, 2))
+    
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to send email'
+      error: error.message || 'Failed to send email',
+      details: detailedError
     }
   }
 }
