@@ -742,7 +742,8 @@ export async function GET(request: NextRequest) {
             messageId: sendResult.messageId,
             senderEmail: selectedSender.email,
             status: 'sent',
-            testMode: testMode || sendResult.simulation
+            testMode: testMode || sendResult.simulation,
+            userId: campaign.user_id // Add user_id from campaign
           })
 
           // Add to inbox sent folder for unified email management
@@ -819,7 +820,8 @@ export async function GET(request: NextRequest) {
             senderEmail: selectedSender.email,
             status: 'failed',
             errorMessage: sendResult.error,
-            testMode: testMode
+            testMode: testMode,
+            userId: campaign.user_id // Add user_id from campaign
           })
           
           errorCount++
@@ -1255,7 +1257,8 @@ async function logEmailTracking({
   senderEmail,
   status,
   errorMessage = null,
-  testMode = false
+  testMode = false,
+  userId
 }: {
   contactId: number | string
   contactEmail: string
@@ -1267,25 +1270,26 @@ async function logEmailTracking({
   status: 'sent' | 'failed' | 'bounced' | 'delivered'
   errorMessage?: string | null
   testMode?: boolean
+  userId: string
 }) {
   try {
     const now = new Date().toISOString()
     
     const logEntry = {
+      id: `track_${Date.now()}_${contactId}`, // Required TEXT ID
+      user_id: userId, // Required field - using campaign user ID
       campaign_id: campaignId,
       contact_id: contactId.toString(),
       sequence_id: sequenceId,
       sequence_step: sequenceStep,
+      email: contactEmail, // Required field
+      sg_message_id: messageId,
+      subject: `Step ${sequenceStep} - Automation Email`,
       status: status,
       sent_at: now,
-      message_id: messageId,
-      sender_type: testMode ? 'simulation' : 'sendgrid',
-      sender_email: senderEmail,
-      recipient_email: contactEmail,
-      subject: `Step ${sequenceStep} - Automation Email`,
-      error_message: errorMessage,
       delivered_at: status === 'sent' ? now : null,
-      created_at: now
+      created_at: now,
+      updated_at: now
     }
     
     console.log(`📧 Creating email tracking record for ${contactEmail} (Step ${sequenceStep})...`)
