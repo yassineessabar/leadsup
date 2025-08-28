@@ -418,17 +418,34 @@ export async function GET(request: NextRequest) {
         continue
       }
       
-      // Get the current step from progression records
-      const { data: progressions } = await supabase
-        .from('prospect_sequence_progress')
-        .select('sequence_id')
-        .eq('campaign_id', contact.campaign_id)
-        .eq('prospect_id', String(contact.id))
-        .eq('status', 'sent')
-        .order('sent_at', { ascending: false })
+      // For integer contacts, get progression from email_tracking table
+      // Check if this is a UUID or integer contact
+      const contactIdStr = String(contact.id)
+      const isUUID = contactIdStr.includes('-') && contactIdStr.length > 10
       
-      // Calculate next step based on how many sequences have been sent
-      const currentStep = progressions ? progressions.length : 0
+      let currentStep = 0
+      
+      if (isUUID) {
+        // UUID contacts use prospect_sequence_progress  
+        const { data: progressions } = await supabase
+          .from('prospect_sequence_progress')
+          .select('sequence_id')
+          .eq('campaign_id', contact.campaign_id)
+          .eq('prospect_id', String(contact.id))
+          .eq('status', 'sent')
+          .order('sent_at', { ascending: false })
+        currentStep = progressions ? progressions.length : 0
+      } else {
+        // Integer contacts use email_tracking table
+        const { data: sentEmails } = await supabase
+          .from('email_tracking')
+          .select('sequence_id')
+          .eq('campaign_id', contact.campaign_id)
+          .eq('contact_id', parseInt(contact.id))
+          .eq('status', 'sent')
+          .order('sent_at', { ascending: false })
+        currentStep = sentEmails ? sentEmails.length : 0
+      }
       const nextSequence = campaignSequences[currentStep]
       
       if (!nextSequence) {
@@ -646,26 +663,9 @@ export async function GET(request: NextRequest) {
               })
               .eq('id', parseInt(contact.id))
             
-            // Also create a progression record so the frontend can track it
-            const { error: progressError } = await supabase
-              .from('prospect_sequence_progress')
-              .upsert({
-                campaign_id: campaign.id, // Use campaign.id instead of contact.campaign_id
-                prospect_id: String(contact.id), // Ensure string ID for integer contacts
-                sequence_id: sequence.id,
-                status: 'sent',
-                sent_at: new Date().toISOString(),
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }, {
-                onConflict: 'campaign_id,prospect_id,sequence_id'
-              })
-            
-            if (progressError) {
-              console.error(`❌ Failed to create progression record for contact ${contact.id}:`, progressError)
-            } else {
-              console.log(`📝 Updated contact ${contact.id} to step ${nextStep} and created progression record`)
-            }
+            // For integer contacts, track progression using a simple sent_sequences JSON field approach
+            // Note: prospect_sequence_progress table is designed for UUID contacts only
+            console.log(`📝 Updated contact ${contact.id} to step ${nextStep} (integer contacts use email tracking for progression)`)
           }
           
           
