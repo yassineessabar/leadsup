@@ -1630,7 +1630,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           location: lead.location || '',
           industry: lead.industry || '',
           campaign_id: campaign.id,
-          email_status: 'Ready',
+          email_status: 'Valid',
           tags: campaign.name,
           notes: 'Imported from leads table (bulk import)'
         }
@@ -1687,7 +1687,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             location: lead.location || '',
             industry: lead.industry || '',
             campaign_id: campaign.id,
-            email_status: 'Ready',
+            email_status: 'Valid',
             tags: campaign.name,
             notes: 'Imported from leads table'
           }
@@ -1716,7 +1716,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             location: contact.location,
             industry: contact.industry,
             campaign_id: campaign.id,
-            email_status: 'Ready',
+            email_status: 'Valid',
             tags: campaign.name,
             notes: 'Imported from CSV'
           }
@@ -1730,7 +1730,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           phone: manualContact.phone,
           company_name: manualContact.company,
           campaign_id: campaign.id,
-          email_status: 'Ready',
+          email_status: 'Valid',
           tags: campaign.name,
           notes: 'Added manually'
         }]

@@ -43,7 +43,7 @@ export async function POST(
       first_name: contact.first_name || '',
       last_name: contact.last_name || '',
       email: contact.email || '',
-      email_status: 'Ready',
+      email_status: 'Valid',
       privacy: 'Normal',
       tags: campaignTag,
       linkedin: contact.linkedin || '',
