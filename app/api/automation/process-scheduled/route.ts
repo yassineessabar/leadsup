@@ -911,16 +911,47 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
         .replace(/\{\{lastName\}\}/g, contact.last_name || '')
         .replace(/\{\{company\}\}/g, contact.company || 'your company')
       
-      // ✅ ADD TRACKING TO EMAIL CONTENT
-      const trackingId = generateTrackingId()
-      // Use production URL for automation emails (they run on GitHub servers)
-      const baseUrl = 'https://app.leadsup.io'
-      personalizedContent = addEmailTracking(personalizedContent, { 
-        trackingId,
-        baseUrl 
-      })
+      // FORCE paragraph structure - always apply smart splitting regardless of existing format
+      console.log(`🔄 Original content: ${JSON.stringify(personalizedContent)}`)
       
-      console.log(`📊 Added tracking to email: ${trackingId} with base URL: ${baseUrl}`)
+      // First convert any existing HTML breaks to markers
+      personalizedContent = personalizedContent
+        .replace(/<br\s*\/?>\s*<br\s*\/?>/gi, '__PARAGRAPH_BREAK__')  // Double br to paragraph marker
+        .replace(/<br\s*\/?>/gi, '__LINE_BREAK__')  // Single br to line marker
+        .replace(/\r\n/g, '\n')  // Convert Windows line breaks
+        .replace(/\r/g, '\n')    // Convert Mac line breaks
+        .replace(/\n\n+/g, '__PARAGRAPH_BREAK__')  // Double newlines to paragraph marker
+        .replace(/\n/g, '__LINE_BREAK__')  // Single newlines to line marker
+      
+      // Add intelligent sentence-based paragraph breaks
+      personalizedContent = personalizedContent
+        .replace(/\.\s+([A-Z])/g, '.__PARAGRAPH_BREAK__$1')
+        .replace(/\?\s+([A-Z])/g, '?__PARAGRAPH_BREAK__$1')
+        .replace(/!\s+([A-Z])/g, '!__PARAGRAPH_BREAK__$1')
+      
+      // Convert markers to line breaks - try different spacing approaches
+      personalizedContent = personalizedContent
+        .replace(/__PARAGRAPH_BREAK__/g, '\n\n')  // Double newlines 
+        .replace(/__LINE_BREAK__/g, '\n')
+      
+      // Force even more aggressive spacing by manually splitting long text
+      const sentences = personalizedContent.split(/([.!?]\s+)/)
+      let formattedText = ''
+      for (let i = 0; i < sentences.length; i += 2) {
+        if (sentences[i] && sentences[i].trim()) {
+          formattedText += sentences[i].trim() + (sentences[i + 1] || '')
+          // Add double line break after each sentence
+          if (i < sentences.length - 2) {
+            formattedText += '\n\n'
+          }
+        }
+      }
+      personalizedContent = formattedText
+      
+      console.log(`🔄 Final plain text: ${JSON.stringify(personalizedContent)}`)
+      
+      // Skip tracking for plain text emails to preserve formatting
+      console.log(`📧 Sending plain text email: ${JSON.stringify(personalizedContent)}`)
       
       const msg = {
         to: contact.email_address,
@@ -930,8 +961,7 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
         },
         replyTo: replyToEmail,
         subject: personalizedSubject,
-        html: personalizedContent,
-        text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '') // Convert br tags to line breaks, then strip HTML
+        text: personalizedContent  // Send as pure plain text with line breaks
       }
       
       console.log(`📧 SENDING SEQUENCE EMAIL WITH TRACKING:`)
@@ -997,7 +1027,11 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
           contact_name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown',
           sender_email: senderEmail,
           subject: personalizedSubject,
-          body_text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''),
+          body_text: personalizedContent
+            .replace(/<\/p><p>/gi, '\n\n')  // Convert paragraph breaks to double newlines
+            .replace(/<br\s*\/?>/gi, '\n')  // Convert br tags to single newlines
+            .replace(/<[^>]*>/g, '')        // Strip remaining HTML tags
+            .trim(),
           body_html: personalizedContent,
           direction: 'outbound',
           channel: 'email',
