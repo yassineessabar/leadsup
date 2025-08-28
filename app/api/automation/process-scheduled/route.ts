@@ -480,6 +480,10 @@ export async function GET(request: NextRequest) {
         processedCount++
         const { contact, campaign, sequence, scheduledFor, currentStep, totalSequences } = emailJob
         
+        // Check if we have a UUID (prospects) or integer (contacts) ID - define early for later use
+        const contactIdStr = String(contact.id)
+        const isUUID = contactIdStr.includes('-') && contactIdStr.length > 10
+        
         console.log(`\n🎯 SENDING EMAIL ${processedCount}/${emailsDue.length}`)
         console.log('═'.repeat(60))
         console.log(`📧 Contact: ${contact.email_address}`)
@@ -570,10 +574,6 @@ export async function GET(request: NextRequest) {
         
         let selectedSender = null
         let selectionReason = ''
-        
-        // Check if we have a UUID (prospects) or integer (contacts) ID - define early for later use
-        const contactIdStr = String(contact.id)
-        const isUUID = contactIdStr.includes('-') && contactIdStr.length > 10
         
         // Timeline uses: const senderIndex = contactIdNum % campaignSenders.length
         // Match this exactly for consistency (no conversation continuity override)
