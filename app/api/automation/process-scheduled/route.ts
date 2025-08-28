@@ -418,8 +418,17 @@ export async function GET(request: NextRequest) {
         continue
       }
       
-      // Use sequence_step from contact record (analytics already determined this correctly)
-      const currentStep = contact.sequence_step || 0
+      // Get the current step from progression records
+      const { data: progressions } = await supabase
+        .from('prospect_sequence_progress')
+        .select('sequence_id')
+        .eq('campaign_id', contact.campaign_id)
+        .eq('prospect_id', String(contact.id))
+        .eq('status', 'sent')
+        .order('sent_at', { ascending: false })
+      
+      // Calculate next step based on how many sequences have been sent
+      const currentStep = progressions ? progressions.length : 0
       const nextSequence = campaignSequences[currentStep]
       
       if (!nextSequence) {
@@ -628,14 +637,11 @@ export async function GET(request: NextRequest) {
               autoProgressNext: true
             })
           } else {
-            // For integer IDs from contacts table, update both legacy table AND create progression record
-            // Update to next step since current step was just sent
+            // For integer IDs from contacts table, only update last_contacted_at and create progression record
             const nextStep = currentStep + 1
             await supabase
               .from('contacts')
               .update({
-                sequence_step: nextStep,
-                last_contacted_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               })
               .eq('id', parseInt(contact.id))
@@ -645,7 +651,7 @@ export async function GET(request: NextRequest) {
               .from('prospect_sequence_progress')
               .upsert({
                 campaign_id: campaign.id, // Use campaign.id instead of contact.campaign_id
-                prospect_id: contact.id, // Use string ID
+                prospect_id: String(contact.id), // Ensure string ID for integer contacts
                 sequence_id: sequence.id,
                 status: 'sent',
                 sent_at: new Date().toISOString(),
