@@ -546,10 +546,16 @@ export async function GET(request: NextRequest) {
         
         // Use EXACT same API call as timeline to get senders
         // Timeline calls: /api/campaigns/${campaign.id}/senders
+        const apiUsername = process.env.AUTOMATION_API_USERNAME || process.env.N8N_API_USERNAME || 'admin'
+        const apiPassword = process.env.AUTOMATION_API_PASSWORD || process.env.N8N_API_PASSWORD || 'password'
+        const authString = Buffer.from(`${apiUsername}:${apiPassword}`).toString('base64')
+        
+        console.log(`🔐 Using API auth: ${apiUsername}:${apiPassword.substring(0, 3)}...`)
+        
         const sendersResponse = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.leadsup.io'}/api/campaigns/${contact.campaign_id}/senders`, {
           method: 'GET',
           headers: {
-            'Authorization': `Basic ${Buffer.from('admin:admin').toString('base64')}`,
+            'Authorization': `Basic ${authString}`,
             'Content-Type': 'application/json'
           }
         })
