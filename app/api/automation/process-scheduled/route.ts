@@ -632,14 +632,18 @@ export async function GET(request: NextRequest) {
             })
           } else {
             // For integer IDs from contacts table, update both legacy table AND create progression record
+            console.log(`📝 Updating contact ${contact.id} sequence_step from ${contact.sequence_step || 0} to ${currentStep}`)
+            
             await supabase
               .from('contacts')
               .update({
-                sequence_step: currentStep,
+                sequence_step: currentStep, // currentStep from emailJob represents the step that was just sent
                 last_contacted_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               })
               .eq('id', parseInt(contact.id))
+              
+            console.log(`✅ Contact ${contact.id} updated to sequence_step: ${currentStep}`)
             
             // Also create a progression record so the frontend can track it
             const { error: progressError } = await supabase
