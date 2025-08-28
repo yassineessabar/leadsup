@@ -269,10 +269,21 @@ export async function GET(request: NextRequest) {
     // STEP 1: Get active campaigns and contacts directly (GitHub Actions automation)
     console.log('📊 STEP 1: Getting active campaigns and due contacts directly...')
     
+    // Get all active campaigns first
+    const { data: activeCampaigns, error: campaignsError } = await supabase
+      .from('campaigns')
+      .select('id, name, status')
+      .eq('status', 'Active')
+    
+    if (campaignsError) {
+      console.error('❌ Error fetching campaigns:', campaignsError)
+      return NextResponse.json({ success: false, error: campaignsError.message }, { status: 500 })
+    }
+    
     let analyticsContacts: any[] = []
     
     // Get contacts that are "Due next" by checking sequence_step vs campaign sequences
-    for (const campaign of activeCampaigns) {
+    for (const campaign of activeCampaigns || []) {
       const { data: campaignContacts } = await supabase
         .from('contacts')
         .select('id, first_name, last_name, email, sequence_step, campaign_id, created_at')
@@ -300,15 +311,9 @@ export async function GET(request: NextRequest) {
       })))
     }
     
-    // Get all active campaigns
-    const { data: activeCampaigns, error: campaignsError } = await supabase
-      .from('campaigns')
-      .select('id, name, status')
-      .eq('status', 'Active')
-    
     console.log(`📋 Found ${activeCampaigns?.length || 0} active campaigns`)
     
-    if (!campaignsError && activeCampaigns) {
+    if (activeCampaigns) {
       for (const campaign of activeCampaigns) {
         console.log(`📌 Processing campaign: ${campaign.name}`)
         
