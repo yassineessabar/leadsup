@@ -282,12 +282,13 @@ export async function GET(request: NextRequest) {
     
     let analyticsContacts: any[] = []
     
-    // Get contacts that are "Due next" by checking sequence_step vs campaign sequences
+    // Get contacts that are "Due next" by checking both status and sequence_step
     for (const campaign of activeCampaigns || []) {
       const { data: campaignContacts } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, email, sequence_step, campaign_id, created_at')
+        .select('id, first_name, last_name, email, sequence_step, campaign_id, created_at, status')
         .eq('campaign_id', campaign.id)
+        .eq('status', 'Due next') // Only process contacts with "Due next" status
       
       const { data: sequences } = await supabase
         .from('campaign_sequences')
@@ -297,11 +298,15 @@ export async function GET(request: NextRequest) {
       
       const maxStep = sequences?.length || 0
       
-      // Find contacts that haven't completed all sequences
+      console.log(`📋 Campaign ${campaign.name}: Found ${campaignContacts?.length || 0} "Due next" contacts`)
+      
+      // Find contacts that haven't completed all sequences AND have "Due next" status
       const dueContacts = campaignContacts?.filter(contact => {
         const currentStep = contact.sequence_step || 0
         return currentStep < maxStep  // Still has sequences to receive
       }) || []
+      
+      console.log(`📊 After sequence filtering: ${dueContacts.length} contacts ready for email`)
       
       analyticsContacts.push(...dueContacts.map(contact => ({
         ...contact,
@@ -634,16 +639,23 @@ export async function GET(request: NextRequest) {
             // For integer IDs from contacts table, update both legacy table AND create progression record
             console.log(`📝 Updating contact ${contact.id} sequence_step from ${contact.sequence_step || 0} to ${currentStep}`)
             
+            // Determine new status based on whether there are more sequences
+            const hasMoreSequences = currentStep < totalSequences
+            const newStatus = hasMoreSequences ? 'Due next' : 'Completed'
+            
+            console.log(`📊 Sequence progress: ${currentStep}/${totalSequences} - New status: ${newStatus}`)
+            
             await supabase
               .from('contacts')
               .update({
                 sequence_step: currentStep, // currentStep from emailJob represents the step that was just sent
+                status: newStatus, // Update status based on sequence completion
                 last_contacted_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               })
               .eq('id', parseInt(contact.id))
               
-            console.log(`✅ Contact ${contact.id} updated to sequence_step: ${currentStep}`)
+            console.log(`✅ Contact ${contact.id} updated: sequence_step=${currentStep}, status=${newStatus}`)
             
             // Also create a progression record so the frontend can track it
             const { error: progressError } = await supabase
