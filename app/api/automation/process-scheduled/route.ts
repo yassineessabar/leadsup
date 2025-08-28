@@ -710,24 +710,34 @@ export async function GET(request: NextRequest) {
             }
             
             // Also create a progression record so the frontend can track it
-            const { error: progressError } = await supabase
+            const progressData = {
+              campaign_id: campaign.id, // Use campaign.id instead of contact.campaign_id
+              prospect_id: contact.id, // Use string ID
+              sequence_id: sequence.id,
+              status: 'sent',
+              sent_at: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+            
+            console.log(`🔍 DEBUG: Creating progression record for contact ${contact.id}...`)
+            console.log(`🔍 DEBUG: Progression data:`, JSON.stringify(progressData, null, 2))
+            
+            const { data: progressResult, error: progressError } = await supabase
               .from('prospect_sequence_progress')
-              .upsert({
-                campaign_id: campaign.id, // Use campaign.id instead of contact.campaign_id
-                prospect_id: contact.id, // Use string ID
-                sequence_id: sequence.id,
-                status: 'sent',
-                sent_at: new Date().toISOString(),
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }, {
+              .upsert(progressData, {
                 onConflict: 'campaign_id,prospect_id,sequence_id'
               })
+              .select()
             
             if (progressError) {
-              console.error(`❌ Failed to create progression record for contact ${contact.id}:`, progressError)
+              console.error(`❌ ERROR: Failed to create progression record for contact ${contact.id}:`, progressError)
+              console.error(`❌ ERROR: Progression data that failed:`, JSON.stringify(progressData, null, 2))
+              console.error(`❌ ERROR: Progress error details:`, JSON.stringify(progressError, null, 2))
             } else {
-              console.log(`📝 Updated contact ${contact.id} to step ${currentStep} and created progression record`)
+              console.log(`✅ SUCCESS: Progression record created successfully!`)
+              console.log(`✅ SUCCESS: Progress result:`, JSON.stringify(progressResult, null, 2))
+              console.log(`✅ SUCCESS: Contact ${contact.id} updated to step ${currentStep}`)
             }
           }
           
@@ -1292,21 +1302,26 @@ async function logEmailTracking({
       updated_at: now
     }
     
-    console.log(`📧 Creating email tracking record for ${contactEmail} (Step ${sequenceStep})...`)
+    console.log(`🔍 DEBUG: Creating email tracking record for ${contactEmail} (Step ${sequenceStep})...`)
+    console.log(`🔍 DEBUG: Log entry data:`, JSON.stringify(logEntry, null, 2))
     
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('email_tracking')
       .insert(logEntry)
+      .select()
     
     if (error) {
-      console.error('❌ Error logging email tracking:', error)
-      console.error('❌ Log entry that failed:', JSON.stringify(logEntry, null, 2))
+      console.error('❌ ERROR: Failed to create email tracking record:', error)
+      console.error('❌ ERROR: Failed log entry:', JSON.stringify(logEntry, null, 2))
+      console.error('❌ ERROR: Error details:', JSON.stringify(error, null, 2))
     } else {
-      console.log(`✅ Successfully logged email tracking: ${status} - ${contactEmail} (Step ${sequenceStep})`)
-      console.log(`   📋 Contact ID: ${contactId}`)
-      console.log(`   📧 Message ID: ${messageId}`)
-      console.log(`   👤 Sender: ${senderEmail}`)
-      console.log(`   🎯 Test Mode: ${testMode}`)
+      console.log(`✅ SUCCESS: Email tracking record created successfully!`)
+      console.log(`✅ SUCCESS: Created record:`, JSON.stringify(data, null, 2))
+      console.log(`✅ SUCCESS: Status: ${status} - ${contactEmail} (Step ${sequenceStep})`)
+      console.log(`✅ SUCCESS: Contact ID: ${contactId}`)
+      console.log(`✅ SUCCESS: Message ID: ${messageId}`)
+      console.log(`✅ SUCCESS: Sender: ${senderEmail}`)
+      console.log(`✅ SUCCESS: Test Mode: ${testMode}`)
     }
   } catch (error) {
     console.error('❌ Error in logEmailTracking:', error)
