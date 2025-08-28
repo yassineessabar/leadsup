@@ -544,55 +544,16 @@ export async function GET(request: NextRequest) {
           continue
         }
         
-        // Use EXACT same API call as timeline to get senders
-        // Timeline calls: /api/campaigns/${campaign.id}/senders
-        const apiUsername = process.env.AUTOMATION_API_USERNAME || process.env.N8N_API_USERNAME || 'admin'
-        const apiPassword = process.env.AUTOMATION_API_PASSWORD || process.env.N8N_API_PASSWORD || 'password'
-        const authString = Buffer.from(`${apiUsername}:${apiPassword}`).toString('base64')
+        // Get senders directly from database instead of API call
+        // API call requires user session auth which automation doesn't have
+        console.log(`📧 Getting senders directly from database for campaign: ${contact.campaign_id}`)
         
-        console.log(`🔐 Using API auth: ${apiUsername}:${apiPassword.substring(0, 3)}...`)
-        
-        const sendersResponse = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.leadsup.io'}/api/campaigns/${contact.campaign_id}/senders`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Basic ${authString}`,
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        if (!sendersResponse.ok) {
-          console.log(`⚠️ Timeline senders API failed: ${sendersResponse.status}`)
-          // Fallback to direct query
-          var { data: senders, error: sendersError } = await supabase
-            .from('campaign_senders')
-            .select('id, email, name, daily_limit, is_active, is_selected')
-            .eq('campaign_id', contact.campaign_id)
-            .eq('is_selected', true)
-            .order('email', { ascending: true })
-        } else {
-          const sendersData = await sendersResponse.json()
-          if (sendersData.success && sendersData.assignments) {
-            // Convert timeline API format to automation format
-            const senders = sendersData.assignments.map((assignment: any) => ({
-              id: assignment.id,
-              email: assignment.email || assignment.sender_email,
-              name: assignment.name,
-              daily_limit: assignment.daily_limit || 10,
-              is_active: assignment.is_active,
-              is_selected: assignment.is_selected
-            }))
-            var sendersError = null
-            console.log(`✅ Using timeline API senders: ${senders.map(s => s.email).join(', ')}`)
-          } else {
-            console.log(`⚠️ Timeline API returned invalid data, using fallback`)
-            var { data: senders, error: sendersError } = await supabase
-              .from('campaign_senders')
-              .select('id, email, name, daily_limit, is_active, is_selected')
-              .eq('campaign_id', contact.campaign_id)
-              .eq('is_selected', true)
-              .order('email', { ascending: true })
-          }
-        }
+        const { data: senders, error: sendersError } = await supabase
+          .from('campaign_senders')
+          .select('id, email, name, daily_limit, is_active, is_selected')
+          .eq('campaign_id', contact.campaign_id)
+          .eq('is_selected', true)
+          .order('email', { ascending: true })
         
         if (sendersError || !senders || senders.length === 0) {
           errorCount++
