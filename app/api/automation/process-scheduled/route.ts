@@ -692,7 +692,7 @@ export async function GET(request: NextRequest) {
             
             console.log(`📊 Sequence progress: ${currentStep}/${totalSequences} - New status: ${newStatus}`)
             
-            await supabase
+            const { error: updateError } = await supabase
               .from('contacts')
               .update({
                 sequence_step: currentStep, // currentStep from emailJob represents the step that was just sent
@@ -702,8 +702,12 @@ export async function GET(request: NextRequest) {
                 next_email_due: nextEmailDue // Track when next email is actually due
               })
               .eq('id', parseInt(contact.id))
-              
-            console.log(`✅ Contact ${contact.id} updated: sequence_step=${currentStep}, status=${newStatus}`)
+            
+            if (updateError) {
+              console.error(`❌ Failed to update contact ${contact.id}:`, updateError)
+            } else {
+              console.log(`✅ Contact ${contact.id} updated: sequence_step=${currentStep}, status=${newStatus}`)
+            }
             
             // Also create a progression record so the frontend can track it
             const { error: progressError } = await supabase
