@@ -610,8 +610,9 @@ export async function GET(request: NextRequest) {
         
         if (sendResult.success) {
           // Update sequence progression using proper API
-          // Check if we have a UUID (prospects) or integer (contacts) ID
-          const isUUID = String(contact.id).includes('-')
+          // Check if we have a UUID (prospects) or integer (contacts) ID  
+          const contactIdStr = String(contact.id)
+          const isUUID = contactIdStr.includes('-') && contactIdStr.length > 10
           
           if (isUUID) {
             // Use prospect sequence progression for UUID IDs
