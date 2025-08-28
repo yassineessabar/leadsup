@@ -205,18 +205,15 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
       
       return isDue
     } else {
-      // For non-immediate emails, compare full datetime in contact's timezone
+      // For non-immediate emails, use direct UTC comparison
       if (scheduledDate) {
-        // Convert both current time and scheduled time to contact's timezone for comparison
-        const nowInContactTz = new Date(now.toLocaleString("en-US", {timeZone: timezone}))
-        const scheduledInContactTz = new Date(scheduledDate.toLocaleString("en-US", {timeZone: timezone}))
-        
-        isTimeReached = nowInContactTz >= scheduledInContactTz
+        // Direct UTC comparison - no timezone conversion needed as both dates are already in UTC
+        isTimeReached = now >= scheduledDate
         const isDue = isTimeReached && businessHoursStatus.isBusinessHours
         
         console.log(`     🔍 NON-IMMEDIATE EMAIL DUE CHECK for ${contact.email}:`)
-        console.log(`        Now in contact TZ: ${nowInContactTz.toISOString()}`)
-        console.log(`        Scheduled in contact TZ: ${scheduledInContactTz.toISOString()}`)
+        console.log(`        Now UTC: ${now.toISOString()}`)
+        console.log(`        Scheduled UTC: ${scheduledDate.toISOString()}`)
         console.log(`        Time reached: ${isTimeReached}`)
         console.log(`        Business hours: ${businessHoursStatus.isBusinessHours}`)
         console.log(`        FINAL RESULT: ${isDue} (${isDue ? 'DUE NEXT' : 'PENDING START'})`)
