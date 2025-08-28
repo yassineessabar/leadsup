@@ -149,9 +149,27 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
   const scheduledDate = new Date(lastContactedDate)
   scheduledDate.setDate(lastContactedDate.getDate() + timingDays)
   
+  // Add consistent business hours for follow-up emails
+  const contactIdString = String(contact.id || '')
+  const contactHash = contactIdString.split('').reduce((hash, char) => {
+    return ((hash << 5) - hash) + char.charCodeAt(0)
+  }, 0)
+  const seedValue = (contactHash + currentStep + 1) % 1000
+  const intendedHour = 9 + (seedValue % 8) // 9 AM - 5 PM
+  const intendedMinute = (seedValue * 7) % 60
+  
+  scheduledDate.setHours(intendedHour, intendedMinute, 0, 0)
+  
+  // 🔧 FIX: Add weekend avoidance for follow-up emails (was missing!)
+  const dayOfWeek = scheduledDate.getDay()
+  if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Sunday -> Monday
+  if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Saturday -> Monday
+  
+  console.log(`   🔧 FOLLOW-UP FIX: Step ${currentStep} - scheduled for ${scheduledDate.toISOString()} (day ${dayOfWeek})`)
+  
   return {
     date: scheduledDate,
-    relative: `${timingDays} days`
+    relative: `${timingDays} days follow-up`
   }
 }
 
@@ -163,12 +181,12 @@ export async function GET() {
     console.log(`🕐 Current server time: ${new Date().toISOString()}`)
     console.log(`📅 Current server date: ${new Date().toDateString()}`)
     
-    // Get contacts
+    // Get ALL contacts to debug different sequence steps
     const { data: contacts } = await supabase
       .from('contacts')
       .select('*')
       .eq('campaign_id', campaignId)
-      .limit(1)
+      .order('sequence_step', { ascending: false })
     
     if (!contacts || contacts.length === 0) {
       return NextResponse.json({ error: 'No contacts found' })
@@ -181,91 +199,73 @@ export async function GET() {
       .eq('campaign_id', campaignId)
       .order('step_number', { ascending: true })
     
-    const contact = contacts[0]
-    const timezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
-    
-    // Test the date calculation logic
-    const nextEmailData = calculateNextEmailDate(contact, campaignSequences || [])
-    
-    if (!nextEmailData) {
-      return NextResponse.json({ error: 'No next email calculated' })
-    }
-    
     const now = new Date()
-    const scheduledDate = nextEmailData.date
+    const results = []
     
-    // Show the problematic timezone conversion
-    console.log('🔍 DEBUGGING TIMEZONE CONVERSION:')
-    console.log(`   Original now: ${now.toISOString()}`)
-    console.log(`   Original scheduled: ${scheduledDate.toISOString()}`)
-    
-    // Current (problematic) logic
-    const nowInContactTzOLD = new Date(now.toLocaleString("en-US", {timeZone: timezone}))
-    const scheduledInContactTzOLD = new Date(scheduledDate.toLocaleString("en-US", {timeZone: timezone}))
-    
-    console.log(`   NOW in contact TZ (OLD method): ${nowInContactTzOLD.toISOString()}`)
-    console.log(`   SCHEDULED in contact TZ (OLD method): ${scheduledInContactTzOLD.toISOString()}`)
-    console.log(`   OLD comparison result: ${nowInContactTzOLD >= scheduledInContactTzOLD}`)
-    
-    // Better timezone conversion logic
-    const formatInTimezone = (date: Date, tz: string) => {
-      return new Intl.DateTimeFormat('en-CA', {
-        timeZone: tz,
-        year: 'numeric',
-        month: '2-digit', 
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      }).format(date)
+    // Test each contact's date calculation
+    for (const contact of contacts) {
+      const timezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
+      
+      // Test the date calculation logic
+      const nextEmailData = calculateNextEmailDate(contact, campaignSequences || [])
+      
+      if (!nextEmailData) {
+        results.push({
+          contactId: contact.id,
+          email: contact.email,
+          sequenceStep: contact.sequence_step,
+          error: 'No next email calculated'
+        })
+        continue
+      }
+      
+      const scheduledDate = nextEmailData.date
+      const isTimeReached = now >= scheduledDate
+      const businessHours = getBusinessHoursStatus(timezone)
+      
+      console.log(`\n🔍 Contact ${contact.id} (${contact.email}) - Step ${contact.sequence_step}`)
+      console.log(`   Created: ${contact.created_at}`)
+      console.log(`   Last contacted: ${contact.last_contacted_at}`)
+      console.log(`   Scheduled: ${scheduledDate.toISOString()}`)
+      console.log(`   Is due: ${isTimeReached && businessHours.isBusinessHours}`)
+      
+      // Format in timezone for readability
+      const formatInTimezone = (date: Date, tz: string) => {
+        return new Intl.DateTimeFormat('en-CA', {
+          timeZone: tz,
+          year: 'numeric',
+          month: '2-digit', 
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        }).format(date)
+      }
+      
+      results.push({
+        contactId: contact.id,
+        email: contact.email,
+        location: contact.location,
+        timezone,
+        sequenceStep: contact.sequence_step,
+        createdAt: contact.created_at,
+        lastContactedAt: contact.last_contacted_at,
+        scheduledDate: scheduledDate.toISOString(),
+        scheduledDateLocal: formatInTimezone(scheduledDate, timezone),
+        currentTimeLocal: formatInTimezone(now, timezone),
+        relative: nextEmailData.relative,
+        isTimeReached,
+        businessHours,
+        isDue: isTimeReached && businessHours.isBusinessHours
+      })
     }
-    
-    const nowInContactTzSTR = formatInTimezone(now, timezone)
-    const scheduledInContactTzSTR = formatInTimezone(scheduledDate, timezone)
-    
-    console.log(`   NOW in contact TZ (BETTER method): ${nowInContactTzSTR}`)
-    console.log(`   SCHEDULED in contact TZ (BETTER method): ${scheduledInContactTzSTR}`)
-    
-    // Direct comparison without timezone conversion issues
-    const isTimeReached = now >= scheduledDate
     
     return NextResponse.json({
       success: true,
-      debug: {
-        contact: {
-          id: contact.id,
-          email: contact.email,
-          location: contact.location,
-          sequence_step: contact.sequence_step,
-          created_at: contact.created_at
-        },
-        timezone: timezone,
-        currentTime: {
-          server: now.toISOString(),
-          serverDateString: now.toDateString(),
-          inContactTz: nowInContactTzSTR
-        },
-        scheduledTime: {
-          calculated: scheduledDate.toISOString(),
-          calculatedDateString: scheduledDate.toDateString(),
-          inContactTz: scheduledInContactTzSTR,
-          relative: nextEmailData.relative
-        },
-        comparison: {
-          oldMethod: {
-            nowConverted: nowInContactTzOLD.toISOString(),
-            scheduledConverted: scheduledInContactTzOLD.toISOString(),
-            result: nowInContactTzOLD >= scheduledInContactTzOLD
-          },
-          directMethod: {
-            result: isTimeReached,
-            description: "Direct UTC comparison without timezone conversion"
-          }
-        },
-        businessHours: getBusinessHoursStatus(timezone),
-        shouldSend: isTimeReached && getBusinessHoursStatus(timezone).isBusinessHours
-      },
+      currentTime: now.toISOString(),
+      contactCount: contacts.length,
+      results,
       timestamp: new Date().toISOString()
     })
 

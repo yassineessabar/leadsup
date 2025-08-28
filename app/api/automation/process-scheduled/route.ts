@@ -99,7 +99,7 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
     }
   } else {
     // For follow-up emails, base on when contact was last updated (email sent)
-    const baseDate = contact.updated_at ? new Date(contact.updated_at) : new Date(contact.created_at || new Date())
+    const baseDate = contact.last_contacted_at ? new Date(contact.last_contacted_at) : new Date(contact.updated_at || contact.created_at || new Date())
     let scheduledDate = new Date(baseDate)
     scheduledDate.setDate(baseDate.getDate() + timingDays)
     
@@ -114,7 +114,7 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
     
     scheduledDate.setHours(intendedHour, intendedMinute, 0, 0)
     
-    // Avoid weekends
+    // 🔧 CRITICAL FIX: Add weekend avoidance for follow-up emails (was missing!)
     const dayOfWeek = scheduledDate.getDay()
     if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Sunday -> Monday
     if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Saturday -> Monday
@@ -171,6 +171,16 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
     
     // For immediate emails, use timezone-aware logic (same as analytics)
     if (nextEmailData.relative === 'Immediate') {
+      // 🔧 EXPLICIT FUTURE DATE CHECK: Never send emails scheduled for future dates (even immediate ones)
+      const isInFuture = scheduledDate > now
+      if (isInFuture) {
+        console.log(`     🚫 FUTURE DATE BLOCK for ${contact.email}:`)
+        console.log(`        Now UTC: ${now.toISOString()}`)
+        console.log(`        Scheduled UTC: ${scheduledDate.toISOString()}`)
+        console.log(`        IMMEDIATE email is scheduled for the FUTURE - BLOCKED`)
+        return false
+      }
+      
       const contactIdString = String(contact.id || '')
       const contactHash = contactIdString.split('').reduce((hash, char) => {
         return ((hash << 5) - hash) + char.charCodeAt(0)
@@ -207,6 +217,16 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
     } else {
       // For non-immediate emails, use direct UTC comparison
       if (scheduledDate) {
+        // 🔧 EXPLICIT FUTURE DATE CHECK: Never send emails scheduled for future dates
+        const isInFuture = scheduledDate > now
+        if (isInFuture) {
+          console.log(`     🚫 FUTURE DATE BLOCK for ${contact.email}:`)
+          console.log(`        Now UTC: ${now.toISOString()}`)
+          console.log(`        Scheduled UTC: ${scheduledDate.toISOString()}`)
+          console.log(`        Email is scheduled for the FUTURE - BLOCKED`)
+          return false
+        }
+        
         // Direct UTC comparison - no timezone conversion needed as both dates are already in UTC
         isTimeReached = now >= scheduledDate
         const isDue = isTimeReached && businessHoursStatus.isBusinessHours
