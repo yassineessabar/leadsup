@@ -757,7 +757,9 @@ export async function GET(request: NextRequest) {
             contactId: contact.id,
             contactEmail: contact.email_address,
             status: 'failed',
-            error: sendResult.error
+            error: sendResult.error,
+            senderEmail: selectedSender.email,
+            debug: `Sender: ${selectedSender.email} | Error: ${sendResult.error}`
           })
           
           // Update analytics contact status if this came from analytics (failed case)
