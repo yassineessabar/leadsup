@@ -437,19 +437,21 @@ export async function GET(request: NextRequest) {
         currentStep = progressions ? progressions.length : 0
       } else {
         // Integer contacts use email_tracking table
+        // Note: Some older records may have null campaign_id, so we also check by contact_id only as fallback
         const { data: sentEmails } = await supabase
           .from('email_tracking')
           .select('sequence_id')
-          .eq('campaign_id', contact.campaign_id)
-          .eq('contact_id', parseInt(contact.id))
+          .eq('contact_id', String(contact.id))
           .eq('status', 'sent')
+          .or(`campaign_id.eq.${contact.campaign_id},campaign_id.is.null`)
           .order('sent_at', { ascending: false })
         currentStep = sentEmails ? sentEmails.length : 0
+        console.log(`📊 Contact ${contact.id}: Found ${sentEmails?.length || 0} sent emails, next step will be ${currentStep + 1}`)
       }
       const nextSequence = campaignSequences[currentStep]
       
       if (!nextSequence) {
-        console.log(`❌ No sequence found for step ${currentStep + 1}`)
+        console.log(`✅ Contact ${contact.id} has completed all sequences (${currentStep}/${campaignSequences.length})`)
         continue
       }
       
