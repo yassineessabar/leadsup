@@ -505,6 +505,7 @@ export async function GET(request: NextRequest) {
         contact,
         campaign,
         sequence: nextSequence,
+        campaignSequences, // Include campaignSequences for later status calculations
         scheduledFor: new Date().toISOString(), // Use current time since analytics says it's due
         currentStep: currentStep + 1, // Next step number
         totalSequences: campaignSequences.length
@@ -548,7 +549,7 @@ export async function GET(request: NextRequest) {
     for (const emailJob of emailsDue) {
       try {
         processedCount++
-        const { contact, campaign, sequence, scheduledFor, currentStep, totalSequences } = emailJob
+        const { contact, campaign, sequence, campaignSequences, scheduledFor, currentStep, totalSequences } = emailJob
         
         // Check if we have a UUID (prospects) or integer (contacts) ID - define early for later use
         const contactIdStr = String(contact.id)
