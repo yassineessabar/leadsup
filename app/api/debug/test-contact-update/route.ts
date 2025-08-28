@@ -17,7 +17,7 @@ export async function POST() {
         sequence_step: 1,
         status: 'Scheduled',
         last_contacted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        contact_latest_update_ts: new Date().toISOString(), // Use proper timestamp column
         next_email_due: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
       })
       .eq('id', 1561)

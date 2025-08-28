@@ -698,7 +698,7 @@ export async function GET(request: NextRequest) {
                 sequence_step: currentStep, // currentStep from emailJob represents the step that was just sent
                 status: newStatus, // Update status based on sequence completion
                 last_contacted_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                contact_latest_update_ts: new Date().toISOString(), // Use proper timestamp column
                 next_email_due: nextEmailDue // Track when next email is actually due
               })
               .eq('id', parseInt(contact.id))
