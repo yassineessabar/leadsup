@@ -14,11 +14,11 @@ export async function POST() {
     const { data, error: updateError } = await supabase
       .from('contacts')
       .update({
-        sequence_step: 1,
-        status: 'Scheduled',
+        sequence_step: 2, // Increment to see the change
         last_contacted_at: new Date().toISOString(),
         contact_latest_update_ts: new Date().toISOString(), // Use proper timestamp column
         next_email_due: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
+        // Note: contacts table doesn't have 'status' column, only 'email_status'
       })
       .eq('id', 1561)
       .select()

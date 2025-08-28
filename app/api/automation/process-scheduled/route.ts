@@ -275,23 +275,23 @@ export async function GET(request: NextRequest) {
     const { data: scheduledContacts } = await supabase
       .from('contacts')
       .select('id, email, next_email_due, campaign_id')
-      .eq('status', 'Scheduled')
       .not('next_email_due', 'is', null)
       .lte('next_email_due', now.toISOString())
+      // Note: contacts table doesn't have 'status' column - using next_email_due for timing logic
     
     if (scheduledContacts && scheduledContacts.length > 0) {
       console.log(`📅 Found ${scheduledContacts.length} scheduled contacts now due`)
       
-      // Update them to "Due next"
+      // Clear next_email_due to mark them as ready for processing
       const { error: updateError } = await supabase
         .from('contacts')
-        .update({ status: 'Due next' })
+        .update({ next_email_due: null }) // Clear timing - they'll be processed by isContactDue logic
         .in('id', scheduledContacts.map(c => c.id))
       
       if (updateError) {
         console.error('❌ Error updating scheduled contacts:', updateError)
       } else {
-        console.log(`✅ Updated ${scheduledContacts.length} contacts from "Scheduled" to "Due next"`)
+        console.log(`✅ Cleared next_email_due for ${scheduledContacts.length} contacts - now ready for processing`)
       }
     } else {
       console.log('📭 No scheduled contacts are due at this time')
@@ -314,9 +314,9 @@ export async function GET(request: NextRequest) {
     for (const campaign of activeCampaigns || []) {
       const { data: campaignContacts } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, email, sequence_step, campaign_id, created_at, status')
+        .select('id, first_name, last_name, email, sequence_step, campaign_id, created_at')
         .eq('campaign_id', campaign.id)
-        .eq('status', 'Due next') // Only process contacts with "Due next" status
+        // Note: No status filtering since contacts table doesn't have 'status' column
       
       const { data: sequences } = await supabase
         .from('campaign_sequences')
@@ -696,10 +696,10 @@ export async function GET(request: NextRequest) {
               .from('contacts')
               .update({
                 sequence_step: currentStep, // currentStep from emailJob represents the step that was just sent
-                status: newStatus, // Update status based on sequence completion
                 last_contacted_at: new Date().toISOString(),
                 contact_latest_update_ts: new Date().toISOString(), // Use proper timestamp column
                 next_email_due: nextEmailDue // Track when next email is actually due
+                // Note: contacts table doesn't have 'status' column, only 'email_status'
               })
               .eq('id', parseInt(contact.id))
             
