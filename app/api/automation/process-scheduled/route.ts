@@ -269,8 +269,33 @@ export async function GET(request: NextRequest) {
     // STEP 1: Get active campaigns and contacts directly (GitHub Actions automation)
     console.log('📊 STEP 1: Updating scheduled contacts to "Due next" and getting active campaigns...')
     
-    // STEP 1A: Timing validation is now handled by isContactDue() function in contact filtering
-    console.log('🔄 Timing validation handled by isContactDue() function during contact filtering...')
+    // STEP 1A: Update contacts from "Scheduled" to "Due next" when their time arrives
+    console.log('🔄 Checking for scheduled contacts that are now due...')
+    const now = new Date()
+    const { data: scheduledContacts } = await supabase
+      .from('contacts')
+      .select('id, email, next_email_due, campaign_id')
+      .eq('status', 'Scheduled')
+      .not('next_email_due', 'is', null)
+      .lte('next_email_due', now.toISOString())
+    
+    if (scheduledContacts && scheduledContacts.length > 0) {
+      console.log(`📅 Found ${scheduledContacts.length} scheduled contacts now due`)
+      
+      // Update them to "Due next"
+      const { error: updateError } = await supabase
+        .from('contacts')
+        .update({ status: 'Due next' })
+        .in('id', scheduledContacts.map(c => c.id))
+      
+      if (updateError) {
+        console.error('❌ Error updating scheduled contacts:', updateError)
+      } else {
+        console.log(`✅ Updated ${scheduledContacts.length} contacts from "Scheduled" to "Due next"`)
+      }
+    } else {
+      console.log('📭 No scheduled contacts are due at this time')
+    }
     
     // Get all active campaigns
     const { data: activeCampaigns, error: campaignsError } = await supabase
@@ -648,10 +673,22 @@ export async function GET(request: NextRequest) {
             
             // Determine new status based on whether there are more sequences
             const hasMoreSequences = currentStep < totalSequences
-            const newStatus = hasMoreSequences ? 'Due next' : 'Completed'
+            let newStatus = 'Completed' // Default to completed
+            let nextEmailDue = null
             
-            // Note: Timing validation is handled by isContactDue() function during filtering
-            // Contacts remain "Due next" but won't be processed until timing criteria are met
+            // If there are more sequences, calculate when next email is actually due
+            if (hasMoreSequences) {
+              const updatedContact = { ...contact, sequence_step: currentStep }
+              const nextEmailData = calculateNextEmailDate(updatedContact, campaignSequences)
+              if (nextEmailData && nextEmailData.date) {
+                nextEmailDue = nextEmailData.date.toISOString()
+                console.log(`📅 Next email due: ${nextEmailData.date}`)
+                
+                // Set status to "Scheduled" since next email is scheduled for future
+                // Will be changed to "Due next" by a separate process when the time comes
+                newStatus = 'Scheduled'
+              }
+            }
             
             console.log(`📊 Sequence progress: ${currentStep}/${totalSequences} - New status: ${newStatus}`)
             
@@ -661,8 +698,8 @@ export async function GET(request: NextRequest) {
                 sequence_step: currentStep, // currentStep from emailJob represents the step that was just sent
                 status: newStatus, // Update status based on sequence completion
                 last_contacted_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-                // Removed next_email_due as column may not exist - will track timing via sequence logic
+                updated_at: new Date().toISOString(),
+                next_email_due: nextEmailDue // Track when next email is actually due
               })
               .eq('id', parseInt(contact.id))
             
