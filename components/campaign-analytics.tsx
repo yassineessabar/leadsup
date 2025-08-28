@@ -675,8 +675,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         }
 
         console.log(`🔍 PROCESSING ${contactsResult.contacts.length} CONTACTS`)
+        console.log(`📊 Campaign sequences available: ${campaignSequences.length}`)
+        
         const mappedContacts = contactsResult.contacts.map((contact: any) => {
-          console.log(`📝 Processing contact: ${contact.email || contact.email_address} (Step: ${contact.sequence_step || 0})`)
+          console.log(`\n📝 ========== PROCESSING CONTACT ==========`)
+          console.log(`📧 Email: ${contact.email || contact.email_address}`)
+          console.log(`📊 Sequence Step: ${contact.sequence_step || 0}`)
+          console.log(`📋 Status: ${contact.status}`)
+          console.log(`🎯 Should be complete? ${(contact.sequence_step || 0) > 0 && campaignSequences.length === 0 ? 'YES' : 'NO'}`)
           
           try {
             // Get real sequence status from our progression tracking
@@ -810,7 +816,26 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               
             }
             
-            nextEmailIn = isDue ? "Due next" : "Pending Start"
+            // CRITICAL FIX PATH 1: Check if sequence is complete before setting "Due next"
+            const currentStep = sequence_step || contact.sequence_step || 0
+            const isSequenceComplete = (campaignSequences.length > 0 && currentStep >= campaignSequences.length) ||
+                                       (campaignSequences.length === 0 && currentStep > 0)
+            
+            console.log(`🔍 PATH 1 DEBUG for ${contact.email}:`)
+            console.log(`   sequence_step: ${sequence_step}`)
+            console.log(`   contact.sequence_step: ${contact.sequence_step}`)
+            console.log(`   currentStep: ${currentStep}`)
+            console.log(`   campaignSequences.length: ${campaignSequences.length}`)
+            console.log(`   isSequenceComplete: ${isSequenceComplete}`)
+            console.log(`   isDue: ${isDue}`)
+            
+            if (isSequenceComplete) {
+              nextEmailIn = t('analytics.sequenceComplete')
+              console.log(`   ✅ PATH 1 RESULT: Setting "Sequence Complete"`)
+            } else {
+              nextEmailIn = isDue ? "Due next" : "Pending Start"
+              console.log(`   ❌ PATH 1 RESULT: Setting "${nextEmailIn}"`)
+            }
             
             // Debug logging for problematic contacts - PATH 1
             if (contact.email === 'lukas.schmidt.berlin@example.com' || 
@@ -982,7 +1007,26 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                   }
                 }
                 
-                nextEmailIn = isDue ? "Due next" : "Pending Start"
+                // CRITICAL FIX PATH 2: Check if sequence is complete before setting "Due next"
+                const currentStepPath2 = sequence_step || contact.sequence_step || 0
+                const isSequenceCompletePath2 = (campaignSequences.length > 0 && currentStepPath2 >= campaignSequences.length) ||
+                                                 (campaignSequences.length === 0 && currentStepPath2 > 0)
+                
+                console.log(`🔍 PATH 2 DEBUG for ${contact.email}:`)
+                console.log(`   sequence_step: ${sequence_step}`)
+                console.log(`   contact.sequence_step: ${contact.sequence_step}`)
+                console.log(`   currentStepPath2: ${currentStepPath2}`)
+                console.log(`   campaignSequences.length: ${campaignSequences.length}`)
+                console.log(`   isSequenceCompletePath2: ${isSequenceCompletePath2}`)
+                console.log(`   isDue: ${isDue}`)
+                
+                if (isSequenceCompletePath2) {
+                  nextEmailIn = t('analytics.sequenceComplete')
+                  console.log(`   ✅ PATH 2 RESULT: Setting "Sequence Complete"`)
+                } else {
+                  nextEmailIn = isDue ? "Due next" : "Pending Start"
+                  console.log(`   ❌ PATH 2 RESULT: Setting "${nextEmailIn}"`)
+                }
                 
                 // Debug logging for problematic contacts - PATH 2
                 if (contact.email === 'lukas.schmidt.berlin@example.com' || 
@@ -1067,7 +1111,26 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               }
             }
             
-            nextEmailIn = isDue ? "Due next" : "Pending Start"
+            // CRITICAL FIX PATH 3: Check if sequence is complete before setting "Due next"
+            const currentStepPath3 = sequence_step || contact.sequence_step || 0
+            const isSequenceCompletePath3 = (campaignSequences.length > 0 && currentStepPath3 >= campaignSequences.length) ||
+                                             (campaignSequences.length === 0 && currentStepPath3 > 0)
+            
+            console.log(`🔍 PATH 3 DEBUG for ${contact.email}:`)
+            console.log(`   sequence_step: ${sequence_step}`)
+            console.log(`   contact.sequence_step: ${contact.sequence_step}`)
+            console.log(`   currentStepPath3: ${currentStepPath3}`)
+            console.log(`   campaignSequences.length: ${campaignSequences.length}`)
+            console.log(`   isSequenceCompletePath3: ${isSequenceCompletePath3}`)
+            console.log(`   isDue: ${isDue}`)
+            
+            if (isSequenceCompletePath3) {
+              nextEmailIn = t('analytics.sequenceComplete')
+              console.log(`   ✅ PATH 3 RESULT: Setting "Sequence Complete"`)
+            } else {
+              nextEmailIn = isDue ? "Due next" : "Pending Start"
+              console.log(`   ❌ PATH 3 RESULT: Setting "${nextEmailIn}"`)
+            }
             
             // Debug logging for problematic contacts - PATH 3
             if (contact.email === 'lukas.schmidt.berlin@example.com' || 
@@ -1119,6 +1182,13 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           } else if (["Completed", "Replied", "Unsubscribed", "Bounced"].includes(status)) {
             next_scheduled = "None"
           }
+          
+          // FINAL DEBUG: Log the final nextEmailIn value that will be displayed
+          console.log(`🎯 FINAL RESULT for ${contact.email || contact.email_address}:`)
+          console.log(`   Final nextEmailIn: "${nextEmailIn}"`)
+          console.log(`   Final sequence_step: ${sequence_step}`)
+          console.log(`   Final isDue: ${isDue}`)
+          console.log(`==========================================\n`)
           
           return {
             id: contact.id,
@@ -1426,6 +1496,17 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     if (contact.status === 'Completed' || contact.status === 'Replied' || 
         contact.status === 'Unsubscribed' || contact.status === 'Bounced') {
       return null
+    }
+    
+    // CRITICAL FIX: If contact has progressed beyond available sequences, they've completed the sequence
+    // This handles the case where sequences were deleted but contacts still have sequence_step values
+    if (campaignSequences.length > 0 && currentStep >= campaignSequences.length) {
+      return null // This will trigger "Sequence Complete" status
+    }
+    
+    // EDGE CASE: If no sequences exist but contact has progression, assume they completed an old sequence
+    if (campaignSequences.length === 0 && currentStep > 0) {
+      return null // This will trigger "Sequence Complete" status
     }
     
     // If campaign is paused or contact is paused, show paused status
