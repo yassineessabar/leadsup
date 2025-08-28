@@ -927,7 +927,17 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
     // Real email sending via SendGrid WITH TRACKING
     if (process.env.SENDGRID_API_KEY) {
       const sgMail = require('@sendgrid/mail')
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+      
+      // Ensure API key is properly formatted and trimmed
+      const apiKey = process.env.SENDGRID_API_KEY.trim()
+      console.log(`📧 Setting SendGrid API key: ${apiKey.substring(0, 15)}...`)
+      
+      try {
+        sgMail.setApiKey(apiKey)
+      } catch (apiKeyError) {
+        console.error('❌ Error setting SendGrid API key:', apiKeyError)
+        throw new Error(`SendGrid API key configuration failed: ${apiKeyError.message}`)
+      }
       
       // Import tracking utilities
       const { addEmailTracking, generateTrackingId } = await import('@/lib/email-tracking')
@@ -991,8 +1001,17 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
       console.log(`   To: ${contact.email}`)
       console.log(`   Subject: ${personalizedSubject}`)
       console.log(`   Step: ${sequence.step_number}`)
+      console.log(`   Message structure:`, JSON.stringify(msg, null, 2))
       
-      const result = await sgMail.send(msg)
+      let result
+      try {
+        result = await sgMail.send(msg)
+        console.log(`✅ SendGrid send successful:`, result[0]?.statusCode)
+      } catch (sendError) {
+        console.error('❌ SendGrid send error:', sendError)
+        console.error('❌ SendGrid error details:', sendError.response?.body || 'No detailed error')
+        throw sendError
+      }
       
       // ✅ LOG TO EMAIL_TRACKING TABLE - DISABLED FOR PLAIN TEXT
       try {
