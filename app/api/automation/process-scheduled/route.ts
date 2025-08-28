@@ -937,23 +937,9 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
         .replace(/__PARAGRAPH_BREAK__/g, '\n\n')  // Double newlines 
         .replace(/__LINE_BREAK__/g, '\n')
       
-      // ULTIMATE FIX: Use bullet points to force visual separation 
-      const sentences = personalizedContent.split(/([.!?]\s+)/)
-      let formattedText = ''
-      let sentenceCount = 0
-      
-      for (let i = 0; i < sentences.length; i += 2) {
-        if (sentences[i] && sentences[i].trim()) {
-          const sentence = sentences[i].trim() + (sentences[i + 1] || '')
-          if (sentenceCount === 0) {
-            formattedText += sentence
-          } else {
-            formattedText += '\n\n• ' + sentence
-          }
-          sentenceCount++
-        }
-      }
-      personalizedContent = formattedText
+      // ✅ FINAL FIX: Keep existing line breaks from database content
+      // The database content already has proper \n line breaks, just preserve them
+      console.log('📝 Preserving existing line breaks from database content')
       
       console.log(`🔄 Final plain text: ${JSON.stringify(personalizedContent)}`)
       
