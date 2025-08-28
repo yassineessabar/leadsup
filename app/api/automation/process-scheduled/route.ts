@@ -418,40 +418,12 @@ export async function GET(request: NextRequest) {
         continue
       }
       
-      // For integer contacts, get progression from email_tracking table
-      // Check if this is a UUID or integer contact
-      const contactIdStr = String(contact.id)
-      const isUUID = contactIdStr.includes('-') && contactIdStr.length > 10
-      
-      let currentStep = 0
-      
-      if (isUUID) {
-        // UUID contacts use prospect_sequence_progress  
-        const { data: progressions } = await supabase
-          .from('prospect_sequence_progress')
-          .select('sequence_id')
-          .eq('campaign_id', contact.campaign_id)
-          .eq('prospect_id', String(contact.id))
-          .eq('status', 'sent')
-          .order('sent_at', { ascending: false })
-        currentStep = progressions ? progressions.length : 0
-      } else {
-        // Integer contacts use email_tracking table
-        // Note: Some older records may have null campaign_id, so we also check by contact_id only as fallback
-        const { data: sentEmails } = await supabase
-          .from('email_tracking')
-          .select('sequence_id')
-          .eq('contact_id', String(contact.id))
-          .eq('status', 'sent')
-          .or(`campaign_id.eq.${contact.campaign_id},campaign_id.is.null`)
-          .order('sent_at', { ascending: false })
-        currentStep = sentEmails ? sentEmails.length : 0
-        console.log(`📊 Contact ${contact.id}: Found ${sentEmails?.length || 0} sent emails, next step will be ${currentStep + 1}`)
-      }
+      // Use sequence_step from contact record (analytics already determined this correctly)
+      const currentStep = contact.sequence_step || 0
       const nextSequence = campaignSequences[currentStep]
       
       if (!nextSequence) {
-        console.log(`✅ Contact ${contact.id} has completed all sequences (${currentStep}/${campaignSequences.length})`)
+        console.log(`❌ No sequence found for step ${currentStep + 1}`)
         continue
       }
       
@@ -656,18 +628,35 @@ export async function GET(request: NextRequest) {
               autoProgressNext: true
             })
           } else {
-            // For integer IDs from contacts table, only update last_contacted_at and create progression record
-            const nextStep = currentStep + 1
+            // For integer IDs from contacts table, update both legacy table AND create progression record
             await supabase
               .from('contacts')
               .update({
+                sequence_step: currentStep,
                 updated_at: new Date().toISOString()
               })
               .eq('id', parseInt(contact.id))
             
-            // For integer contacts, track progression using a simple sent_sequences JSON field approach
-            // Note: prospect_sequence_progress table is designed for UUID contacts only
-            console.log(`📝 Updated contact ${contact.id} to step ${nextStep} (integer contacts use email tracking for progression)`)
+            // Also create a progression record so the frontend can track it
+            const { error: progressError } = await supabase
+              .from('prospect_sequence_progress')
+              .upsert({
+                campaign_id: campaign.id, // Use campaign.id instead of contact.campaign_id
+                prospect_id: contact.id, // Use string ID
+                sequence_id: sequence.id,
+                status: 'sent',
+                sent_at: new Date().toISOString(),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'campaign_id,prospect_id,sequence_id'
+              })
+            
+            if (progressError) {
+              console.error(`❌ Failed to create progression record for contact ${contact.id}:`, progressError)
+            } else {
+              console.log(`📝 Updated contact ${contact.id} to step ${currentStep} and created progression record`)
+            }
           }
           
           
