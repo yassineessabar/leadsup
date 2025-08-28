@@ -934,16 +934,20 @@ async function sendSequenceEmail({ contact, sequence, senderEmail, campaign, tes
         .replace(/__PARAGRAPH_BREAK__/g, '\n\n')  // Double newlines 
         .replace(/__LINE_BREAK__/g, '\n')
       
-      // Force even more aggressive spacing by manually splitting long text
+      // ULTIMATE FIX: Use bullet points to force visual separation 
       const sentences = personalizedContent.split(/([.!?]\s+)/)
       let formattedText = ''
+      let sentenceCount = 0
+      
       for (let i = 0; i < sentences.length; i += 2) {
         if (sentences[i] && sentences[i].trim()) {
-          formattedText += sentences[i].trim() + (sentences[i + 1] || '')
-          // Add double line break after each sentence
-          if (i < sentences.length - 2) {
-            formattedText += '\n\n'
+          const sentence = sentences[i].trim() + (sentences[i + 1] || '')
+          if (sentenceCount === 0) {
+            formattedText += sentence
+          } else {
+            formattedText += '\n\n• ' + sentence
           }
+          sentenceCount++
         }
       }
       personalizedContent = formattedText

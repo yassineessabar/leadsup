@@ -782,9 +782,16 @@ async function sendEmail({ from, to, template, campaign }: any) {
       
       // Personalize the template content
       const personalizedSubject = template.subject?.replace(/\{\{companyName\}\}/g, to.company || 'your company') || 'Email from LeadsUp'
-      const personalizedContent = template.content?.replace(/\{\{companyName\}\}/g, to.company || 'your company')
+      let personalizedContent = template.content?.replace(/\{\{companyName\}\}/g, to.company || 'your company')
         .replace(/\{\{firstName\}\}/g, to.first_name || 'there')
         .replace(/\{\{lastName\}\}/g, to.last_name || '') || 'Hello from LeadsUp!'
+      
+      // Convert line breaks to HTML for email display
+      personalizedContent = personalizedContent
+        .replace(/\r\n/g, '\n')  // Convert Windows line breaks
+        .replace(/\r/g, '\n')    // Convert Mac line breaks
+        .replace(/\n\n+/g, '<br/><br/>')  // Convert paragraph breaks (double+ newlines)
+        .replace(/\n/g, '<br/>')  // Convert remaining single newlines
       
       const msg = {
         to: to.email,
