@@ -1141,14 +1141,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               placeholder={t('campaigns.searchCampaigns')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-10 bg-white border-gray-200 rounded-2xl"
+              className="pl-9 h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-2xl dark:text-gray-100"
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40 h-10 bg-white border-gray-200 rounded-2xl">
+            <SelectTrigger className="w-40 h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-2xl dark:text-gray-100">
               <SelectValue placeholder={t('campaigns.allStatus')} />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl border-gray-200">
+            <SelectContent className="rounded-2xl border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
               <SelectItem value="all">{t('campaigns.allStatus')}</SelectItem>
               <SelectItem value="draft">{t('campaigns.draft')}</SelectItem>
               <SelectItem value="active">{t('campaigns.active')}</SelectItem>
@@ -1163,15 +1163,15 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           {loading ? (
             <div className="col-span-full flex items-center justify-center py-16">
               <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-              <span className="ml-3 text-gray-600 font-medium">{t('campaigns.loading')}</span>
+              <span className="ml-3 text-gray-600 dark:text-gray-400 font-medium">{t('campaigns.loading')}</span>
             </div>
           ) : filteredCampaigns.length === 0 ? (
             <div className="col-span-full text-center py-16">
-              <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-                <Mail className="w-8 h-8 text-gray-400" />
+              <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                <Mail className="w-8 h-8 text-gray-400 dark:text-gray-500" />
               </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">{t('campaigns.noCampaigns')}</h3>
-              <p className="text-gray-500 mb-8 font-light">{t('campaigns.createFirstCampaign')}</p>
+              <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">{t('campaigns.noCampaigns')}</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-8 font-light">{t('campaigns.createFirstCampaign')}</p>
               <Button 
                 onClick={() => setShowAdvancedPopup(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-6 py-3 font-medium transition-all duration-300 rounded-2xl"
@@ -1205,7 +1205,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               return (
                 <div
                   key={campaign.id}
-                  className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden cursor-pointer group"
+                  className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden cursor-pointer group"
                   onClick={() => {
                     setSelectedCampaign(campaign)
                     
@@ -1232,14 +1232,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     {/* Header */}
                     <div className="flex items-start justify-between mb-6">
                       <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                        <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center">
                           <Mail className="w-6 h-6 text-blue-600" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 transition-colors">
                             {campaign.name || 'Untitled Campaign'}
                           </h3>
-                          <p className="text-sm text-gray-500 mt-1">{campaign.type} {t('campaigns.campaign')}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{campaign.type} {t('campaigns.campaign')}</p>
                         </div>
                       </div>
                       
@@ -1247,7 +1247,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         <Button
                           variant="ghost"
                           size="sm" 
-                          className="h-8 w-8 p-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
+                          className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all duration-200"
                           onClick={(e) => {
                             e.stopPropagation()
                             // Get user ID - you may need to adjust this based on your auth system
@@ -1262,7 +1262,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         <Button
                           variant="ghost"
                           size="sm" 
-                          className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all duration-200"
+                          className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all duration-200"
                           onClick={(e) => {
                             e.stopPropagation()
                             setSelectedCampaign(campaign)
@@ -1283,7 +1283,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all duration-200"
+                          className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all duration-200"
                           onClick={(e) => {
                             e.stopPropagation()
                             setSelectedCampaign(campaign)
@@ -1334,21 +1334,21 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
                     {/* Metrics */}
                     <div className="grid grid-cols-2 gap-4 mb-6">
-                        <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                          <p className="text-2xl font-light text-gray-900">
+                        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                          <p className="text-2xl font-light text-gray-900 dark:text-gray-100">
                             {hasBeenStarted && hasRealCampaignData ? `${deliveryRate}%` : 
                              hasBeenStarted ? '100%' : '—'}
                           </p>
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             {hasBeenStarted ? t('campaigns.deliveryRate') : t('campaigns.notStarted')}
                           </p>
                         </div>
-                        <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                          <p className="text-2xl font-light text-gray-900">
+                        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                          <p className="text-2xl font-light text-gray-900 dark:text-gray-100">
                             {hasBeenStarted && hasRealCampaignData ? `${responseRate}%` : 
                              hasBeenStarted ? '0%' : '—'}
                           </p>
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             {hasBeenStarted ? t('campaigns.response') : t('campaigns.notStarted')}
                           </p>
                         </div>
@@ -1357,20 +1357,20 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     {/* Progress */}
                     <div className="mb-6">
                       <div className="flex justify-between text-sm mb-3">
-                        <span className="text-gray-600 font-medium">
+                        <span className="text-gray-600 dark:text-gray-400 font-medium">
                           {hasBeenStarted ? t('common.progress') : t('campaigns.readyToStart')}
                         </span>
-                        <span className="font-semibold text-gray-900">
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">
                           {hasBeenStarted ? `${progress.percentage}%` : '—'}
                         </span>
                       </div>
-                      <div className="w-full bg-gray-100 rounded-full h-3">
+                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3">
                         <div 
                           className="bg-blue-600 h-3 rounded-full transition-all duration-500"
                           style={{ width: `${Math.min(progress.percentage, 100)}%` }}
                         ></div>
                       </div>
-                      <div className="flex justify-between text-sm text-gray-500 mt-2">
+                      <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-2">
                         <span>
                           {hasBeenStarted ? t('campaigns.emailsSent', { count: progress.sent }) : t('campaigns.notStarted')}
                         </span>
@@ -1385,7 +1385,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                       {campaign.status === 'Active' ? (
                         <Button
                           variant="outline"
-                          className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl"
+                          className="flex-1 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium transition-all duration-300 rounded-2xl"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
@@ -1419,7 +1419,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           </Button>
                           <Button
                             variant="outline"
-                            className="border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl px-3"
+                            className="border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium transition-all duration-300 rounded-2xl px-3"
                             onClick={(e) => {
                               e.stopPropagation()
                               handleCampaignStatusChange(campaign.id, campaign.status, campaign.name)
@@ -1462,7 +1462,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         {/* Create Campaign Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg w-full max-w-2xl p-8">
+            <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-2xl p-8">
               {/* Back Button */}
               <div className="flex items-center space-x-3 mb-8">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBackInModal}>
@@ -1470,19 +1470,19 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </Button>
-                <span className="text-gray-600">{t('button.back')}</span>
+                <span className="text-gray-600 dark:text-gray-400">{t('button.back')}</span>
               </div>
 
               {/* Step 1: Campaign Name */}
               {createStep === 1 && (
                 <div className="text-center space-y-6">
                   <div>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-2">{t('campaigns.letsCreateNewCampaign')}</h2>
-                    <p className="text-gray-600">{t('campaigns.whatToNameIt')}</p>
+                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">{t('campaigns.letsCreateNewCampaign')}</h2>
+                    <p className="text-gray-600 dark:text-gray-400">{t('campaigns.whatToNameIt')}</p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-left text-sm font-medium text-gray-700">{t('campaigns.campaignName')}</label>
+                    <label className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300">{t('campaigns.campaignName')}</label>
                     <Input
                       value={newCampaignName}
                       onChange={(e) => setNewCampaignName(e.target.value)}
@@ -1506,25 +1506,25 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               {createStep === 2 && (
                 <div className="space-y-8">
                   <div className="text-center">
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-2">{t('campaigns.configureYourCampaign')}</h2>
-                    <p className="text-gray-600">{t('campaigns.chooseTypeAndTrigger', { name: newCampaignName })}</p>
+                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">{t('campaigns.configureYourCampaign')}</h2>
+                    <p className="text-gray-600 dark:text-gray-400">{t('campaigns.chooseTypeAndTrigger', { name: newCampaignName })}</p>
                   </div>
 
                   {/* Campaign Type */}
                   <div className="space-y-4">
-                    <label className="block text-sm font-medium text-gray-700">{t('campaigns.campaignType')}</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('campaigns.campaignType')}</label>
                     <RadioGroup
                       value={newCampaignType}
                       onValueChange={(value) => setNewCampaignType(value as "Email")}
                     >
                       <div className="grid grid-cols-1 gap-4">
-                        <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50">
+                        <div className="flex items-center space-x-3 p-4 border dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
                           <RadioGroupItem value="Email" id="email" />
                           <Label htmlFor="email" className="flex items-center space-x-3 cursor-pointer">
                             <Mail className="w-5 h-5" style={{ color: 'rgb(87, 140, 255)' }} />
                             <div>
                               <div className="font-medium">{t('campaigns.emailCampaign')}</div>
-                              <div className="text-sm text-gray-500">{t('campaigns.sendEmailSequences')}</div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">{t('campaigns.sendEmailSequences')}</div>
                             </div>
                           </Label>
                         </div>
@@ -1534,7 +1534,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
                   {/* Trigger Selection */}
                   <div className="space-y-4">
-                    <label className="block text-sm font-medium text-gray-700">{t('campaigns.campaignTrigger')}</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('campaigns.campaignTrigger')}</label>
                     <RadioGroup value={newCampaignTrigger} onValueChange={setNewCampaignTrigger}>
                       <div className="grid grid-cols-1 gap-3">
                         {triggerOptions.map((option) => {
@@ -1542,17 +1542,17 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           return (
                             <div
                               key={option.value}
-                              className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50"
+                              className="flex items-center space-x-3 p-4 border dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                             >
                               <RadioGroupItem value={option.value} id={option.value} />
                               <Label
                                 htmlFor={option.value}
                                 className="flex items-center space-x-3 cursor-pointer flex-1"
                               >
-                                <Icon className="w-5 h-5 text-gray-600" />
+                                <Icon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                                 <div>
                                   <div className="font-medium">{option.label}</div>
-                                  <div className="text-sm text-gray-500">{option.description}</div>
+                                  <div className="text-sm text-gray-500 dark:text-gray-400">{option.description}</div>
                                 </div>
                               </Label>
                             </div>
@@ -1586,17 +1586,17 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
         {/* Warmup Warning Dialog - EXACT COPY FROM ANALYTICS */}
         <Dialog open={showWarmupWarning} onOpenChange={setShowWarmupWarning}>
-          <DialogContent className="sm:max-w-[425px] rounded-3xl border border-gray-100 p-0 overflow-hidden">
+          <DialogContent className="sm:max-w-[425px] rounded-3xl border border-gray-100 dark:border-gray-800 p-0 overflow-hidden bg-white dark:bg-gray-900">
             <div className="p-6 pb-0">
               <div className="flex items-center space-x-4 mb-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl flex items-center justify-center">
                   <Flame className="w-6 h-6 text-orange-600" />
                 </div>
                 <div>
-                  <DialogTitle className="text-lg font-semibold text-gray-900">
+                  <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {t('campaigns.healthScoreAlert')}
                   </DialogTitle>
-                  <DialogDescription className="text-sm text-gray-500">
+                  <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
                     {t('campaigns.sendersNeedWarming')}
                   </DialogDescription>
                 </div>
@@ -1615,8 +1615,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     }
                     
                     return (
-                      <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg">
-                        <span className="text-sm text-gray-700 truncate flex-1 mr-2">{sender.email}</span>
+                      <div key={index} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-lg">
+                        <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1 mr-2">{sender.email}</span>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getScoreColor(sender.score)}`}>
                           {sender.score}%
                         </span>
@@ -1626,7 +1626,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                 </div>
               </div>
               
-              <div className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
+              <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
                 <p><span className="font-semibold">{t('campaigns.continueWarmup')}:</span> {t('campaigns.continueWarmupDescription')}</p>
                 <p className="mt-1">
                   <span className="font-semibold">

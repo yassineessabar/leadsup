@@ -666,7 +666,7 @@ export function TargetTab({
 
         {/* Tabbed Interface */}
         <Tabs defaultValue="scraping" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8 bg-white border border-gray-100/50 rounded-2xl p-1">
+          <TabsList className="grid w-full grid-cols-2 mb-8 bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 rounded-2xl p-1">
             <TabsTrigger 
               value="import" 
               className="rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
@@ -683,10 +683,10 @@ export function TargetTab({
 
           {/* CSV Import Tab */}
           <TabsContent value="import" className="space-y-6">
-            <Card className="bg-white rounded-3xl shadow-sm border border-gray-100/50 overflow-hidden">
+            <Card className="bg-white dark:bg-gray-900 rounded-3xl shadow-sm border border-gray-100/50 dark:border-gray-800 overflow-hidden">
               <CardHeader className="p-8 pb-6">
-                <CardTitle className="text-2xl font-medium text-gray-900">{t('campaignManagement.targetTab.import.title')}</CardTitle>
-                <CardDescription className="mt-2 text-gray-600">
+                <CardTitle className="text-2xl font-medium text-gray-900 dark:text-gray-100">{t('campaignManagement.targetTab.import.title')}</CardTitle>
+                <CardDescription className="mt-2 text-gray-600 dark:text-gray-400">
                   {t('campaignManagement.targetTab.import.subtitle')}
                 </CardDescription>
               </CardHeader>
@@ -696,19 +696,19 @@ export function TargetTab({
                   <div className={`rounded-2xl p-8 border-2 border-dashed text-center transition-colors ${
                     uploadSuccess 
                       ? 'bg-green-50 border-green-200' 
-                      : 'bg-gray-50 border-gray-200'
+                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                   }`}>
                   {uploadSuccess ? (
                     <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
                   ) : (
-                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <Upload className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
                   )}
                   
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                     {uploadSuccess ? t('campaignManagement.targetTab.import.uploadSuccessful') : t('campaignManagement.targetTab.import.uploadCSVFile')}
                   </h3>
                   
-                  <p className="text-sm text-gray-500 mb-6">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                     {uploadSuccess 
                       ? t('campaignManagement.targetTab.import.contactsImportedSuccessfully')
                       : t('campaignManagement.targetTab.import.importFromCSV')
@@ -757,7 +757,7 @@ export function TargetTab({
                   )}
 
                   {uploadedFile && !uploadSuccess && (
-                    <div className="mt-4 p-4 bg-white rounded-xl border border-gray-200">
+                    <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
                           <Upload className="w-4 h-4 text-blue-600" />
@@ -773,7 +773,7 @@ export function TargetTab({
                   )}
 
                   {uploadSuccess && uploadStats && (
-                    <div className="mt-4 p-4 bg-white rounded-xl border border-green-200">
+                    <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-green-200 dark:border-green-700">
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div className="text-center">
                           <div className="font-semibold text-green-600">{uploadStats.imported}</div>
@@ -808,10 +808,10 @@ export function TargetTab({
 
           {/* Auto Scraping Tab */}
           <TabsContent value="scraping" className="space-y-6">
-            <Card className="bg-white rounded-3xl shadow-sm border border-gray-100/50 overflow-hidden">
+            <Card className="bg-white dark:bg-gray-900 rounded-3xl shadow-sm border border-gray-100/50 dark:border-gray-800 overflow-hidden">
               <CardHeader className="p-8 pb-6">
-                <CardTitle className="text-2xl font-medium text-gray-900">{t('campaignManagement.targetTab.scraping.title')}</CardTitle>
-                <CardDescription className="mt-2 text-gray-600">
+                <CardTitle className="text-2xl font-medium text-gray-900 dark:text-gray-100">{t('campaignManagement.targetTab.scraping.title')}</CardTitle>
+                <CardDescription className="mt-2 text-gray-600 dark:text-gray-400">
                   {t('campaignManagement.targetTab.scraping.subtitle')}
                 </CardDescription>
               </CardHeader>
@@ -821,7 +821,7 @@ export function TargetTab({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <label className="block text-sm font-medium text-gray-700">{t('campaignManagement.targetTab.scraping.targetIndustries')}</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('campaignManagement.targetTab.scraping.targetIndustries')}</label>
                         {showIndustryError && (
                           <div className="relative group">
                             <Info className="w-4 h-4 text-red-500 cursor-help" />
@@ -854,12 +854,12 @@ export function TargetTab({
                             
                             {/* Autocomplete dropdown */}
                             {showIndustryDropdown && filteredIndustries.length > 0 && (
-                              <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
+                              <div className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
                                 {filteredIndustries.map((industry, index) => (
                                   <button
                                     key={index}
                                     type="button"
-                                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-gray-50 dark:focus:bg-gray-700 focus:outline-none border-b border-gray-100 dark:border-gray-700 last:border-b-0 dark:text-gray-300"
                                     onMouseDown={(e) => {
                                       e.preventDefault() // Prevent input blur
                                       selectIndustryFromDropdown(industry)
@@ -904,7 +904,7 @@ export function TargetTab({
                       </div>
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('campaignManagement.targetTab.scraping.keywords')}</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('campaignManagement.targetTab.scraping.keywords')}</label>
                       <div className="space-y-2">
                         <div className="flex gap-2">
                           <Input
@@ -982,12 +982,12 @@ export function TargetTab({
                             
                             {/* Autocomplete dropdown */}
                             {showLocationDropdown && filteredLocations.length > 0 && (
-                              <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
+                              <div className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
                                 {filteredLocations.map((location, index) => (
                                   <button
                                     key={index}
                                     type="button"
-                                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-gray-50 dark:focus:bg-gray-700 focus:outline-none border-b border-gray-100 dark:border-gray-700 last:border-b-0 dark:text-gray-300"
                                     onMouseDown={(e) => {
                                       e.preventDefault() // Prevent input blur
                                       selectLocationFromDropdown(location)

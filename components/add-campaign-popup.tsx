@@ -1281,7 +1281,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
               <select 
                 value={formData.campaignObjective} 
                 onChange={(e) => setFormData(prev => ({ ...prev, campaignObjective: e.target.value }))}
-                className="w-full h-10 border border-gray-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 text-sm rounded-xl px-3 bg-white appearance-none cursor-pointer"
+                className="w-full h-10 border border-gray-200 dark:border-gray-700 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 text-sm rounded-xl px-3 bg-white dark:bg-gray-800 appearance-none cursor-pointer dark:text-gray-100"
               >
                 <option value="">{t('campaignCreation.objectives.selectYourObjective')}</option>
                 <option value="sell-service">{t('campaignCreation.objectives.sellService')}</option>
@@ -1413,7 +1413,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
 
   const renderCompanyInfo = () => (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="bg-white/80 backdrop-blur-xl border border-gray-100/20 rounded-2xl shadow-sm p-6">
+      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-100/20 dark:border-gray-800/20 rounded-2xl shadow-sm p-6">
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">{formData.companyName || "Company Name"}</h3>
@@ -1485,7 +1485,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* AI-Generated Target Industries */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <label className="text-base font-semibold text-gray-900">{t('campaignCreation.targetAudience.targetIndustries')}</label>
                 <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
@@ -1521,12 +1521,12 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                       className="text-sm"
                     />
                     {showIndustryDropdown && filteredIndustries.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
+                      <div className="absolute top-full left-0 right-0 z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
                         {filteredIndustries.map((industry, index) => (
                           <button
                             key={index}
                             type="button"
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-300"
                             onMouseDown={(e) => {
                               e.preventDefault()
                               selectMainIndustry(industry)
@@ -1552,7 +1552,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
             </div>
 
             {/* AI-Generated Target Locations */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <label className="text-base font-semibold text-gray-900">{t('campaignCreation.targetAudience.targetLocations')}</label>
                 <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
@@ -1588,12 +1588,12 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                       className="text-sm"
                     />
                     {showLocationDropdown && filteredLocations.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
+                      <div className="absolute top-full left-0 right-0 z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
                         {filteredLocations.map((location, index) => (
                           <button
                             key={index}
                             type="button"
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-300"
                             onMouseDown={(e) => {
                               e.preventDefault()
                               selectMainLocation(location)
@@ -1619,7 +1619,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
             </div>
 
             {/* AI-Generated Target Roles */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <label className="text-base font-semibold text-gray-900">{t('campaignCreation.targetAudience.targetRoles')}</label>
                 <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
@@ -1669,14 +1669,14 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
 
           {/* Additional suggestions */}
           {broadRoles.length > 0 && formData.keywords.length < 3 && (
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
               <p className="text-sm font-medium text-gray-700 mb-2">Suggested additional roles:</p>
               <div className="flex flex-wrap gap-2">
                 {broadRoles.filter(role => !aiRoles.includes(role)).slice(0, 6).map((role, index) => (
                   <button
                     key={index}
                     onClick={() => setFormData(prev => ({ ...prev, keywords: [...prev.keywords, role] }))}
-                    className="px-3 py-1 text-sm text-gray-600 bg-white hover:bg-gray-100 rounded-md border border-gray-200 hover:border-gray-300 transition-colors"
+                    className="px-3 py-1 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                   >
                     + {role}
                   </button>
@@ -1724,7 +1724,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
               {displayICPs.slice(0, 1).map((icp: any) => (
                 <div 
                   key={icp.id} 
-                  className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition-shadow"
+                  className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-sm transition-shadow"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
@@ -1766,7 +1766,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                       )}
                       
                       {icp.companySize && (
-                        <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-700">
+                        <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                           {icp.companySize} employees
                         </div>
                       )}
@@ -1796,7 +1796,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
               {displayPersonas.slice(0, 1).map((persona: any) => (
                 <div 
                   key={persona.id} 
-                  className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition-shadow"
+                  className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-sm transition-shadow"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
@@ -1999,12 +1999,12 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                     
                     {/* Autocomplete dropdown */}
                     {showIndustryDropdown && filteredIndustries.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
+                      <div className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
                         {filteredIndustries.map((industry, index) => (
                           <button
                             key={index}
                             type="button"
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-gray-50 dark:focus:bg-gray-700 focus:outline-none border-b border-gray-100 dark:border-gray-700 last:border-b-0 dark:text-gray-300"
                             onMouseDown={(e) => {
                               e.preventDefault() // Prevent input blur
                               selectIndustryFromDropdown(industry)
@@ -2085,12 +2085,12 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
                     
                     {/* Autocomplete dropdown */}
                     {showLocationDropdown && filteredLocations.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
+                      <div className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
                         {filteredLocations.map((location, index) => (
                           <button
                             key={index}
                             type="button"
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-gray-50 dark:focus:bg-gray-700 focus:outline-none border-b border-gray-100 dark:border-gray-700 last:border-b-0 dark:text-gray-300"
                             onMouseDown={(e) => {
                               e.preventDefault() // Prevent input blur
                               selectLocationFromDropdown(location)
@@ -2140,7 +2140,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
               <Button 
                 variant="outline" 
                 onClick={() => handleCancel('icp')}
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <XCircle className="w-4 h-4 mr-2" />
                 Cancel
@@ -2273,7 +2273,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
               <Button 
                 variant="outline" 
                 onClick={() => handleCancel('persona')}
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <XCircle className="w-4 h-4 mr-2" />
                 Cancel
@@ -2336,7 +2336,7 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
               <Button 
                 variant="outline" 
                 onClick={() => handleCancel('painPoint')}
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <XCircle className="w-4 h-4 mr-2" />
                 Cancel

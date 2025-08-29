@@ -39,7 +39,7 @@ export function TemplatesTab() {
   
   if (!ready) {
     return <div className="flex items-center justify-center h-64">
-      <div className="text-gray-500">{t ? t('common.loading') : 'Loading...'}</div>
+      <div className="text-gray-500 dark:text-gray-400">{t ? t('common.loading') : 'Loading...'}</div>
     </div>
   }
 
@@ -282,16 +282,16 @@ Best regards!`
   }
 
   return (
-    <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+    <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
-              <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">
+              <h1 className="text-4xl font-light text-gray-900 dark:text-gray-100 tracking-tight mb-2">
                 {t('templates.templateLibrary')}
               </h1>
-              <p className="text-gray-500 font-light">
+              <p className="text-gray-500 dark:text-gray-400 font-light">
                 {t('templates.browseAndUse')}
               </p>
             </div>
@@ -299,11 +299,11 @@ Best regards!`
             <div className="flex gap-3">
               {/* Category Filter */}
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-48 h-10 bg-white border-gray-200 rounded-2xl">
+                <SelectTrigger className="w-48 h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-2xl">
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder={t('templates.allCategories')} />
                 </SelectTrigger>
-                <SelectContent className="rounded-2xl border-gray-200">
+                <SelectContent className="rounded-2xl border-gray-200 dark:border-gray-700">
                   <SelectItem value="all">{t('templates.allCategories')}</SelectItem>
                   <SelectItem value="community">{t('templates.community')}</SelectItem>
                   <SelectItem value="premium">{t('templates.premium')}</SelectItem>
@@ -318,13 +318,13 @@ Best regards!`
           {filteredTemplates.map((template) => (
             <div
               key={template.id}
-              className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden cursor-pointer group"
+              className="bg-white dark:bg-gray-800 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden cursor-pointer group"
             >
               <div className="p-8">
                 {/* Header */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 transition-colors">
                       {template.title}
                     </h3>
                     <Badge 
@@ -338,20 +338,20 @@ Best regards!`
                       {template.category}
                     </Badge>
                   </div>
-                  <p className="text-sm text-gray-500">{template.subtitle}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{template.subtitle}</p>
                 </div>
 
                 {/* Single Key Metric */}
                 <div className="mb-6 text-center">
-                  <p className="text-2xl font-light text-gray-900">{template.metrics.openRate}</p>
-                  <p className="text-xs text-gray-500 mt-1">{t('campaigns.openRate')}</p>
+                  <p className="text-2xl font-light text-gray-900 dark:text-gray-100">{template.metrics.openRate}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('campaigns.openRate')}</p>
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl"
+                    className="flex-1 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium transition-all duration-300 rounded-2xl"
                     onClick={() => handleViewTemplate(template.id)}
                   >
                     <Eye className="w-4 h-4 mr-2" />
@@ -359,7 +359,7 @@ Best regards!`
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl"
+                    className="flex-1 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium transition-all duration-300 rounded-2xl"
                     onClick={() => handleUseTemplate(template.id)}
                   >
                     {t('templates.useTemplate')}
@@ -367,7 +367,7 @@ Best regards!`
                   <Button
                     variant="outline"
                     size="sm"
-                    className="px-3 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl"
+                    className="px-3 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium transition-all duration-300 rounded-2xl">
                     onClick={() => handleShareTemplate(template)}
                   >
                     <Share2 className="w-4 h-4" />
@@ -381,15 +381,15 @@ Best regards!`
         {/* Empty State */}
         {filteredTemplates.length === 0 && (
           <div className="text-center py-16">
-            <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
               <FileText className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-xl font-medium text-gray-900 mb-2">{t('templates.noTemplatesFound')}</h3>
-            <p className="text-gray-500 mb-8 font-light">{t('templates.tryAdjustingFilters')}</p>
+            <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">{t('templates.noTemplatesFound')}</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-8 font-light">{t('templates.tryAdjustingFilters')}</p>
             <Button 
               variant="outline"
               onClick={() => setSelectedCategory("all")}
-              className="border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-3 font-medium transition-all duration-300 rounded-2xl"
+              className="border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 px-6 py-3 font-medium transition-all duration-300 rounded-2xl">
             >
               {t('templates.showAllTemplates')}
             </Button>
@@ -400,7 +400,7 @@ Best regards!`
         <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto rounded-3xl">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-light text-gray-900 tracking-tight">
+              <DialogTitle className="text-2xl font-light text-gray-900 dark:text-gray-100 tracking-tight">
                 {selectedTemplate?.title}
               </DialogTitle>
               <div className="flex items-center gap-2 mt-2">
@@ -414,42 +414,42 @@ Best regards!`
                 >
                   {selectedTemplate?.category}
                 </Badge>
-                <span className="text-sm text-gray-500">{selectedTemplate?.subtitle}</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{selectedTemplate?.subtitle}</span>
               </div>
             </DialogHeader>
             
             {selectedTemplate && (
               <div className="space-y-6">
                 {/* Template Content */}
-                <div className="bg-gray-50 rounded-2xl p-6">
-                  <h3 className="text-sm font-medium text-gray-900 mb-3">{t('templates.emailTemplate')}</h3>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-700 font-normal leading-relaxed">
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">{t('templates.emailTemplate')}</h3>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-normal leading-relaxed">
                     {selectedTemplate.content || t('templates.noContentAvailable')}
                   </pre>
                 </div>
 
                 {/* Metrics */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                    <p className="text-xl font-light text-gray-900">{selectedTemplate.metrics.openRate}</p>
-                    <p className="text-xs text-gray-500 mt-1">{t('campaigns.openRate')}</p>
+                  <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                    <p className="text-xl font-light text-gray-900 dark:text-gray-100">{selectedTemplate.metrics.openRate}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('campaigns.openRate')}</p>
                   </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                    <p className="text-xl font-light text-gray-900">{selectedTemplate.metrics.responseRate}</p>
-                    <p className="text-xs text-gray-500 mt-1">{t('campaigns.responseRate')}</p>
+                  <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                    <p className="text-xl font-light text-gray-900 dark:text-gray-100">{selectedTemplate.metrics.responseRate}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('campaigns.responseRate')}</p>
                   </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-2xl">
-                    <p className="text-xl font-light text-gray-900">{selectedTemplate.metrics.conversionRate}</p>
-                    <p className="text-xs text-gray-500 mt-1">{t('campaigns.conversionRate')}</p>
+                  <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                    <p className="text-xl font-light text-gray-900 dark:text-gray-100">{selectedTemplate.metrics.conversionRate}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('campaigns.conversionRate')}</p>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <Button
                     variant="outline"
                     onClick={() => setIsPreviewOpen(false)}
-                    className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl"
+                    className="flex-1 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium transition-all duration-300 rounded-2xl"
                   >
                     {t('button.close')}
                   </Button>
@@ -472,21 +472,21 @@ Best regards!`
         <Dialog open={isCampaignSelectOpen} onOpenChange={setIsCampaignSelectOpen}>
           <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto rounded-3xl">
             <DialogHeader>
-              <DialogTitle className="text-xl font-light text-gray-900 tracking-tight">
+              <DialogTitle className="text-xl font-light text-gray-900 dark:text-gray-100 tracking-tight">
                 {t('templates.useTemplateInCampaign')}
               </DialogTitle>
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                 {t('templates.selectCampaignToCopy', { title: templateToUse?.title })}
               </p>
             </DialogHeader>
             
             {/* Instructions */}
-            <div className="bg-blue-50/50 border border-blue-100/50 rounded-2xl p-4 my-4">
-              <h4 className="font-medium text-gray-900 mb-2 text-sm flex items-center">
+            <div className="bg-blue-50/50 dark:bg-gray-800 border border-blue-100/50 dark:border-gray-700 rounded-2xl p-4 my-4">
+              <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2 text-sm flex items-center">
                 <Copy className="w-4 h-4 text-blue-600 mr-2" />
                 {t('templates.howItWorks')}
               </h4>
-              <ol className="text-xs text-gray-600 space-y-1 list-decimal list-inside">
+              <ol className="text-xs text-gray-600 dark:text-gray-400 space-y-1 list-decimal list-inside">
                 <li>{t('templates.selectCampaignBelow')}</li>
                 <li>{t('templates.contentCopiedToClipboard')}</li>
                 <li>{t('templates.redirectToSequenceEditor')}</li>
@@ -498,9 +498,9 @@ Best regards!`
               {loadingCampaigns ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="p-4 border border-gray-200 rounded-2xl animate-pulse">
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    <div key={i} className="p-4 border border-gray-200 dark:border-gray-700 rounded-2xl animate-pulse">
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
                     </div>
                   ))}
                 </div>
@@ -509,13 +509,13 @@ Best regards!`
                   {campaigns.map((campaign) => (
                     <div
                       key={campaign.id}
-                      className="p-4 border border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 rounded-2xl cursor-pointer transition-all duration-200 group"
+                      className="p-4 border border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-gray-800 rounded-2xl cursor-pointer transition-all duration-200 group"
                       onClick={() => handleAddToCampaign(campaign.id)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{campaign.name}</h4>
-                          <p className="text-sm text-gray-500">
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100">{campaign.name}</h4>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             {campaign.status} • {campaign.type || 'Email Campaign'}
                           </p>
                         </div>
@@ -533,7 +533,7 @@ Best regards!`
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <p className="text-gray-500 mb-4">{t('templates.noCampaignsFound')}</p>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">{t('templates.noCampaignsFound')}</p>
                   <div className="flex flex-col gap-2">
                     <Button
                       variant="outline"
@@ -557,7 +557,7 @@ Best regards!`
                         }
                       }}
                       disabled={loadingCampaigns}
-                      className="border-blue-300 text-blue-700 hover:bg-blue-50 rounded-2xl"
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50 dark:hover:bg-gray-800 rounded-2xl"
                     >
                       {loadingCampaigns ? t('common.loading') : t('templates.refreshCampaigns')}
                     </Button>
@@ -569,7 +569,7 @@ Best regards!`
                         // Navigate to campaigns tab to create new campaign
                         window.location.href = '/?tab=campaigns-email'
                       }}
-                      className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
+                      className="border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl"
                     >
                       {t('templates.createNewCampaign')}
                     </Button>
@@ -577,11 +577,11 @@ Best regards!`
                 </div>
               )}
               
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <Button
                   variant="outline"
                   onClick={() => setIsCampaignSelectOpen(false)}
-                  className="flex-1 border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
+                  className="flex-1 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl"
                 >
                   {t('button.cancel')}
                 </Button>
@@ -592,21 +592,21 @@ Best regards!`
 
         {/* Share Template Modal */}
         <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
-          <DialogContent className="max-w-md rounded-3xl border border-gray-100/20">
+          <DialogContent className="max-w-md rounded-3xl border border-gray-100/20 dark:border-gray-800">
             <DialogHeader className="pb-6">
-              <DialogTitle className="text-center text-2xl font-light text-gray-900 tracking-tight">
+              <DialogTitle className="text-center text-2xl font-light text-gray-900 dark:text-gray-100 tracking-tight">
                 {t('templates.shareTemplate')}
               </DialogTitle>
-              <p className="text-center text-gray-500 text-sm mt-2">
+              <p className="text-center text-gray-500 dark:text-gray-400 text-sm mt-2">
                 {t('templates.shareTemplateWith', { title: templateToShare?.title })}
               </p>
             </DialogHeader>
             
             <div className="space-y-4 py-4">
               {/* Template Preview */}
-              <div className="bg-gray-50/50 border border-gray-100/50 rounded-2xl p-4">
+              <div className="bg-gray-50/50 dark:bg-gray-800 border border-gray-100/50 dark:border-gray-700 rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-gray-900">{templateToShare?.title}</h4>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100">{templateToShare?.title}</h4>
                   <Badge 
                     variant="outline"
                     className={`${
@@ -618,10 +618,10 @@ Best regards!`
                     {templateToShare?.category}
                   </Badge>
                 </div>
-                <p className="text-sm text-gray-500 mb-3">{templateToShare?.subtitle}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">{templateToShare?.subtitle}</p>
                 <div className="flex justify-center gap-4 text-xs">
-                  <span className="text-gray-600">{templateToShare?.metrics.openRate} open rate</span>
-                  <span className="text-gray-600">{templateToShare?.metrics.responseRate} response rate</span>
+                  <span className="text-gray-600 dark:text-gray-400">{templateToShare?.metrics.openRate} open rate</span>
+                  <span className="text-gray-600 dark:text-gray-400">{templateToShare?.metrics.responseRate} response rate</span>
                 </div>
               </div>
 
@@ -647,7 +647,7 @@ Best regards!`
                 <Button
                   onClick={shareViaEmail}
                   variant="outline"
-                  className="w-full flex items-center justify-center gap-3 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium transition-all duration-200"
+                  className="w-full flex items-center justify-center gap-3 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-2xl px-6 py-3 font-medium transition-all duration-200"
                 >
                   <Mail className="w-4 h-4" />
                   {t('templates.shareViaEmail')}
@@ -655,22 +655,22 @@ Best regards!`
               </div>
 
               {/* Share URL Display */}
-              <div className="bg-gray-50/50 border border-gray-100/50 rounded-2xl p-3">
+              <div className="bg-gray-50/50 dark:bg-gray-800 border border-gray-100/50 dark:border-gray-700 rounded-2xl p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <Link className="w-4 h-4 text-gray-500" />
-                  <span className="text-xs font-medium text-gray-700">{t('templates.shareURL')}</span>
+                  <Link className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{t('templates.shareURL')}</span>
                 </div>
-                <p className="text-xs text-gray-500 break-all">
+                <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
                   {window.location.origin}/?tab=templates&template={templateToShare?.id}
                 </p>
               </div>
             </div>
             
-            <div className="pt-6 border-t border-gray-100/50">
+            <div className="pt-6 border-t border-gray-100/50 dark:border-gray-700">
               <Button
                 variant="outline"
                 onClick={() => setIsShareModalOpen(false)}
-                className="w-full border-gray-200 text-gray-700 hover:bg-gray-50 rounded-2xl px-6 py-3 font-medium"
+                className="w-full border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-2xl px-6 py-3 font-medium"
               >
                 {t('button.close')}
               </Button>

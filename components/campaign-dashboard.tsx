@@ -3081,7 +3081,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             <div className="flex justify-between items-start mb-8">
               <div>
                 <h1 className="text-4xl font-light text-gray-900 dark:text-gray-100 tracking-tight">{t('campaignManagement.settings.title')}</h1>
-                <p className="text-gray-500 mt-2 font-light">{t('campaignManagement.settings.subtitle')}</p>
+                <p className="text-gray-500 dark:text-gray-400 mt-2 font-light">{t('campaignManagement.settings.subtitle')}</p>
               </div>
               <div className="flex items-center">
                 <Button 
@@ -3099,19 +3099,19 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100/50 dark:border-gray-800 overflow-hidden">
                 <div className="p-8">
                   <div className="flex items-center space-x-4 mb-8">
-                    <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center">
-                      <Clock className="w-6 h-6 text-gray-400" />
+                    <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center">
+                      <Clock className="w-6 h-6 text-gray-400 dark:text-gray-500" />
                     </div>
                     <div>
                       <h2 className="text-xl font-medium text-gray-900 dark:text-gray-100">{t('campaignManagement.settings.sendingSchedule.title')}</h2>
-                      <p className="text-gray-500 text-sm mt-1">{t('campaignManagement.settings.sendingSchedule.subtitle')}</p>
+                      <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{t('campaignManagement.settings.sendingSchedule.subtitle')}</p>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Sending Days */}
                     <div>
-                      <h4 className="text-sm font-medium text-gray-800 mb-4">{t('campaignManagement.settings.sendingSchedule.activeDays')}</h4>
+                      <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-4">{t('campaignManagement.settings.sendingSchedule.activeDays')}</h4>
                       <div className="flex flex-wrap gap-2">
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
                           const isActive = activeDays.includes(day)
@@ -3122,8 +3122,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               type="button"
                               className={`px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 ${
                                 isActive 
-                                  ? 'bg-gray-900 text-white shadow-sm hover:bg-gray-800' 
-                                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
+                                  ? 'bg-gray-900 dark:bg-gray-700 text-white shadow-sm hover:bg-gray-800 dark:hover:bg-gray-600' 
+                                  : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
                               }`}
                               onClick={() => {
                                 if (isActive) {
@@ -3147,7 +3147,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <select 
                           value={sendingStartTime}
                           onChange={(e) => setSendingStartTime(e.target.value)}
-                          className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
+                          className="flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 transition-all duration-300 dark:text-gray-100"
                         >
                           {Array.from({ length: 24 }, (_, i) => {
                             const hour = i.toString().padStart(2, '0')
@@ -3165,7 +3165,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <select 
                           value={sendingEndTime}
                           onChange={(e) => setSendingEndTime(e.target.value)}
-                          className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
+                          className="flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 transition-all duration-300 dark:text-gray-100"
                         >
                           {Array.from({ length: 24 }, (_, i) => {
                             const hour = i.toString().padStart(2, '0')
@@ -3188,23 +3188,23 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100/50 dark:border-gray-800 overflow-hidden">
                 <div className="p-8">
                   <div className="flex items-center space-x-4 mb-8">
-                    <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center">
-                      <User className="w-6 h-6 text-gray-400" />
+                    <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center">
+                      <User className="w-6 h-6 text-gray-400 dark:text-gray-500" />
                     </div>
                     <div>
                       <h2 className="text-xl font-medium text-gray-900 dark:text-gray-100">{t('campaignManagement.settings.senderInformation.title')}</h2>
-                      <p className="text-gray-500 text-sm mt-1">{t('campaignManagement.settings.senderInformation.subtitle')}</p>
+                      <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{t('campaignManagement.settings.senderInformation.subtitle')}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div>
-                      <label className="block text-sm font-medium text-gray-800 mb-3">{t('campaignManagement.settings.senderInformation.firstName')}</label>
+                      <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-3">{t('campaignManagement.settings.senderInformation.firstName')}</label>
                       <input
                         type="text"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
+                        className="w-full h-12 px-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 transition-all duration-300 dark:text-gray-100"
                         placeholder={t('campaignManagement.settings.placeholders.firstName')}
                       />
                     </div>
@@ -3214,7 +3214,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         type="text"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
+                        className="w-full h-12 px-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 transition-all duration-300 dark:text-gray-100"
                         placeholder={t('campaignManagement.settings.placeholders.lastName')}
                       />
                     </div>
@@ -3224,7 +3224,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         type="text"
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
+                        className="w-full h-12 px-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 transition-all duration-300 dark:text-gray-100"
                         placeholder={t('campaignManagement.settings.placeholders.company')}
                       />
                     </div>
@@ -3234,7 +3234,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         type="text"
                         value={companyWebsite}
                         onChange={(e) => setCompanyWebsite(e.target.value)}
-                        className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-300"
+                        className="w-full h-12 px-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 transition-all duration-300 dark:text-gray-100"
                         placeholder={t('campaignManagement.settings.placeholders.website')}
                       />
                     </div>
@@ -3244,7 +3244,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div>
                     <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-6">{t('campaignManagement.settings.senderInformation.emailSignature')}</h4>
                     
-                    <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden">
+                    <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
                       <div 
                         ref={signatureEditorRef}
                         contentEditable
@@ -3258,7 +3258,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       />
                       
                       {/* Formatting Toolbar */}
-                      <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 flex items-center gap-1">
+                      <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => {
@@ -3267,7 +3267,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               setEmailSignature(signatureEditorRef.current.innerHTML)
                             }
                           }}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 dark:text-gray-400"
                         >
                           <Bold className="w-4 h-4" />
                         </button>
@@ -3279,7 +3279,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               setEmailSignature(signatureEditorRef.current.innerHTML)
                             }
                           }}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 dark:text-gray-400"
                         >
                           <Italic className="w-4 h-4" />
                         </button>
@@ -3291,7 +3291,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               setEmailSignature(signatureEditorRef.current.innerHTML)
                             }
                           }}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 dark:text-gray-400"
                         >
                           <Underline className="w-4 h-4" />
                         </button>
@@ -3306,7 +3306,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               }
                             }
                           }}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 dark:text-gray-400"
                         >
                           <Link className="w-4 h-4" />
                         </button>

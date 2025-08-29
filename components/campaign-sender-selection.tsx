@@ -1033,7 +1033,7 @@ export default function CampaignSenderSelection({
 
   if (loading || !translationsReady) {
     return (
-      <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+      <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 p-6 md:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center min-h-[500px]">
             <div className="text-center">
@@ -1049,15 +1049,15 @@ export default function CampaignSenderSelection({
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+      <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 p-6 md:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center min-h-[500px]">
-            <div className="text-center bg-white rounded-3xl p-12 shadow-sm border border-gray-100/50">
+            <div className="text-center bg-white dark:bg-gray-900 rounded-3xl p-12 shadow-sm border border-gray-100/50 dark:border-gray-800">
               <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <AlertCircle className="w-8 h-8 text-red-500" />
               </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-3">Failed to Load Accounts</h3>
-              <p className="text-gray-600 mb-6 max-w-sm mx-auto">{error}</p>
+              <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-3">Failed to Load Accounts</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-sm mx-auto">{error}</p>
               <Button 
                 onClick={fetchDomainsAndSenders} 
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
@@ -1080,26 +1080,26 @@ export default function CampaignSenderSelection({
     if (showDomainInstructions && pendingDomainData) {
       console.log('✅ Showing domain setup instructions for:', pendingDomainData.domain)
       return (
-        <div className="min-h-screen bg-[rgb(243,243,241)]">
+        <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900">
           <div className="max-w-7xl mx-auto p-6 md:p-8">
             {/* Header - Exact same as domains page */}
             <div className="mb-8">
               <div className="mb-8">
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">Setup {pendingDomainData.domain}</h1>
-                <p className="text-gray-500 font-light">
+                <h1 className="text-4xl font-light text-gray-900 dark:text-gray-100 tracking-tight mb-2">Setup {pendingDomainData.domain}</h1>
+                <p className="text-gray-500 dark:text-gray-400 font-light">
                   Follow these steps to connect your domain
                 </p>
               </div>
 
               {/* Quick Steps Guide - Exact same as domains page */}
-              <div className="bg-gray-50 rounded-xl p-6 mb-8">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 mb-8">
                 <div className="flex items-start gap-4">
-                  <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <span className="text-gray-600 font-medium text-sm">?</span>
+                  <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="text-gray-600 dark:text-gray-400 font-medium text-sm">?</span>
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900 mb-3">Quick Steps</h3>
-                    <ol className="space-y-2 text-gray-700 text-sm">
+                    <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Quick Steps</h3>
+                    <ol className="space-y-2 text-gray-700 dark:text-gray-300 text-sm">
                       <li><span className="font-medium">1.</span> Go to your domain provider (GoDaddy, Namecheap, etc.)</li>
                       <li><span className="font-medium">2.</span> Look for "DNS Settings" or "Domain Management"</li>
                       <li><span className="font-medium">3.</span> Copy and paste each setting below</li>
@@ -1112,10 +1112,10 @@ export default function CampaignSenderSelection({
               {/* DNS Settings - Exact same format as domains page */}
               <div className="space-y-6">
                 {loadingDnsRecords ? (
-                  <div className="bg-white rounded-xl border p-8 mb-8">
+                  <div className="bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-700 p-8 mb-8">
                     <div className="flex items-center justify-center">
                       <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                      <span className="ml-3 text-gray-600">Loading your settings...</span>
+                      <span className="ml-3 text-gray-600 dark:text-gray-400">Loading your settings...</span>
                     </div>
                   </div>
                 ) : dnsRecords.length > 0 ? (
@@ -1123,12 +1123,12 @@ export default function CampaignSenderSelection({
                     {/* Regular DNS Records (non-MX) */}
                     {dnsRecords.filter(r => r.type !== 'MX').length > 0 && (
                       <div className="mb-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-3">DNS Records</h3>
-                        <div className="bg-white rounded-xl border overflow-hidden">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">DNS Records</h3>
+                        <div className="bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-700 overflow-hidden">
                           <table className="w-full">
-                            <thead className="bg-gray-50 border-b">
+                            <thead className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
                               <tr>
-                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Type</th>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">Type</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Host</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Value</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Action</th>
@@ -1136,15 +1136,15 @@ export default function CampaignSenderSelection({
                             </thead>
                             <tbody className="divide-y divide-gray-200">
                               {dnsRecords.filter(r => r.type !== 'MX').map((record, index) => (
-                                <tr key={`regular-${index}`} className="hover:bg-gray-50 transition-colors">
+                                <tr key={`regular-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                                   <td className="px-6 py-4">
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
                                       {record.type}
                                     </span>
                                   </td>
                                   <td className="px-6 py-4">
                                     <div className="flex items-center gap-2">
-                                      <code className="text-sm font-mono text-gray-700">
+                                      <code className="text-sm font-mono text-gray-700 dark:text-gray-300">
                                         {record.host}
                                       </code>
                                       <Button
@@ -1189,11 +1189,11 @@ export default function CampaignSenderSelection({
                     {dnsRecords.filter(r => r.type === 'MX').length > 0 && (
                       <div className="mb-8">
                         <h3 className="text-lg font-medium text-gray-900 mb-3">MX Records (Mail Exchange)</h3>
-                        <div className="bg-white rounded-xl border overflow-hidden">
+                        <div className="bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-700 overflow-hidden">
                           <table className="w-full">
-                            <thead className="bg-gray-50 border-b">
+                            <thead className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
                               <tr>
-                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Type</th>
+                                <th className="text-left px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">Type</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Host</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Priority</th>
                                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Value</th>
@@ -1210,7 +1210,7 @@ export default function CampaignSenderSelection({
                                   </td>
                                   <td className="px-6 py-4">
                                     <div className="flex items-center gap-2">
-                                      <code className="text-sm font-mono text-gray-700">
+                                      <code className="text-sm font-mono text-gray-700 dark:text-gray-300">
                                         {record.host}
                                       </code>
                                       <Button
@@ -1228,7 +1228,7 @@ export default function CampaignSenderSelection({
                                   </td>
                                   <td className="px-6 py-4">
                                     <div className="flex items-center gap-2">
-                                      <code className="text-sm font-mono text-gray-700">
+                                      <code className="text-sm font-mono text-gray-700 dark:text-gray-300">
                                         {record.value}
                                       </code>
                                       <Button
@@ -1265,7 +1265,7 @@ export default function CampaignSenderSelection({
                 )}
 
                 {/* Verification Actions - Exact same as domains page */}
-                <div className="bg-gray-50 rounded-xl p-6 mb-8">
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 mb-8">
                   <div className="space-y-6">
                     <div className="flex items-start gap-3">
                       <Checkbox 
@@ -1489,10 +1489,10 @@ export default function CampaignSenderSelection({
 
     // Default no domains screen
     return (
-      <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+      <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 p-6 md:p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center min-h-[500px]">
-            <div className="text-center bg-white rounded-3xl p-12 shadow-sm border border-gray-100/50">
+            <div className="text-center bg-white dark:bg-gray-900 rounded-3xl p-12 shadow-sm border border-gray-100/50 dark:border-gray-800">
               <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <Globe className="h-10 w-10 text-gray-400" />
               </div>

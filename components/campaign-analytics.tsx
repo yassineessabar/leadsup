@@ -2461,22 +2461,22 @@ Sequence Info:
 
         {/* Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+          <Card className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4 mb-6">
                 <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
                   <Target className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">{t('analytics.emailsSent')}</h3>
-                  <p className="text-gray-500 text-sm">{t('analytics.campaignProgress')}</p>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('analytics.emailsSent')}</h3>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">{t('analytics.campaignProgress')}</p>
                 </div>
               </div>
               <div className="flex items-end justify-between">
                 {metricsLoading ? (
                   <div className="text-3xl font-light text-gray-400">...</div>
                 ) : (
-                  <p className="text-3xl font-light text-gray-900">
+                  <p className="text-3xl font-light text-gray-900 dark:text-gray-100">
                     {hasBeenStarted ? totalSent.toLocaleString() : '—'}
                   </p>
                 )}
@@ -2488,14 +2488,14 @@ Sequence Info:
             </CardContent>
           </Card>
 
-          <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+          <Card className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4 mb-6">
                 <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
                   <Eye className="w-6 h-6 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">{t('analytics.openRate')}</h3>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('analytics.openRate')}</h3>
                   <p className="text-gray-500 text-sm">{t('analytics.emailEngagement')}</p>
                 </div>
               </div>
@@ -2503,7 +2503,7 @@ Sequence Info:
                 {metricsLoading ? (
                   <div className="text-3xl font-light text-gray-400">...</div>
                 ) : (
-                  <p className="text-3xl font-light text-gray-900">
+                  <p className="text-3xl font-light text-gray-900 dark:text-gray-100">
                     {hasBeenStarted ? `${openRate.toFixed(1)}%` : '—'}
                   </p>
                 )}
@@ -2514,14 +2514,14 @@ Sequence Info:
             </CardContent>
           </Card>
 
-          <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+          <Card className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4 mb-6">
                 <div className="w-12 h-12 bg-violet-50 rounded-2xl flex items-center justify-center">
                   <MousePointer className="w-6 h-6 text-violet-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">{t('analytics.clickRate')}</h3>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('analytics.clickRate')}</h3>
                   <p className="text-gray-500 text-sm">{t('analytics.linkEngagement')}</p>
                 </div>
               </div>
@@ -2529,7 +2529,7 @@ Sequence Info:
                 {metricsLoading ? (
                   <div className="text-3xl font-light text-gray-400">...</div>
                 ) : (
-                  <p className="text-3xl font-light text-gray-900">
+                  <p className="text-3xl font-light text-gray-900 dark:text-gray-100">
                     {hasBeenStarted ? `${clickRate.toFixed(1)}%` : '—'}
                   </p>
                 )}
@@ -2540,14 +2540,14 @@ Sequence Info:
             </CardContent>
           </Card>
 
-          <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+          <Card className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4 mb-6">
                 <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center">
                   <Target className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">{t('analytics.deliveryRate')}</h3>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('analytics.deliveryRate')}</h3>
                   <p className="text-gray-500 text-sm">{t('analytics.successfullyDelivered')}</p>
                 </div>
               </div>
@@ -2555,7 +2555,7 @@ Sequence Info:
                 {metricsLoading ? (
                   <div className="text-3xl font-light text-gray-400">...</div>
                 ) : (
-                  <p className="text-3xl font-light text-gray-900">
+                  <p className="text-3xl font-light text-gray-900 dark:text-gray-100">
                     {hasBeenStarted ? `${deliveryRate.toFixed(1)}%` : '—'}
                   </p>
                 )}
@@ -2570,7 +2570,7 @@ Sequence Info:
         {/* Health Score and Daily Limit Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Health Score Section - Enhanced for Warming */}
-          <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+          <Card className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
             <CardContent className="p-6">
             {(healthScoresLoading || warmingLoading) ? (
               <div className="flex items-center space-x-4 mb-6">
@@ -2582,10 +2582,10 @@ Sequence Info:
                   )}
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                     {campaign.status === 'Warming' ? t('analytics.warmingProgress') : t('analytics.senderHealth')}
                   </h3>
-                  <p className="text-gray-500 text-sm">Loading...</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">Loading...</p>
                 </div>
               </div>
             ) : campaign.status === 'Warming' ? (
@@ -2629,8 +2629,8 @@ Sequence Info:
                           <Flame className="w-6 h-6 text-orange-600" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="text-lg font-medium text-gray-900">{t('analytics.warmingProgress')}</h3>
-                          <p className="text-gray-500 text-sm">{senders.length} {t('analytics.sendersWarming')} • {getPhaseStatus(avgPhase)}</p>
+                          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('analytics.warmingProgress')}</h3>
+                          <p className="text-gray-500 dark:text-gray-400 text-sm">{senders.length} {t('analytics.sendersWarming')} • {getPhaseStatus(avgPhase)}</p>
                         </div>
                         <Button
                           variant="outline"
@@ -2650,22 +2650,22 @@ Sequence Info:
                         const overallProgress = Math.min((avgDays / 35) * 100, 100)
                         
                         return (
-                          <div className="mb-6 p-4 bg-white rounded-xl border">
+                          <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700">
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center space-x-2">
-                                <span className="text-sm font-medium text-gray-700">{t('analytics.overallWarmingProgress')}</span>
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('analytics.overallWarmingProgress')}</span>
                                 <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPhaseColor(avgPhase)}`}>
                                   {t('analytics.phase')} {avgPhase.toFixed(1)}
                                 </div>
                               </div>
                               <div className="text-right">
-                                <span className="text-lg font-semibold text-gray-900">{overallProgress.toFixed(1)}%</span>
-                                <p className="text-xs text-gray-500">{avgDays.toFixed(0)} of 35 {t('analytics.dayTarget')}</p>
+                                <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">{overallProgress.toFixed(1)}%</span>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{avgDays.toFixed(0)} of 35 {t('analytics.dayTarget')}</p>
                               </div>
                             </div>
                             
                             {/* Progress Bar */}
-                            <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-2">
                               <div 
                                 className="bg-gradient-to-r from-orange-500 to-amber-500 h-3 rounded-full transition-all duration-300" 
                                 style={{ width: `${overallProgress}%` }}
@@ -2673,7 +2673,7 @@ Sequence Info:
                             </div>
                             
                             {/* Phase Milestones */}
-                            <div className="flex justify-between text-xs text-gray-500">
+                            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                               <span className={avgPhase >= 1 ? 'text-orange-600 font-medium' : ''}>{t('analytics.phase')} 1</span>
                               <span className={avgPhase >= 2 ? 'text-orange-600 font-medium' : ''}>{t('analytics.phase')} 2</span>
                               <span className={avgPhase >= 3 ? 'text-orange-600 font-medium' : ''}>{t('analytics.phase')} 3</span>
@@ -2685,10 +2685,10 @@ Sequence Info:
 
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-2 flex-wrap">
-                          <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium text-gray-600 bg-gray-50">
+                          <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800">
                             {t('analytics.health')}: {avgHealthScore}%
                           </div>
-                          <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium text-gray-600 bg-gray-50">
+                          <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800">
                             {warmingMetrics.summary?.totalEmailsSentToday || 0} {t('analytics.emailsToday')}
                           </div>
                         </div>
@@ -2704,7 +2704,7 @@ Sequence Info:
                             const phase = sender.phase || 1
                             
                             return (
-                              <div key={sender.sender_email || index} className="p-3 bg-gray-50 rounded-lg">
+                              <div key={sender.sender_email || index} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center space-x-3">
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getPhaseColor(phase)}`}>
@@ -2812,7 +2812,7 @@ Sequence Info:
                           <Heart className="w-6 h-6 text-orange-600" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-medium text-gray-900">{t('analytics.senderHealth')}</h3>
+                          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('analytics.senderHealth')}</h3>
                           <p className="text-gray-500 text-sm">{scores.length} {scores.length > 1 ? (ready ? t('analytics.selectedSenders') : 'selected senders') : (ready ? t('analytics.selectedSender') : 'selected sender')} • {getScoreStatus(avgScore)}</p>
                         </div>
                       </div>
@@ -3016,7 +3016,7 @@ Sequence Info:
                   <Heart className="w-6 h-6 text-orange-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">{t('analytics.senderHealth')}</h3>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('analytics.senderHealth')}</h3>
                   <p className="text-gray-500 text-sm">No senders selected</p>
                 </div>
               </div>
@@ -3025,7 +3025,7 @@ Sequence Info:
         </Card>
 
           {/* Daily Limit Section */}
-          <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+          <Card className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
             <CardContent className="p-6">
               {(() => {
                 // Calculate total daily limit based on actual sender daily limits
@@ -3041,7 +3041,7 @@ Sequence Info:
                         <Zap className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900">{t('analytics.dailyLimit')}</h3>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('analytics.dailyLimit')}</h3>
                         <p className="text-gray-500 text-sm">{selectedSenderCount} {selectedSenderCount > 1 ? (ready ? t('analytics.selectedSenders') : 'selected senders') : (ready ? t('analytics.selectedSender') : 'selected sender')} • {ready ? t('analytics.variableLimitsPerSender') : 'Variable limits per sender'}</p>
                       </div>
                     </div>
@@ -3197,12 +3197,12 @@ Sequence Info:
                   placeholder={t('analytics.searchContacts')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-10 bg-gray-50 border-gray-200 rounded-2xl"
+                  className="pl-9 h-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-2xl dark:text-gray-100"
                 />
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-10 px-4 border-gray-300 hover:bg-gray-50 text-gray-700 font-medium transition-all duration-300 rounded-2xl">
+                  <Button variant="outline" className="h-10 px-4 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium transition-all duration-300 rounded-2xl">
                     <Filter className="h-4 w-4 mr-2" />
                     {statusFilter === "all" ? t('analytics.allStatus') : statusFilter}
                   </Button>
@@ -3242,7 +3242,7 @@ Sequence Info:
               )}
             </div>
             
-            <div className="bg-gray-50 rounded-2xl overflow-hidden">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -3271,10 +3271,10 @@ Sequence Info:
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('analytics.actions')}</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-100">
+                  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
                     {loading ? (
                       [...Array(5)].map((_, index) => (
-                        <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+                        <tr key={index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                           <td className="p-4">
                             <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
                           </td>
@@ -3305,7 +3305,7 @@ Sequence Info:
                       </tr>
                     ) : (
                       filteredContacts.slice(0, displayLimit).map((contact) => (
-                        <tr key={contact.id} className="hover:bg-gray-50/50 transition-colors">
+                        <tr key={contact.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                           <td className="p-4">
                             <Checkbox
                               checked={selectedContacts.includes(contact.id)}
@@ -3491,10 +3491,10 @@ Sequence Info:
               </div>
               
               {!loading && filteredContacts.length > displayLimit && (
-                <div className="p-6 border-t border-gray-200/60 text-center bg-gray-50">
+                <div className="p-6 border-t border-gray-200/60 dark:border-gray-700/60 text-center bg-gray-50 dark:bg-gray-800">
                   <Button 
                     variant="outline" 
-                    className="border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+                    className="border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 px-6 py-2.5 font-medium transition-all duration-300 rounded-2xl"
                     onClick={() => setDisplayLimit(prev => prev + 20)}
                   >
                     {t('analytics.loadMore')} ({filteredContacts.length - displayLimit} {t('analytics.remaining')})
@@ -3507,7 +3507,7 @@ Sequence Info:
 
         {/* Progress Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
+          <Card className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 rounded-3xl overflow-hidden">
             <CardContent className="p-8">
               <div className="flex items-center space-x-4 mb-8">
                 <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center">
@@ -3527,7 +3527,7 @@ Sequence Info:
                   <Progress value={progressPercentage} className="h-3 bg-gray-100" />
                 </div>
                 <div className="grid grid-cols-2 gap-4 pt-4">
-                  <div className="text-center p-4 bg-gray-50 rounded-2xl">
+                  <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
                     <p className="text-2xl font-light text-gray-900">
                       {totalSent}
                     </p>
@@ -3535,7 +3535,7 @@ Sequence Info:
                       {t('analytics.sent')}
                     </p>
                   </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-2xl">
+                  <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
                     <p className="text-2xl font-light text-gray-900">
                       {totalRemaining > 0 ? totalRemaining : 0}
                     </p>
@@ -3581,7 +3581,7 @@ Sequence Info:
             </CardContent>
           </Card>
 
-          <Card className="bg-white border border-gray-100/50 rounded-3xl overflow-hidden">
+          <Card className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 rounded-3xl overflow-hidden">
             <CardContent className="p-8">
               <div className="flex items-center space-x-4 mb-8">
                 <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
@@ -3619,7 +3619,7 @@ Sequence Info:
 
       {/* Sequence Timeline Modal */}
       <Dialog open={sequenceModalContact !== null} onOpenChange={(open) => !open && setSequenceModalContact(null)}>
-        <DialogContent className="max-w-3xl h-[90vh] max-h-[90vh] overflow-hidden bg-white flex flex-col">
+        <DialogContent className="max-w-3xl h-[90vh] max-h-[90vh] overflow-hidden bg-white dark:bg-gray-900 flex flex-col">
           <DialogHeader className="pb-4 border-b border-gray-200 flex-shrink-0">
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
@@ -3632,14 +3632,14 @@ Sequence Info:
           {sequenceModalContact && (
             <div className="space-y-8 overflow-y-auto pr-2 pb-4 flex-1 mt-6">
               {/* Contact Header */}
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
                       {sequenceModalContact.image_url ? (
                         <AvatarImage src={sequenceModalContact.image_url} />
                       ) : (
-                        <AvatarFallback className="bg-gray-200 text-gray-600 font-medium">
+                        <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium">
                           {sequenceModalContact.first_name?.[0]}{sequenceModalContact.last_name?.[0]}
                         </AvatarFallback>
                       )}
@@ -3684,7 +3684,7 @@ Sequence Info:
               {/* Timeline */}
               <div className="relative">
                 {/* Timeline line */}
-                <div className="absolute left-5 top-0 bottom-0 w-px bg-gray-200"></div>
+                <div className="absolute left-5 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700"></div>
                 
                 <div className="space-y-6">
                   {generateContactSchedule(sequenceModalContact).map((step, index) => {
@@ -3697,10 +3697,10 @@ Sequence Info:
                           step.status === 'sent' 
                             ? 'border-green-500 bg-green-50' :
                           step.status === 'pending' 
-                            ? 'border-gray-900 bg-gray-50' :
+                            ? 'border-gray-900 dark:border-gray-100 bg-gray-50 dark:bg-gray-800' :
                           step.status === 'skipped' 
-                            ? 'border-gray-300 bg-white' :
-                          'border-gray-300 bg-white'
+                            ? 'border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900' :
+                          'border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900'
                         }`}>
                           {step.status === 'sent' ? (
                             <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -3714,12 +3714,12 @@ Sequence Info:
                         {/* Step content */}
                         <div className={`flex-1 min-w-0 p-4 rounded-lg border ${
                           step.status === 'sent' 
-                            ? 'bg-white border-gray-200' :
+                            ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700' :
                           step.status === 'pending' && isNext 
-                            ? 'bg-gray-50 border-gray-900' :
+                            ? 'bg-gray-50 dark:bg-gray-800 border-gray-900 dark:border-gray-100' :
                           step.status === 'skipped' 
-                            ? 'bg-white border-gray-200 opacity-60' :
-                          'bg-white border-gray-200'
+                            ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 opacity-60' :
+                          'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'
                         }`}>
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
@@ -3795,7 +3795,7 @@ Sequence Info:
               </div>
 
               {/* Summary */}
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <div className="text-xl font-semibold text-gray-900">
@@ -3860,9 +3860,9 @@ Sequence Info:
               </div>
 
               {/* Email Preview Card */}
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col max-h-[calc(90vh-200px)]">
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden flex flex-col max-h-[calc(90vh-200px)]">
                 {/* Email Header */}
-                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -3890,7 +3890,7 @@ Sequence Info:
                 </div>
 
                 {/* Subject Line */}
-                <div className="px-6 py-4 bg-white border-b border-gray-100 flex-shrink-0">
+                <div className="px-6 py-4 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Subject</span>
                   </div>
@@ -3900,7 +3900,7 @@ Sequence Info:
                 </div>
 
                 {/* Email Content - Scrollable */}
-                <div className="px-6 py-6 bg-white overflow-y-auto flex-1">
+                <div className="px-6 py-6 bg-white dark:bg-gray-900 overflow-y-auto flex-1">
                   <div className="prose prose-sm max-w-none">
                     <div className="text-gray-800 leading-relaxed whitespace-pre-wrap font-sans">
                       {emailPreviewModal.step.content}
@@ -3909,7 +3909,7 @@ Sequence Info:
                 </div>
 
                 {/* Email Footer */}
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800">
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <div className="flex items-center gap-4">
                       <span>📅 Scheduled: {emailPreviewModal.step.scheduledDate.toLocaleDateString('en-US', {
@@ -3951,7 +3951,7 @@ Sequence Info:
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                    className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => setEmailPreviewModal(null)}
                   >
                     Close Preview
@@ -3982,7 +3982,7 @@ Sequence Info:
                     {contactDetailsModal.image_url ? (
                       <AvatarImage src={contactDetailsModal.image_url} />
                     ) : (
-                      <AvatarFallback className="bg-gray-200 text-gray-600 font-medium text-lg">
+                      <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium text-lg">
                         {contactDetailsModal.first_name?.[0]}{contactDetailsModal.last_name?.[0]}
                       </AvatarFallback>
                     )}
@@ -4107,7 +4107,7 @@ Sequence Info:
                   }
                   
                   return (
-                    <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg">
+                    <div key={index} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
                       <span className="text-sm text-gray-700 truncate flex-1 mr-2">{sender.email}</span>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(sender.score)}`}>
                         {sender.score}%
@@ -4118,7 +4118,7 @@ Sequence Info:
               </div>
             </div>
             
-            <div className="text-sm text-gray-600 bg-gray-50 rounded-xl p-4">
+            <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
               <p className="mb-2"><span className="font-medium">{t('analytics.warmupWarningDialog.continueWarmupLabel')}</span> {t('analytics.warmupWarningDialog.continueWarmupDescription')}</p>
               <p>
                 <span className="font-medium">
@@ -4218,7 +4218,7 @@ Sequence Info:
                   }
                   
                   return (
-                    <div key={email} className="flex items-center justify-between p-2 bg-white rounded-lg">
+                    <div key={email} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-lg">
                       <span className="text-sm text-gray-700 truncate flex-1 mr-2">{email}</span>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getScoreColor(healthData.health_score)}`}>
                         {healthData.health_score}%
@@ -4229,7 +4229,7 @@ Sequence Info:
               </div>
             </div>
             
-            <div className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
+            <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
               <p><span className="font-semibold">Warmup Progress:</span> Gradually increasing send volume to build sender reputation.</p>
               <p className="mt-1"><span className="font-semibold">Timeline:</span> Typically takes 2-4 weeks to reach optimal health scores.</p>
             </div>
@@ -4336,7 +4336,7 @@ Sequence Info:
                   }
                   input.click()
                 }}
-                className="flex items-center space-x-4 p-6 hover:bg-gray-50/80 cursor-pointer transition-all duration-200 group"
+                className="flex items-center space-x-4 p-6 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 cursor-pointer transition-all duration-200 group"
               >
                 <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
                   <FileText className="w-6 h-6 text-green-600" />
@@ -4437,7 +4437,7 @@ Sequence Info:
                 setShowImportModal(false)
                 setShowCSVGuide(false)
               }}
-              className="text-sm text-gray-500 hover:text-gray-700 transition-colors rounded-2xl px-3 py-2 hover:bg-gray-50"
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors rounded-2xl px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
               {t('leads.backToContacts')}
