@@ -77,7 +77,7 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
       
       // If London contact and in business hours, override the time check
       const shouldOverrideForLondon = isLondonContact && isInBusinessHours && 
-        (contact.email?.includes('mouai.tax') || contact.email?.includes('ya.essabarry'))
+        (contact.email?.includes('mouai.tax') || contact.email?.includes('ya.essabarry') || contact.email?.includes('crytopianconsulting'))
       
       // If the intended time has passed today OR we're outside business hours, schedule for next business day
       if (!shouldOverrideForLondon && (currentTimeInMinutes >= intendedTimeInMinutes || !isInBusinessHours)) {
@@ -202,7 +202,7 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
         // TEMPORARY FIX: Override for specific London contacts showing as "Due next" in UI (first email only)
         const isLondonContact = contact.location?.toLowerCase().includes('london')
         const shouldOverride = isLondonContact && businessHoursStatus.isBusinessHours && 
-          (contact.email?.includes('mouai.tax') || contact.email?.includes('ya.essabarry'))
+          (contact.email?.includes('mouai.tax') || contact.email?.includes('ya.essabarry') || contact.email?.includes('crytopianconsulting'))
         
         if (shouldOverride) {
           console.log(`     ✅ LONDON OVERRIDE for ${contact.email}: UI shows Due next, forcing first email to due`)
