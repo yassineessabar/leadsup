@@ -1024,9 +1024,44 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const insertVariableIntoEditor = (variable: string) => {
     if (!editorRef.current || showCodeView) return
     
-    // Use the new insertVariable method from ContentEditableDiv
-    if (editorRef.current && 'insertVariable' in editorRef.current) {
-      (editorRef.current as any).insertVariable(variable)
+    console.log('🔄 Inserting variable:', variable)
+    
+    // Direct insertion approach that preserves cursor
+    const element = editorRef.current
+    element.focus()
+    
+    // Save current cursor position
+    const selection = window.getSelection()
+    let cursorPosition = 0
+    
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      
+      // Insert the variable at cursor position
+      const textNode = document.createTextNode(variable)
+      range.insertNode(textNode)
+      
+      // Move cursor after the inserted variable
+      range.setStartAfter(textNode)
+      range.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(range)
+      
+      console.log('✅ Variable inserted successfully at cursor position')
+      
+      // Update the content state without triggering a re-render that resets cursor
+      const htmlContent = element.innerHTML
+      
+      // Use setTimeout to ensure DOM updates are processed
+      setTimeout(() => {
+        updateStepContent(htmlContent)
+      }, 0)
+    } else {
+      // Fallback: append at end if no selection
+      const htmlContent = element.innerHTML + variable
+      element.innerHTML = htmlContent
+      updateStepContent(htmlContent)
+      console.log('⚠️ No selection found, appended variable at end')
     }
   }
 
