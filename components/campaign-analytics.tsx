@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useI18n } from '@/hooks/use-i18n'
-import { ArrowLeft, RefreshCw, Pause, Play, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Upload, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit, MessageSquare } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { ArrowLeft, RefreshCw, Pause, Play, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Upload, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit, MessageSquare, Plus, FileText, ChevronLeft, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -110,6 +111,7 @@ interface CampaignAnalyticsProps {
 export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: CampaignAnalyticsProps) {
   const router = useRouter()
   const { t, ready } = useI18n()
+  const { toast } = useToast()
   
   console.log('🚨🚨🚨 CAMPAIGN ANALYTICS COMPONENT LOADED 🚨🚨🚨')
   console.log('🚨 Campaign prop:', campaign)
@@ -177,6 +179,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // CSV Import state (same as target tab)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [showCSVGuide, setShowCSVGuide] = useState(false)
   const [statusChangeLoading, setStatusChangeLoading] = useState(false)
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
@@ -1456,9 +1460,34 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const handleCsvUpload = async (file?: File) => {
     const fileToUpload = file || uploadedFile
     if (!fileToUpload) {
-      console.error('Please select a CSV file first')
+      toast({
+        title: t('leads.noFileSelected'),
+        description: t('leads.pleaseSelectCSVFile'),
+        variant: "destructive"
+      })
       return
     }
+
+    // Validate file type
+    if (!fileToUpload.type.includes('csv') && !fileToUpload.name.endsWith('.csv')) {
+      toast({
+        title: t('leads.invalidFileType'),
+        description: t('leads.onlyCSVFilesAllowed'),
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Validate file size (10MB limit)
+    if (fileToUpload.size > 10 * 1024 * 1024) {
+      toast({
+        title: t('leads.fileTooLarge'),
+        description: t('leads.maxFileSize'),
+        variant: "destructive"
+      })
+      return
+    }
+
     setIsUploading(true)
     
     try {
@@ -1466,12 +1495,16 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       const lines = text.split('\n').filter(line => line.trim())
       
       if (lines.length < 2) {
-        console.error('CSV file must have at least a header and one data row')
+        toast({
+          title: t('leads.invalidCSV'),
+          description: t('leads.csvMustHaveHeaderAndRow'),
+          variant: "destructive"
+        })
         return
       }
 
       const formData = new FormData()
-      formData.append('file', fileToUpload)
+      formData.append('csvFile', fileToUpload)
       formData.append('campaignId', campaign.id.toString())
 
       const response = await fetch(`/api/campaigns/${campaign.id}/contacts/upload`, {
@@ -1485,6 +1518,13 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       if (response.ok && result.success) {
         console.log('✅ CSV upload successful:', result)
         
+        toast({
+          title: t('leads.importSuccessful'),
+          description: t('leads.contactsImportedSuccessfully', { 
+            count: result.importedCount || result.imported || 0
+          })
+        })
+        
         // Refresh contacts list
         await fetchCampaignContacts()
         
@@ -1497,11 +1537,20 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         if (fileInput) fileInput.value = ''
         
       } else {
-        console.error('❌ CSV upload failed:', result.message || 'Unknown error')
+        toast({
+          title: t('leads.importFailed'),
+          description: result.error || result.message || t('leads.failedToImportCSV'),
+          variant: "destructive"
+        })
       }
       
     } catch (error) {
       console.error('❌ Error uploading CSV:', error)
+      toast({
+        title: t('leads.importFailed'),
+        description: error instanceof Error ? error.message : t('leads.failedToImportCSV'),
+        variant: "destructive"
+      })
     } finally {
       setIsUploading(false)
     }
@@ -3187,7 +3236,7 @@ Sequence Info:
                 <Button 
                   variant="outline" 
                   className="border-blue-300 hover:bg-blue-50 text-blue-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
-                  onClick={() => document.getElementById('analytics-csv-upload')?.click()}
+                  onClick={() => setShowImportModal(true)}
                   disabled={isUploading}
                 >
                   {isUploading ? (
@@ -4322,6 +4371,145 @@ Sequence Info:
                 {isDeleting !== null ? (deleteConfirmation?.type === 'removeAll' ? 'Removing...' : 'Deleting...') : (deleteConfirmation?.type === 'removeAll' ? 'Remove from Campaign' : 'Delete')}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Modal */}
+      <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
+        <DialogContent className="max-w-lg rounded-3xl border border-gray-100/20">
+          <DialogHeader className="pb-6">
+            <DialogTitle className="text-center text-2xl font-light text-gray-900 tracking-tight">
+              {t('leads.importContacts')}
+            </DialogTitle>
+            <p className="text-center text-gray-500 text-sm mt-2">
+              {t('leads.chooseImportMethod')}
+            </p>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* CSV Import */}
+            <div className="border border-gray-200/50 rounded-2xl overflow-hidden">
+              <div 
+                onClick={() => {
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.accept = '.csv'
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0]
+                    if (file) {
+                      handleCsvUpload(file)
+                      setShowImportModal(false)
+                    }
+                  }
+                  input.click()
+                }}
+                className="flex items-center space-x-4 p-6 hover:bg-gray-50/80 cursor-pointer transition-all duration-200 group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
+                  <FileText className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-medium text-gray-900">{t('leads.csvImport')}</h3>
+                  <p className="text-sm text-gray-500">{t('leads.uploadCSVFile')}</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+              </div>
+              
+              {/* CSV Guide Toggle */}
+              <div className="px-6 pb-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowCSVGuide(!showCSVGuide)}
+                  className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 rounded-xl px-3 py-2 h-auto font-medium"
+                >
+                  {showCSVGuide ? t('leads.hide') : t('leads.show')} {t('leads.csvFormatGuide')}
+                  <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${showCSVGuide ? 'rotate-180' : ''}`} />
+                </Button>
+                
+                {showCSVGuide && (
+                  <div className="mt-3 space-y-4">
+                    <div className="bg-blue-50/50 border border-blue-100/50 rounded-2xl p-4">
+                      <h4 className="font-medium text-gray-900 mb-2 text-sm">{t('leads.requiredFormat')}</h4>
+                      <p className="text-xs text-gray-600 mb-3">
+                        {t('leads.csvFormatDescription')}
+                      </p>
+                      
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <p className="font-medium text-gray-700 mb-1">{t('leads.nameFields')}:</p>
+                          <ul className="text-gray-600 space-y-0.5">
+                            <li>• first_name, firstname, "first name"</li>
+                            <li>• last_name, lastname, "last name"</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-700 mb-1">{t('leads.contactFields')}:</p>
+                          <ul className="text-gray-600 space-y-0.5">
+                            <li>• email</li>
+                            <li>• title, job_title, position</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-700 mb-1">{t('leads.companyFields')}:</p>
+                          <ul className="text-gray-600 space-y-0.5">
+                            <li>• company, company_name</li>
+                            <li>• industry</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-700 mb-1">{t('leads.otherFields')}:</p>
+                          <ul className="text-gray-600 space-y-0.5">
+                            <li>• location, city</li>
+                            <li>• linkedin, linkedin_url</li>
+                            <li>• website</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-green-50/50 border border-green-100/50 rounded-2xl p-4">
+                      <h4 className="font-medium text-gray-900 mb-2 text-sm">{t('leads.exampleCSVFormat')}</h4>
+                      <div className="bg-white/80 rounded-xl p-3 text-xs font-mono">
+                        <div className="text-gray-600">
+                          first_name,last_name,email,title,company,location<br/>
+                          John,Doe,john@example.com,CEO,Tech Corp,San Francisco<br/>
+                          Jane,Smith,jane@startup.com,CTO,Startup Inc,New York
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-yellow-50/50 border border-yellow-100/50 rounded-2xl p-4">
+                      <h4 className="font-medium text-gray-900 mb-2 text-sm flex items-center">
+                        <AlertCircle className="w-4 h-4 text-yellow-600 mr-2" />
+                        {t('leads.importantNotes')}
+                      </h4>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        <li>• {t('leads.minimumContactRequirement')}</li>
+                        <li>• {t('leads.columnHeadersFlexible')}</li>
+                        <li>• {t('leads.emptyCellsOk')}</li>
+                        <li>• {t('leads.maxFileSize')}</li>
+                        <li>• {t('leads.contactsValidatedBeforeImport')}</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div className="pt-6 border-t border-gray-100/50">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowImportModal(false)
+                setShowCSVGuide(false)
+              }}
+              className="text-sm text-gray-500 hover:text-gray-700 transition-colors rounded-2xl px-3 py-2 hover:bg-gray-50"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              {t('leads.backToContacts')}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -159,7 +159,8 @@ function parseCsvData(csvText: string): any[] {
   const lastNameIndex = headers.findIndex(h => h.includes('last') && h.includes('name'))
   const companyIndex = headers.findIndex(h => h.includes('company'))
   const titleIndex = headers.findIndex(h => h.includes('title') || h.includes('position'))
-  const phoneIndex = headers.findIndex(h => h.includes('phone'))
+  const locationIndex = headers.findIndex(h => h.includes('location') || h.includes('city'))
+  const industryIndex = headers.findIndex(h => h.includes('industry'))
   const linkedinIndex = headers.findIndex(h => h.includes('linkedin'))
 
   for (let i = 1; i < lines.length; i++) {
@@ -192,8 +193,9 @@ function parseCsvData(csvText: string): any[] {
       last_name: lastName,
       company: companyIndex >= 0 ? values[companyIndex]?.trim() || null : null,
       title: titleIndex >= 0 ? values[titleIndex]?.trim() || null : null,
-      phone: phoneIndex >= 0 ? values[phoneIndex]?.trim() || null : null,
-      linkedin_url: linkedinIndex >= 0 ? values[linkedinIndex]?.trim() || null : null,
+      location: locationIndex >= 0 ? values[locationIndex]?.trim() || null : null,
+      industry: industryIndex >= 0 ? values[industryIndex]?.trim() || null : null,
+      linkedin: linkedinIndex >= 0 ? values[linkedinIndex]?.trim() || null : null,
     })
   }
 
@@ -279,7 +281,7 @@ export async function POST(
         ...contact,
         campaign_id: campaignId,
         user_id: userId,
-        status: 'Pending',
+        email_status: 'Valid',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }))
