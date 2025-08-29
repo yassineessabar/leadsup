@@ -484,10 +484,10 @@ export async function GET(request: NextRequest) {
         }
       } : {
         success: true,
-        message: 'No analytics due contacts found - VERSION 2.0',
+        message: 'No analytics due contacts found - VERSION 3.0',
         processed: 0,
         timestamp: new Date().toISOString(),
-        version: 'DEBUG-2.0'
+        version: 'DEBUG-3.0'
       }
       
       return NextResponse.json(debugResponse)
