@@ -3408,7 +3408,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <h4 className="text-sm font-medium text-blue-900 mb-2">{t('campaignManagement.sequence.sequences.initialOutreach')}</h4>
                         <div className="text-xs text-gray-500">
                           <div className="flex items-start gap-2">
-                            <span className="flex-1 break-words">{t('campaignManagement.sequence.sequences.subject', { subject: steps.find(s => s.sequence === 1)?.subject || t('campaignManagement.sequence.sequences.noSubject') })}</span>
+                            <span className="flex-1 break-words">{(() => {
+                              const subjectValue = steps.find(s => s.sequence === 1)?.subject || t('campaignManagement.sequence.sequences.noSubject');
+                              console.log('🔍 Debugging subject:', subjectValue, typeof subjectValue);
+                              return t('campaignManagement.sequence.sequences.subject', { subject: subjectValue });
+                            })()}</span>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -3458,7 +3462,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   {step.title}
                                 </div>
                                 <div className="text-sm text-gray-500 mt-1">
-                                  {step.timing === 0 ? t('campaignManagement.sequence.steps.immediately') : t('campaignManagement.sequence.steps.day', { timing: step.timing })}
+                                  {step.timing === 0 ? t('campaignManagement.sequence.steps.immediately') : (() => {
+                                    console.log('🔍 Debugging timing:', step.timing, typeof step.timing);
+                                    return t('campaignManagement.sequence.steps.day', { timing: step.timing });
+                                  })()}
                                 </div>
                               </div>
                               <div className="flex items-center space-x-2">
@@ -3685,7 +3692,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               <div className="flex items-center space-x-2 text-sm text-gray-500">
                                 <span>{activeStep.sequence === 1 ? t('campaignManagement.sequence.sequences.initialOutreach') : t('campaignManagement.sequence.sequences.followUpOutreach')}</span>
                                 <span>•</span>
-                                <span>{activeStep.timing === 0 ? t('campaignManagement.sequence.steps.immediately') : t('campaignManagement.sequence.steps.day', { timing: activeStep.timing })}</span>
+                                <span>{activeStep.timing === 0 ? t('campaignManagement.sequence.steps.immediately') : (() => {
+                                  console.log('🔍 Debugging activeStep timing:', activeStep.timing, typeof activeStep.timing);
+                                  return t('campaignManagement.sequence.steps.day', { timing: activeStep.timing });
+                                })()}</span>
                               </div>
                             </div>
                           </div>
