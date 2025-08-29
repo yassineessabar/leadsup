@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useI18n } from '@/hooks/use-i18n'
-import { ArrowLeft, RefreshCw, Pause, Play, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit, MessageSquare } from "lucide-react"
+import { ArrowLeft, RefreshCw, Pause, Play, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Upload, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -172,6 +172,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
   const [metricsLoading, setMetricsLoading] = useState(true)
   const [warmupDecisionLoading, setWarmupDecisionLoading] = useState(false)
+  const [isScrapingActive, setIsScrapingActive] = useState(false)
+  
+  // CSV Import state (same as target tab)
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
   const [statusChangeLoading, setStatusChangeLoading] = useState(false)
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
@@ -1407,6 +1412,101 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     }
   }
 
+  // Check if scraping is active for this campaign
+  const fetchScrapingStatus = async () => {
+    if (!campaign?.id) return
+    
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/scraping-status`, {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        setIsScrapingActive(result.isActive || false)
+      }
+    } catch (error) {
+      console.error('Error fetching scraping status:', error)
+      setIsScrapingActive(false)
+    }
+  }
+
+  // CSV Import handlers (same as target tab)
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Check file type
+      if (!file.type.includes('csv') && !file.name.endsWith('.csv')) {
+        console.error('Please select a CSV file')
+        return
+      }
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        console.error('File size must be less than 10MB')
+        return
+      }
+      setUploadedFile(file)
+      console.log('CSV file selected:', file.name)
+      
+      // Auto-upload the file immediately
+      handleCsvUpload(file)
+    }
+  }
+
+  const handleCsvUpload = async (file?: File) => {
+    const fileToUpload = file || uploadedFile
+    if (!fileToUpload) {
+      console.error('Please select a CSV file first')
+      return
+    }
+    setIsUploading(true)
+    
+    try {
+      const text = await fileToUpload.text()
+      const lines = text.split('\n').filter(line => line.trim())
+      
+      if (lines.length < 2) {
+        console.error('CSV file must have at least a header and one data row')
+        return
+      }
+
+      const formData = new FormData()
+      formData.append('file', fileToUpload)
+      formData.append('campaignId', campaign.id.toString())
+
+      const response = await fetch(`/api/campaigns/${campaign.id}/contacts/upload`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        console.log('✅ CSV upload successful:', result)
+        
+        // Refresh contacts list
+        await fetchCampaignContacts()
+        
+        // Reset upload state
+        setUploadedFile(null)
+        setIsUploading(false)
+        
+        // Reset file input
+        const fileInput = document.getElementById('analytics-csv-upload') as HTMLInputElement
+        if (fileInput) fileInput.value = ''
+        
+      } else {
+        console.error('❌ CSV upload failed:', result.message || 'Unknown error')
+      }
+      
+    } catch (error) {
+      console.error('❌ Error uploading CSV:', error)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   useEffect(() => {
     if (campaign?.id) {
       // Load critical data first
@@ -1415,11 +1515,16 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       fetchCampaignSenders()
       fetchCampaignSequences()
       fetchCampaignSettings()
+      fetchScrapingStatus()
       
       // Load sender health scores with a small delay to not block UI
       setTimeout(() => {
         fetchSenderHealthScores()
       }, 500)
+      
+      // Poll scraping status every 30 seconds
+      const scrapingInterval = setInterval(fetchScrapingStatus, 30000)
+      return () => clearInterval(scrapingInterval)
     }
   }, [campaign?.id, campaign.name, campaign.status])
 
@@ -3057,13 +3162,51 @@ Sequence Info:
                 <Users className="w-6 h-6 text-blue-600" />
               </div>
               <div className="flex-1">
-                <h2 className="text-xl font-medium text-gray-900">{t('analytics.contacts')}</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-medium text-gray-900">{t('analytics.contacts')}</h2>
+                  {isScrapingActive && (
+                    <div className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 animate-pulse">
+                      <Activity className="w-3 h-3 mr-1.5 animate-spin" />
+                      Scraping Active
+                    </div>
+                  )}
+                </div>
                 <p className="text-gray-500 text-sm mt-1">{contacts.length} {t('analytics.totalContactsInCampaign')}</p>
               </div>
-              <Button variant="outline" className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl">
-                <Download className="h-4 w-4 mr-2" />
-                {t('analytics.export')}
-              </Button>
+              <div className="flex items-center gap-3">
+                {/* Hidden file input */}
+                <input
+                  id="analytics-csv-upload"
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  disabled={isUploading}
+                />
+                
+                <Button 
+                  variant="outline" 
+                  className="border-blue-300 hover:bg-blue-50 text-blue-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+                  onClick={() => document.getElementById('analytics-csv-upload')?.click()}
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mr-2" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import Contacts
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl">
+                  <Download className="h-4 w-4 mr-2" />
+                  {t('analytics.export')}
+                </Button>
+              </div>
             </div>
             
             <div className="flex gap-4 mb-6">
