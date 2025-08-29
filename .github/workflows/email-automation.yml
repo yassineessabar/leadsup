@@ -86,8 +86,14 @@ jobs:
     # Run auto warmup execution once per day at 10 AM UTC (after scheduler)
     if: github.event.schedule == '0 10 * * *' || github.event_name == 'workflow_dispatch'
     
+    environment:
+      name: production
+    
     steps:
       - name: Process Auto Warmup Execution
+        env:
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          EMAIL_SIMULATION_MODE: false
         run: |
           echo "🔥 Processing auto warmup execution at $(date)"
           
@@ -116,10 +122,82 @@ jobs:
               echo "warmup_sent=$sent" >> $GITHUB_OUTPUT
               echo "warmup_processed=$processed" >> $GITHUB_OUTPUT
             fi
+            
+            # Verify SendGrid events were created (wait 30 seconds for webhook processing)
+            echo "⏱️ Waiting 30 seconds for SendGrid webhook events to process..."
+            sleep 30
+            
+            echo "🔍 Verifying SendGrid events and health score updates..."
+            verify_response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+              -X GET \
+              -H "Content-Type: application/json" \
+              "${{ secrets.APP_URL }}/api/webhooks/sendgrid/events")
+            
+            verify_http_code=$(echo $verify_response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+            verify_body=$(echo $verify_response | sed -e 's/HTTPSTATUS:.*//g')
+            
+            if [ $verify_http_code -eq 200 ]; then
+              echo "✅ SendGrid webhook endpoint is healthy"
+              echo "📊 Webhook status: $verify_body"
+            else
+              echo "⚠️ SendGrid webhook verification failed: $verify_http_code"
+            fi
+            
           else
             echo "❌ Auto warmup execution failed with status $http_code"
             echo "Response: $body"
             exit 1
           fi
- 
- 
+
+  verify-warmup-tracking:
+    runs-on: ubuntu-latest
+    needs: process-warmup-execution
+    # Only run after warmup execution and if it was successful
+    if: needs.process-warmup-execution.result == 'success'
+    
+    steps:
+      - name: Verify SendGrid Events and Health Score Updates
+        run: |
+          echo "🔍 Verifying SendGrid event tracking after warmup..."
+          
+          # Wait for webhook events to be processed
+          sleep 60
+          
+          # Create verification API endpoint call
+          verify_response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"action": "verify_warmup_tracking"}' \
+            "${{ secrets.APP_URL }}/api/debug/verify-warmup-events")
+          
+          verify_http_code=$(echo $verify_response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+          verify_body=$(echo $verify_response | sed -e 's/HTTPSTATUS:.*//g')
+          
+          echo "📊 HTTP Status: $verify_http_code"
+          echo "📈 Verification Result: $verify_body"
+          
+          if [ $verify_http_code -eq 200 ]; then
+            echo "✅ SendGrid tracking verification completed"
+            
+            # Parse verification results
+            if command -v jq &> /dev/null; then
+              events_count=$(echo "$verify_body" | jq -r '.eventsCount // 0')
+              health_updates=$(echo "$verify_body" | jq -r '.healthUpdates // 0')
+              
+              echo "📧 Events tracked: $events_count"
+              echo "❤️ Health scores updated: $health_updates"
+              
+              # Set outputs for monitoring
+              echo "events_tracked=$events_count" >> $GITHUB_OUTPUT
+              echo "health_updated=$health_updates" >> $GITHUB_OUTPUT
+              
+              # Alert if no events were tracked
+              if [ "$events_count" -eq "0" ]; then
+                echo "⚠️ Warning: No SendGrid events were tracked - check webhook configuration"
+              fi
+            fi
+          else
+            echo "⚠️ Verification endpoint failed with status $verify_http_code"
+            echo "This may indicate webhook or tracking issues"
+            # Don't fail the job for verification issues
+          fi
