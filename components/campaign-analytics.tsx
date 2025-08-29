@@ -172,6 +172,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [metrics, setMetrics] = useState<SendGridMetrics | null>(null)
   const [metricsLoading, setMetricsLoading] = useState(true)
   const [warmupDecisionLoading, setWarmupDecisionLoading] = useState(false)
+  const [statusChangeLoading, setStatusChangeLoading] = useState(false)
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
     end: new Date()
@@ -278,6 +279,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Fetch health scores for campaign sender accounts
   const fetchSenderHealthScores = async () => {
     if (!campaign?.id) return
+    
+    // Skip if we already have cached scores (they're valid for 60 seconds on the server)
+    if (Object.keys(senderHealthScores).length > 0) {
+      console.log('📊 Using cached health scores')
+      return
+    }
     
     setHealthScoresLoading(true)
     try {
@@ -1401,12 +1408,17 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
 
   useEffect(() => {
     if (campaign?.id) {
+      // Load critical data first
       fetchCampaignContacts()
       fetchMetrics()
       fetchCampaignSenders()
       fetchCampaignSequences()
-      fetchSenderHealthScores()
       fetchCampaignSettings()
+      
+      // Load sender health scores with a small delay to not block UI
+      setTimeout(() => {
+        fetchSenderHealthScores()
+      }, 500)
     }
   }, [campaign?.id, campaign.name, campaign.status])
 
@@ -1466,19 +1478,24 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
 
   const handleStatusChange = async () => {
     console.log('🔄 handleStatusChange called, current status:', campaign.status)
-    if (!onStatusUpdate) {
-      console.log('❌ No onStatusUpdate function provided!')
+    if (!onStatusUpdate || statusChangeLoading) {
+      console.log('❌ No onStatusUpdate function provided or already loading!')
       return
     }
     
+    setStatusChangeLoading(true)
     const newStatus = campaign.status === "Active" ? "Paused" : "Active"
     console.log('🎯 Changing status to:', newStatus)
     
-    // No popup needed - warmup will be handled automatically
-    
-    // Call the status update function passed from parent
-    await onStatusUpdate(campaign.id, newStatus)
-    console.log('✅ Status update called for campaign:', campaign.id, 'new status:', newStatus)
+    try {
+      // No popup needed - warmup will be handled automatically
+      
+      // Call the status update function passed from parent
+      await onStatusUpdate(campaign.id, newStatus)
+      console.log('✅ Status update called for campaign:', campaign.id, 'new status:', newStatus)
+    } finally {
+      setStatusChangeLoading(false)
+    }
   }
 
 
@@ -2231,10 +2248,20 @@ Sequence Info:
                     handleStatusChange()
                     return false
                   }}
-                  className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+                  disabled={healthScoresLoading || statusChangeLoading}
+                  className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Pause className="h-4 w-4 mr-2" />
-                  Pause
+                  {statusChangeLoading ? (
+                    <>
+                      <div className="w-4 h-4 mr-2 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="h-4 w-4 mr-2" />
+                      Pause
+                    </>
+                  )}
                 </Button>
               ) : campaign.status !== "Completed" && (
                 <Button
@@ -2245,10 +2272,20 @@ Sequence Info:
                     handleStatusChange()
                     return false
                   }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+                  disabled={healthScoresLoading || statusChangeLoading}
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Play className="h-4 w-4 mr-2" />
-                  {t('analytics.resume')}
+                  {statusChangeLoading ? (
+                    <>
+                      <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      {t('analytics.resume')}
+                    </>
+                  )}
                 </Button>
               )}
               
