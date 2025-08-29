@@ -221,50 +221,6 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
       console.log(`        Emails sent: ${count || 0}, RESULT: ${isDue ? 'DUE' : 'NOT DUE'}`)
       
       return isDue
-      
-      // 🔧 EXPLICIT FUTURE DATE CHECK: Never send emails scheduled for future dates (even immediate ones)
-      const isInFuture = scheduledDate > now
-      if (isInFuture) {
-        console.log(`     🚫 FUTURE DATE BLOCK for ${contact.email}:`)
-        console.log(`        Now UTC: ${now.toISOString()}`)
-        console.log(`        Scheduled UTC: ${scheduledDate.toISOString()}`)
-        console.log(`        IMMEDIATE email is scheduled for the FUTURE - BLOCKED`)
-        return false
-      }
-      
-      const contactIdString = String(contact.id || '')
-      const contactHash = contactIdString.split('').reduce((hash, char) => {
-        return ((hash << 5) - hash) + char.charCodeAt(0)
-      }, 0)
-      const seedValue = (contactHash + 1) % 1000
-      const intendedHour = 9 + (seedValue % 8) // 9 AM - 5 PM
-      const intendedMinute = (seedValue * 7) % 60
-      
-      // Get current time in contact's timezone
-      const currentHourInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
-        timeZone: timezone,
-        hour: 'numeric',
-        hour12: false
-      }).format(now))
-      const currentMinuteInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
-        timeZone: timezone,
-        minute: 'numeric'
-      }).format(now))
-      
-      const currentTimeInMinutes = currentHourInContactTz * 60 + currentMinuteInContactTz
-      const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
-      
-      isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
-      const isDue = isTimeReached && businessHoursStatus.isBusinessHours
-      
-      console.log(`     🔍 IMMEDIATE EMAIL DUE CHECK for ${contact.email}:`)
-      console.log(`        Current time: ${currentHourInContactTz}:${currentMinuteInContactTz.toString().padStart(2, '0')} (${currentTimeInMinutes} min)`)
-      console.log(`        Intended time: ${intendedHour}:${intendedMinute.toString().padStart(2, '0')} (${intendedTimeInMinutes} min)`)
-      console.log(`        Time reached: ${isTimeReached}`)
-      console.log(`        Business hours: ${businessHoursStatus.isBusinessHours}`)
-      console.log(`        FINAL RESULT: ${isDue} (${isDue ? 'DUE NEXT' : 'PENDING START'})`)
-      
-      return isDue
     } else {
       // For non-immediate emails, use direct UTC comparison
       if (scheduledDate) {
