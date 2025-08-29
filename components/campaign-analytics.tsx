@@ -139,7 +139,17 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [contactSequenceStatus, setContactSequenceStatus] = useState<Map<string, any>>(new Map())
   
   // Health score state - updated to match the actual data structure
-  const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { health_score: number; daily_limit: number; warmup_status: string; email: string; name: string }>>({})
+  const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { 
+    health_score: number; 
+    daily_limit: number; 
+    warmup_status: string; 
+    warmup_phase?: number;
+    warmup_days_completed?: number;
+    warmup_emails_sent_today?: number;
+    last_warmup_sent?: string;
+    email: string; 
+    name: string 
+  }>>({})
   const [healthScoresLoading, setHealthScoresLoading] = useState(false)
   
   // Warming metrics state
@@ -316,6 +326,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 health_score: healthScore,
                 daily_limit: assignment.daily_limit || 50,
                 warmup_status: assignment.warmup_status || 'inactive',
+                warmup_phase: assignment.warmup_phase || 1,
+                warmup_days_completed: assignment.warmup_days_completed || 0,
+                warmup_emails_sent_today: assignment.warmup_emails_sent_today || 0,
+                last_warmup_sent: assignment.last_warmup_sent,
                 email: assignment.email,
                 name: assignment.name || assignment.email
               }
@@ -2715,25 +2729,104 @@ Sequence Info:
                             const score = healthData.health_score
                             const email = emailOrId
                             
+                            // Get warmup data for this sender
+                            const warmupStatus = healthData.warmup_status
+                            const getWarmupStatusInfo = (status?: string) => {
+                              switch (status) {
+                                case 'active':
+                                  return { color: 'text-green-600', bg: 'bg-green-50', icon: '🔥', label: 'Active', animate: 'animate-pulse' }
+                                case 'paused':
+                                  return { color: 'text-orange-600', bg: 'bg-orange-50', icon: '⏸️', label: 'Paused', animate: '' }
+                                case 'inactive':
+                                default:
+                                  return { color: 'text-gray-500', bg: 'bg-gray-50', icon: '⚫', label: 'Inactive', animate: '' }
+                              }
+                            }
+                            
+                            const warmupInfo = getWarmupStatusInfo(warmupStatus)
+                            const showWarmupDetails = warmupStatus === 'active' || campaign.status === 'Warming'
+                            
                             return (
-                              <div key={emailOrId} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                <div className="flex items-center space-x-2">
-                                  <div className={`w-6 h-6 rounded flex items-center justify-center ${getScoreColor(score)}`}>
-                                    <Mail className="w-3 h-3" />
+                              <div key={emailOrId} className="p-3 bg-gray-50 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center space-x-2">
+                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${getScoreColor(score)}`}>
+                                      <Mail className="w-3 h-3" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <p className="text-sm text-gray-700">{email}</p>
+                                      {/* Enhanced warmup status display */}
+                                      {warmupStatus && (
+                                        <div className="flex items-center space-x-2 mt-0.5">
+                                          <div className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium ${warmupInfo.bg} ${warmupInfo.color}`}>
+                                            <span className={warmupInfo.animate}>{warmupInfo.icon}</span>
+                                            <span>Warmup: {warmupInfo.label}</span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex flex-col">
-                                    <p className="text-sm text-gray-700">{email}</p>
-                                    {campaign.status === 'Warming' && (
-                                      <div className="flex items-center space-x-1 mt-0.5">
-                                        <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></div>
-                                        <span className="text-xs text-orange-600 font-medium">Warming</span>
+                                  <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getScoreColor(score)}`}>
+                                    {score}/100
+                                  </div>
+                                </div>
+                                
+                                {/* Detailed warmup information for active warmups */}
+                                {showWarmupDetails && warmupStatus === 'active' && (
+                                  <div className="mt-2 pt-2 border-t border-gray-200">
+                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                      <div className="flex items-center space-x-1">
+                                        <span className="text-gray-500">Phase:</span>
+                                        <span className="font-medium text-gray-700">
+                                          {(() => {
+                                            const phase = healthData.warmup_phase || 1
+                                            const phaseLabels = ['', 'Foundation', 'Engagement', 'Scale Up']
+                                            return `${phase} (${phaseLabels[phase] || 'Foundation'})`
+                                          })()}
+                                        </span>
                                       </div>
-                                    )}
+                                      <div className="flex items-center space-x-1">
+                                        <span className="text-gray-500">Daily Target:</span>
+                                        <span className="font-medium text-gray-700">{healthData.daily_limit || 50}</span>
+                                      </div>
+                                      <div className="flex items-center space-x-1">
+                                        <span className="text-gray-500">Progress:</span>
+                                        <span className="font-medium text-green-600">
+                                          Day {healthData.warmup_days_completed || 1} / 35
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center space-x-1">
+                                        <span className="text-gray-500">Today's Emails:</span>
+                                        <span className="font-medium text-blue-600">
+                                          {healthData.warmup_emails_sent_today || 0}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Progress bar */}
+                                    <div className="mt-2">
+                                      <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs text-gray-500">Warmup Progress</span>
+                                        <span className="text-xs text-gray-600">
+                                          {Math.round(((healthData.warmup_days_completed || 1) / 35) * 100)}%
+                                        </span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                        <div 
+                                          className="bg-green-500 h-1.5 rounded-full transition-all duration-300" 
+                                          style={{ width: `${Math.min(((healthData.warmup_days_completed || 1) / 35) * 100, 100)}%` }}
+                                        ></div>
+                                      </div>
+                                      
+                                      {/* Last warmup timestamp */}
+                                      {healthData.last_warmup_sent && (
+                                        <div className="mt-2 text-xs text-gray-500">
+                                          Last warmup: {new Date(healthData.last_warmup_sent).toLocaleDateString()}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                                <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getScoreColor(score)}`}>
-                                  {score}/100
-                                </div>
+                                )}
                               </div>
                             )
                           })}
