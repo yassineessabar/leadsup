@@ -2250,33 +2250,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         onStatusUpdate(campaign.id, 'Paused')
       }
     } else if (campaign.status === 'Paused') {
-      // Resume the campaign - check for auto-warmup first
-      try {
-        const campaignResponse = await fetch(`/api/campaigns?id=${campaign.id}`, {
-          credentials: "include"
-        })
-        
-        let hasAutoWarmup = false
-        if (campaignResponse.ok) {
-          const campaignResult = await campaignResponse.json()
-          if (campaignResult.success && campaignResult.data?.[0]?.settings?.auto_warmup) {
-            hasAutoWarmup = true
-            console.log('🔥 Auto-warmup is enabled for this campaign, skipping health popup')
-          }
-        }
-        
-        // Skip popup and resume directly if auto-warmup is enabled
-        if (hasAutoWarmup) {
-          if (onStatusUpdate) {
-            onStatusUpdate(campaign.id, 'Active')
-          }
-          return
-        }
-      } catch (error) {
-        console.error('Error checking auto-warmup status:', error)
-      }
-      
-      // For campaigns without auto-warmup, show the warmup popup
+      // Resume the campaign
       if (onStatusUpdate) {
         onStatusUpdate(campaign.id, 'Active')
       }

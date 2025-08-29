@@ -2,6 +2,55 @@ import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { getSupabaseServerClient } from "@/lib/supabase"
 
+// Helper function to handle auto-warmup based on health scores
+async function handleAutoWarmupBasedOnHealth(campaignId: string, campaignStatus: string) {
+  try {
+    // Get campaign senders
+    const supabaseServer = getSupabaseServerClient()
+    const { data: senders, error: sendersError } = await supabaseServer
+      .from('campaign_senders')
+      .select('email, health_score')
+      .eq('campaign_id', campaignId)
+    
+    if (sendersError || !senders) {
+      console.error('Error fetching campaign senders for warmup check:', sendersError)
+      return
+    }
+    
+    // Check health scores and set warmup status accordingly
+    for (const sender of senders) {
+      const healthScore = sender.health_score || 0
+      let warmupStatus = 'inactive'
+      
+      if (campaignStatus === 'Active') {
+        // Auto-trigger warmup if health < 90%
+        warmupStatus = healthScore < 90 ? 'active' : 'inactive'
+      } else if (campaignStatus === 'Warming') {
+        // Always active for warming campaigns
+        warmupStatus = 'active'
+      }
+      
+      // Update warmup status
+      const { error: updateError } = await supabaseServer
+        .from('campaign_senders')
+        .update({
+          warmup_status: warmupStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('campaign_id', campaignId)
+        .eq('email', sender.email)
+      
+      if (updateError) {
+        console.error(`Error updating warmup status for ${sender.email}:`, updateError)
+      } else {
+        console.log(`✅ Set warmup ${warmupStatus} for ${sender.email} (health: ${healthScore}%)`)
+      }
+    }
+  } catch (error) {
+    console.error('Error in handleAutoWarmupBasedOnHealth:', error)
+  }
+}
+
 async function getUserIdFromSession(): Promise<string | null> {
   try {
     const cookieStore = await cookies()
@@ -105,6 +154,11 @@ export async function PUT(
     // If campaign is being launched (set to Active or Warming), trigger automation setup
     if ((status === 'Active' || status === 'Warming') && existingCampaign.status !== 'Active' && existingCampaign.status !== 'Warming') {
       await triggerCampaignAutomation(campaignId, updatedCampaign.name, status === 'Warming')
+    }
+
+    // Handle auto-warmup based on health scores
+    if (status === 'Active' || status === 'Warming') {
+      await handleAutoWarmupBasedOnHealth(campaignId, status)
     }
 
     // Handle warming system integration
