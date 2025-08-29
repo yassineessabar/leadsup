@@ -157,8 +157,13 @@ export class SendGridAnalyticsService {
         .order('date', { ascending: true })
       
       // Filter by selected sender emails if provided
+      // Note: sender_email column may not exist yet
       if (selectedSenderEmails && selectedSenderEmails.length > 0) {
-        query = query.in('sender_email', selectedSenderEmails)
+        try {
+          query = query.in('sender_email', selectedSenderEmails)
+        } catch (e) {
+          console.warn("⚠️ sender_email column may not exist in campaign_metrics table yet")
+        }
       }
       
       if (dateRange) {
@@ -171,6 +176,29 @@ export class SendGridAnalyticsService {
       
       if (error) {
         console.error("❌ Error fetching campaign time series:", error)
+        // If the error is about missing sender_email column, retry without the filter
+        if (error.code === '42703' && error.message.includes('sender_email')) {
+          console.warn("⚠️ sender_email column doesn't exist yet - returning unfiltered results")
+          let retryQuery = supabase
+            .from('campaign_metrics')
+            .select('*')
+            .eq('campaign_id', campaignId)
+            .eq('user_id', userId)
+            .order('date', { ascending: true })
+          
+          if (dateRange) {
+            retryQuery = retryQuery
+              .gte('date', dateRange.start.toISOString().split('T')[0])
+              .lte('date', dateRange.end.toISOString().split('T')[0])
+          }
+          
+          const { data: retryData, error: retryError } = await retryQuery
+          if (retryError) {
+            console.error("❌ Retry also failed:", retryError)
+            return []
+          }
+          return retryData || []
+        }
         return []
       }
       
@@ -238,8 +266,13 @@ export class SendGridAnalyticsService {
         .range(offset, offset + limit - 1)
       
       // Filter by selected sender emails if provided
+      // Note: sender_email column may not exist yet, so we wrap this in a try-catch
       if (selectedSenderEmails && selectedSenderEmails.length > 0) {
-        query = query.in('sender_email', selectedSenderEmails)
+        try {
+          query = query.in('sender_email', selectedSenderEmails)
+        } catch (e) {
+          console.warn("⚠️ sender_email column may not exist in email_tracking table yet")
+        }
       }
       
       if (status) {
@@ -250,6 +283,28 @@ export class SendGridAnalyticsService {
       
       if (error) {
         console.error("❌ Error fetching email tracking details:", error)
+        // If the error is about missing sender_email column, return empty data instead of failing
+        if (error.code === '42703' && error.message.includes('sender_email')) {
+          console.warn("⚠️ sender_email column doesn't exist yet - returning unfiltered results")
+          // Retry without sender_email filter
+          let retryQuery = supabase
+            .from('email_tracking')
+            .select('*')
+            .eq('campaign_id', campaignId)
+            .order('sent_at', { ascending: false })
+            .range(offset, offset + limit - 1)
+          
+          if (status) {
+            retryQuery = retryQuery.eq('status', status)
+          }
+          
+          const { data: retryData, error: retryError } = await retryQuery
+          if (retryError) {
+            console.error("❌ Retry also failed:", retryError)
+            return { data: [], total: 0 }
+          }
+          return { data: retryData || [], total: retryData?.length || 0 }
+        }
         return { data: [], total: 0 }
       }
       
@@ -260,8 +315,13 @@ export class SendGridAnalyticsService {
         .eq('campaign_id', campaignId)
       
       // Filter by selected sender emails if provided
-      if (selectedSenderEmails && selectedSenderEmails.length > 0) {
-        countQuery = countQuery.in('sender_email', selectedSenderEmails)
+      // Skip sender_email filter if column doesn't exist
+      if (selectedSenderEmails && selectedSenderEmails.length > 0 && !error?.message?.includes('sender_email')) {
+        try {
+          countQuery = countQuery.in('sender_email', selectedSenderEmails)
+        } catch (e) {
+          console.warn("⚠️ Skipping sender_email filter for count query")
+        }
       }
       
       if (status) {
