@@ -127,7 +127,7 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
 }
 
 // Calculate if contact's next email is due (matching analytics logic)
-async function isContactDue(contact: any, campaignSequences: any[]) {
+async function isContactDue(contact: any, campaignSequences: any[], forceBusinessHours: boolean = false) {
   try {
     // Get count of emails actually sent to this contact
     const { data: emailsSent, count, error: trackingError } = await supabase
@@ -204,7 +204,7 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
       const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
       
       isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
-      const isDue = isTimeReached && businessHoursStatus.isBusinessHours
+      const isDue = isTimeReached && (forceBusinessHours || businessHoursStatus.isBusinessHours)
       
       console.log(`     🔍 IMMEDIATE EMAIL DUE CHECK for ${contact.email}:`)
       console.log(`        Current time: ${currentHourInContactTz}:${currentMinuteInContactTz.toString().padStart(2, '0')} (${currentTimeInMinutes} min)`)
@@ -229,7 +229,7 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
         
         // Direct UTC comparison - no timezone conversion needed as both dates are already in UTC
         isTimeReached = now >= scheduledDate
-        const isDue = isTimeReached && businessHoursStatus.isBusinessHours
+        const isDue = isTimeReached && (forceBusinessHours || businessHoursStatus.isBusinessHours)
         
         console.log(`     🔍 NON-IMMEDIATE EMAIL DUE CHECK for ${contact.email}:`)
         console.log(`        Now UTC: ${now.toISOString()}`)
@@ -267,8 +267,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const testMode = searchParams.get('testMode') === 'true' || process.env.EMAIL_SIMULATION_MODE === 'true'
     const lookAheadMinutes = parseInt(searchParams.get('lookAhead') || '15') // Default 15 minutes lookahead
+    const forceBusinessHours = searchParams.get('forceBusinessHours') === 'true' // Override weekend check for testing
     
-    console.log('🚨 Parameters parsed:', { testMode, lookAheadMinutes })
+    console.log('🚨 Parameters parsed:', { testMode, lookAheadMinutes, forceBusinessHours })
     
     console.log('═'.repeat(80))
     console.log('🚀 EMAIL AUTOMATION PROCESSOR STARTED - ULTRA VERBOSE DEBUG MODE')
@@ -349,7 +350,7 @@ export async function GET(request: NextRequest) {
       const dueContacts = []
       for (const contact of (campaignContacts || [])) {
         const currentStep = contact.sequence_step || 0
-        if (currentStep < maxStep && await isContactDue(contact, campaignSequences)) {
+        if (currentStep < maxStep && await isContactDue(contact, campaignSequences, forceBusinessHours)) {
           dueContacts.push(contact)
         }
       }
@@ -392,7 +393,7 @@ export async function GET(request: NextRequest) {
             // Check each contact for "Due Next" status
             const dueContacts = []
             for (const contact of contactsData) {
-              if (await isContactDue(contact, campaignSequences)) {
+              if (await isContactDue(contact, campaignSequences, forceBusinessHours)) {
                 dueContacts.push({
                   ...contact,
                   email_address: contact.email || contact.email_address,
