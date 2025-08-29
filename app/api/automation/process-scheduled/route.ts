@@ -188,6 +188,15 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
     
     // For immediate emails, use timezone-aware logic (same as analytics)
     if (nextEmailData.relative === 'Immediate') {
+      // 🔧 EXPLICIT FUTURE DATE CHECK: Never send emails scheduled for future dates
+      if (scheduledDate && scheduledDate > now) {
+        console.log(`     🚫 FUTURE DATE BLOCK for ${contact.email}:`)
+        console.log(`        Now UTC: ${now.toISOString()}`)
+        console.log(`        Scheduled UTC: ${scheduledDate.toISOString()}`)
+        console.log(`        IMMEDIATE email is scheduled for the FUTURE - BLOCKED`)
+        return false
+      }
+      
       // Use timezone-aware due logic matching UI
       const currentHourInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
         timeZone: timezone,
