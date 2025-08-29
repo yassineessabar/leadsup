@@ -83,29 +83,42 @@ jobs:
 
   process-warmup-execution:
     runs-on: ubuntu-latest
-    # Run warming execution once per day at 6 PM UTC  
-    if: github.event.schedule == '0 18 * * *' || github.event_name == 'workflow_dispatch'
+    # Run auto warmup execution once per day at 10 AM UTC (after scheduler)
+    if: github.event.schedule == '0 10 * * *' || github.event_name == 'workflow_dispatch'
     
     steps:
-      - name: Process Warmup Execution
+      - name: Process Auto Warmup Execution
         run: |
-          echo "📤 Processing warmup execution at $(date)"
+          echo "🔥 Processing auto warmup execution at $(date)"
           
           response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -X GET \
             -H "Content-Type: application/json" \
-            "${{ secrets.APP_URL }}/api/warming/execute")
+            "${{ secrets.APP_URL }}/api/automation/process-warmup?autoMode=true")
           
           http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
           body=$(echo $response | sed -e 's/HTTPSTATUS:.*//g')
           
           echo "📊 HTTP Status: $http_code"
-          echo "📤 Response: $body"
+          echo "🔥 Response: $body"
           
           if [ $http_code -eq 200 ]; then
-            echo "✅ Warmup execution completed successfully"
+            echo "✅ Auto warmup execution completed successfully"
+            
+            # Parse and log key metrics (if jq is available)
+            if command -v jq &> /dev/null; then
+              sent=$(echo "$body" | jq -r '.sent // 0')
+              processed=$(echo "$body" | jq -r '.processed // 0')
+              
+              echo "🔥 Warmup Summary: $sent warm-up emails sent for $processed senders"
+              
+              # Set job outputs for monitoring
+              echo "warmup_sent=$sent" >> $GITHUB_OUTPUT
+              echo "warmup_processed=$processed" >> $GITHUB_OUTPUT
+            fi
           else
-            echo "❌ Warmup execution failed with status $http_code"
+            echo "❌ Auto warmup execution failed with status $http_code"
+            echo "Response: $body"
             exit 1
           fi
  
