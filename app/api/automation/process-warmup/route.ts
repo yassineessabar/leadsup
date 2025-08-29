@@ -147,13 +147,29 @@ export async function GET(request: NextRequest) {
             const sgMail = require('@sendgrid/mail')
             sgMail.setApiKey(process.env.SENDGRID_API_KEY)
             
-            // Send test emails to warmup recipients
-            // Note: Using real addresses so SendGrid sends webhook events
-            const warmupRecipients = [
-              `yassineessabar+warmup1@gmail.com`,
-              `yassineessabar+warmup2@gmail.com`, 
-              `yassineessabar+warmup3@gmail.com`
-            ]
+            // Get real warmup recipients from database
+            const { data: recipientData, error: recipientError } = await supabaseServer
+              .from('warmup_recipients')
+              .select('email, max_daily_emails, emails_received_today')
+              .eq('is_active', true)
+              .limit(warmupVolume)
+            
+            let warmupRecipients = []
+            if (!recipientError && recipientData && recipientData.length > 0) {
+              // Use real recipients from database
+              warmupRecipients = recipientData
+                .filter(r => (r.emails_received_today || 0) < (r.max_daily_emails || 10))
+                .map(r => r.email)
+              console.log(`📧 Using ${warmupRecipients.length} real recipients from database`)
+            } else {
+              // Fallback to hardcoded recipients if database not available
+              warmupRecipients = [
+                `yassineessabar+warmup1@gmail.com`,
+                `yassineessabar+warmup2@gmail.com`, 
+                `yassineessabar+warmup3@gmail.com`
+              ]
+              console.log(`⚠️ Using fallback recipients - database error: ${recipientError?.message}`)
+            }
             
             for (let i = 0; i < Math.min(warmupVolume, 3); i++) {
               const recipient = warmupRecipients[i] || `warmup${i}+${Date.now()}@gmail.com`
