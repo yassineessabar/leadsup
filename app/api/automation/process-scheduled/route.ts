@@ -71,16 +71,11 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
       
       scheduledDate = new Date(tempDate.getTime() - actualOffsetMs)
       
-      // TEMPORARY FIX: London contacts showing as "Due next" in UI should be due
-      const isLondonContact = contact.location?.toLowerCase().includes('london')
+      // Use the same timing logic as the UI - compare current time vs intended time in contact's timezone
       const isInBusinessHours = getBusinessHoursStatus(timezone).isBusinessHours
       
-      // If London contact and in business hours, override the time check
-      const shouldOverrideForLondon = isLondonContact && isInBusinessHours && 
-        (contact.email?.includes('mouai.tax') || contact.email?.includes('ya.essabarry') || contact.email?.includes('crytopianconsulting'))
-      
       // If the intended time has passed today OR we're outside business hours, schedule for next business day
-      if (!shouldOverrideForLondon && (currentTimeInMinutes >= intendedTimeInMinutes || !isInBusinessHours)) {
+      if (currentTimeInMinutes >= intendedTimeInMinutes || !isInBusinessHours) {
         // Move to next business day
         scheduledDate.setDate(scheduledDate.getDate() + 1)
         
@@ -193,22 +188,43 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
     
     // For immediate emails, use timezone-aware logic (same as analytics)
     if (nextEmailData.relative === 'Immediate') {
-      // Check if this contact has already had emails sent
-      // If so, don't override - let normal logic handle follow-ups
-      if (count && count > 0) {
-        console.log(`     📧 Contact ${contact.email} has ${count} emails sent - using normal timing logic`)
-        // Continue with normal future date check below
-      } else {
-        // TEMPORARY FIX: Override for specific London contacts showing as "Due next" in UI (first email only)
-        const isLondonContact = contact.location?.toLowerCase().includes('london')
-        const shouldOverride = isLondonContact && businessHoursStatus.isBusinessHours && 
-          (contact.email?.includes('mouai.tax') || contact.email?.includes('ya.essabarry') || contact.email?.includes('crytopianconsulting'))
-        
-        if (shouldOverride) {
-          console.log(`     ✅ LONDON OVERRIDE for ${contact.email}: UI shows Due next, forcing first email to due`)
-          return true
-        }
-      }
+      // Use the same due logic as the UI instead of hardcoded overrides
+      // For immediate emails, check if intended time has passed in contact's timezone
+      const contactIdString = String(contact.id || '')
+      const contactHash = contactIdString.split('').reduce((hash, char) => {
+        return ((hash << 5) - hash) + char.charCodeAt(0)
+      }, 0)
+      const seedValue = (contactHash + 1) % 1000
+      const intendedHour = 9 + (seedValue % 8) // 9 AM - 5 PM
+      const intendedMinute = (seedValue * 7) % 60
+      
+      const currentHourInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        hour: 'numeric',
+        hour12: false
+      }).format(now))
+      const currentMinuteInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        minute: 'numeric'
+      }).format(now))
+      
+      const currentTimeInMinutes = currentHourInContactTz * 60 + currentMinuteInContactTz
+      const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
+      
+      // Use the same logic as UI: time reached AND business hours
+      const isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
+      const isDue = isTimeReached && businessHoursStatus.isBusinessHours
+      
+      console.log(`     🔍 UI-MATCHING DUE CHECK for ${contact.email}:`)
+      console.log(`        Contact timezone: ${timezone}`)
+      console.log(`        Current: ${currentHourInContactTz}:${currentMinuteInContactTz} (${currentTimeInMinutes} min)`)
+      console.log(`        Intended: ${intendedHour}:${intendedMinute} (${intendedTimeInMinutes} min)`)
+      console.log(`        Time reached: ${isTimeReached}`)
+      console.log(`        Business hours: ${businessHoursStatus.isBusinessHours}`)
+      console.log(`        Emails sent: ${count || 0}`)
+      console.log(`        RESULT: ${isDue && (count || 0) === 0 ? 'DUE' : 'NOT DUE'}`)
+      
+      return isDue && (count || 0) === 0
       
       // 🔧 EXPLICIT FUTURE DATE CHECK: Never send emails scheduled for future dates (even immediate ones)
       const isInFuture = scheduledDate > now
