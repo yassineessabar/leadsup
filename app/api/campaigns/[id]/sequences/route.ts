@@ -182,13 +182,21 @@ export async function POST(
 
       console.log('💽 Final data for database upsert:', JSON.stringify(sequenceData, null, 2))
 
-      // Use upsert to handle conflicts gracefully
+      // First, delete all existing sequences for this campaign
+      const { error: deleteError } = await supabaseServer
+        .from("campaign_sequences")
+        .delete()
+        .eq("campaign_id", campaignId)
+
+      if (deleteError) {
+        console.error("❌ Error deleting existing sequences:", deleteError)
+        return NextResponse.json({ success: false, error: deleteError.message }, { status: 500 })
+      }
+
+      // Then insert new sequences
       const { data: newSequences, error: insertError } = await supabaseServer
         .from("campaign_sequences")
-        .upsert(sequenceData, { 
-          onConflict: 'campaign_id,step_number',
-          ignoreDuplicates: false 
-        })
+        .insert(sequenceData)
         .select()
 
       if (insertError) {
