@@ -115,36 +115,36 @@ export async function GET(request: NextRequest) {
         // Send warm-up emails (this would integrate with your warm-up email service)
         console.log(`📧 Sending ${warmupVolume} warm-up emails for ${sender.email} (Phase ${warmupPhase}, Health: ${healthScore}%, Day ${daysCompleted})`)
         
-        // Store warmup progress in the campaign sender's name field temporarily (as JSON)
-        // This is a workaround until the migration is applied
-        const warmupProgress = {
-          phase: warmupPhase,
-          daysCompleted: daysCompleted,
-          emailsSentToday: warmupVolume,
-          lastSent: new Date().toISOString(),
-          totalSent: warmupVolume
+        // Update warmup tracking data in the new columns
+        try {
+          await supabaseServer
+            .from('campaign_senders')
+            .update({ 
+              warmup_status: 'active',
+              last_warmup_sent: new Date().toISOString(),
+              warmup_phase: warmupPhase,
+              warmup_days_completed: daysCompleted,
+              warmup_emails_sent_today: warmupVolume,
+              updated_at: new Date().toISOString()
+            })
+            .eq('campaign_id', campaign.id)
+            .eq('email', sender.email)
+          
+          console.log(`✅ Updated warmup tracking for ${sender.email}: Phase ${warmupPhase}, Day ${daysCompleted}, Emails: ${warmupVolume}`)
+        } catch (trackingError) {
+          console.warn(`⚠️ Could not update warmup tracking columns for ${sender.email}:`, trackingError.message)
+          console.log('💡 This is expected if the warmup tracking migration has not been applied yet')
+          
+          // Fallback: just update basic status and timestamp
+          await supabaseServer
+            .from('campaign_senders')
+            .update({ 
+              warmup_status: 'active',
+              updated_at: new Date().toISOString()
+            })
+            .eq('campaign_id', campaign.id)
+            .eq('email', sender.email)
         }
-        
-        // Update warm-up tracking data
-        await supabaseServer
-          .from('campaign_senders')
-          .update({ 
-            warmup_status: 'active',
-            // Store progress data in existing columns until migration is applied
-            updated_at: new Date().toISOString(),
-            // We can use the existing columns creatively for now
-          })
-          .eq('campaign_id', campaign.id)
-          .eq('email', sender.email)
-        
-        // Also update the daily_limit to reflect current warmup volume
-        await supabaseServer
-          .from('campaign_senders')
-          .update({ 
-            daily_limit: Math.max(warmupVolume, 50) // Ensure it shows realistic daily volume
-          })
-          .eq('campaign_id', campaign.id)
-          .eq('email', sender.email)
         
         totalWarmupSent += warmupVolume
         

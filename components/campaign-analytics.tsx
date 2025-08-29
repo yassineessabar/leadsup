@@ -322,12 +322,18 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 ? assignment.health_score 
                 : 75
               
-              // Calculate warmup progress based on actual data or estimates
+              // Calculate warmup progress - prioritize actual tracking data from new columns
               const calculateWarmupProgress = (assignment: any) => {
                 if (assignment.warmup_status !== 'active') return { phase: 1, daysCompleted: 0, emailsToday: 0 }
                 
-                // If we have the actual tracking columns, use them
-                if (assignment.warmup_phase !== undefined && assignment.warmup_days_completed !== undefined) {
+                // PRIORITY 1: Use actual tracking columns if they exist and have data
+                if (assignment.warmup_phase !== undefined && assignment.warmup_phase !== null && 
+                    assignment.warmup_days_completed !== undefined && assignment.warmup_days_completed !== null) {
+                  console.log(`✅ Using actual warmup tracking data for ${assignment.email}:`, {
+                    phase: assignment.warmup_phase,
+                    days: assignment.warmup_days_completed, 
+                    emails: assignment.warmup_emails_sent_today
+                  })
                   return {
                     phase: assignment.warmup_phase,
                     daysCompleted: assignment.warmup_days_completed,
@@ -335,21 +341,29 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                   }
                 }
                 
-                // Otherwise, calculate based on when warmup started (using updated_at as proxy)
+                // PRIORITY 2: Calculate from last_warmup_sent if available
+                if (assignment.last_warmup_sent) {
+                  const lastSent = new Date(assignment.last_warmup_sent)
+                  const now = new Date()
+                  const daysSinceStart = Math.floor((now.getTime() - lastSent.getTime()) / (1000 * 60 * 60 * 24))
+                  const estimatedDays = Math.max(daysSinceStart, 1)
+                  
+                  console.log(`📊 Using last_warmup_sent for ${assignment.email}: ${estimatedDays} days since last warmup`)
+                  const phase = estimatedDays <= 7 ? 1 : (estimatedDays <= 21 ? 2 : 3)
+                  const emailsToday = phase === 1 ? 5 + estimatedDays : (phase === 2 ? 15 : 40)
+                  
+                  return { phase, daysCompleted: estimatedDays, emailsToday }
+                }
+                
+                // PRIORITY 3: Fallback calculation using updated_at
                 const updatedAt = new Date(assignment.updated_at || assignment.created_at)
                 const now = new Date()
                 const daysSinceUpdate = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24))
-                
-                // For active warmup, assume we're making progress
                 const estimatedDays = Math.min(Math.max(daysSinceUpdate, 1), 35)
                 const phase = estimatedDays <= 7 ? 1 : (estimatedDays <= 21 ? 2 : 3)
                 
-                // Estimate today's emails based on warmup phase and health score
-                const senderHealthScore = assignment.health_score || 50
-                let emailsToday = 0
-                if (phase === 1) emailsToday = Math.min(5 + estimatedDays, 15)
-                else if (phase === 2) emailsToday = Math.min(15 + (estimatedDays - 7) * 2, 40)
-                else emailsToday = Math.min(40 + (estimatedDays - 21) * 3, 60)
+                console.log(`⚠️ Using fallback calculation for ${assignment.email}: ${estimatedDays} days estimated`)
+                const emailsToday = phase === 1 ? Math.min(5 + estimatedDays, 15) : (phase === 2 ? 30 : 50)
                 
                 return { phase, daysCompleted: estimatedDays, emailsToday }
               }
