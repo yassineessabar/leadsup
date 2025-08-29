@@ -28,7 +28,9 @@ import { toast } from "sonner"
 import { useI18n } from "@/hooks/use-i18n"
 
 // ContentEditable component that preserves cursor position
-const ContentEditableDiv = React.forwardRef<HTMLDivElement, {
+const ContentEditableDiv = React.forwardRef<HTMLDivElement & { 
+  insertVariable: (variable: string) => void 
+}, {
   content: string
   onContentChange: (content: string) => void
   stepId: number
@@ -38,6 +40,32 @@ const ContentEditableDiv = React.forwardRef<HTMLDivElement, {
   const localRef = useRef<HTMLDivElement>(null)
   const editorRef = (ref as React.RefObject<HTMLDivElement>) || localRef
   const lastStepId = useRef(stepId)
+
+  // Expose insertVariable method to parent
+  React.useImperativeHandle(ref, () => ({
+    ...editorRef.current,
+    insertVariable: (variable: string) => {
+      if (!editorRef.current) return
+      
+      editorRef.current.focus()
+      const selection = window.getSelection()
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        const textNode = document.createTextNode(variable)
+        range.insertNode(textNode)
+        
+        // Move cursor after inserted text
+        range.setStartAfter(textNode)
+        range.collapse(true)
+        selection.removeAllRanges()
+        selection.addRange(range)
+        
+        // Update content without causing cursor jump
+        const htmlContent = editorRef.current.innerHTML
+        onContentChange(htmlContent)
+      }
+    }
+  } as any))
 
   // Save and restore cursor position
   const saveCursorPosition = () => {
@@ -991,21 +1019,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const insertVariableIntoEditor = (variable: string) => {
     if (!editorRef.current || showCodeView) return
     
-    editorRef.current.focus()
-    const selection = window.getSelection()
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-      const textNode = document.createTextNode(variable)
-      range.insertNode(textNode)
-      
-      // Move cursor after inserted text
-      range.setStartAfter(textNode)
-      range.collapse(true)
-      selection.removeAllRanges()
-      selection.addRange(range)
+    // Use the new insertVariable method from ContentEditableDiv
+    if (editorRef.current && 'insertVariable' in editorRef.current) {
+      (editorRef.current as any).insertVariable(variable)
     }
-    
-    updateStepContent(editorRef.current.innerHTML)
   }
 
   const updateStepSubject = (subject: string) => {
