@@ -72,17 +72,27 @@ export async function GET(request: NextRequest) {
           console.log(`🚀 Initializing warm-up for ${sender.email} (health: ${sender.health_score}%)`)
         }
         
+        // Get current values first to make cumulative updates
+        const { data: currentSender } = await supabaseServer
+          .from('campaign_senders')
+          .select('warmup_emails_sent_today, last_warmup_sent, warmup_days_completed, created_at, updated_at')
+          .eq('campaign_id', campaign.id)
+          .eq('email', sender.email)
+          .single()
+        
         // Calculate warm-up phase and volume based on health score
         const healthScore = sender.health_score || 50
         
         // Calculate days completed based on warmup activity
-        // Since we're actively sending warmup emails, show progression
         const now = new Date()
-        const createdAt = new Date(sender.created_at || sender.updated_at || now)
+        const createdAt = new Date(currentSender?.created_at || currentSender?.updated_at || now)
         const daysSinceCreated = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
         
-        // For active warmup, show realistic progression (1-7 days for foundation phase)
-        const daysCompleted = Math.min(Math.max(daysSinceCreated, 1), 35)
+        // Use existing days completed or calculate from creation date
+        const daysCompleted = Math.max(
+          currentSender?.warmup_days_completed || 0,
+          Math.min(Math.max(daysSinceCreated, 1), 35)
+        )
         
         let warmupPhase = 1
         let warmupVolume = 0
@@ -112,11 +122,23 @@ export async function GET(request: NextRequest) {
           warmupVolume = Math.floor(warmupVolume * 1.2) // Increase for good health
         }
         
+        // Check if this is a new day - reset daily counter if so
+        const lastSent = currentSender?.last_warmup_sent ? new Date(currentSender.last_warmup_sent) : null
+        const today = new Date()
+        const isNewDay = !lastSent || 
+          lastSent.getUTCDate() !== today.getUTCDate() ||
+          lastSent.getUTCMonth() !== today.getUTCMonth() ||
+          lastSent.getUTCFullYear() !== today.getUTCFullYear()
+        
+        const currentDailyCount = isNewDay ? 0 : (currentSender?.warmup_emails_sent_today || 0)
+        const newDailyCount = currentDailyCount + warmupVolume
+        
         // Send warm-up emails (this would integrate with your warm-up email service)
-        console.log(`📧 Sending ${warmupVolume} warm-up emails for ${sender.email} (Phase ${warmupPhase}, Health: ${healthScore}%, Day ${daysCompleted})`)
+        console.log(`📧 Sending ${warmupVolume} warm-up emails for ${sender.email} (Phase ${warmupPhase}, Health: ${healthScore}%, Day ${daysCompleted}, Daily: ${currentDailyCount} -> ${newDailyCount})`)
         
         // Update warmup tracking data in the new columns
         try {
+          
           await supabaseServer
             .from('campaign_senders')
             .update({ 
@@ -124,13 +146,13 @@ export async function GET(request: NextRequest) {
               last_warmup_sent: new Date().toISOString(),
               warmup_phase: warmupPhase,
               warmup_days_completed: daysCompleted,
-              warmup_emails_sent_today: warmupVolume,
+              warmup_emails_sent_today: newDailyCount,
               updated_at: new Date().toISOString()
             })
             .eq('campaign_id', campaign.id)
             .eq('email', sender.email)
           
-          console.log(`✅ Updated warmup tracking for ${sender.email}: Phase ${warmupPhase}, Day ${daysCompleted}, Emails: ${warmupVolume}`)
+          console.log(`✅ Updated warmup tracking for ${sender.email}: Phase ${warmupPhase}, Day ${daysCompleted}, Daily total: ${newDailyCount} (+${warmupVolume})`)
         } catch (trackingError) {
           console.warn(`⚠️ Could not update warmup tracking columns for ${sender.email}:`, trackingError.message)
           console.log('💡 This is expected if the warmup tracking migration has not been applied yet')
@@ -155,7 +177,7 @@ export async function GET(request: NextRequest) {
           warmupVolume,
           warmupPhase,
           daysCompleted,
-          emailsSentToday: warmupVolume,
+          emailsSentToday: newDailyCount,
           lastSent: new Date().toISOString(),
           status: 'sent'
         })
