@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from "next/headers"
 import { getSupabaseServerClient } from "@/lib/supabase"
-import { calculateHealthScoresFromRealData, getRealSenderStats, calculateRealHealthScore } from '@/lib/sendgrid-tracking'
 
 
 // Helper function to get user ID from session
@@ -85,90 +84,28 @@ export async function GET(
     }
 
     const assignments = assignmentsData || []
-    console.log(`📋 Found ${assignments.length} assignments for campaign ${campaignId}:`, assignments)
-    console.log('📧 Assignment emails:', assignments.map(a => a.email).filter(Boolean))
-    console.log('👤 Assignment user_ids:', assignments.map(a => a.user_id).filter(Boolean))
-
-    // Calculate real health scores for all assignments
-    if (assignments.length > 0) {
-      console.log('🔄 Calculating real health scores for campaign senders...')
-      
-      // Get sender account IDs for the emails
-      const senderEmails = assignments.map(a => a.email).filter(Boolean)
-      
-      if (senderEmails.length > 0) {
-        const { data: senderAccounts, error: senderError } = await getSupabaseServerClient()
-          .from('sender_accounts')
-          .select('id, email')
-          .in('email', senderEmails)
-          .eq('user_id', userId)
-        
-        if (senderError) {
-          console.error('❌ Error fetching sender accounts for health calculation:', senderError)
-        } else if (senderAccounts && senderAccounts.length > 0) {
-          const senderIds = senderAccounts.map(s => s.id)
-          
-          try {
-            console.log(`📊 Calculating health scores for ${senderIds.length} senders...`)
-            
-            // Calculate health scores for each sender
-            for (const senderAccount of senderAccounts) {
-              try {
-                console.log(`🔄 Calculating health score for ${senderAccount.email}...`)
-                
-                // Get real stats for this sender
-                const stats = await getRealSenderStats(userId, senderAccount.email, 30)
-                
-                // Calculate health score from real data
-                const { score, breakdown } = calculateRealHealthScore(stats)
-                
-                console.log(`📊 Calculated health score for ${senderAccount.email}: ${score}%`)
-                
-                // Update the assignment with the calculated health score
-                const assignmentIndex = assignments.findIndex(a => a.email === senderAccount.email)
-                if (assignmentIndex !== -1) {
-                  assignments[assignmentIndex].health_score = score
-                  assignments[assignmentIndex].calculated_at = new Date().toISOString()
-                  console.log(`✅ Updated assignment health score for ${senderAccount.email}: ${score}%`)
-                }
-                
-                // Also update the database
-                await getSupabaseServerClient()
-                  .from('campaign_senders')
-                  .update({ 
-                    health_score: score,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('campaign_id', campaignId)
-                  .eq('email', senderAccount.email)
-                
-                console.log(`💾 Updated database health score for ${senderAccount.email}`)
-                
-              } catch (error) {
-                console.error(`❌ Error calculating health score for ${senderAccount.email}:`, error)
-                // Keep existing health score or use 75 as fallback
-                const assignmentIndex = assignments.findIndex(a => a.email === senderAccount.email)
-                if (assignmentIndex !== -1 && !assignments[assignmentIndex].health_score) {
-                  assignments[assignmentIndex].health_score = 75
-                  console.log(`📊 Using fallback health score for ${senderAccount.email}: 75%`)
-                }
-              }
-            }
-            
-            console.log('✅ Health score calculations completed')
-            
-          } catch (error) {
-            console.error('❌ Error in health score calculation process:', error)
-          }
-        }
+    console.log(`📋 Found ${assignments.length} assignments for campaign ${campaignId}`)
+    
+    // Use existing health scores from database - they're already stored in campaign_senders table
+    // Health scores are calculated and updated by:
+    // 1. The warmup automation (every time it runs)
+    // 2. The dedicated health-score API endpoint (when specifically requested)
+    // We should NOT recalculate them on every fetch - that's too slow!
+    
+    // Just ensure each assignment has a health score (use existing or default)
+    const assignmentsWithScores = assignments.map(assignment => {
+      if (!assignment.health_score && assignment.health_score !== 0) {
+        // Only use default if truly missing
+        return { ...assignment, health_score: 75 }
       }
-    }
-
-    console.log(`📊 Final assignments with health scores:`, assignments.map(a => ({ email: a.email, health_score: a.health_score })))
+      return assignment
+    })
+    
+    console.log(`📊 Returning ${assignmentsWithScores.length} assignments with cached health scores`)
 
     return NextResponse.json({
       success: true,
-      assignments: assignments
+      assignments: assignmentsWithScores
     })
 
   } catch (error) {

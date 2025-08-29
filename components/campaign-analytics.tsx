@@ -280,9 +280,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const fetchSenderHealthScores = async () => {
     if (!campaign?.id) return
     
-    // Skip if we already have cached scores (they're valid for 60 seconds on the server)
+    // Skip if we already have cached scores
     if (Object.keys(senderHealthScores).length > 0) {
       console.log('📊 Using cached health scores')
+      setHealthScoresLoading(false)
       return
     }
     

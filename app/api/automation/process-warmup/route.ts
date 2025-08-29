@@ -133,8 +133,77 @@ export async function GET(request: NextRequest) {
         const currentDailyCount = isNewDay ? 0 : (currentSender?.warmup_emails_sent_today || 0)
         const newDailyCount = currentDailyCount + warmupVolume
         
-        // Send warm-up emails (this would integrate with your warm-up email service)
+        // Send warm-up emails with tracking integration
         console.log(`📧 Sending ${warmupVolume} warm-up emails for ${sender.email} (Phase ${warmupPhase}, Health: ${healthScore}%, Day ${daysCompleted}, Daily: ${currentDailyCount} -> ${newDailyCount})`)
+        
+        // Actually send warmup emails through SendGrid
+        console.log(`🔍 DEBUG - Environment check:`)
+        console.log(`   SENDGRID_API_KEY exists: ${!!process.env.SENDGRID_API_KEY}`)
+        console.log(`   EMAIL_SIMULATION_MODE: "${process.env.EMAIL_SIMULATION_MODE}"`)
+        console.log(`   Will send real emails: ${process.env.SENDGRID_API_KEY && process.env.EMAIL_SIMULATION_MODE !== 'true'}`)
+        
+        if (process.env.SENDGRID_API_KEY && process.env.EMAIL_SIMULATION_MODE !== 'true') {
+          try {
+            const sgMail = require('@sendgrid/mail')
+            sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+            
+            // Send test emails to warmup recipients
+            // Note: Using real addresses so SendGrid sends webhook events
+            const warmupRecipients = [
+              `yassineessabar+warmup1@gmail.com`,
+              `yassineessabar+warmup2@gmail.com`, 
+              `yassineessabar+warmup3@gmail.com`
+            ]
+            
+            for (let i = 0; i < Math.min(warmupVolume, 3); i++) {
+              const recipient = warmupRecipients[i] || `warmup${i}+${Date.now()}@gmail.com`
+              
+              const warmupMsg = {
+                to: recipient,
+                from: {
+                  email: sender.email,
+                  name: `${sender.email.split('@')[0]} Team`
+                },
+                subject: `Weekly Update - Phase ${warmupPhase}`,
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <p>Hello there!</p>
+                    <p>This is a brief weekly update from our team. We hope you're doing well.</p>
+                    <p>Best regards,<br>${sender.email.split('@')[0]} Team</p>
+                    <div style="margin-top: 20px; color: #999; font-size: 12px;">
+                      Warmup Phase ${warmupPhase} - Day ${daysCompleted}
+                    </div>
+                  </div>
+                `,
+                custom_args: {
+                  user_id: campaign.user_id,
+                  campaign_id: campaign.id,
+                  sender_email: sender.email,
+                  warmup_phase: warmupPhase.toString(),
+                  warmup_day: daysCompleted.toString()
+                },
+                tracking_settings: {
+                  click_tracking: { enable: true },
+                  open_tracking: { enable: true },
+                  subscription_tracking: { enable: false }
+                }
+              }
+              
+              const result = await sgMail.send(warmupMsg)
+              const messageId = result[0]?.headers?.['x-message-id'] || 'unknown'
+              console.log(`📤 Sent warmup email ${i + 1} from ${sender.email} to ${recipient}`)
+              console.log(`📨 SendGrid Message ID: ${messageId}`)
+              console.log(`🏷️  Custom Args: ${JSON.stringify(warmupMsg.custom_args)}`)
+            }
+          } catch (emailError) {
+            console.error(`❌ Error sending warmup emails for ${sender.email}:`, emailError)
+          }
+        } else {
+          console.log(`🧪 Warmup email simulation mode - no real emails sent`)
+          console.log(`🔍 DEBUG - Simulation reason:`)
+          console.log(`   SENDGRID_API_KEY exists: ${!!process.env.SENDGRID_API_KEY}`)
+          console.log(`   EMAIL_SIMULATION_MODE: "${process.env.EMAIL_SIMULATION_MODE}"`)
+        }
         
         // Update warmup tracking data in the new columns
         try {

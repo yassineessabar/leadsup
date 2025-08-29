@@ -216,9 +216,10 @@ export async function getRealSenderStats(
       if (!eventsError && rawEvents && rawEvents.length > 0) {
         console.log(`📊 Found ${rawEvents.length} raw SendGrid events, processing...`)
         
-        // Filter events for this sender
+        // Filter events for this sender email
         const senderEvents = rawEvents.filter(event => 
-          event.event_data?.sender_email === senderEmail
+          event.event_data?.sender_email === senderEmail ||
+          event.email === senderEmail // Also check if the event email matches sender
         )
 
         if (senderEvents.length > 0) {
@@ -342,8 +343,10 @@ export async function getRealSenderStats(
       console.log('⚠️ Could not fetch from sendgrid_events table:', eventsError.message)
     }
 
-    // Final fallback to simulated stats
-    console.log('⚠️ No real data available, returning fallback stats based on account age')
+    // Final fallback - no real data available
+    console.log('⚠️ No real SendGrid tracking data available')
+    console.log('💡 To get accurate health scores, set up SendGrid webhook integration')
+    console.log('📡 Webhook URL: https://app.leadsup.io/api/webhooks/sendgrid/events')
     return createFallbackStats(accountAge, warmupStatus)
 
   } catch (error) {
@@ -520,6 +523,12 @@ export function calculateRealHealthScore(stats: RealSenderStats): { score: numbe
     (breakdown.volumeScore * 0.10) +
     (breakdown.reputationScore * 0.10)
   )
+
+  // Debug logging for health score calculation
+  console.log('🔍 REAL HEALTH SCORE CALCULATION DEBUG:')
+  console.log(`📊 Breakdown: warmup=${breakdown.warmupScore}, deliv=${breakdown.deliverabilityScore}, eng=${breakdown.engagementScore}, vol=${breakdown.volumeScore}, rep=${breakdown.reputationScore}`)
+  console.log(`🧮 Calculation: (${breakdown.warmupScore}*0.25) + (${breakdown.deliverabilityScore}*0.30) + (${breakdown.engagementScore}*0.25) + (${breakdown.volumeScore}*0.10) + (${breakdown.reputationScore}*0.10) = ${finalScore}`)
+  console.log(`📈 Input stats: sent=${stats.totalSent}, delivered=${stats.totalDelivered}, bounced=${stats.totalBounced}, uniqueOpens=${stats.uniqueOpens}, uniqueClicks=${stats.uniqueClicks}, recentSent=${stats.recentSent}, warmupDays=${stats.warmupDays}, warmupStatus=${stats.warmupStatus}, accountAge=${stats.accountAge}`)
 
   return { score: Math.min(100, Math.max(0, finalScore)), breakdown }
 }

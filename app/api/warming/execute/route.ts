@@ -219,7 +219,9 @@ async function executeSendActivity(activity: any, warmup: any): Promise<boolean>
         custom_args: {
           warming_campaign_id: warmup.id,
           campaign_id: warmup.campaign_id,
-          activity_id: activity.id
+          activity_id: activity.id,
+          user_id: warmup.user_id,
+          sender_email: warmup.sender_email
         },
         tracking_settings: {
           click_tracking: { enable: true },

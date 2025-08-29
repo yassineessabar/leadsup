@@ -142,8 +142,12 @@ function calculateHealthScore(stats: SenderStats): { score: number; breakdown: H
     breakdown.volumeScore = 75 // High volume (potential risk)
   }
 
-  // 5. Reputation Score (10% weight) - Based on account age and overall performance
-  if (stats.accountAge > 180) { // 6+ months
+  // 5. Reputation Score (10% weight) - Based on email performance, not DB creation date
+  // For accounts without real tracking data, assume they're established
+  if (stats.totalSent === 0) {
+    // No real data available - assume established account
+    breakdown.reputationScore = 85 // Assume 3+ months of good usage
+  } else if (stats.accountAge > 180) { // 6+ months
     breakdown.reputationScore = 100
   } else if (stats.accountAge > 90) { // 3+ months
     breakdown.reputationScore = 85
@@ -163,6 +167,12 @@ function calculateHealthScore(stats: SenderStats): { score: number; breakdown: H
     (breakdown.volumeScore * 0.10) +
     (breakdown.reputationScore * 0.10)
   )
+
+  // Debug logging for health score calculation
+  console.log('🔍 HEALTH SCORE CALCULATION DEBUG:')
+  console.log(`📊 Breakdown: warmup=${breakdown.warmupScore}, deliv=${breakdown.deliverabilityScore}, eng=${breakdown.engagementScore}, vol=${breakdown.volumeScore}, rep=${breakdown.reputationScore}`)
+  console.log(`🧮 Calculation: (${breakdown.warmupScore}*0.25) + (${breakdown.deliverabilityScore}*0.30) + (${breakdown.engagementScore}*0.25) + (${breakdown.volumeScore}*0.10) + (${breakdown.reputationScore}*0.10) = ${finalScore}`)
+  console.log(`📈 Input stats: sent=${stats.totalSent}, bounced=${stats.totalBounced}, opened=${stats.totalOpened}, clicked=${stats.totalClicked}, recent=${stats.recentSent}, warmupDays=${stats.warmupDays}, warmupStatus=${stats.warmupStatus}, accountAge=${stats.accountAge}`)
 
   return { score: Math.min(100, Math.max(0, finalScore)), breakdown }
 }

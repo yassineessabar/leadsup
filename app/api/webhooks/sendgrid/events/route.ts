@@ -67,9 +67,10 @@ function verifyWebhookSignature(payload: string, signature: string, timestamp: s
 // Extract user context from event data
 function extractUserContext(event: SendGridEvent): { userId: string | null; campaignId: string | null; senderEmail: string | null } {
   // Try to extract user_id from different possible locations
-  let userId = event.user_id || event.unique_args?.user_id || null
-  let campaignId = event.campaign_id || event.unique_args?.campaign_id || null
-  let senderEmail = event.sender_email || event.unique_args?.sender_email || null
+  // SendGrid sends custom_args as top-level properties in webhook events
+  let userId = event.user_id || event.unique_args?.user_id || (event as any).user_id || null
+  let campaignId = event.campaign_id || event.unique_args?.campaign_id || (event as any).campaign_id || null
+  let senderEmail = event.sender_email || event.unique_args?.sender_email || (event as any).sender_email || null
   
   // If sender_email not in event, try to extract from categories or other fields
   if (!senderEmail && event.category) {
@@ -99,8 +100,28 @@ async function processSendGridEvent(event: SendGridEvent): Promise<void> {
   try {
     const { userId, campaignId, senderEmail } = extractUserContext(event)
     
+    // Try to get user_id from sender_email if not provided
+    if (!userId && senderEmail) {
+      console.log(`🔍 No user_id provided, attempting to lookup from sender_email: ${senderEmail}`)
+      
+      try {
+        const { data: senderAccount, error } = await supabaseServer
+          .from('sender_accounts')
+          .select('user_id')
+          .eq('email', senderEmail)
+          .single()
+        
+        if (!error && senderAccount) {
+          userId = senderAccount.user_id
+          console.log(`✅ Found user_id from sender lookup: ${userId}`)
+        }
+      } catch (lookupError) {
+        console.warn('⚠️ Could not lookup user_id from sender_email:', lookupError)
+      }
+    }
+
     if (!userId) {
-      console.warn('⚠️ Skipping event without user_id:', event.sg_message_id)
+      console.warn('⚠️ Skipping event without user_id and failed sender lookup:', event.sg_message_id)
       return
     }
 
