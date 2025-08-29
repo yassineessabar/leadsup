@@ -11,28 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Process Scheduled Campaign Emails with Auto Warm-up
+      - name: Process Scheduled Campaign Emails
         run: |
-          echo "🕐 Processing scheduled emails with warm-up at $(date)"
-          
-          # Process warm-up emails alongside campaign emails
-          echo "🔥 Processing warm-up emails first..."
-          warmup_response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -X GET \
-            -H "Content-Type: application/json" \
-            "${{ secrets.APP_URL }}/api/automation/process-warmup?autoMode=true")
-          
-          warmup_code=$(echo $warmup_response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-          warmup_body=$(echo $warmup_response | sed -e 's/HTTPSTATUS:.*//g')
-          
-          echo "🔥 Warm-up Status: $warmup_code"
-          echo "🔥 Warm-up Response: $warmup_body"
+          echo "🕐 Processing scheduled emails at $(date)"
           
           # Call the automation endpoint
           response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -X GET \
             -H "Content-Type: application/json" \
-            "${{ secrets.APP_URL }}/api/automation/process-scheduled?lookAhead=60&testMode=false&includeWarmup=true")
+            "${{ secrets.APP_URL }}/api/automation/process-scheduled?lookAhead=60&testMode=false")
           
           # Extract HTTP status and body
           http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
@@ -52,15 +39,13 @@ jobs:
               processed=$(echo "$body" | jq -r '.processed // 0')
               errors=$(echo "$body" | jq -r '.errors // 0')
               skipped=$(echo "$body" | jq -r '.skipped // 0')
-              warmup_sent=$(echo "$warmup_body" | jq -r '.sent // 0')
               
-              echo "📈 Summary: $sent campaign emails sent, $warmup_sent warm-up emails sent, $skipped skipped, $errors errors (total: $processed)"
+              echo "📈 Summary: $sent sent, $skipped skipped, $errors errors (total: $processed)"
               
               # Set job outputs for monitoring
               echo "sent=$sent" >> $GITHUB_OUTPUT
               echo "processed=$processed" >> $GITHUB_OUTPUT
               echo "errors=$errors" >> $GITHUB_OUTPUT
-              echo "warmup_sent=$warmup_sent" >> $GITHUB_OUTPUT
             fi
           else
             echo "❌ Email processing failed with status $http_code"

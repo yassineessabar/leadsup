@@ -384,7 +384,10 @@
       }
     },
     "validation": {
-      "understand": "I Understand"
+      "understand": "I Understand",
+      "requirementsNotMet": "Requirements Not Met",
+      "pleaseComplete": "Please Complete",
+      "importOrScraping": "Import or Scraping"
     },
     "settings": {
       "title": "Settings",

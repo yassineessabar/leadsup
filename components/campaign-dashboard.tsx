@@ -424,10 +424,32 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       setWarmupCheckLoading(false)
     }
   }
-  const handleWarmupDecision = async (warmupChoice: string) => {
+  const handleWarmupDecision = async (warmupChoice: string, autoWarmup: boolean = false) => {
     setShowWarmupWarning(false)
     
     if (campaign?.id && onStatusUpdate) {
+      // Store auto warm-up preference based on choice
+      try {
+        const shouldEnableAutoWarmup = warmupChoice === 'auto_warmup' || autoWarmup
+        console.log('💾 Saving auto warmup setting:', shouldEnableAutoWarmup, 'for campaign:', campaign.id)
+        
+        const response = await fetch(`/api/campaigns/${campaign.id}/settings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ auto_warmup: shouldEnableAutoWarmup })
+        })
+        
+        if (response.ok) {
+          const result = await response.json()
+          console.log('✅ Auto warmup setting saved:', result.settings)
+        } else {
+          console.error('❌ Failed to save auto warmup setting, status:', response.status)
+        }
+      } catch (error) {
+        console.error('Error saving auto warmup setting:', error)
+      }
+      
       switch (warmupChoice) {
         case 'auto_warmup':
           // Start sending gradually with automatic warmup
@@ -4338,22 +4360,44 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             </div>
           </div>
           
-          <div className="flex gap-3 p-6 pt-3 border-t border-gray-100">
-            <Button
-              variant="outline"
-              onClick={() => handleWarmupDecision('warmup_only')}
-              className="flex-1 h-10 rounded-xl text-sm"
-            >
-              <Flame className="w-4 h-4 mr-1.5" />
-              {t('senderManagement.warmupWarningDialog.warmupOnlyButton')}
-            </Button>
-            <Button
-              onClick={() => handleWarmupDecision('auto_warmup')}
-              className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium"
-            >
-              <Flame className="w-4 h-4 mr-1.5" />
-              {t('senderManagement.warmupWarningDialog.autoWarmupButton')}
-            </Button>
+          <div className="flex flex-col gap-3 p-6 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <Checkbox 
+                id="auto-warmup-toggle"
+                defaultChecked={true}
+                className="border-orange-300 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+              />
+              <label 
+                htmlFor="auto-warmup-toggle" 
+                className="text-sm font-medium text-gray-700 cursor-pointer"
+              >
+                Enable Auto Warm-up (Recommended)
+              </label>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const checkbox = document.getElementById('auto-warmup-toggle') as HTMLInputElement
+                  const autoWarmup = checkbox?.checked || false
+                  handleWarmupDecision('no_warmup', autoWarmup)
+                }}
+                className="flex-1 h-10 rounded-xl text-sm"
+              >
+                Launch Without Warm-up
+              </Button>
+              <Button
+                onClick={() => {
+                  const checkbox = document.getElementById('auto-warmup-toggle') as HTMLInputElement
+                  const autoWarmup = checkbox?.checked || false
+                  handleWarmupDecision('auto_warmup', autoWarmup)
+                }}
+                className="flex-1 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-medium"
+              >
+                <Flame className="w-4 h-4 mr-1.5" />
+                Launch with Auto Warm-up
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

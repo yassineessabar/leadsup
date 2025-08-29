@@ -181,16 +181,16 @@ export default function WarmingDashboard() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-16">
             <Flame className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">No Warming Campaigns</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">No Active Auto Warm-ups</h2>
             <p className="text-gray-600 mb-6">
-              Set a campaign to "Warming" status to start the warming process.
+              Auto warm-up will activate automatically when you launch campaigns with low health score senders.
             </p>
             <Button 
               onClick={() => window.location.href = '/?tab=campaigns-email'}
               className="bg-orange-500 hover:bg-orange-600 text-white"
             >
               <Flame className="w-4 h-4 mr-2" />
-              Start Warming Campaign
+              Go to Campaigns
             </Button>
           </div>
         </div>
@@ -207,9 +207,9 @@ export default function WarmingDashboard() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
               <Flame className="w-8 h-8 text-orange-500" />
-              Warming Dashboard
+              Auto Warm-up Dashboard
             </h1>
-            <p className="text-gray-600 mt-1">Monitor and manage your email warming campaigns</p>
+            <p className="text-gray-600 mt-1">Monitor your automated warm-up progress and sender health improvements</p>
           </div>
           <Button 
             onClick={fetchWarmingProgress}
@@ -334,27 +334,12 @@ export default function WarmingDashboard() {
                             
                             <div className="flex items-center space-x-2">
                               {getStatusBadge(sender.status)}
-                              <div className="flex space-x-1">
-                                {sender.status === 'active' ? (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleSenderAction(campaign.id, sender.sender_email, 'pause')}
-                                    disabled={isUpdating}
-                                  >
-                                    <Pause className="w-3 h-3" />
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleSenderAction(campaign.id, sender.sender_email, 'resume')}
-                                    disabled={isUpdating}
-                                  >
-                                    <Play className="w-3 h-3" />
-                                  </Button>
-                                )}
-                              </div>
+                              {sender.status === 'active' && (
+                                <Badge className="bg-green-100 text-green-800">
+                                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                                  Auto
+                                </Badge>
+                              )}
                             </div>
                           </div>
 

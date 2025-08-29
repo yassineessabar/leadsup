@@ -167,6 +167,35 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     end: new Date()
   })
 
+  // Fetch campaign settings
+  const [campaignSettings, setCampaignSettings] = useState<any>({})
+  const fetchCampaignSettings = async () => {
+    if (!campaign?.id) return
+    console.log('🔍 Fetching campaign settings for campaign:', campaign.id)
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/settings`, {
+        credentials: "include"
+      })
+      
+      console.log('📡 Campaign settings response status:', response.status)
+      
+      if (response.ok) {
+        const result = await response.json()
+        setCampaignSettings(result.settings || {})
+        console.log('⚙️ Campaign settings loaded:', result.settings)
+        console.log('🔥 Auto warmup enabled?', result.settings?.auto_warmup)
+      } else {
+        console.error('❌ Failed to fetch campaign settings, status:', response.status)
+        const errorText = await response.text()
+        console.error('Error details:', errorText)
+        setCampaignSettings({})
+      }
+    } catch (error) {
+      console.error('💥 Error fetching campaign settings:', error)
+      setCampaignSettings({})
+    }
+  }
+
   // Fetch campaign senders
   const fetchCampaignSenders = async () => {
     if (!campaign?.id) return
@@ -333,39 +362,88 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     }
   }
 
-  // Fetch warming metrics for warming campaigns
+  // Fetch warming metrics for campaigns with auto warm-up
   const fetchWarmingMetrics = async () => {
-    if (!campaign || campaign.status !== 'Warming') {
+    // Fetch warm-up data for both Warming status campaigns and Active campaigns with auto warm-up
+    const hasAutoWarmup = campaignSettings.auto_warmup || campaign.status === 'Warming'
+    
+    if (!campaign || !hasAutoWarmup) {
       setWarmingMetrics(null)
       return
     }
 
     setWarmingLoading(true)
     try {
-      console.log('🔥 Fetching warming metrics for campaign:', campaign.id)
+      console.log('🔥 Fetching warm-up metrics for campaign:', campaign.id, 'hasAutoWarmup:', hasAutoWarmup)
       
-      const response = await fetch(`/api/warming/progress?campaign_id=${campaign.id}`, {
-        credentials: 'include'
+      // Fetch warm-up data directly from campaign_senders
+      const response = await fetch(`/api/campaigns/${campaign.id}/senders`, {
+        credentials: "include"
       })
       
       if (response.ok) {
         const result = await response.json()
-        if (result.success && result.data) {
-          console.log('🔥 Warming metrics loaded:', result.data)
-          setWarmingMetrics(result.data)
+        if (result.success && result.senders) {
+          const senders = result.senders
+          
+          // Filter senders with warm-up data and format for display
+          const warmupSenders = senders
+            .filter((sender: any) => sender.warmup_status === 'active' || sender.health_score < 90)
+            .map((sender: any) => ({
+              sender_email: sender.email,
+              phase: sender.warmup_phase || 1,
+              day_in_phase: sender.warmup_days_completed || 0,
+              total_days: 35, // Standard warm-up period
+              daily_target: sender.daily_limit || 50,
+              emails_sent_today: sender.warmup_emails_sent_today || 0,
+              opens_today: 0, // Would be calculated from actual metrics
+              replies_today: 0, // Would be calculated from actual metrics  
+              current_health_score: sender.health_score || 50,
+              target_health_score: 90,
+              status: sender.warmup_status || 'active',
+              progress_percentage: Math.min(((sender.warmup_days_completed || 0) / 35) * 100, 100)
+            }))
+
+          // Calculate summary stats
+          const totalEmailsSentToday = warmupSenders.reduce((sum: number, s: any) => sum + s.emails_sent_today, 0)
+          const totalOpensToday = warmupSenders.reduce((sum: number, s: any) => sum + s.opens_today, 0)
+          const averageHealthScore = warmupSenders.length > 0 
+            ? Math.round(warmupSenders.reduce((sum: number, s: any) => sum + s.current_health_score, 0) / warmupSenders.length)
+            : 0
+          const openRate = totalEmailsSentToday > 0 ? Math.round((totalOpensToday / totalEmailsSentToday) * 100) : 0
+
+          const warmingData = {
+            campaign: {
+              id: campaign.id,
+              name: campaign.name,
+              status: campaign.status
+            },
+            senders: warmupSenders,
+            summary: {
+              totalCampaigns: 1,
+              totalSenders: warmupSenders.length,
+              activeWarmups: warmupSenders.filter((s: any) => s.status === 'active').length,
+              totalEmailsSentToday,
+              totalOpensToday,
+              totalRepliesToday: 0,
+              averageHealthScore,
+              openRate,
+              replyRate: 0
+            }
+          }
+
+          setWarmingMetrics(warmingData)
+          console.log('🔥 Warm-up metrics loaded:', warmingData)
         } else {
-          console.log('🔥 No warming data available yet')
+          console.log('🔥 No sender data available')
           setWarmingMetrics(null)
         }
-      } else if (response.status === 401) {
-        console.log('🔥 Authentication required for warming metrics - will retry')
-        setWarmingMetrics(null)
       } else {
-        console.error('Failed to fetch warming metrics:', response.status, response.statusText)
+        console.error('Failed to fetch warm-up metrics:', response.status, response.statusText)
         setWarmingMetrics(null)
       }
     } catch (error) {
-      console.error('Error fetching warming metrics:', error)
+      console.error('Error fetching warm-up metrics:', error)
       setWarmingMetrics(null)
     } finally {
       setWarmingLoading(false)
@@ -1266,9 +1344,16 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       fetchCampaignSenders()
       fetchCampaignSequences()
       fetchSenderHealthScores()
-      fetchWarmingMetrics()
+      fetchCampaignSettings()
     }
   }, [campaign?.id, campaign.name, campaign.status])
+
+  // Fetch warming metrics when campaign settings change
+  useEffect(() => {
+    if (campaign?.id && Object.keys(campaignSettings).length > 0) {
+      fetchWarmingMetrics()
+    }
+  }, [campaign?.id, campaignSettings])
 
   // Fetch metrics when date range changes
   useEffect(() => {
@@ -2577,22 +2662,41 @@ Sequence Info:
                           <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getScoreColor(avgScore)}`}>
                             Avg: {isNaN(avgScore) ? 75 : avgScore}/100
                           </div>
-                          {avgScore < 90 && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                if (campaign.status === 'Warming') {
-                                  setShowWarmupStatus(true)
-                                } else {
-                                  setShowWarmupWarning(true)
-                                }
-                              }}
-                              className="px-2 py-1 text-xs font-medium text-amber-600 border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-300 whitespace-nowrap rounded-full animate-pulse"
-                            >
-                              Warm Up
-                            </Button>
-                          )}
+                          {/* Auto Warm-up Status Only */}
+                          {(() => {
+                            const hasAutoWarmup = campaignSettings.auto_warmup || campaign.status === 'Warming'
+                            
+                            console.log('🔧 DEBUG Auto Warmup Status:', {
+                              campaignSettings,
+                              'campaignSettings.auto_warmup': campaignSettings.auto_warmup,
+                              'campaign.status': campaign.status,
+                              hasAutoWarmup,
+                              'will show ON?': hasAutoWarmup && (campaign.status === 'Active' || campaign.status === 'Warming')
+                            })
+                            
+                            // Force render with debug info
+                            const shouldShowOn = hasAutoWarmup && (campaign.status === 'Active' || campaign.status === 'Warming')
+                            console.log('🔧 RENDER: shouldShowOn =', shouldShowOn)
+                            
+                            if (shouldShowOn) {
+                              console.log('🔥 RENDERING: Auto Warm-up ON')
+                              return (
+                                <div key={`warmup-on-${campaignSettings.auto_warmup}`} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                                  <Flame className="w-3 h-3 mr-1 animate-pulse" />
+                                  Auto Warm-up ON
+                                </div>
+                              )
+                            } else if (campaign.status === 'Active') {
+                              console.log('🔧 RENDERING: Auto Warm-up OFF')
+                              return (
+                                <div key={`warmup-off-${campaignSettings.auto_warmup}`} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-50 text-gray-600">
+                                  Auto Warm-up OFF
+                                </div>
+                              )
+                            }
+                            console.log('🔧 RENDERING: Nothing (null)')
+                            return null
+                          })()}
                           <Button
                             variant="ghost"
                             size="sm"
