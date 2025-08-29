@@ -43,7 +43,7 @@ const ContentEditableDiv = React.forwardRef<HTMLDivElement & {
 
   // Expose insertVariable method to parent
   React.useImperativeHandle(ref, () => ({
-    ...editorRef.current,
+    focus: () => editorRef.current?.focus(),
     insertVariable: (variable: string) => {
       if (!editorRef.current) return
       
@@ -64,8 +64,16 @@ const ContentEditableDiv = React.forwardRef<HTMLDivElement & {
         const htmlContent = editorRef.current.innerHTML
         onContentChange(htmlContent)
       }
+    },
+    get innerHTML() {
+      return editorRef.current?.innerHTML || ''
+    },
+    set innerHTML(value: string) {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = value
+      }
     }
-  } as any))
+  }))
 
   // Save and restore cursor position
   const saveCursorPosition = () => {
