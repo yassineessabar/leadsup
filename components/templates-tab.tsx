@@ -46,120 +46,93 @@ export function TemplatesTab() {
   const templates: Template[] = [
     {
       id: "1",
-      title: "First SaaS Outreach",
-      subtitle: "Boost your conversions by 35% in 30 days",
-      category: "Community",
+      title: t('emailTemplates.firstSaasOutreach.title'),
+      subtitle: t('emailTemplates.firstSaasOutreach.subtitle'),
+      category: t('templates.community'),
       tags: ["cold_outreach", "SaaS"],
       metrics: {
         openRate: "45.2%",
         responseRate: "8.3%",
         conversionRate: "2.1%"
       },
-      content: `Subject: Quick question about {{company}}'s growth goals
+      content: `Subject: ${t('emailTemplates.firstSaasOutreach.subject')}
 
-Hi {{firstName}},
-
-I noticed {{company}} has been expanding rapidly in the {{industry}} space. Congratulations on the recent growth!
-
-I'm reaching out because we've helped similar companies like yours boost their conversion rates by 35% in just 30 days using our automated outreach platform.
-
-Would you be interested in a quick 15-minute call to see how this could work for {{company}}?
-
-Best regards,
-{{senderName}}
-
-P.S. Here's a case study showing how we helped [Similar Company] achieve similar results: [link]`
+${t('emailTemplates.firstSaasOutreach.content')}`
     },
     {
       id: "2", 
-      title: "Warm Follow-up",
-      subtitle: "Re: Our conversation about {{company}}",
-      category: "Community",
+      title: t('emailTemplates.warmFollowUp.title'),
+      subtitle: t('emailTemplates.warmFollowUp.subtitle'),
+      category: t('templates.community'),
       tags: ["follow_up", "All sectors"],
       metrics: {
         openRate: "52.7%",
         responseRate: "12.1%",
         conversionRate: "4.2%"
       },
-      content: `Subject: Re: Our conversation about {{company}}
+      content: `Subject: ${t('emailTemplates.warmFollowUp.subject')}
 
-Hi {{firstName}},
-
-I wanted to follow up on our conversation last week about {{company}}'s challenges with lead generation.
-
-Since we spoke, I've been thinking about how our platform could specifically help with the issues you mentioned around qualifying leads and improving response rates.
-
-I'd love to show you a quick demo of exactly how this would work for your team. Are you available for a brief call this week?
-
-Looking forward to continuing our conversation.
-
-Best,
-{{senderName}}`
+${t('emailTemplates.warmFollowUp.content')}`
     },
     {
       id: "3",
-      title: "Product Demo Request",
-      subtitle: "Quick 15-min demo for {{company}}",
-      category: "Premium",
+      title: t('emailTemplates.productDemo.title'),
+      subtitle: t('emailTemplates.productDemo.subtitle'),
+      category: t('templates.premium'),
       tags: ["demo", "SaaS", "B2B"],
       metrics: {
         openRate: "38.9%",
         responseRate: "6.7%",
         conversionRate: "3.1%"
       },
-      content: `Subject: Quick 15-min demo for {{company}}?
+      content: `Subject: ${t('emailTemplates.productDemo.subject')}
 
-Hi {{firstName}},
-
-I've been researching {{company}} and I'm impressed by your approach to {{industry}}.
-
-I'd love to show you how companies like yours are using our platform to streamline their outreach process and increase qualified leads by 40%.
-
-Would you be open to a quick 15-minute demo this week? I can show you:
-• How to automate your lead qualification process
-• Ways to personalize outreach at scale
-• Real results from similar companies in your space
-
-What does your calendar look like?
-
-Best,
-{{senderName}}`
+${t('emailTemplates.productDemo.content')}`
     },
     {
       id: "4",
-      title: "Re-engagement Sequence",
-      subtitle: "Haven't heard from you in a while...",
-      category: "Community",
+      title: t('emailTemplates.reEngagement.title'),
+      subtitle: t('emailTemplates.reEngagement.subtitle'),
+      category: t('templates.community'),
       tags: ["re_engagement", "All sectors"],
       metrics: {
         openRate: "29.4%",
         responseRate: "4.8%",
         conversionRate: "1.8%"
-      }
+      },
+      content: `Subject: ${t('emailTemplates.reEngagement.subject')}
+
+${t('emailTemplates.reEngagement.content')}`
     },
     {
       id: "5",
-      title: "Partnership Proposal",
-      subtitle: "Strategic partnership opportunity",
-      category: "Premium",
+      title: t('emailTemplates.partnershipProposal.title'),
+      subtitle: t('emailTemplates.partnershipProposal.subtitle'),
+      category: t('templates.premium'),
       tags: ["partnership", "B2B", "growth"],
       metrics: {
         openRate: "41.3%",
         responseRate: "7.2%",
         conversionRate: "2.9%"
-      }
+      },
+      content: `Subject: ${t('emailTemplates.partnershipProposal.subject')}
+
+${t('emailTemplates.partnershipProposal.content')}`
     },
     {
       id: "6",
-      title: "Event Invitation",
-      subtitle: "Exclusive invite to {{eventName}}",
-      category: "Community",
+      title: t('emailTemplates.eventInvitation.title'),
+      subtitle: t('emailTemplates.eventInvitation.subtitle'),
+      category: t('templates.community'),
       tags: ["event", "networking", "invite"],
       metrics: {
         openRate: "47.8%",
         responseRate: "9.4%",
         conversionRate: "3.6%"
-      }
+      },
+      content: `Subject: ${t('emailTemplates.eventInvitation.subject')}
+
+${t('emailTemplates.eventInvitation.content')}`
     }
   ]
 

@@ -2766,18 +2766,38 @@ Sequence Info:
                             const shouldShowOn = hasAutoWarmup && (campaign.status === 'Active' || campaign.status === 'Warming')
                             console.log('🔧 RENDER: shouldShowOn =', shouldShowOn)
                             
-                            if (shouldShowOn) {
-                              console.log('🔥 RENDERING: Auto Warm-up ON')
-                              return (
-                                <div key={`warmup-on-${campaignSettings.auto_warmup}`} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
-                                  <Flame className="w-3 h-3 mr-1 animate-pulse" />
-                                  Auto Warm-up ON
-                                </div>
-                              )
+                            if (hasAutoWarmup) {
+                              // Show different status based on campaign status
+                              if (campaign.status === 'Paused') {
+                                console.log('🔥 RENDERING: Auto Warm-up PAUSED')
+                                return (
+                                  <div key={`warmup-paused-${campaignSettings.auto_warmup}`} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                    <Flame className="w-3 h-3 mr-1" />
+                                    Auto Warm-up PAUSED
+                                  </div>
+                                )
+                              } else if (shouldShowOn) {
+                                console.log('🔥 RENDERING: Auto Warm-up ON')
+                                return (
+                                  <div key={`warmup-on-${campaignSettings.auto_warmup}`} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                                    <Flame className="w-3 h-3 mr-1 animate-pulse" />
+                                    Auto Warm-up ON
+                                  </div>
+                                )
+                              } else {
+                                // Campaign is not active and warmup is enabled but not running
+                                console.log('🔧 RENDERING: Auto Warm-up OFF')
+                                return (
+                                  <div key={`warmup-off-${campaignSettings.auto_warmup}`} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-50 text-gray-600">
+                                    Auto Warm-up OFF
+                                  </div>
+                                )
+                              }
                             } else if (campaign.status === 'Active') {
+                              // No auto warmup but campaign is active
                               console.log('🔧 RENDERING: Auto Warm-up OFF')
                               return (
-                                <div key={`warmup-off-${campaignSettings.auto_warmup}`} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-50 text-gray-600">
+                                <div key={`warmup-disabled`} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-50 text-gray-600">
                                   Auto Warm-up OFF
                                 </div>
                               )
@@ -2805,6 +2825,15 @@ Sequence Info:
                             
                             // Get warmup data for this sender
                             const warmupStatus = healthData.warmup_status
+                            
+                            // Override warmup status based on campaign status
+                            const effectiveWarmupStatus = (() => {
+                              if (campaign.status === 'Paused' && warmupStatus === 'active') {
+                                return 'paused'
+                              }
+                              return warmupStatus
+                            })()
+                            
                             const getWarmupStatusInfo = (status?: string) => {
                               switch (status) {
                                 case 'active':
@@ -2817,8 +2846,8 @@ Sequence Info:
                               }
                             }
                             
-                            const warmupInfo = getWarmupStatusInfo(warmupStatus)
-                            const showWarmupDetails = warmupStatus === 'active' || campaign.status === 'Warming'
+                            const warmupInfo = getWarmupStatusInfo(effectiveWarmupStatus)
+                            const showWarmupDetails = (effectiveWarmupStatus === 'active' || campaign.status === 'Warming') && campaign.status !== 'Paused'
                             
                             return (
                               <div key={emailOrId} className="p-3 bg-gray-50 rounded-lg">
@@ -2846,7 +2875,7 @@ Sequence Info:
                                 </div>
                                 
                                 {/* Detailed warmup information for active warmups */}
-                                {showWarmupDetails && warmupStatus === 'active' && (
+                                {showWarmupDetails && effectiveWarmupStatus === 'active' && (
                                   <div className="mt-2 pt-2 border-t border-gray-200">
                                     <div className="grid grid-cols-2 gap-3 text-xs">
                                       <div className="flex items-center space-x-1">

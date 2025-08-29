@@ -36,7 +36,9 @@ export async function GET(request: NextRequest) {
     for (const campaign of campaigns || []) {
       // Check if auto warm-up is enabled for this campaign
       const settings = campaign.settings as any || {}
+      console.log(`🔍 Campaign ${campaign.name}: auto_warmup = ${settings.auto_warmup}, autoMode = ${autoMode}`)
       if (!settings.auto_warmup && autoMode) {
+        console.log(`⏭️ Skipping ${campaign.name} - auto_warmup disabled in auto mode`)
         continue // Skip campaigns without auto warm-up in auto mode
       }
       
@@ -49,6 +51,11 @@ export async function GET(request: NextRequest) {
       
       if (sendersError) {
         console.error(`Error fetching senders for campaign ${campaign.id}:`, sendersError)
+        continue
+      }
+      
+      if (!senders || senders.length === 0) {
+        console.log(`⚠️ Campaign ${campaign.name}: No selected senders found`)
         continue
       }
       
@@ -144,8 +151,7 @@ export async function GET(request: NextRequest) {
         
         if (process.env.SENDGRID_API_KEY && process.env.EMAIL_SIMULATION_MODE !== 'true') {
           try {
-            const sgMail = require('@sendgrid/mail')
-            sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+            const apiKey = process.env.SENDGRID_API_KEY.trim()
             
             // Get real warmup recipients from database
             const { data: recipientData, error: recipientError } = await supabaseServer
@@ -174,23 +180,33 @@ export async function GET(request: NextRequest) {
             for (let i = 0; i < Math.min(warmupVolume, 3); i++) {
               const recipient = warmupRecipients[i] || `warmup${i}+${Date.now()}@gmail.com`
               
-              const warmupMsg = {
-                to: recipient,
+              // Use raw SendGrid API instead of SDK to avoid header issues
+              const emailData = {
+                personalizations: [
+                  {
+                    to: [{ email: recipient }]
+                  }
+                ],
                 from: {
                   email: sender.email,
                   name: `${sender.email.split('@')[0]} Team`
                 },
                 subject: `Weekly Update - Phase ${warmupPhase}`,
-                html: `
-                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <p>Hello there!</p>
-                    <p>This is a brief weekly update from our team. We hope you're doing well.</p>
-                    <p>Best regards,<br>${sender.email.split('@')[0]} Team</p>
-                    <div style="margin-top: 20px; color: #999; font-size: 12px;">
-                      Warmup Phase ${warmupPhase} - Day ${daysCompleted}
-                    </div>
-                  </div>
-                `,
+                content: [
+                  {
+                    type: 'text/html',
+                    value: `
+                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <p>Hello there!</p>
+                        <p>This is a brief weekly update from our team. We hope you're doing well.</p>
+                        <p>Best regards,<br>${sender.email.split('@')[0]} Team</p>
+                        <div style="margin-top: 20px; color: #999; font-size: 12px;">
+                          Warmup Phase ${warmupPhase} - Day ${daysCompleted}
+                        </div>
+                      </div>
+                    `
+                  }
+                ],
                 custom_args: {
                   user_id: campaign.user_id,
                   campaign_id: campaign.id,
@@ -205,11 +221,24 @@ export async function GET(request: NextRequest) {
                 }
               }
               
-              const result = await sgMail.send(warmupMsg)
-              const messageId = result[0]?.headers?.['x-message-id'] || 'unknown'
-              console.log(`📤 Sent warmup email ${i + 1} from ${sender.email} to ${recipient}`)
-              console.log(`📨 SendGrid Message ID: ${messageId}`)
-              console.log(`🏷️  Custom Args: ${JSON.stringify(warmupMsg.custom_args)}`)
+              const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${apiKey}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(emailData)
+              })
+              
+              if (response.ok) {
+                const messageId = response.headers.get('x-message-id') || 'unknown'
+                console.log(`📤 Sent warmup email ${i + 1} from ${sender.email} to ${recipient}`)
+                console.log(`📨 SendGrid Message ID: ${messageId}`)
+                console.log(`🏷️  Custom Args: ${JSON.stringify(emailData.custom_args)}`)
+              } else {
+                const errorText = await response.text()
+                console.error(`❌ SendGrid API error for email ${i + 1}:`, response.status, errorText)
+              }
             }
           } catch (emailError) {
             console.error(`❌ Error sending warmup emails for ${sender.email}:`, emailError)
