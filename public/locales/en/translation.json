@@ -312,6 +312,7 @@
       "title": "Campaign Sequence",
       "subtitle": "Define your outreach steps and follow-ups",
       "saveSequence": "Save Sequence",
+      "saving": "Saving sequence...",
       "campaignTimeline": {
         "title": "Campaign Timeline",
         "subtitle": "Overview of all scheduled outreach steps"
@@ -319,11 +320,12 @@
       "sequences": {
         "initialOutreach": "Initial Outreach",
         "followUpOutreach": "Follow-Up Outreach",
-        "subject": "Subject"
+        "subject": "Subject: {subject}",
+        "noSubject": "No subject"
       },
       "steps": {
         "immediately": "Immediately",
-        "day": "Day",
+        "day": "Day {timing}",
         "day66": "Day 66",
         "day69": "Day 69", 
         "day72": "Day 72"
@@ -332,19 +334,21 @@
         "addEmail": "Add Email"
       },
       "gap": {
-        "waitingPeriod": "Waiting Period",
+        "waitingPeriod": "Waiting period of {gap} days",
         "clickToEdit": "Click to edit"
       },
       "editor": {
         "sequenceSubjectLine": "Sequence Subject Line",
-        "sharedAcrossEmails": "Shared across emails",
+        "sharedAcrossEmails": "Shared across all emails in {sequence} sequence",
         "sendDelay": "Send Delay",
         "emailContent": "Email Content",
         "preview": "Preview",
         "variables": "Variables",
         "insertSignature": "Insert Signature",
         "sendSchedule": "Send Schedule",
-        "minimumDays": "Minimum Days"
+        "minimumDays": "Minimum Days",
+        "editSubjectPrompt": "Enter the subject line for {sequence} sequence:",
+        "subjectPlaceholder": "Enter email subject line..."
       }
     },
     "loading": {
@@ -436,12 +440,16 @@
     "dialogs": {
       "deleteCampaign": {
         "title": "Delete Campaign",
-        "confirmation": "Are you sure you want to delete this campaign?",
+        "confirmation": "Are you sure you want to delete '{name}' campaign?",
         "warning": "This action cannot be undone. All campaign data will be permanently removed.",
         "deleteCampaign": "Delete Campaign"
       },
       "delete": {
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "deleteSequence": "Delete Sequence",
+        "deleteStep": "Delete Step",
+        "sequenceConfirmation": "Are you sure you want to delete the '{name}' sequence?",
+        "stepConfirmation": "Are you sure you want to delete this step?"
       },
       "sequenceProgress": {
         "title": "Confirm Sequence Progress",
@@ -452,7 +460,8 @@
       "preview": {
         "title": "Email Preview",
         "immediately": "Send immediately",
-        "subject": "Subject"
+        "subject": "Subject: {subject}",
+        "waitDays": "Wait {timing} days"
       }
     }
   },
