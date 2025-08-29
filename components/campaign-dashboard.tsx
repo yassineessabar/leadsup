@@ -34,7 +34,8 @@ const ContentEditableDiv = ({
   stepId, 
   className, 
   style,
-  editorRef
+  editorRef,
+  setLastCursorPosition
 }: {
   content: string
   onContentChange: (content: string) => void
@@ -42,6 +43,7 @@ const ContentEditableDiv = ({
   className?: string
   style?: React.CSSProperties
   editorRef: React.RefObject<HTMLDivElement>
+  setLastCursorPosition: (position: number) => void
 }) => {
   const lastStepId = useRef(stepId)
 
@@ -98,6 +100,12 @@ const ContentEditableDiv = ({
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     const htmlContent = e.currentTarget.innerHTML
     onContentChange(htmlContent)
+    
+    // Save cursor position for variable insertion
+    const position = saveCursorPosition()
+    if (position !== null) {
+      setLastCursorPosition(position)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -115,6 +123,24 @@ const ContentEditableDiv = ({
         selection.addRange(range)
       }
     }
+    
+    // Save cursor position for variable insertion
+    setTimeout(() => {
+      const position = saveCursorPosition()
+      if (position !== null) {
+        setLastCursorPosition(position)
+      }
+    }, 0)
+  }
+
+  const handleClick = () => {
+    // Save cursor position when user clicks in the editor
+    setTimeout(() => {
+      const position = saveCursorPosition()
+      if (position !== null) {
+        setLastCursorPosition(position)
+      }
+    }, 0)
   }
 
   return (
@@ -123,6 +149,7 @@ const ContentEditableDiv = ({
       contentEditable
       onInput={handleInput}
       onKeyDown={handleKeyDown}
+      onClick={handleClick}
       className={className}
       style={style}
       suppressContentEditableWarning={true}
@@ -355,6 +382,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [showTestModal, setShowTestModal] = useState(false)
   const [showCodeView, setShowCodeView] = useState(false)
+  const [lastCursorPosition, setLastCursorPosition] = useState<number>(0)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showAdvancedPopup, setShowAdvancedPopup] = useState(false)
 
@@ -997,7 +1025,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     if (showCodeView) return
     
     console.log('🔄 Inserting variable:', variable)
-    console.log('🔍 editorRef.current:', editorRef.current)
+    console.log('🔍 Last cursor position:', lastCursorPosition)
     
     const element = editorRef.current
     if (!element) {
@@ -1005,52 +1033,119 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       return
     }
     
-    console.log('✅ Found editor element, focusing...')
-    
     try {
-      // Focus the element
+      // Focus the element first
       element.focus()
       
-      // Get current selection or create one at the end
-      let selection = window.getSelection()
-      let range: Range
-      
-      if (selection && selection.rangeCount > 0) {
-        range = selection.getRangeAt(0)
-        console.log('✅ Using existing selection')
-      } else {
-        // No selection - create one at the end of the content
-        range = document.createRange()
-        range.selectNodeContents(element)
-        range.collapse(false) // Collapse to end
-        selection?.removeAllRanges()
-        selection?.addRange(range)
-        console.log('✅ Created selection at end of content')
+      // Restore cursor position to where it was when user was last typing
+      const restorePosition = (position: number) => {
+        const selection = window.getSelection()
+        if (!selection) return false
+        
+        const range = document.createRange()
+        let currentPos = 0
+        const walker = document.createTreeWalker(
+          element,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false
+        )
+        
+        let node = walker.nextNode()
+        while (node && currentPos < position) {
+          const nodeLength = node.textContent?.length || 0
+          if (currentPos + nodeLength >= position) {
+            range.setStart(node, position - currentPos)
+            range.collapse(true)
+            selection.removeAllRanges()
+            selection.addRange(range)
+            return true
+          }
+          currentPos += nodeLength
+          node = walker.nextNode()
+        }
+        return false
       }
       
-      // Insert the variable at cursor position
-      const textNode = document.createTextNode(variable)
-      range.insertNode(textNode)
+      // Try to restore the last cursor position
+      let positionRestored = false
+      if (lastCursorPosition > 0) {
+        positionRestored = restorePosition(lastCursorPosition)
+        console.log('🔄 Cursor position restored:', positionRestored)
+      }
       
-      // Move cursor after the inserted variable
-      range.setStartAfter(textNode)
-      range.collapse(true)
-      selection?.removeAllRanges()
-      selection?.addRange(range)
-      
-      console.log('✅ Variable inserted successfully')
-      
-      // Update the content state
-      const htmlContent = element.innerHTML
-      updateStepContent(htmlContent)
+      // Give the browser time to focus and restore position
+      setTimeout(() => {
+        const selection = window.getSelection()
+        if (!selection) {
+          console.error('❌ No selection available')
+          return
+        }
+        
+        let range: Range
+        
+        // Use the restored position or current selection
+        if (selection.rangeCount > 0) {
+          range = selection.getRangeAt(0)
+          console.log('✅ Using selection at offset:', range.startOffset)
+        } else {
+          // Fallback to end of content
+          range = document.createRange()
+          range.selectNodeContents(element)
+          range.collapse(false)
+          selection.removeAllRanges()
+          selection.addRange(range)
+          console.log('🔄 Created selection at end')
+        }
+        
+        // Ensure the range is within our editor
+        if (!element.contains(range.startContainer)) {
+          console.log('🔄 Range outside editor, placing at end')
+          range = document.createRange()
+          range.selectNodeContents(element)
+          range.collapse(false)
+          selection.removeAllRanges()
+          selection.addRange(range)
+        }
+        
+        // Insert the variable with spaces before and after
+        const textNode = document.createTextNode(` ${variable} `)
+        
+        // Delete any selected content first
+        if (!range.collapsed) {
+          range.deleteContents()
+        }
+        
+        // Insert the variable at the current position
+        range.insertNode(textNode)
+        
+        // Move cursor after the inserted text
+        range.setStartAfter(textNode)
+        range.setEndAfter(textNode)
+        
+        // Update selection
+        selection.removeAllRanges()
+        selection.addRange(range)
+        
+        console.log('✅ Variable inserted at cursor position')
+        
+        // Update content and save new cursor position
+        updateStepContent(element.innerHTML)
+        
+        // Update the cursor position state (variable + 2 spaces)
+        const newPosition = lastCursorPosition + variable.length + 2
+        setLastCursorPosition(newPosition)
+        
+      }, 20) // Slightly longer delay for position restoration
       
     } catch (error) {
       console.error('❌ Error inserting variable:', error)
       
-      // Fallback: just append to end of content
+      // Fallback: append to end of content with spaces
       const currentContent = activeStep.content || ''
-      const newContent = currentContent + variable
+      const newContent = currentContent + ` ${variable} `
       updateStepContent(newContent)
+      element.innerHTML = newContent
       console.log('🔄 Used fallback method to append variable')
     }
   }
@@ -3806,6 +3901,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                     whiteSpace: 'pre-wrap',
                                     wordWrap: 'break-word'
                                   }}
+                                  setLastCursorPosition={setLastCursorPosition}
                                 />
                               )}
                             </div>
