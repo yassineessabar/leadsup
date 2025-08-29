@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useI18n } from '@/hooks/use-i18n'
-import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe, Trash2, Save, Copy, Loader2, CheckCircle, X } from "lucide-react"
+import { Check, Mail, Plus, AlertCircle, Settings, ChevronDown, ChevronRight, User, Globe, Trash2, Save, Copy, Loader2, CheckCircle, X, Flame, Activity, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -30,6 +30,11 @@ interface Sender {
   health_score: number
   emails_sent: number
   created_at: string
+  warmup_status?: 'active' | 'inactive' | 'paused'
+  warmup_phase?: number
+  warmup_days_completed?: number
+  warmup_emails_sent_today?: number
+  last_warmup_sent?: string
 }
 
 interface DomainWithSenders extends Domain {
@@ -114,6 +119,33 @@ export default function CampaignSenderSelection({
   // Loading state for sender account creation
   const [creatingSenderAccounts, setCreatingSenderAccounts] = useState(false)
 
+  // Helper function to get warmup status display info
+  const getWarmupStatusInfo = (status?: string) => {
+    switch (status) {
+      case 'active':
+        return { color: 'text-green-600', bg: 'bg-green-50', icon: Flame, label: 'Active' }
+      case 'paused':
+        return { color: 'text-orange-600', bg: 'bg-orange-50', icon: AlertCircle, label: 'Paused' }
+      case 'inactive':
+      default:
+        return { color: 'text-gray-500', bg: 'bg-gray-50', icon: Activity, label: 'Inactive' }
+    }
+  }
+
+  // Helper function to get warmup phase label
+  const getWarmupPhaseLabel = (phase?: number) => {
+    switch (phase) {
+      case 1:
+        return 'Foundation'
+      case 2:
+        return 'Engagement'
+      case 3:
+        return 'Scale Up'
+      default:
+        return 'Not Started'
+    }
+  }
+
   // Fetch DNS records when domain instructions should be shown
   useEffect(() => {
     if (showDomainInstructions && pendingDomainData?.id) {
@@ -161,6 +193,8 @@ export default function CampaignSenderSelection({
   const loadData = async () => {
     // Load domains and senders first
     await fetchDomainsAndSenders()
+    // Load warmup data and merge it with sender data
+    await loadWarmupData()
     // loadExistingSenderAssignments will be triggered automatically by useEffect when domains are loaded
   }
 
@@ -377,6 +411,62 @@ export default function CampaignSenderSelection({
     } catch (error) {
       console.error('❌ Error loading existing sender assignments:', error)
       // Don't show error toast for this as it's not critical
+    }
+  }
+
+  // Load warmup data for campaign senders
+  const loadWarmupData = async () => {
+    try {
+      console.log('🔥 Loading warmup data for campaign:', campaignId)
+      
+      const response = await fetch(`/api/campaigns/${campaignId}/senders`, {
+        credentials: 'include'
+      })
+      
+      if (!response.ok) {
+        console.warn('⚠️ Failed to load warmup data:', response.status)
+        return
+      }
+      
+      const data = await response.json()
+      
+      if (data.success && data.assignments) {
+        console.log('✅ Loaded warmup data for', data.assignments.length, 'senders')
+        
+        // Merge warmup data with existing sender data
+        setDomainsWithSenders(prevDomains => 
+          prevDomains.map(domain => ({
+            ...domain,
+            senders: domain.senders.map(sender => {
+              // Find matching campaign sender by email
+              const warmupData = data.assignments.find((assignment: any) => 
+                assignment.email === sender.email
+              )
+              
+              if (warmupData) {
+                console.log(`🔥 Merged warmup data for ${sender.email}:`, {
+                  warmup_status: warmupData.warmup_status,
+                  health_score: warmupData.health_score
+                })
+                return {
+                  ...sender,
+                  warmup_status: warmupData.warmup_status,
+                  warmup_phase: warmupData.warmup_phase,
+                  warmup_days_completed: warmupData.warmup_days_completed,
+                  warmup_emails_sent_today: warmupData.warmup_emails_sent_today,
+                  last_warmup_sent: warmupData.last_warmup_sent,
+                  health_score: warmupData.health_score || sender.health_score
+                }
+              }
+              
+              return sender
+            })
+          }))
+        )
+      }
+    } catch (error) {
+      console.error('❌ Error loading warmup data:', error)
+      // Don't show error to user as this is supplementary data
     }
   }
 
@@ -1698,6 +1788,33 @@ export default function CampaignSenderSelection({
                                       </div>
                                     )}
                                   </div>
+                                  <div className="text-center">
+                                    <div className="text-sm text-gray-500 mb-1">Warmup Status</div>
+                                    {(() => {
+                                      const statusInfo = getWarmupStatusInfo(sender.warmup_status)
+                                      const StatusIcon = statusInfo.icon
+                                      return (
+                                        <div className="flex flex-col items-center gap-1">
+                                          <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${statusInfo.bg}`}>
+                                            <StatusIcon className={`h-3 w-3 ${statusInfo.color}`} />
+                                            <span className={`text-xs font-medium ${statusInfo.color}`}>
+                                              {statusInfo.label}
+                                            </span>
+                                          </div>
+                                          {sender.warmup_phase && sender.warmup_phase > 0 && (
+                                            <div className="text-xs text-gray-500">
+                                              Phase {sender.warmup_phase}: {getWarmupPhaseLabel(sender.warmup_phase)}
+                                            </div>
+                                          )}
+                                          {sender.warmup_days_completed && sender.warmup_days_completed > 0 && (
+                                            <div className="text-xs text-gray-500">
+                                              Day {sender.warmup_days_completed}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )
+                                    })()}
+                                  </div>
                                   <Button
                                     onClick={(e) => {
                                       e.stopPropagation()
@@ -1709,6 +1826,31 @@ export default function CampaignSenderSelection({
                                     Test
                                   </Button>
                                 </div>
+                                
+                                {/* Warmup Activity Section */}
+                                {sender.warmup_status === 'active' && (
+                                  <div className="mt-4 pt-4 border-t border-gray-100">
+                                    <div className="flex items-center gap-6 text-sm">
+                                      <div className="flex items-center gap-2">
+                                        <TrendingUp className="h-4 w-4 text-blue-500" />
+                                        <span className="text-gray-600">
+                                          Today's Warmup: 
+                                          <span className="font-medium text-gray-900 ml-1">
+                                            {sender.warmup_emails_sent_today || 0} emails
+                                          </span>
+                                        </span>
+                                      </div>
+                                      {sender.last_warmup_sent && (
+                                        <div className="flex items-center gap-2 text-gray-500">
+                                          <Activity className="h-4 w-4" />
+                                          <span>
+                                            Last: {new Date(sender.last_warmup_sent).toLocaleDateString()}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                             )
