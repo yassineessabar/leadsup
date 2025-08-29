@@ -215,10 +215,10 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
       const isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
       const isDue = isTimeReached && businessHoursStatus.isBusinessHours
       
-      console.log(`     🔍 UI-MATCHING DUE CHECK for ${contact.email}:`)
-      console.log(`        Contact timezone: ${timezone}`)
-      console.log(`        Current: ${currentHourInContactTz}:${currentMinuteInContactTz} (${currentTimeInMinutes} min)`)
-      console.log(`        Intended: ${intendedHour}:${intendedMinute} (${intendedTimeInMinutes} min)`)
+      console.log(`     🔍 DUE CHECK for ${contact.email}:`)
+      console.log(`        Timezone: ${timezone}`)
+      console.log(`        Current: ${currentHourInContactTz}:${currentMinuteInContactTz}`)
+      console.log(`        Intended: ${intendedHour}:${intendedMinute}`)
       console.log(`        Time reached: ${isTimeReached}`)
       console.log(`        Business hours: ${businessHoursStatus.isBusinessHours}`)
       console.log(`        Emails sent: ${count || 0}`)
