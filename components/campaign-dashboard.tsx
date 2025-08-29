@@ -27,6 +27,105 @@ import { DomainSetupModal } from "@/components/domain-setup-modal"
 import { toast } from "sonner"
 import { useI18n } from "@/hooks/use-i18n"
 
+// ContentEditable component that preserves cursor position
+const ContentEditableDiv = React.forwardRef<HTMLDivElement, {
+  content: string
+  onContentChange: (content: string) => void
+  stepId: number
+  className?: string
+  style?: React.CSSProperties
+}>(({ content, onContentChange, stepId, className, style }, ref) => {
+  const localRef = useRef<HTMLDivElement>(null)
+  const editorRef = (ref as React.RefObject<HTMLDivElement>) || localRef
+  const lastStepId = useRef(stepId)
+
+  // Save and restore cursor position
+  const saveCursorPosition = () => {
+    if (!editorRef.current) return null
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return null
+    
+    const range = selection.getRangeAt(0)
+    const preCaretRange = range.cloneRange()
+    preCaretRange.selectNodeContents(editorRef.current)
+    preCaretRange.setEnd(range.startContainer, range.startOffset)
+    return preCaretRange.toString().length
+  }
+
+  const restoreCursorPosition = (position: number) => {
+    if (!editorRef.current || position === null) return
+    
+    const selection = window.getSelection()
+    const range = document.createRange()
+    
+    let currentPos = 0
+    const walker = document.createTreeWalker(
+      editorRef.current,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    )
+    
+    let node = walker.nextNode()
+    while (node) {
+      const nodeLength = node.textContent?.length || 0
+      if (currentPos + nodeLength >= position) {
+        range.setStart(node, position - currentPos)
+        range.collapse(true)
+        selection?.removeAllRanges()
+        selection?.addRange(range)
+        return
+      }
+      currentPos += nodeLength
+      node = walker.nextNode()
+    }
+  }
+
+  // Update content only when step changes, not on every content update
+  useEffect(() => {
+    if (editorRef.current && (lastStepId.current !== stepId || !editorRef.current.innerHTML)) {
+      lastStepId.current = stepId
+      editorRef.current.innerHTML = content
+    }
+  }, [stepId, content])
+
+  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    const htmlContent = e.currentTarget.innerHTML
+    onContentChange(htmlContent)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Handle Enter key to insert <br> instead of <div>
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      const selection = window.getSelection()
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        const br = document.createElement('br')
+        range.insertNode(br)
+        range.setStartAfter(br)
+        range.collapse(true)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
+    }
+  }
+
+  return (
+    <div
+      ref={editorRef}
+      contentEditable
+      onInput={handleInput}
+      onKeyDown={handleKeyDown}
+      className={className}
+      style={style}
+      suppressContentEditableWarning={true}
+    />
+  )
+})
+
+ContentEditableDiv.displayName = 'ContentEditableDiv'
+
 interface CampaignDashboardProps {
   campaign?: {
     id: number
@@ -3650,48 +3749,17 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                 />
                               ) : (
                                 // Rich Text View
-                                <div
+                                <ContentEditableDiv
                                   ref={editorRef}
-                                  contentEditable
-                                  onInput={(e) => {
-                                    const htmlContent = e.currentTarget.innerHTML
-                                    updateStepContent(htmlContent)
-                                  }}
-                                  onKeyDown={(e) => {
-                                    // Handle Enter key to insert <br> instead of <div>
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                      e.preventDefault()
-                                      const selection = window.getSelection()
-                                      if (selection && selection.rangeCount > 0) {
-                                        const range = selection.getRangeAt(0)
-                                        const br = document.createElement('br')
-                                        range.insertNode(br)
-                                        range.setStartAfter(br)
-                                        range.collapse(true)
-                                        selection.removeAllRanges()
-                                        selection.addRange(range)
-                                      }
-                                    }
-                                  }}
+                                  content={activeStep.content || 'Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because...<br/><br/>Best regards,<br/>{{senderName}}'}
+                                  onContentChange={updateStepContent}
+                                  stepId={activeStepId}
                                   className="min-h-[300px] p-4 border-0 focus:ring-0 focus:outline-none resize-none text-sm leading-relaxed"
                                   style={{
                                     whiteSpace: 'pre-wrap',
                                     wordWrap: 'break-word'
                                   }}
-                                  data-step-id={activeStepId}
-                                  suppressContentEditableWarning={true}
-                                >
-                                  {activeStep.content ? (
-                                    <span dangerouslySetInnerHTML={{ __html: activeStep.content }} />
-                                  ) : (
-                                    <>
-                                      Hi {'{{firstName}}'}, <br/><br/>
-                                      I hope this email finds you well! I wanted to reach out because...<br/><br/>
-                                      Best regards,<br/>
-                                      {'{{senderName}}'}
-                                    </>
-                                  )}
-                                </div>
+                                />
                               )}
                             </div>
                             
