@@ -713,65 +713,96 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     const newStatus = currentStatus === "Active" ? "Paused" : "Active"
     const action = newStatus === "Active" ? "activate" : "pause"
     
-    // Always show warmup popup when resuming from Paused status
+    // Check if auto-warmup is enabled for this campaign before showing popup
     if (currentStatus === "Paused" && newStatus === "Active") {
       try {
-        console.log('🔍 Fetching health scores for warmup popup for campaign:', campaignId)
-        
-        // First, fetch campaign senders to get their emails
-        const sendersResponse = await fetch(`/api/campaigns/${campaignId}/senders`, {
+        // First check if campaign has auto-warmup enabled
+        const campaignResponse = await fetch(`/api/campaigns?id=${campaignId}`, {
           credentials: "include"
         })
         
-        let senderEmails = []
-        if (sendersResponse.ok) {
-          const sendersResult = await sendersResponse.json()
-          console.log('📧 Campaign senders result:', sendersResult)
-          if (sendersResult.success && sendersResult.assignments) {
-            senderEmails = sendersResult.assignments
-              .map((a: any) => a.email)
-              .filter(Boolean)
+        let hasAutoWarmup = false
+        if (campaignResponse.ok) {
+          const campaignResult = await campaignResponse.json()
+          if (campaignResult.success && campaignResult.data?.[0]?.settings?.auto_warmup) {
+            hasAutoWarmup = true
+            console.log('🔥 Auto-warmup is enabled for this campaign, skipping health popup')
           }
         }
         
-        console.log('📧 Sender emails for health check:', senderEmails)
+        // Skip popup if auto-warmup is enabled
+        if (hasAutoWarmup) {
+          await proceedWithStatusChange(campaignId, newStatus, campaignName)
+          toast({
+            title: "Campaign Resumed! 🚀",
+            description: "Auto-warmup will handle sender health automatically.",
+            variant: "default"
+          })
+          return
+        }
         
-        // Now fetch health scores for these specific senders
-        let allSenders = []
-        if (senderEmails.length > 0) {
-          const healthResponse = await fetch(`/api/sender-accounts/health-score?emails=${senderEmails.join(',')}`, {
+        // Show warmup popup for campaigns without auto-warmup
+        try {
+          console.log('🔍 Fetching health scores for warmup popup for campaign:', campaignId)
+          
+          // First, fetch campaign senders to get their emails
+          const sendersResponse = await fetch(`/api/campaigns/${campaignId}/senders`, {
             credentials: "include"
           })
           
-          if (healthResponse.ok) {
-            const healthResult = await healthResponse.json()
-            console.log('💚 Health scores result:', healthResult)
-            if (healthResult.success && healthResult.data) {
-              const healthScores = healthResult.data
-              allSenders = Object.entries(healthScores)
-                .map(([email, healthData]: [string, any]) => ({ email, score: healthData.score }))
+          let senderEmails = []
+          if (sendersResponse.ok) {
+            const sendersResult = await sendersResponse.json()
+            console.log('📧 Campaign senders result:', sendersResult)
+            if (sendersResult.success && sendersResult.assignments) {
+              senderEmails = sendersResult.assignments
+                .map((a: any) => a.email)
+                .filter(Boolean)
             }
           }
-        } else {
-          console.log('⚠️ No senders assigned to campaign, showing empty warmup popup')
+          
+          console.log('📧 Sender emails for health check:', senderEmails)
+          
+          // Now fetch health scores for these specific senders
+          let allSenders = []
+          if (senderEmails.length > 0) {
+            const healthResponse = await fetch(`/api/sender-accounts/health-score?emails=${senderEmails.join(',')}`, {
+              credentials: "include"
+            })
+            
+            if (healthResponse.ok) {
+              const healthResult = await healthResponse.json()
+              console.log('💚 Health scores result:', healthResult)
+              if (healthResult.success && healthResult.data) {
+                const healthScores = healthResult.data
+                allSenders = Object.entries(healthScores)
+                  .map(([email, healthData]: [string, any]) => ({ email, score: healthData.score }))
+              }
+            }
+          } else {
+            console.log('⚠️ No senders assigned to campaign, showing empty warmup popup')
+          }
+          
+          // Show warmup popup regardless of health scores
+          console.log('📋 Showing warmup popup with senders:', allSenders)
+          setLowHealthSenders(allSenders)
+          setPendingResumeStatus(newStatus)
+          setPendingResumeCampaign({ id: campaignId, name: campaignName })
+          setShowWarmupWarning(true)
+          return // Don't proceed with activation yet
+          
+        } catch (error) {
+          console.warn('Error fetching health scores, showing warmup popup anyway:', error)
+          // Show popup even if health score fetch fails
+          setLowHealthSenders([])
+          setPendingResumeStatus(newStatus)
+          setPendingResumeCampaign({ id: campaignId, name: campaignName })
+          setShowWarmupWarning(true)
+          return
         }
-        
-        // Show warmup popup regardless of health scores
-        console.log('📋 Showing warmup popup with senders:', allSenders)
-        setLowHealthSenders(allSenders)
-        setPendingResumeStatus(newStatus)
-        setPendingResumeCampaign({ id: campaignId, name: campaignName })
-        setShowWarmupWarning(true)
-        return // Don't proceed with activation yet
-        
       } catch (error) {
-        console.warn('Error fetching health scores, showing warmup popup anyway:', error)
-        // Show popup even if health score fetch fails
-        setLowHealthSenders([])
-        setPendingResumeStatus(newStatus)
-        setPendingResumeCampaign({ id: campaignId, name: campaignName })
-        setShowWarmupWarning(true)
-        return
+        console.error('Error checking auto-warmup status:', error)
+        // Fallback to showing popup if we can't check auto-warmup
       }
     }
     
