@@ -154,6 +154,22 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
       .eq('campaign_id', contact.campaign_id)
       .eq('status', 'sent')
     
+    // Check if contact was already processed today to prevent duplicates
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const { count: todayCount } = await supabase
+      .from('email_tracking')
+      .select('id', { count: 'exact' })
+      .eq('contact_id', contact.id)
+      .eq('campaign_id', contact.campaign_id)
+      .eq('status', 'sent')
+      .gte('created_at', today.toISOString())
+    
+    if (todayCount && todayCount > 0) {
+      console.log(`     ⏭️ SKIP: ${contact.email} already processed ${todayCount} times today`)
+      return false
+    }
+    
     if (trackingError) {
       console.log(`      ❌ Error querying email_tracking:`, trackingError)
     }
