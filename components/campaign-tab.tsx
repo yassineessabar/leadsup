@@ -891,6 +891,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           window.history.pushState({}, '', url.toString())
         }}
         onStatusUpdate={async (campaignId, newStatus) => {
+          console.log(`📊 Analytics: Updating campaign ${campaignId} status to ${newStatus}`)
           try {
             // Make API call to update status in database
             const response = await fetch(`/api/campaigns/${campaignId}/status`, {
@@ -902,6 +903,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
             });
 
             const result = await response.json();
+            console.log('📊 Analytics: API Response:', result)
 
             if (response.ok && result.success) {
               // Update the campaign status in local state only after successful API call
@@ -913,12 +915,15 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               // Also update the selected campaign
               setSelectedCampaign(prev => prev ? { ...prev, status: newStatus } : prev)
               
+              console.log(`✅ Analytics: Campaign ${campaignId} status updated to ${newStatus} in database and local state`)
+              
               toast({
                 title: "Campaign Updated",
                 description: `Campaign status changed to ${newStatus}`,
                 variant: "default"
               })
             } else {
+              console.error('❌ Analytics: Failed to update status:', result.error)
               toast({
                 title: "Update Failed",
                 description: result.error || "Failed to update campaign status",
@@ -926,7 +931,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               })
             }
           } catch (error) {
-            console.error('Error updating campaign status:', error);
+            console.error('❌ Analytics: Error updating campaign status:', error);
             toast({
               title: "Update Failed",
               description: "Network error occurred while updating campaign",

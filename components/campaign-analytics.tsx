@@ -1476,7 +1476,9 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     
     // No popup needed - warmup will be handled automatically
     
-    onStatusUpdate(campaign.id, newStatus)
+    // Call the status update function passed from parent
+    await onStatusUpdate(campaign.id, newStatus)
+    console.log('✅ Status update called for campaign:', campaign.id, 'new status:', newStatus)
   }
 
 
