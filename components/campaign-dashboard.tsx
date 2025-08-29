@@ -1022,46 +1022,74 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   const insertVariableIntoEditor = (variable: string) => {
-    if (!editorRef.current || showCodeView) return
+    if (showCodeView) return
     
     console.log('🔄 Inserting variable:', variable)
+    console.log('🔍 editorRef.current:', editorRef.current)
+    console.log('🔍 editorRef.current type:', typeof editorRef.current)
     
-    // Direct insertion approach that preserves cursor
-    const element = editorRef.current
-    element.focus()
+    // Get the actual DOM element - it might be nested due to ref forwarding
+    let element = editorRef.current
     
-    // Save current cursor position
-    const selection = window.getSelection()
-    let cursorPosition = 0
+    // If it's our custom component, get the actual DOM element
+    if (element && !element.focus) {
+      console.log('🔍 Ref is custom component, looking for DOM element...')
+      // Try to find the actual contenteditable div
+      const contentEditableDiv = element.querySelector ? element.querySelector('[contenteditable="true"]') : null
+      if (contentEditableDiv) {
+        element = contentEditableDiv as HTMLDivElement
+        console.log('✅ Found contenteditable element:', element)
+      }
+    }
     
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
+    if (!element || !element.focus) {
+      console.error('❌ Could not find focusable editor element')
+      return
+    }
+    
+    try {
+      element.focus()
       
-      // Insert the variable at cursor position
-      const textNode = document.createTextNode(variable)
-      range.insertNode(textNode)
+      // Get current selection
+      const selection = window.getSelection()
       
-      // Move cursor after the inserted variable
-      range.setStartAfter(textNode)
-      range.collapse(true)
-      selection.removeAllRanges()
-      selection.addRange(range)
-      
-      console.log('✅ Variable inserted successfully at cursor position')
-      
-      // Update the content state without triggering a re-render that resets cursor
-      const htmlContent = element.innerHTML
-      
-      // Use setTimeout to ensure DOM updates are processed
-      setTimeout(() => {
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        
+        // Insert the variable at cursor position
+        const textNode = document.createTextNode(variable)
+        range.insertNode(textNode)
+        
+        // Move cursor after the inserted variable
+        range.setStartAfter(textNode)
+        range.collapse(true)
+        selection.removeAllRanges()
+        selection.addRange(range)
+        
+        console.log('✅ Variable inserted successfully at cursor position')
+        
+        // Update the content state
+        const htmlContent = element.innerHTML
         updateStepContent(htmlContent)
-      }, 0)
-    } else {
-      // Fallback: append at end if no selection
-      const htmlContent = element.innerHTML + variable
-      element.innerHTML = htmlContent
-      updateStepContent(htmlContent)
-      console.log('⚠️ No selection found, appended variable at end')
+        
+      } else {
+        console.log('⚠️ No selection found, placing variable at end')
+        // Fallback: append at end if no selection
+        const currentContent = element.innerHTML || ''
+        const newContent = currentContent + variable
+        element.innerHTML = newContent
+        updateStepContent(newContent)
+        
+        // Place cursor at end
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        range.collapse(false)
+        const newSelection = window.getSelection()
+        newSelection?.removeAllRanges()
+        newSelection?.addRange(range)
+      }
+    } catch (error) {
+      console.error('❌ Error inserting variable:', error)
     }
   }
 
