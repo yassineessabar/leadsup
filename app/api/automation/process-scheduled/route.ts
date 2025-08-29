@@ -154,22 +154,27 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
       .eq('campaign_id', contact.campaign_id)
       .eq('status', 'sent')
     
-    // Check if contact was already processed today to prevent duplicates
+    // Check if THIS SPECIFIC sequence step was already sent today to prevent duplicates
+    const nextStep = (contact.sequence_step || 0) + 1
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const todayEnd = new Date(today)
     todayEnd.setHours(23, 59, 59, 999)
+    
+    console.log(`     🔍 Checking duplicate for ${contact.email} step ${nextStep}`)
+    
     const { count: todayCount } = await supabase
       .from('email_tracking')
       .select('id', { count: 'exact' })
       .eq('contact_id', contact.id)
       .eq('campaign_id', contact.campaign_id)
+      .eq('sequence_step', nextStep)
       .eq('status', 'sent')
       .gte('sent_at', today.toISOString())
       .lte('sent_at', todayEnd.toISOString())
     
     if (todayCount && todayCount > 0) {
-      console.log(`     ⏭️ SKIP: ${contact.email} already processed ${todayCount} times today`)
+      console.log(`     ⏭️ SKIP: ${contact.email} step ${nextStep} already sent today`)
       return false
     }
     
@@ -207,10 +212,9 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
     
     // 🔧 CRITICAL: Check if scheduled date is in a FUTURE DAY (not just future time)
     if (scheduledDate) {
-      const nowDate = new Date(now)
-      nowDate.setHours(0, 0, 0, 0)
-      const scheduledDateOnly = new Date(scheduledDate)
-      scheduledDateOnly.setHours(0, 0, 0, 0)
+      // Use UTC dates for comparison to avoid timezone issues
+      const nowDate = new Date(now.toISOString().split('T')[0] + 'T00:00:00.000Z')
+      const scheduledDateOnly = new Date(scheduledDate.toISOString().split('T')[0] + 'T00:00:00.000Z')
       
       if (scheduledDateOnly > nowDate) {
         console.log(`     🚫 FUTURE DATE BLOCK for ${contact.email}:`)
@@ -246,8 +250,11 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
       const intendedMin = (seedVal * 7) % 60
       const intendedTimeInMinutes = intendedHr * 60 + intendedMin
       
-      const isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
-      const isDue = isTimeReached && businessHoursStatus.isBusinessHours && (count || 0) === 0
+      // Match UI logic: For immediate emails on day 1, they're due if we're in business hours
+      // Don't check if time has passed for first-time immediate emails
+      const isFirstEmail = (count || 0) === 0 && actualSequenceStep === 0
+      const isTimeReached = isFirstEmail ? true : (currentTimeInMinutes >= intendedTimeInMinutes)
+      const isDue = businessHoursStatus.isBusinessHours && isTimeReached && (count || 0) === 0
       
       console.log(`     🔍 DUE CHECK for ${contact.email}:`)
       console.log(`        Current: ${currentHourInContactTz}:${currentMinuteInContactTz}`)
@@ -376,6 +383,12 @@ export async function GET(request: NextRequest) {
       const maxStep = campaignSequences?.length || 0
       
       console.log(`📋 Campaign ${campaign.name}: Found ${campaignContacts?.length || 0} "Due next" contacts`)
+      if (campaignContacts && campaignContacts.length > 0) {
+        console.log(`   All "Due next" contacts from DB:`)
+        for (const c of campaignContacts) {
+          console.log(`     - ${c.email} (ID: ${c.id}, Step: ${c.sequence_step}, Status: ${c.status})`)
+        }
+      }
       
       // Find contacts that are actually due based on timing logic
       const dueContacts = []
@@ -443,6 +456,12 @@ export async function GET(request: NextRequest) {
     }
     
     console.log(`📊 Total analytics due contacts: ${analyticsContacts.length}`)
+    if (analyticsContacts.length > 0) {
+      console.log(`   Found contacts:`)
+      for (const c of analyticsContacts) {
+        console.log(`     - ${c.email || c.email_address} (ID: ${c.id}, Step: ${c.sequence_step || 0})`)
+      }
+    }
     console.log('─'.repeat(40))
     
     // STEP 2: Use analytics results from sync-due-contacts (TRUST THE CORRECTED SYNC API)
