@@ -205,13 +205,20 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
     const scheduledDate = nextEmailData.date
     let isTimeReached = false
     
-    // 🔧 CRITICAL: Always check if scheduled date is in the future first
-    if (scheduledDate && scheduledDate > now) {
-      console.log(`     🚫 FUTURE DATE BLOCK for ${contact.email}:`)
-      console.log(`        Now UTC: ${now.toISOString()}`)
-      console.log(`        Scheduled UTC: ${scheduledDate.toISOString()}`)
-      console.log(`        Email is scheduled for FUTURE DATE - BLOCKED`)
-      return false
+    // 🔧 CRITICAL: Check if scheduled date is in a FUTURE DAY (not just future time)
+    if (scheduledDate) {
+      const nowDate = new Date(now)
+      nowDate.setHours(0, 0, 0, 0)
+      const scheduledDateOnly = new Date(scheduledDate)
+      scheduledDateOnly.setHours(0, 0, 0, 0)
+      
+      if (scheduledDateOnly > nowDate) {
+        console.log(`     🚫 FUTURE DATE BLOCK for ${contact.email}:`)
+        console.log(`        Today: ${nowDate.toISOString().split('T')[0]}`)
+        console.log(`        Scheduled: ${scheduledDateOnly.toISOString().split('T')[0]}`)
+        console.log(`        Email is scheduled for FUTURE DAY - BLOCKED`)
+        return false
+      }
     }
     
     // For immediate emails, use timezone-aware logic (same as analytics)  
@@ -252,17 +259,7 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
     } else {
       // For non-immediate emails, use direct UTC comparison
       if (scheduledDate) {
-        // 🔧 EXPLICIT FUTURE DATE CHECK: Never send emails scheduled for future dates
-        const isInFuture = scheduledDate > now
-        if (isInFuture) {
-          console.log(`     🚫 FUTURE DATE BLOCK for ${contact.email}:`)
-          console.log(`        Now UTC: ${now.toISOString()}`)
-          console.log(`        Scheduled UTC: ${scheduledDate.toISOString()}`)
-          console.log(`        Email is scheduled for the FUTURE - BLOCKED`)
-          return false
-        }
-        
-        // Direct UTC comparison - no timezone conversion needed as both dates are already in UTC
+        // Check if we've passed the scheduled time (date AND time)
         isTimeReached = now >= scheduledDate
         const isDue = isTimeReached && businessHoursStatus.isBusinessHours
         
