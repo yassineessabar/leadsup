@@ -1347,6 +1347,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           console.log(`   Final isDue: ${isDue}`)
           console.log(`==========================================\n`)
           
+          // Store the result for batch database update
+          const emailStatusForDB = nextEmailIn === "Due next" ? "Due next" : 
+                                   nextEmailIn === "Sequence complete" ? "Completed" : "Valid"
+          
           return {
             id: contact.id,
             first_name: contact.first_name || '',
@@ -1366,6 +1370,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             email_subject,
             nextEmailIn,
             isDue,
+            emailStatusForDB,
             created_at: contact.created_at
           }
           
@@ -1402,6 +1407,26 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             }
           }
         })
+        
+        // Update email_status in database based on UI calculations
+        const contactUpdates = mappedContacts.map(contact => ({
+          contactId: contact.id,
+          email_status: contact.emailStatusForDB
+        }))
+        
+        if (contactUpdates.length > 0) {
+          try {
+            await fetch(`/api/campaigns/${campaign.id}/update-email-status`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ contactUpdates })
+            })
+            console.log(`📝 Updated email_status for ${contactUpdates.length} contacts`)
+          } catch (error) {
+            console.error('Error updating email status:', error)
+          }
+        }
         
         setContacts(mappedContacts)
       } else {

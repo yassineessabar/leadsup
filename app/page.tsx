@@ -76,10 +76,10 @@ function CampaignAnalyticsWrapper({ campaignId, campaignData, onBack }: {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center">
+      <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="text-gray-600 font-medium">Loading Campaign Analytics...</p>
+          <p className="text-gray-600 dark:text-gray-400 font-medium">Loading Campaign Analytics...</p>
         </div>
       </div>
     )
@@ -87,12 +87,12 @@ function CampaignAnalyticsWrapper({ campaignId, campaignData, onBack }: {
 
   if (error || !campaign) {
     return (
-      <div className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center">
+      <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 font-medium mb-4">{error || "Campaign not found"}</p>
+          <p className="text-red-600 dark:text-red-400 font-medium mb-4">{error || "Campaign not found"}</p>
           <button
             onClick={onBack}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-6 py-2 rounded-lg"
           >
             Back to Campaigns
           </button>
@@ -366,10 +366,10 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[rgb(243,243,241)] flex items-center justify-center">
+      <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="text-gray-600 font-medium">Loading LeadsUp...</p>
+          <p className="text-gray-600 dark:text-gray-400 font-medium">Loading LeadsUp...</p>
         </div>
       </div>
     )
@@ -378,17 +378,17 @@ export default function Home() {
   // Show loading or redirect for unauthenticated users
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="text-gray-600 font-medium">Redirecting to login...</p>
+          <p className="text-gray-600 dark:text-gray-400 font-medium">Redirecting to login...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen bg-[rgb(243,243,241)] relative">
+    <div className="flex h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 relative">
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />

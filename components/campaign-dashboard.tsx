@@ -3080,7 +3080,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             {/* Clean Header */}
             <div className="flex justify-between items-start mb-8">
               <div>
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight">{t('campaignManagement.settings.title')}</h1>
+                <h1 className="text-4xl font-light text-gray-900 dark:text-gray-100 tracking-tight">{t('campaignManagement.settings.title')}</h1>
                 <p className="text-gray-500 mt-2 font-light">{t('campaignManagement.settings.subtitle')}</p>
               </div>
               <div className="flex items-center">
@@ -3096,14 +3096,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
             <div className="space-y-8">
               {/* Sending Schedule Section */}
-              <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
+              <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100/50 dark:border-gray-800 overflow-hidden">
                 <div className="p-8">
                   <div className="flex items-center space-x-4 mb-8">
                     <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center">
                       <Clock className="w-6 h-6 text-gray-400" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-medium text-gray-900">{t('campaignManagement.settings.sendingSchedule.title')}</h2>
+                      <h2 className="text-xl font-medium text-gray-900 dark:text-gray-100">{t('campaignManagement.settings.sendingSchedule.title')}</h2>
                       <p className="text-gray-500 text-sm mt-1">{t('campaignManagement.settings.sendingSchedule.subtitle')}</p>
                     </div>
                   </div>
@@ -3185,14 +3185,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </div>
 
               {/* Sender Information Section */}
-              <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
+              <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100/50 dark:border-gray-800 overflow-hidden">
                 <div className="p-8">
                   <div className="flex items-center space-x-4 mb-8">
                     <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center">
                       <User className="w-6 h-6 text-gray-400" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-medium text-gray-900">{t('campaignManagement.settings.senderInformation.title')}</h2>
+                      <h2 className="text-xl font-medium text-gray-900 dark:text-gray-100">{t('campaignManagement.settings.senderInformation.title')}</h2>
                       <p className="text-gray-500 text-sm mt-1">{t('campaignManagement.settings.senderInformation.subtitle')}</p>
                     </div>
                   </div>
@@ -3242,14 +3242,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
                   {/* Signature Section */}
                   <div>
-                    <h4 className="text-lg font-medium text-gray-900 mb-6">{t('campaignManagement.settings.senderInformation.emailSignature')}</h4>
+                    <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-6">{t('campaignManagement.settings.senderInformation.emailSignature')}</h4>
                     
                     <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden">
                       <div 
                         ref={signatureEditorRef}
                         contentEditable
                         suppressContentEditableWarning
-                        className="p-6 min-h-[180px] outline-none bg-white m-1 rounded-xl"
+                        className="p-6 min-h-[180px] outline-none bg-white dark:bg-gray-800 m-1 rounded-xl"
                         dangerouslySetInnerHTML={{ __html: emailSignature }}
                         onInput={(e) => {
                           const target = e.currentTarget
@@ -3372,8 +3372,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             {/* Clean Header */}
             <div className="flex justify-between items-start mb-8">
               <div>
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight">{t('campaignManagement.sequence.title')}</h1>
-                <p className="text-gray-500 mt-2 font-light">{t('campaignManagement.sequence.subtitle')}</p>
+                <h1 className="text-4xl font-light text-gray-900 dark:text-gray-100 tracking-tight">{t('campaignManagement.sequence.title')}</h1>
+                <p className="text-gray-500 dark:text-gray-400 mt-2 font-light">{t('campaignManagement.sequence.subtitle')}</p>
               </div>
               <div className="flex items-center">
                 <Button 
@@ -3390,13 +3390,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
               {/* Sequence Timeline Sidebar */}
               <div className="lg:col-span-2">
-                <div className="bg-white rounded-3xl border border-gray-100/50 p-8 min-w-0">
+                <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100/50 dark:border-gray-800 p-8 min-w-0">
                   <div className="flex items-center space-x-4 mb-8">
                     <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
                       <Mail className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-medium text-gray-900">{t('campaignManagement.sequence.campaignTimeline.title')}</h2>
+                      <h2 className="text-xl font-medium text-gray-900 dark:text-gray-100">{t('campaignManagement.sequence.campaignTimeline.title')}</h2>
                       <p className="text-gray-500 text-sm mt-1">{t('campaignManagement.sequence.campaignTimeline.subtitle')}</p>
                     </div>
                   </div>
@@ -3667,9 +3667,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     if (!activeStep) return null
                     
                     return (
-                      <div className="bg-white rounded-3xl border border-gray-100/50 overflow-hidden">
+                      <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100/50 dark:border-gray-800 overflow-hidden">
                         {/* Step Header */}
-                        <div className="p-8 border-b border-gray-100/60">
+                        <div className="p-8 border-b border-gray-100/60 dark:border-gray-800/60">
                           <div className="flex items-center space-x-3 mb-6">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shadow-sm transition-all duration-300 ${
                               activeStep.sequence === 1 

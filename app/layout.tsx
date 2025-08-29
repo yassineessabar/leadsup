@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/hooks/use-auth'
 import { OnboardingProvider } from '@/hooks/use-onboarding'
 import { I18nProvider } from '@/components/i18n-provider'
+import { ThemeProvider } from '@/components/theme-provider'
 
 export const metadata: Metadata = {
   title: 'LeadsUp — Generate More Leads. Convert Better.',
@@ -30,21 +31,28 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Switzer:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <I18nProvider>
-          <AuthProvider>
-            <OnboardingProvider>
-              {children}
-              <Toaster />
-            </OnboardingProvider>
-          </AuthProvider>
-        </I18nProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <I18nProvider>
+            <AuthProvider>
+              <OnboardingProvider>
+                {children}
+                <Toaster />
+              </OnboardingProvider>
+            </AuthProvider>
+          </I18nProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

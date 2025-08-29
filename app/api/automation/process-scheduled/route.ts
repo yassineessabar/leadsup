@@ -157,9 +157,9 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
     // Check if THIS SPECIFIC sequence step was already sent today to prevent duplicates
     const nextStep = (contact.sequence_step || 0) + 1
     const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    today.setUTCHours(0, 0, 0, 0)
     const todayEnd = new Date(today)
-    todayEnd.setHours(23, 59, 59, 999)
+    todayEnd.setUTCHours(23, 59, 59, 999)
     
     console.log(`     🔍 Checking duplicate for ${contact.email} step ${nextStep}`)
     
@@ -306,8 +306,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const testMode = searchParams.get('testMode') === 'true' || process.env.EMAIL_SIMULATION_MODE === 'true'
     const lookAheadMinutes = parseInt(searchParams.get('lookAhead') || '15') // Default 15 minutes lookahead
+    const dueContactIds = searchParams.get('contactIds')?.split(',').map(id => parseInt(id)).filter(Boolean) || []
     
-    console.log('🚨 Parameters parsed:', { testMode, lookAheadMinutes })
+    console.log('🚨 Parameters parsed:', { testMode, lookAheadMinutes, dueContactIds })
     
     console.log('═'.repeat(80))
     console.log('🚀 EMAIL AUTOMATION PROCESSOR STARTED - ULTRA VERBOSE DEBUG MODE')
@@ -368,19 +369,28 @@ export async function GET(request: NextRequest) {
     
     // Get contacts that are "Due next" by checking both status and sequence_step
     for (const campaign of activeCampaigns || []) {
-      const { data: campaignContacts } = await supabase
+      // If specific contact IDs provided, use those; otherwise query by email_status
+      let contactQuery = supabase
         .from('contacts')
-        .select('id, first_name, last_name, email, sequence_step, campaign_id, created_at')
+        .select('id, first_name, last_name, email, sequence_step, campaign_id, created_at, email_status')
         .eq('campaign_id', campaign.id)
-        // Note: No status filtering since contacts table doesn't have 'status' column
       
+      if (dueContactIds.length > 0) {
+        console.log(`🎯 Using provided contact IDs: ${dueContactIds}`)
+        contactQuery = contactQuery.in('id', dueContactIds)
+      } else {
+        console.log(`🎯 Querying contacts with email_status = 'Due next'`)
+        contactQuery = contactQuery.eq('email_status', 'Due next')
+      }
+      
+      const { data: campaignContacts } = await contactQuery
+      
+      // Get sequences for email content, but don't use for due logic (UI handles that)
       const { data: campaignSequences } = await supabase
         .from('campaign_sequences')
         .select('*')
         .eq('campaign_id', campaign.id)
         .order('step_number', { ascending: true })
-      
-      const maxStep = campaignSequences?.length || 0
       
       console.log(`📋 Campaign ${campaign.name}: Found ${campaignContacts?.length || 0} "Due next" contacts`)
       if (campaignContacts && campaignContacts.length > 0) {
@@ -390,14 +400,9 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      // Find contacts that are actually due based on timing logic
-      const dueContacts = []
-      for (const contact of (campaignContacts || [])) {
-        const currentStep = contact.sequence_step || 0
-        if (currentStep < maxStep && await isContactDue(contact, campaignSequences)) {
-          dueContacts.push(contact)
-        }
-      }
+      // Contacts are pre-filtered to email_status = 'Due next' by the UI calculation
+      // No need for complex isContactDue logic - trust the database
+      const dueContacts = campaignContacts || []
       
       console.log(`📊 After sequence filtering: ${dueContacts.length} contacts ready for email`)
       

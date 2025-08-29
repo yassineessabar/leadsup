@@ -347,17 +347,17 @@ export function ComprehensiveDashboard() {
   // Wait for translations to be ready
   if (!ready) {
     return (
-      <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 p-6 md:p-8 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+    <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 p-6 md:p-8">
       <div className="relative space-y-8">
         <div className="max-w-7xl mx-auto">
           
@@ -365,8 +365,8 @@ export function ComprehensiveDashboard() {
           <div className="mb-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('dashboard.title')}</h1>
-                <p className="text-gray-500 font-light">{t('dashboard.subtitle')}</p>
+                <h1 className="text-4xl font-light text-gray-900 dark:text-gray-100 tracking-tight mb-2">{t('dashboard.title')}</h1>
+                <p className="text-gray-500 dark:text-gray-400 font-light">{t('dashboard.subtitle')}</p>
               </div>
               
               <div className="flex gap-3">
@@ -397,26 +397,26 @@ export function ComprehensiveDashboard() {
           {/* Metric Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {/* Total Leads Card */}
-            <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+            <Card className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4 mb-6">
                   <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
                     <Users className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">{t('dashboardStats.totalLeads')}</h3>
-                    <p className="text-gray-500 text-sm">{t('dashboardStats.last30Days')}</p>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('dashboardStats.totalLeads')}</h3>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">{t('dashboardStats.last30Days')}</p>
                   </div>
                 </div>
                 <div className="flex items-end justify-between">
-                  <p className="text-3xl font-light text-gray-900">
+                  <p className="text-3xl font-light text-gray-900 dark:text-gray-100">
                     {isLoading ? (
-                      <span className="text-gray-400">...</span>
+                      <span className="text-gray-400 dark:text-gray-600">...</span>
                     ) : (
                       animatedStats.totalLeads.toLocaleString()
                     )}
                   </p>
-                  <span className="text-sm text-gray-400 font-medium">
+                  <span className="text-sm text-gray-400 dark:text-gray-600 font-medium">
                     {t('dashboardStats.last30Days')}
                   </span>
                 </div>
@@ -424,15 +424,15 @@ export function ComprehensiveDashboard() {
             </Card>
 
             {/* Contacted Leads Card */}
-            <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+            <Card className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4 mb-6">
                   <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
                     <Mail className="w-6 h-6 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">{t('dashboardStats.contactedLeads')}</h3>
-                    <p className="text-gray-500 text-sm">{t('dashboardStats.outreachActivity')}</p>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('dashboardStats.contactedLeads')}</h3>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">{t('dashboardStats.outreachActivity')}</p>
                   </div>
                 </div>
                 <div className="flex items-end justify-between">
@@ -443,7 +443,7 @@ export function ComprehensiveDashboard() {
                       animatedStats.contactedLeads
                     )}
                   </p>
-                  <span className="text-sm text-gray-400 font-medium">
+                  <span className="text-sm text-gray-400 dark:text-gray-600 font-medium">
                     {t('dashboardStats.last30Days')}
                   </span>
                 </div>
@@ -451,15 +451,15 @@ export function ComprehensiveDashboard() {
             </Card>
 
             {/* Active Campaigns Card */}
-            <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+            <Card className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4 mb-6">
                   <div className="w-12 h-12 bg-violet-50 rounded-2xl flex items-center justify-center">
                     <Target className="w-6 h-6 text-violet-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">{t('dashboardStats.activeCampaigns')}</h3>
-                    <p className="text-gray-500 text-sm">{t('dashboardStats.runningSmoothly')}</p>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('dashboardStats.activeCampaigns')}</h3>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">{t('dashboardStats.runningSmoothly')}</p>
                   </div>
                 </div>
                 <div className="flex items-end justify-between">
@@ -470,7 +470,7 @@ export function ComprehensiveDashboard() {
                       animatedStats.activeCampaigns
                     )}
                   </p>
-                  <span className="text-sm text-gray-400 font-medium">
+                  <span className="text-sm text-gray-400 dark:text-gray-600 font-medium">
                     {t('dashboardStats.activeNow')}
                   </span>
                 </div>
@@ -478,15 +478,15 @@ export function ComprehensiveDashboard() {
             </Card>
 
             {/* Response Rate Card */}
-            <Card className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+            <Card className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4 mb-6">
                   <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center">
                     <TrendingUp className="w-6 h-6 text-green-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">{t('dashboardStats.responseRate')}</h3>
-                    <p className="text-gray-500 text-sm">{t('dashboardStats.engagementMetric')}</p>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('dashboardStats.responseRate')}</h3>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">{t('dashboardStats.engagementMetric')}</p>
                   </div>
                 </div>
                 <div className="flex items-end justify-between">
@@ -497,7 +497,7 @@ export function ComprehensiveDashboard() {
                       stats.responseRate
                     )}
                   </p>
-                  <span className="text-sm text-gray-400 font-medium">
+                  <span className="text-sm text-gray-400 dark:text-gray-600 font-medium">
                     {t('dashboardStats.allTime')}
                   </span>
                 </div>
@@ -513,7 +513,7 @@ export function ComprehensiveDashboard() {
                 return (
                   <Card 
                     key={metric.title}
-                    className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden"
+                    className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden"
                   >
                     <CardContent className="p-6">
                       <div className="flex items-center space-x-4 mb-6">
@@ -521,15 +521,15 @@ export function ComprehensiveDashboard() {
                           <Icon className={`w-6 h-6 ${metric.iconColor}`} />
                         </div>
                         <div>
-                          <h3 className="text-lg font-medium text-gray-900">{metric.title}</h3>
-                          <p className="text-gray-500 text-sm">{t('dashboardStats.last30Days')}</p>
+                          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{metric.title}</h3>
+                          <p className="text-gray-500 dark:text-gray-400 text-sm">{t('dashboardStats.last30Days')}</p>
                         </div>
                       </div>
                       <div className="flex items-end justify-between">
-                        <p className="text-3xl font-light text-gray-900">
+                        <p className="text-3xl font-light text-gray-900 dark:text-gray-100">
                           {metric.value}
                         </p>
-                        <span className="text-sm text-gray-400 font-medium">
+                        <span className="text-sm text-gray-400 dark:text-gray-600 font-medium">
                           {metric.change}
                         </span>
                       </div>
@@ -542,22 +542,22 @@ export function ComprehensiveDashboard() {
             <div className="mb-8">
               <div className="flex items-center justify-center py-8">
                 <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mr-3"></div>
-                <div className="text-slate-500">Loading email metrics...</div>
+                <div className="text-slate-500 dark:text-slate-400">Loading email metrics...</div>
               </div>
             </div>
           ) : (
             <div className="mb-8">
-              <Card className="border-slate-200/60 bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden">
+              <Card className="border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-2xl overflow-hidden">
                 <CardContent className="p-6 text-center">
                   <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Mail className="w-6 h-6 text-slate-400" />
                   </div>
-                  <h3 className="text-lg font-medium text-slate-900 mb-2">{t('dashboardAnalytics.noEmailPerformanceData')}</h3>
-                  <p className="text-slate-500 text-sm mb-4">
+                  <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">{t('dashboardAnalytics.noEmailPerformanceData')}</h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
                     {t('dashboardAnalytics.campaignAnalyticsWillAppear')}
                   </p>
                   <Button 
-                    className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-4 py-2 text-sm"
+                    className="bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-xl px-4 py-2 text-sm"
                     onClick={() => {
                       const event = new CustomEvent('tab-switched', { detail: 'campaigns-email' })
                       window.dispatchEvent(event)

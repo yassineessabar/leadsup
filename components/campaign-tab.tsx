@@ -1101,24 +1101,24 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   // Wait for translations to be ready
   if (!ready) {
     return (
-      <div className="min-h-screen bg-[rgb(243,243,241)] p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 p-6 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+    <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
-              <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('campaigns.title')}</h1>
-              <p className="text-gray-500 font-light">{t('campaigns.manageMonitorCampaigns')}</p>
+              <h1 className="text-4xl font-light text-gray-900 dark:text-gray-100 tracking-tight mb-2">{t('campaigns.title')}</h1>
+              <p className="text-gray-500 dark:text-gray-400 font-light">{t('campaigns.manageMonitorCampaigns')}</p>
             </div>
             
             <div className="flex gap-3">

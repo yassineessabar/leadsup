@@ -472,7 +472,7 @@ export function DashboardSidebar({
   return (
     <div
       className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-100/50 shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col md:hidden",
+        "fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-900 border-r border-gray-100/50 dark:border-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col md:hidden",
         isOpen ? "translate-x-0" : "-translate-x-full",
       )}
     >
