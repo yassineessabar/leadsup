@@ -1903,24 +1903,9 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           // Use sequential numbering (1, 2, 3...) instead of database sequenceStep
           const stepNumber = index + 1
           
-          // Calculate cumulative days from start (not just timing between steps)
-          // Use corrected timing values for all calculations
-          let cumulativeDays = 0
-          for (let i = 0; i <= index; i++) {
-            let stepTiming = sortedSequences[i].timing !== undefined ? sortedSequences[i].timing : (i === 0 ? 0 : 1)
-            
-            // Apply same safety check to cumulative calculation
-            if (stepTiming > 30) {
-              const defaultTimings = [0, 3, 7, 14, 21, 28]
-              stepTiming = defaultTimings[i] || (i * 7)
-            }
-            
-            if (i === 0) {
-              cumulativeDays = stepTiming // First step timing
-            } else {
-              cumulativeDays += stepTiming // Add subsequent timings
-            }
-          }
+          // The timing value is the absolute days from campaign start, not cumulative
+          // So we can use timingDays directly as the cumulative days
+          let cumulativeDays = timingDays
           
           console.log(`📅 Step ${stepNumber} timing: ${timingDays} days interval, ${cumulativeDays} cumulative days (from seq.timing: ${seq.timing})`)
           
