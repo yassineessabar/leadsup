@@ -258,7 +258,7 @@ async function handleScheduledEmailsForStatusChange(campaignId: string, newStatu
     console.log(`📧 Handling scheduled emails for campaign ${campaignId}: ${previousStatus} → ${newStatus}`)
 
     // If campaign is being paused, mark pending emails as paused and update contact statuses
-    if (newStatus === 'Paused' && previousStatus === 'Active') {
+    if (newStatus === 'Paused' && (previousStatus === 'Active' || previousStatus === 'Warming')) {
       try {
         // Pause scheduled emails
         const { error } = await getSupabaseServerClient()
@@ -296,6 +296,24 @@ async function handleScheduledEmailsForStatusChange(campaignId: string, newStatu
       } catch (error) {
         console.error('Error updating contact statuses:', error)
       }
+      
+      // Also pause warmup status for campaign senders when Active campaign is paused
+      if (previousStatus === 'Active') {
+        const { error: senderPauseError } = await getSupabaseServerClient()
+          .from('campaign_senders')
+          .update({
+            warmup_status: 'paused',
+            updated_at: new Date().toISOString()
+          })
+          .eq('campaign_id', campaignId)
+          .eq('warmup_status', 'active')
+        
+        if (senderPauseError) {
+          console.error('Error pausing sender warmup status:', senderPauseError)
+        } else {
+          console.log('✅ Paused sender warmup status for Active campaign')
+        }
+      }
     }
 
     // If campaign is transitioning from Warming to Active, log the transition
@@ -304,7 +322,7 @@ async function handleScheduledEmailsForStatusChange(campaignId: string, newStatu
     }
 
     // If campaign is being resumed, reschedule upcoming emails with updated timing and restore contact statuses
-    if (newStatus === 'Active' && previousStatus === 'Paused') {
+    if ((newStatus === 'Active' || newStatus === 'Warming') && previousStatus === 'Paused') {
       console.log('🔄 Campaign resumed - rescheduling upcoming emails with updated timing')
       
       try {
@@ -359,6 +377,22 @@ async function handleScheduledEmailsForStatusChange(campaignId: string, newStatu
         }
       } catch (error) {
         console.error('Error restoring contact statuses:', error)
+      }
+      
+      // Also resume warmup status for campaign senders when campaign is resumed
+      const { error: senderResumeError } = await getSupabaseServerClient()
+        .from('campaign_senders')
+        .update({
+          warmup_status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('campaign_id', campaignId)
+        .eq('warmup_status', 'paused')
+      
+      if (senderResumeError) {
+        console.error('Error resuming sender warmup status:', senderResumeError)
+      } else {
+        console.log('✅ Resumed sender warmup status for campaign')
       }
     }
 
@@ -435,6 +469,22 @@ async function handleWarmingSystemIntegration(campaignId: string, newStatus: str
         console.log('✅ Paused warming campaigns')
       }
       
+      // Also pause warmup status for campaign senders
+      const { error: senderPauseError } = await getSupabaseServerClient()
+        .from('campaign_senders')
+        .update({
+          warmup_status: 'paused',
+          updated_at: new Date().toISOString()
+        })
+        .eq('campaign_id', campaignId)
+        .eq('warmup_status', 'active')
+      
+      if (senderPauseError) {
+        console.error('Error pausing sender warmup status:', senderPauseError)
+      } else {
+        console.log('✅ Paused sender warmup status')
+      }
+      
     } else if (previousStatus === 'Paused' && newStatus === 'Warming') {
       // Campaign resumed to warming
       console.log(`▶️ Campaign ${campaignId} resumed to warming`)
@@ -453,6 +503,22 @@ async function handleWarmingSystemIntegration(campaignId: string, newStatus: str
         console.error('Error resuming warming campaigns:', resumeError)
       } else {
         console.log('✅ Resumed warming campaigns')
+      }
+      
+      // Also resume warmup status for campaign senders
+      const { error: senderResumeError } = await getSupabaseServerClient()
+        .from('campaign_senders')
+        .update({
+          warmup_status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('campaign_id', campaignId)
+        .eq('warmup_status', 'paused')
+      
+      if (senderResumeError) {
+        console.error('Error resuming sender warmup status:', senderResumeError)
+      } else {
+        console.log('✅ Resumed sender warmup status')
       }
       
     } else if ((newStatus === 'Completed' || newStatus === 'Draft') && previousStatus === 'Warming') {
