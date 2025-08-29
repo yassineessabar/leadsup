@@ -1464,7 +1464,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     }
   }
 
-  const handleStatusChange = () => {
+  const handleStatusChange = async () => {
     console.log('🔄 handleStatusChange called, current status:', campaign.status)
     if (!onStatusUpdate) {
       console.log('❌ No onStatusUpdate function provided!')
@@ -1476,7 +1476,31 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     
     // Special handling for resuming (from Warming or Paused status)
     if ((campaign.status === "Warming" || campaign.status === "Paused") && newStatus === "Active") {
-      // Check if health scores are low (below 90%)
+      // First check if auto-warmup is enabled
+      try {
+        const campaignResponse = await fetch(`/api/campaigns?id=${campaign.id}`, {
+          credentials: "include"
+        })
+        
+        let hasAutoWarmup = false
+        if (campaignResponse.ok) {
+          const campaignResult = await campaignResponse.json()
+          if (campaignResult.success && campaignResult.data?.[0]?.settings?.auto_warmup) {
+            hasAutoWarmup = true
+            console.log('🔥 Auto-warmup is enabled for this campaign, skipping health popup')
+          }
+        }
+        
+        // Skip popup if auto-warmup is enabled
+        if (hasAutoWarmup) {
+          onStatusUpdate(campaign.id, newStatus)
+          return
+        }
+      } catch (error) {
+        console.error('Error checking auto-warmup status:', error)
+      }
+      
+      // Check if health scores are low (below 90%) for campaigns without auto-warmup
       const lowScoreSenders = Object.entries(senderHealthScores)
         .filter(([_, healthData]) => healthData.health_score < 90)
         .map(([email, healthData]) => ({ email, score: healthData.health_score }))
