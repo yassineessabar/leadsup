@@ -41,39 +41,36 @@ const ContentEditableDiv = React.forwardRef<HTMLDivElement & {
   const editorRef = (ref as React.RefObject<HTMLDivElement>) || localRef
   const lastStepId = useRef(stepId)
 
-  // Expose insertVariable method to parent
-  React.useImperativeHandle(ref, () => ({
-    focus: () => editorRef.current?.focus(),
-    insertVariable: (variable: string) => {
-      if (!editorRef.current) return
-      
-      editorRef.current.focus()
-      const selection = window.getSelection()
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0)
-        const textNode = document.createTextNode(variable)
-        range.insertNode(textNode)
+  // Expose methods to parent
+  React.useImperativeHandle(ref, () => {
+    const element = editorRef.current
+    if (!element) return {}
+    
+    return {
+      ...element,
+      insertVariable: (variable: string) => {
+        if (!element) return
         
-        // Move cursor after inserted text
-        range.setStartAfter(textNode)
-        range.collapse(true)
-        selection.removeAllRanges()
-        selection.addRange(range)
-        
-        // Update content without causing cursor jump
-        const htmlContent = editorRef.current.innerHTML
-        onContentChange(htmlContent)
-      }
-    },
-    get innerHTML() {
-      return editorRef.current?.innerHTML || ''
-    },
-    set innerHTML(value: string) {
-      if (editorRef.current) {
-        editorRef.current.innerHTML = value
+        element.focus()
+        const selection = window.getSelection()
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0)
+          const textNode = document.createTextNode(variable)
+          range.insertNode(textNode)
+          
+          // Move cursor after inserted text
+          range.setStartAfter(textNode)
+          range.collapse(true)
+          selection.removeAllRanges()
+          selection.addRange(range)
+          
+          // Update content without causing cursor jump
+          const htmlContent = element.innerHTML
+          onContentChange(htmlContent)
+        }
       }
     }
-  }))
+  }, [onContentChange])
 
   // Save and restore cursor position
   const saveCursorPosition = () => {
