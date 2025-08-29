@@ -193,14 +193,21 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
     
     // For immediate emails, use timezone-aware logic (same as analytics)
     if (nextEmailData.relative === 'Immediate') {
-      // TEMPORARY FIX: Override for specific London contacts showing as "Due next" in UI
-      const isLondonContact = contact.location?.toLowerCase().includes('london')
-      const shouldOverride = isLondonContact && businessHoursStatus.isBusinessHours && 
-        (contact.email?.includes('mouai.tax') || contact.email?.includes('ya.essabarry'))
-      
-      if (shouldOverride) {
-        console.log(`     ✅ LONDON OVERRIDE for ${contact.email}: UI shows Due next, forcing to due`)
-        return true
+      // Check if this contact has already had emails sent
+      // If so, don't override - let normal logic handle follow-ups
+      if (count && count > 0) {
+        console.log(`     📧 Contact ${contact.email} has ${count} emails sent - using normal timing logic`)
+        // Continue with normal future date check below
+      } else {
+        // TEMPORARY FIX: Override for specific London contacts showing as "Due next" in UI (first email only)
+        const isLondonContact = contact.location?.toLowerCase().includes('london')
+        const shouldOverride = isLondonContact && businessHoursStatus.isBusinessHours && 
+          (contact.email?.includes('mouai.tax') || contact.email?.includes('ya.essabarry'))
+        
+        if (shouldOverride) {
+          console.log(`     ✅ LONDON OVERRIDE for ${contact.email}: UI shows Due next, forcing first email to due`)
+          return true
+        }
       }
       
       // 🔧 EXPLICIT FUTURE DATE CHECK: Never send emails scheduled for future dates (even immediate ones)
