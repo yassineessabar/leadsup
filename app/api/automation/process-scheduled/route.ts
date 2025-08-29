@@ -112,7 +112,7 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
     
     return {
       date: scheduledDate,
-      relative: timingDays === 0 ? 'Immediate' : `Day ${timingDays + 1}`
+      relative: (timingDays === 0 && currentStep === 0) ? 'Immediate' : `Day ${timingDays + 1}`
     }
   } else {
     // For follow-up emails, base on when contact was last updated (email sent)
@@ -157,13 +157,16 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
     // Check if contact was already processed today to prevent duplicates
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    const todayEnd = new Date(today)
+    todayEnd.setHours(23, 59, 59, 999)
     const { count: todayCount } = await supabase
       .from('email_tracking')
       .select('id', { count: 'exact' })
       .eq('contact_id', contact.id)
       .eq('campaign_id', contact.campaign_id)
       .eq('status', 'sent')
-      .gte('created_at', today.toISOString())
+      .gte('sent_at', today.toISOString())
+      .lte('sent_at', todayEnd.toISOString())
     
     if (todayCount && todayCount > 0) {
       console.log(`     ⏭️ SKIP: ${contact.email} already processed ${todayCount} times today`)
