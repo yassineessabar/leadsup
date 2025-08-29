@@ -1813,6 +1813,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   }
 
   // Helper function to calculate next email date consistently
+  // Helper function to check if a day is active based on campaign settings
+  const isActiveDayOfWeek = (dayOfWeek: number) => {
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const dayName = dayNames[dayOfWeek]
+    const activeDays = campaignSettings?.activeDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+    return activeDays.includes(dayName)
+  }
+
   const calculateNextEmailDate = (contact: Contact) => {
     const currentStep = contact.sequence_step || 0
     
@@ -1897,16 +1905,20 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             // Move to next business day
             scheduledDate.setDate(scheduledDate.getDate() + 1)
             
-            // Skip weekends
-            const dayOfWeek = scheduledDate.getDay()
-            if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Skip Sunday
-            if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Skip Saturday
+            // Skip inactive days
+            let dayOfWeek = scheduledDate.getDay()
+            while (!isActiveDayOfWeek(dayOfWeek)) {
+              scheduledDate.setDate(scheduledDate.getDate() + 1)
+              dayOfWeek = scheduledDate.getDay()
+            }
           }
           
-          // Final weekend check
-          const finalDayOfWeek = scheduledDate.getDay()
-          if (finalDayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Sunday -> Monday
-          if (finalDayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Saturday -> Monday
+          // Final active day check
+          let finalDayOfWeek = scheduledDate.getDay()
+          while (!isActiveDayOfWeek(finalDayOfWeek)) {
+            scheduledDate.setDate(scheduledDate.getDate() + 1)
+            finalDayOfWeek = scheduledDate.getDay()
+          }
         } else {
           // For non-immediate emails, use the original logic
           scheduledDate.setDate(contactDate.getDate() + timingDays)
@@ -1921,10 +1933,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           const consistentMinute = (seedValue * 7) % 60
           scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
           
-          // Avoid weekends
-          const dayOfWeek = scheduledDate.getDay()
-          if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1)
-          if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2)
+          // Avoid inactive days
+          let dayOfWeek = scheduledDate.getDay()
+          while (!isActiveDayOfWeek(dayOfWeek)) {
+            scheduledDate.setDate(scheduledDate.getDate() + 1)
+            dayOfWeek = scheduledDate.getDay()
+          }
         }
         
         return {
@@ -1998,10 +2012,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       const consistentMinute = (seedValue * 7) % 60
       scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
       
-      // Avoid weekends
-      const dayOfWeek = scheduledDate.getDay()
-      if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1)
-      if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2)
+      // Avoid inactive days
+      let dayOfWeek = scheduledDate.getDay()
+      while (!isActiveDayOfWeek(dayOfWeek)) {
+        scheduledDate.setDate(scheduledDate.getDate() + 1)
+        dayOfWeek = scheduledDate.getDay()
+      }
       
       return {
         relative: timingDays === 0 ? 'Immediate' : `${timingDays} day${timingDays === 1 ? '' : 's'}`,
@@ -2168,22 +2184,31 @@ Sequence Info:
           scheduledDate = new Date(now)
           scheduledDate.setHours(9, 0, 0, 0)
           
-          // If it's weekend or after hours today, move to next business day
+          // If it's inactive day or after hours today, move to next active business day
           const dayOfWeek = scheduledDate.getDay()
-          if (dayOfWeek === 0 || dayOfWeek === 6) { // Weekend
-            scheduledDate.setDate(scheduledDate.getDate() + (dayOfWeek === 0 ? 1 : 2)) // Monday
+          if (!isActiveDayOfWeek(dayOfWeek)) { // Inactive day
+            scheduledDate.setDate(scheduledDate.getDate() + 1)
+            let nextDay = scheduledDate.getDay()
+            while (!isActiveDayOfWeek(nextDay)) {
+              scheduledDate.setDate(scheduledDate.getDate() + 1)
+              nextDay = scheduledDate.getDay()
+            }
           } else if (now.getHours() >= 17) { // After business hours
             scheduledDate.setDate(scheduledDate.getDate() + 1)
-            const nextDay = scheduledDate.getDay()
-            if (nextDay === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Skip Sunday
-            if (nextDay === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Skip Saturday
+            let nextDay = scheduledDate.getDay()
+            while (!isActiveDayOfWeek(nextDay)) {
+              scheduledDate.setDate(scheduledDate.getDate() + 1)
+              nextDay = scheduledDate.getDay()
+            }
           }
         }
         
-        // Avoid weekends
-        const dayOfWeek = scheduledDate.getDay()
-        if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Sunday -> Monday
-        if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Saturday -> Monday
+        // Avoid inactive days
+        let dayOfWeek = scheduledDate.getDay()
+        while (!isActiveDayOfWeek(dayOfWeek)) {
+          scheduledDate.setDate(scheduledDate.getDate() + 1)
+          dayOfWeek = scheduledDate.getDay()
+        }
       } else {
         // Non-immediate emails - use original logic
         scheduledDate.setDate(contactDate.getDate() + email.days)
@@ -2199,10 +2224,12 @@ Sequence Info:
         const consistentMinute = (seedValue * 7) % 60 // Consistent minute based on seed
         scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
         
-        // Avoid weekends
-        const dayOfWeek = scheduledDate.getDay()
-        if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Sunday -> Monday
-        if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Saturday -> Monday
+        // Avoid inactive days
+        let dayOfWeek = scheduledDate.getDay()
+        while (!isActiveDayOfWeek(dayOfWeek)) {
+          scheduledDate.setDate(scheduledDate.getDate() + 1)
+          dayOfWeek = scheduledDate.getDay()
+        }
       }
       
       // Determine status based on real sequence progression data
