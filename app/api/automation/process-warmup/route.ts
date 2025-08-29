@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const autoMode = searchParams.get('autoMode') === 'true'
     
-    console.log('🔥 Processing auto warm-up emails...')
+    console.log('🔥 Processing auto warm-up emails... (v2)')
     
     // Get all active campaigns with auto warm-up enabled
     const { data: campaigns, error: campaignsError } = await supabaseServer
