@@ -543,21 +543,21 @@ export default function DomainsPage() {
   // Translation loading check - must come after all hooks
   if (!ready) {
     return <div className="flex items-center justify-center h-64">
-      <div className="text-gray-500">{t ? t('common.loading') : 'Loading...'}</div>
+      <div className="text-gray-500 dark:text-gray-400">{t ? t('common.loading') : 'Loading...'}</div>
     </div>
   }
 
   // Domains list view
   if (currentView === "domains") {
     return (
-      <div className="min-h-screen bg-[rgb(243,243,241)]">
+      <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900">
         <div className="max-w-7xl mx-auto p-6 md:p-8">
           {/* Header */}
           <div className="mb-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('domains.title')}</h1>
-                <p className="text-gray-500 font-light">
+                <h1 className="text-4xl font-light text-gray-900 dark:text-gray-100 tracking-tight mb-2">{t('domains.title')}</h1>
+                <p className="text-gray-500 dark:text-gray-400 font-light">
                   {t('domains.manageEmailDomains')}
                 </p>
               </div>
@@ -575,19 +575,19 @@ export default function DomainsPage() {
           {/* Search and filters */}
           <div className="flex gap-4 mb-8">
             <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <Input
                 placeholder={t('domains.searchDomains')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-10 bg-white border-gray-200 rounded-2xl"
+                className="pl-10 h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-2xl dark:text-gray-100"
               />
             </div>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-48 h-10 bg-white border-gray-200 rounded-2xl">
+              <SelectTrigger className="w-48 h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-2xl dark:text-gray-100">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="rounded-2xl border-gray-200">
+              <SelectContent className="rounded-2xl border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                 <SelectItem value="date-created">{t('domains.dateCreated')}</SelectItem>
                 <SelectItem value="name">{t('domains.name')}</SelectItem>
                 <SelectItem value="status">{t('domains.statusLabel')}</SelectItem>
@@ -599,17 +599,17 @@ export default function DomainsPage() {
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <div className="flex items-center gap-3">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                <span className="text-gray-600">{t('domains.loadingDomains')}</span>
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400 dark:text-gray-500" />
+                <span className="text-gray-600 dark:text-gray-400">{t('domains.loadingDomains')}</span>
               </div>
             </div>
           ) : domains.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Globe className="h-8 w-8 text-gray-400" />
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Globe className="h-8 w-8 text-gray-400 dark:text-gray-500" />
               </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">{t('domains.noDomainsYet')}</h3>
-              <p className="text-gray-500 mb-8 font-light max-w-md mx-auto">
+              <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">{t('domains.noDomainsYet')}</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-8 font-light max-w-md mx-auto">
                 {t('domains.addFirstDomain')}
               </p>
               <Button 
@@ -627,7 +627,7 @@ export default function DomainsPage() {
                   domain.domain.toLowerCase().includes(searchQuery.toLowerCase())
                 )
                 .map((domain) => (
-                  <div key={domain.id} className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+                  <div key={domain.id} className="bg-white dark:bg-gray-800 border border-gray-100/50 dark:border-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600 transition-all duration-300 rounded-3xl overflow-hidden">
                     <div className="p-8">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -637,7 +637,7 @@ export default function DomainsPage() {
                         
                         <div>
                           <div className="flex items-center gap-3 mb-1">
-                            <h3 className="text-lg font-medium text-gray-900">{domain.domain}</h3>
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{domain.domain}</h3>
                             <div className="flex items-center gap-2">
                               <span className={`text-sm font-medium ${getStatusColor(domain.status)}`}>
                                 {getStatusText(domain.status)}
@@ -664,7 +664,7 @@ export default function DomainsPage() {
                               )}
                             </div>
                           </div>
-                          <p className="text-gray-600 text-sm">
+                          <p className="text-gray-600 dark:text-gray-400 text-sm">
                             {t('domains.addedOn', { date: new Date(domain.created_at).toLocaleDateString() })}
                           </p>
                         </div>
@@ -683,7 +683,7 @@ export default function DomainsPage() {
                               setCurrentView("verification")
                               fetchDnsRecords(domain.id)
                             }}
-                            className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                            className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                             title="Configure domain settings"
                           >
                             <Settings className="h-4 w-4" />
@@ -721,7 +721,7 @@ export default function DomainsPage() {
 
           {/* Delete Domain Modal */}
           <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800">
               <DialogHeader>
                 <DialogTitle>{t('domains.deleteDomain')}</DialogTitle>
                 <DialogDescription>
@@ -765,12 +765,12 @@ export default function DomainsPage() {
   // Verification view
   if (currentView === "verification") {
     return (
-      <div className="min-h-screen bg-[rgb(243,243,241)]">
+      <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900">
         <div className="max-w-4xl mx-auto p-6 md:p-8">
           <Button 
             variant="ghost" 
             onClick={handleBackToDomains} 
-            className="text-gray-600 hover:text-gray-900 -ml-2 mb-6"
+            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 -ml-2 mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t('dnsSetup.backToDomains')}

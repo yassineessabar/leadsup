@@ -269,15 +269,15 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900">
         <DialogHeader className="space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(to right, rgb(87, 140, 255), rgb(67, 120, 235))' }}>
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <DialogTitle className="text-2xl font-bold">{stepTitles[currentStep - 1]}</DialogTitle>
-              <p className="text-gray-600 mt-1">{stepDescriptions[currentStep - 1]}</p>
+              <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stepTitles[currentStep - 1]}</DialogTitle>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">{stepDescriptions[currentStep - 1]}</p>
             </div>
           </div>
 
@@ -291,7 +291,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
                       ? "bg-blue-500 text-white"
                       : step < currentStep
                         ? "bg-green-500 text-white"
-                        : "bg-gray-200 text-gray-500"
+                        : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
                   }`}
                 >
                   {step < currentStep ? <CheckCircle className="w-4 h-4" /> : step}
@@ -299,7 +299,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
                 {step < 4 && (
                   <div
                     className={`w-12 h-1 mx-2 ${
-                      step < currentStep ? "bg-green-500" : "bg-gray-200"
+                      step < currentStep ? "bg-green-500" : "bg-gray-200 dark:bg-gray-700"
                     }`}
                   />
                 )}
@@ -315,8 +315,8 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-center space-y-4">
-                    <h3 className="text-lg font-semibold">Welcome, {userCompanyName}!</h3>
-                    <p className="text-gray-600">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Welcome, {userCompanyName}!</h3>
+                    <p className="text-gray-600 dark:text-gray-400">
                       We're excited to help you collect more reviews and grow your business.
                       Let's start by uploading your company logo to personalize your review page.
                     </p>
@@ -327,14 +327,14 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
               <Card>
                 <CardContent className="pt-6">
                   <div className="space-y-4">
-                    <Label className="text-base font-medium">Company Logo (Optional)</Label>
+                    <Label className="text-base font-medium text-gray-900 dark:text-gray-100">Company Logo (Optional)</Label>
                     <div className="flex items-center gap-4">
                       <Image
                         src={onboardingData.companyLogo || "/placeholder.svg?height=64&width=64&text=Logo"}
                         alt="Company Logo"
                         width={64}
                         height={64}
-                        className="h-16 w-16 object-contain rounded-lg border"
+                        className="h-16 w-16 object-contain rounded-lg border border-gray-300 dark:border-gray-600"
                       />
                       <input
                         type="file"
@@ -352,7 +352,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
                         Upload Logo
                       </Button>
                     </div>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Your logo will appear on your review page to maintain brand consistency.
                     </p>
                   </div>
@@ -374,14 +374,14 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
               <Card>
                 <CardContent className="pt-6">
                   <div className="space-y-4">
-                    <Label className="text-base font-medium">Select Review Platforms</Label>
-                    <p className="text-sm text-gray-600">
+                    <Label className="text-base font-medium text-gray-900 dark:text-gray-100">Select Review Platforms</Label>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Choose which platforms you want to collect reviews on for positive feedback.
                     </p>
                     <div className="space-y-3">
                       {["Google", "Trustpilot", "Facebook", "Video Testimonial"].map((platform) => (
-                        <div key={platform} className="flex items-center justify-between p-3 border rounded-lg">
-                          <Label htmlFor={`platform-${platform}`} className="font-medium">
+                        <div key={platform} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <Label htmlFor={`platform-${platform}`} className="font-medium text-gray-900 dark:text-gray-100">
                             {platform}
                           </Label>
                           <Switch
@@ -399,14 +399,14 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
               <Card>
                 <CardContent className="pt-6">
                   <div className="space-y-4">
-                    <Label className="text-base font-medium">Platform Review Links</Label>
-                    <p className="text-sm text-gray-600">
+                    <Label className="text-base font-medium text-gray-900 dark:text-gray-100">Platform Review Links</Label>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Add your direct review page URLs for each enabled platform.
                     </p>
 
                     {onboardingData.enabledPlatforms.includes("Google") && (
                       <div className="space-y-2">
-                        <Label htmlFor="googleUrl">Google Business Profile Review Link</Label>
+                        <Label htmlFor="googleUrl" className="text-gray-900 dark:text-gray-100">Google Business Profile Review Link</Label>
                         <Input
                           id="googleUrl"
                           value={onboardingData.googleUrl}
@@ -418,7 +418,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
 
                     {onboardingData.enabledPlatforms.includes("Trustpilot") && (
                       <div className="space-y-2">
-                        <Label htmlFor="trustpilotUrl">Trustpilot Review Link</Label>
+                        <Label htmlFor="trustpilotUrl" className="text-gray-900 dark:text-gray-100">Trustpilot Review Link</Label>
                         <Input
                           id="trustpilotUrl"
                           value={onboardingData.trustpilotUrl}
@@ -430,7 +430,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
 
                     {onboardingData.enabledPlatforms.includes("Facebook") && (
                       <div className="space-y-2">
-                        <Label htmlFor="facebookUrl">Facebook Page Review Link</Label>
+                        <Label htmlFor="facebookUrl" className="text-gray-900 dark:text-gray-100">Facebook Page Review Link</Label>
                         <Input
                           id="facebookUrl"
                           value={onboardingData.facebookUrl}
@@ -442,7 +442,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
 
                     {onboardingData.enabledPlatforms.includes("Video Testimonial") && (
                       <div className="space-y-2">
-                        <Label htmlFor="videoTestimonialMessage">Video Testimonial Message</Label>
+                        <Label htmlFor="videoTestimonialMessage" className="text-gray-900 dark:text-gray-100">Video Testimonial Message</Label>
                         <Input
                           id="videoTestimonialMessage"
                           value={onboardingData.videoTestimonialMessage || ''}
@@ -473,8 +473,8 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-center space-y-4">
-                    <h3 className="text-lg font-semibold">Connect Your Google Business (Optional)</h3>
-                    <p className="text-gray-600">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Connect Your Google Business (Optional)</h3>
+                    <p className="text-gray-600 dark:text-gray-400">
                       Connect your Google Business listing to automatically import reviews and enable
                       direct reply functionality. You can skip this step and set it up later.
                     </p>
@@ -486,16 +486,16 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
                 <Card>
                   <CardContent className="pt-6">
                     <div className="space-y-4">
-                      <Label className="text-base font-medium">Search for Your Business</Label>
+                      <Label className="text-base font-medium text-gray-900 dark:text-gray-100">Search for Your Business</Label>
                       <div className="relative">
                         <Input
                           type="text"
                           placeholder="Enter your business name or location..."
-                          className="pl-10 pr-12 py-3 bg-gray-50 border-gray-200 rounded-lg focus:border-[#e66465] focus:ring-[#e66465] transition-colors duration-200"
+                          className="pl-10 pr-12 py-3 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 dark:text-gray-100 rounded-lg focus:border-[#e66465] focus:ring-[#e66465] transition-colors duration-200"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                         />
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
                         {isSearching && (
                           <div className="absolute right-3 top-1/2 -translate-y-1/2">
                             <div className="w-4 h-4 border-2 border-gray-300 border-t-[#e66465] rounded-full animate-spin"></div>
@@ -504,18 +504,18 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
                       </div>
 
                       {searchResults.length > 0 && (
-                        <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto bg-white shadow-sm">
+                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg max-h-48 overflow-y-auto bg-white dark:bg-gray-800 shadow-sm">
                           {searchResults.map((result) => (
                             <Button
                               key={result.place_id}
                               variant="ghost"
-                              className="w-full justify-start text-left h-auto py-3 px-4 hover:bg-gray-50 transition-colors duration-200 border-b border-gray-100 last:border-b-0"
+                              className="w-full justify-start text-left h-auto py-3 px-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                               onClick={() => handleConnectBusiness(result.place_id, result.name, result.formatted_address)}
                               disabled={isLoading}
                             >
                               <div className="flex flex-col items-start w-full">
-                                <span className="font-medium text-gray-900">{result.name}</span>
-                                <span className="text-sm text-gray-500 truncate w-full">{result.formatted_address}</span>
+                                <span className="font-medium text-gray-900 dark:text-gray-100">{result.name}</span>
+                                <span className="text-sm text-gray-500 dark:text-gray-400 truncate w-full">{result.formatted_address}</span>
                               </div>
                             </Button>
                           ))}
@@ -524,7 +524,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
 
                       {searchQuery && searchResults.length === 0 && !isSearching && (
                         <div className="text-center py-4 space-y-3">
-                          <p className="text-sm text-gray-500">No results found. Try a different search term.</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">No results found. Try a different search term.</p>
                           <Button
                             variant="outline"
                             size="sm"
@@ -547,8 +547,8 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
                   <CardContent className="pt-6">
                     <div className="text-center space-y-4">
                       <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
-                      <h3 className="text-lg font-semibold text-green-700">Business Connected!</h3>
-                      <p className="text-gray-600">
+                      <h3 className="text-lg font-semibold text-green-700 dark:text-green-400">Business Connected!</h3>
+                      <p className="text-gray-600 dark:text-gray-400">
                         {onboardingData.googleBusinessName} has been successfully connected.
                         Your reviews are being imported automatically.
                       </p>
@@ -586,8 +586,8 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
                   <div className="space-y-4">
                     <div className="text-center space-y-2">
                       <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
-                      <h3 className="text-lg font-semibold">Congratulations!</h3>
-                      <p className="text-gray-600">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Congratulations!</h3>
+                      <p className="text-gray-600 dark:text-gray-400">
                         Your personalized review link has been created. Share this link with your customers
                         to start collecting reviews.
                       </p>
@@ -599,7 +599,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
               <Card>
                 <CardContent className="pt-6">
                   <div className="space-y-4">
-                    <Label className="text-base font-medium">Your Review Link</Label>
+                    <Label className="text-base font-medium text-gray-900 dark:text-gray-100">Your Review Link</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         value={generatedUrl}
@@ -613,7 +613,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, userCompanyName }
                         <ExternalLink className="w-4 h-4" />
                       </Button>
                     </div>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Share this link via email, SMS, QR codes, or on your website to collect reviews.
                     </p>
                   </div>

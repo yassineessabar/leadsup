@@ -263,7 +263,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg bg-white rounded-xl border border-gray-200 shadow-xl p-0">
+      <DialogContent className="sm:max-w-lg bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-xl p-0">
         <DialogTitle className="sr-only">
           {showLogin ? t('domainSetup.login.title', { provider: detectedProvider }) : 
            showManualSetup ? t('domainSetup.manual.title') :
@@ -276,30 +276,30 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
             <div className="space-y-6">
               {/* Header */}
               <div className="text-center space-y-3">
-                <h2 className="text-2xl font-light text-gray-900">{t('domainSetup.manual.title')}</h2>
-                <p className="text-gray-500">
+                <h2 className="text-2xl font-light text-gray-900 dark:text-gray-100">{t('domainSetup.manual.title')}</h2>
+                <p className="text-gray-500 dark:text-gray-400">
                   {t('domainSetup.manual.description')}
                 </p>
               </div>
 
               {/* Steps */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-medium text-gray-900 mb-3">{t('domainSetup.manual.steps.title')}</h3>
-                <ul className="space-y-2 text-sm text-gray-700">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-3">{t('domainSetup.manual.steps.title')}</h3>
+                <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                   <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full"></div>
                     {t('domainSetup.manual.steps.createConfig')}
                   </li>
                   <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full"></div>
                     {t('domainSetup.manual.steps.getInstructions')}
                   </li>
                   <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full"></div>
                     {t('domainSetup.manual.steps.copyRecords')}
                   </li>
                   <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full"></div>
                     {t('domainSetup.manual.steps.verifyDomain')}
                   </li>
                 </ul>
@@ -307,7 +307,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
 
               {/* Error display */}
               {domainError && (
-                <div className="text-red-600 text-sm bg-red-50 border border-red-200 p-3 rounded-lg">
+                <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg">
                   {domainError}
                 </div>
               )}
@@ -371,7 +371,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                     setIsChecking(false);
                     // Reset to domain input screen
                   }}
-                  className="w-full text-gray-500 hover:text-gray-700 text-sm py-2 transition-colors"
+                  className="w-full text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-sm py-2 transition-colors"
                 >
                   {t('domainSetup.manual.backButton')}
                 </button>
@@ -383,16 +383,16 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
               <div className="flex items-center gap-4">
                 <button
                   onClick={handleBack}
-                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                 >
-                  <ArrowLeft className="w-5 h-5 text-gray-600" />
+                  <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 </button>
-                <h2 className="text-2xl font-light text-gray-900">{t('domainSetup.login.connectWith', { provider: detectedProvider })}</h2>
+                <h2 className="text-2xl font-light text-gray-900 dark:text-gray-100">{t('domainSetup.login.connectWith', { provider: detectedProvider })}</h2>
               </div>
 
               {/* Provider description */}
               <div className="text-center">
-                <p className="text-gray-500">
+                <p className="text-gray-500 dark:text-gray-400">
                   {t('domainSetup.login.description')}
                 </p>
               </div>
@@ -400,9 +400,9 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
               {/* Login form */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('domainSetup.login.username')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('domainSetup.login.username')}</label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                     <Input
                       value={username}
                       onChange={(e) => {
@@ -410,15 +410,15 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                         setAuthError(""); 
                       }}
                       placeholder={t('domainSetup.login.usernamePlaceholder')}
-                      className="h-12 border-gray-300 rounded-lg pl-10 focus:ring-2 focus:ring-black focus:border-black transition-colors"
+                      className="h-12 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded-lg pl-10 focus:ring-2 focus:ring-black focus:border-black transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('domainSetup.login.password')}</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('domainSetup.login.password')}</label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                     <Input
                       type={showPassword ? "text" : "password"}
                       value={password}
@@ -427,12 +427,12 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                         setAuthError("");
                       }}
                       placeholder={t('domainSetup.login.passwordPlaceholder')}
-                      className="h-12 border-gray-300 rounded-lg pl-10 pr-10 focus:ring-2 focus:ring-black focus:border-black transition-colors"
+                      className="h-12 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded-lg pl-10 pr-10 focus:ring-2 focus:ring-black focus:border-black transition-colors"
                       onKeyPress={(e) => e.key === 'Enter' && !authenticating && username.trim() && password.trim() && handleLogin()}
                     />
                     <button
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
                     >
                       <Eye className="w-5 h-5" />
                     </button>
@@ -440,7 +440,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                 </div>
 
                 {authError && (
-                  <div className="text-red-600 text-sm bg-red-50 border border-red-200 p-3 rounded-lg">
+                  <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg">
                     {authError}
                   </div>
                 )}
@@ -473,13 +473,13 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
 
                 {/* Manual setup option */}
                 <div className="text-center pt-4">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     {t('domainSetup.login.cantLogin')}{" "}
                     <button 
                       onClick={async () => {
                         await createDomainManually();
                       }}
-                      className="text-gray-900 hover:text-black font-medium"
+                      className="text-gray-900 dark:text-gray-100 hover:text-black dark:hover:text-white font-medium"
                     >
                       {t('domainSetup.login.useManualSetup')}
                     </button>
@@ -497,23 +497,23 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                   <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-blue-400 animate-spin animate-reverse"></div>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-light text-gray-900 mb-2">{t('domainSetup.analyzing.title')}</h2>
-                  <p className="text-gray-500">
+                  <h2 className="text-2xl font-light text-gray-900 dark:text-gray-100 mb-2">{t('domainSetup.analyzing.title')}</h2>
+                  <p className="text-gray-500 dark:text-gray-400">
                     {t('domainSetup.analyzing.description')}
                   </p>
                 </div>
               </div>
 
               {/* Enhanced progress steps */}
-              <div className="bg-gray-50 rounded-xl p-6">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6">
                 <div className="space-y-5">
                   <div className="flex items-center gap-4">
                     <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
                       <Check className="w-4 h-4 text-white" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900">{t('domainSetup.analyzing.steps.validation')}</div>
-                      <div className="text-sm text-gray-500">{t('domainSetup.analyzing.steps.verified', { domain })}</div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">{t('domainSetup.analyzing.steps.validation')}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{t('domainSetup.analyzing.steps.verified', { domain })}</div>
                     </div>
                   </div>
                   
@@ -522,8 +522,8 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                       <div className="w-3 h-3 rounded-full bg-white animate-pulse"></div>
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900">{t('domainSetup.analyzing.steps.detection')}</div>
-                      <div className="text-sm text-gray-500">{t('domainSetup.analyzing.steps.checking')}</div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">{t('domainSetup.analyzing.steps.detection')}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{t('domainSetup.analyzing.steps.checking')}</div>
                     </div>
                   </div>
                   
@@ -532,8 +532,8 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                       <div className="w-2 h-2 rounded-full bg-gray-500"></div>
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-gray-500">{t('domainSetup.analyzing.steps.preparation')}</div>
-                      <div className="text-sm text-gray-400">{t('domainSetup.analyzing.steps.preparing')}</div>
+                      <div className="font-medium text-gray-500 dark:text-gray-400">{t('domainSetup.analyzing.steps.preparation')}</div>
+                      <div className="text-sm text-gray-400 dark:text-gray-500">{t('domainSetup.analyzing.steps.preparing')}</div>
                     </div>
                   </div>
                 </div>
@@ -543,9 +543,9 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
             <div className="space-y-6">
               {/* Header */}
               <div className="text-center space-y-3">
-                <h2 className="text-2xl font-light text-gray-900">{t('domainSetup.title')}</h2>
+                <h2 className="text-2xl font-light text-gray-900 dark:text-gray-100">{t('domainSetup.title')}</h2>
                 {!isChecking && (
-                  <p className="text-gray-500">
+                  <p className="text-gray-500 dark:text-gray-400">
                     {t('domainSetup.description')}
                   </p>
                 )}
@@ -553,10 +553,10 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
 
               {/* Checking banner */}
               {isChecking && (
-                <div className="bg-gray-50 border rounded-lg p-4">
+                <div className="bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-gray-700">
+                    <p className="text-gray-700 dark:text-gray-300">
                       {t('domainSetup.checking')}
                     </p>
                   </div>
@@ -565,41 +565,41 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                     {t('domainSetup.domainName')}
                   </label>
                   <Input
                     value={domain}
                     onChange={(e) => handleDomainChange(e.target.value)}
                     placeholder={t('domainSetup.domainPlaceholder')}
-                    className={`h-12 border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-colors ${
+                    className={`h-12 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-colors ${
                       validationError ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : ''
                     }`}
                     onKeyPress={(e) => e.key === 'Enter' && handleAddDomain()}
                   />
                   {validationError && (
-                    <p className="text-red-500 text-sm mt-2">{validationError}</p>
+                    <p className="text-red-500 dark:text-red-400 text-sm mt-2">{validationError}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                     {t('domainSetup.replySubdomain')}
-                    <span className="text-gray-500 text-xs ml-2">({t('domainSetup.replySubdomainNote')})</span>
+                    <span className="text-gray-500 dark:text-gray-400 text-xs ml-2">({t('domainSetup.replySubdomainNote')})</span>
                   </label>
                   <div className="flex items-center">
                     <Input
                       value={replySubdomain}
                       onChange={(e) => setReplySubdomain(e.target.value.replace(/[^a-zA-Z0-9-]/g, ''))}
                       placeholder="reply"
-                      className="h-12 border-gray-300 rounded-l-lg focus:ring-2 focus:ring-black focus:border-black transition-colors flex-shrink-0"
+                      className="h-12 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded-l-lg focus:ring-2 focus:ring-black focus:border-black transition-colors flex-shrink-0"
                       style={{ maxWidth: '120px' }}
                     />
-                    <div className="bg-gray-50 border border-l-0 border-gray-300 h-12 px-3 flex items-center rounded-r-lg">
-                      <span className="text-gray-600 text-sm">.{domain || t('domainSetup.yourDomainExample')}</span>
+                    <div className="bg-gray-50 dark:bg-gray-800 border border-l-0 border-gray-300 dark:border-gray-600 h-12 px-3 flex items-center rounded-r-lg">
+                      <span className="text-gray-600 dark:text-gray-400 text-sm">.{domain || t('domainSetup.yourDomainExample')}</span>
                     </div>
                   </div>
-                  <p className="text-gray-500 text-xs mt-2">
+                  <p className="text-gray-500 dark:text-gray-400 text-xs mt-2">
                     {t('domainSetup.fullAddressWillBe')} <strong>{replySubdomain}.{domain || t('domainSetup.yourDomainExample')}</strong>
                   </p>
                 </div>
@@ -608,7 +608,7 @@ export function DomainSetupModal({ isOpen, onClose, onDomainAdded }: DomainSetup
                   <Button
                     variant="outline"
                     onClick={handleCancel}
-                    className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 py-2.5 rounded-lg font-medium transition-colors"
+                    className="flex-1 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 py-2.5 rounded-lg font-medium transition-colors"
                   >
                     {t('domainSetup.cancel')}
                   </Button>
