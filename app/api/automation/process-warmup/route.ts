@@ -24,6 +24,11 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
     
+    console.log(`📊 Found ${campaigns?.length || 0} active campaigns`)
+    campaigns?.forEach(campaign => {
+      console.log(`📋 Campaign: ${campaign.name} (${campaign.status}) - Settings:`, campaign.settings)
+    })
+    
     let totalWarmupSent = 0
     let totalProcessed = 0
     const results: any[] = []
@@ -38,7 +43,7 @@ export async function GET(request: NextRequest) {
       // Get campaign senders
       const { data: senders, error: sendersError } = await supabaseServer
         .from('campaign_senders')
-        .select('email, health_score, daily_limit, warmup_status, last_warmup_sent')
+        .select('email, health_score, daily_limit, warmup_status, last_warmup_sent, warmup_phase, warmup_days_completed, warmup_emails_sent_today')
         .eq('campaign_id', campaign.id)
         .eq('is_selected', true)
       
@@ -47,13 +52,24 @@ export async function GET(request: NextRequest) {
         continue
       }
       
+      console.log(`👥 Campaign ${campaign.name}: Found ${senders?.length || 0} selected senders`)
+      senders?.forEach(sender => {
+        console.log(`📧 Sender: ${sender.email} - Health: ${sender.health_score}%, Status: ${sender.warmup_status}, Phase: ${sender.warmup_phase}`)
+      })
+      
       // Process each sender for warm-up
       for (const sender of senders || []) {
         totalProcessed++
         
         // Skip if health score is already good (>= 90)
         if (sender.health_score >= 90) {
+          console.log(`⏭️ Skipping ${sender.email} - health score ${sender.health_score}% is already good`)
           continue
+        }
+        
+        // Initialize inactive senders for warm-up
+        if (!sender.warmup_status || sender.warmup_status === 'inactive') {
+          console.log(`🚀 Initializing warm-up for ${sender.email} (health: ${sender.health_score}%)`)
         }
         
         // Check if warm-up was sent today
