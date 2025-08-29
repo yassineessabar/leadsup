@@ -109,21 +109,6 @@ const ContentEditableDiv = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    // Handle Enter key to insert <br> instead of <div>
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      const selection = window.getSelection()
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0)
-        const br = document.createElement('br')
-        range.insertNode(br)
-        range.setStartAfter(br)
-        range.collapse(true)
-        selection.removeAllRanges()
-        selection.addRange(range)
-      }
-    }
-    
     // Save cursor position for variable insertion
     setTimeout(() => {
       const position = saveCursorPosition()
