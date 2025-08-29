@@ -28,49 +28,22 @@ import { toast } from "sonner"
 import { useI18n } from "@/hooks/use-i18n"
 
 // ContentEditable component that preserves cursor position
-const ContentEditableDiv = React.forwardRef<HTMLDivElement & { 
-  insertVariable: (variable: string) => void 
-}, {
+const ContentEditableDiv = ({ 
+  content, 
+  onContentChange, 
+  stepId, 
+  className, 
+  style,
+  editorRef
+}: {
   content: string
   onContentChange: (content: string) => void
   stepId: number
   className?: string
   style?: React.CSSProperties
-}>(({ content, onContentChange, stepId, className, style }, ref) => {
-  const localRef = useRef<HTMLDivElement>(null)
-  const editorRef = (ref as React.RefObject<HTMLDivElement>) || localRef
+  editorRef: React.RefObject<HTMLDivElement>
+}) => {
   const lastStepId = useRef(stepId)
-
-  // Expose methods to parent
-  React.useImperativeHandle(ref, () => {
-    const element = editorRef.current
-    if (!element) return {}
-    
-    return {
-      ...element,
-      insertVariable: (variable: string) => {
-        if (!element) return
-        
-        element.focus()
-        const selection = window.getSelection()
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0)
-          const textNode = document.createTextNode(variable)
-          range.insertNode(textNode)
-          
-          // Move cursor after inserted text
-          range.setStartAfter(textNode)
-          range.collapse(true)
-          selection.removeAllRanges()
-          selection.addRange(range)
-          
-          // Update content without causing cursor jump
-          const htmlContent = element.innerHTML
-          onContentChange(htmlContent)
-        }
-      }
-    }
-  }, [onContentChange])
 
   // Save and restore cursor position
   const saveCursorPosition = () => {
@@ -153,11 +126,10 @@ const ContentEditableDiv = React.forwardRef<HTMLDivElement & {
       className={className}
       style={style}
       suppressContentEditableWarning={true}
+      dangerouslySetInnerHTML={lastStepId.current !== stepId ? { __html: content } : undefined}
     />
   )
-})
-
-ContentEditableDiv.displayName = 'ContentEditableDiv'
+}
 
 interface CampaignDashboardProps {
   campaign?: {
@@ -1026,70 +998,60 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     
     console.log('🔄 Inserting variable:', variable)
     console.log('🔍 editorRef.current:', editorRef.current)
-    console.log('🔍 editorRef.current type:', typeof editorRef.current)
     
-    // Get the actual DOM element - it might be nested due to ref forwarding
-    let element = editorRef.current
-    
-    // If it's our custom component, get the actual DOM element
-    if (element && !element.focus) {
-      console.log('🔍 Ref is custom component, looking for DOM element...')
-      // Try to find the actual contenteditable div
-      const contentEditableDiv = element.querySelector ? element.querySelector('[contenteditable="true"]') : null
-      if (contentEditableDiv) {
-        element = contentEditableDiv as HTMLDivElement
-        console.log('✅ Found contenteditable element:', element)
-      }
-    }
-    
-    if (!element || !element.focus) {
-      console.error('❌ Could not find focusable editor element')
+    const element = editorRef.current
+    if (!element) {
+      console.error('❌ editorRef.current is null')
       return
     }
     
+    console.log('✅ Found editor element, focusing...')
+    
     try {
+      // Focus the element
       element.focus()
       
-      // Get current selection
-      const selection = window.getSelection()
+      // Get current selection or create one at the end
+      let selection = window.getSelection()
+      let range: Range
       
       if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0)
-        
-        // Insert the variable at cursor position
-        const textNode = document.createTextNode(variable)
-        range.insertNode(textNode)
-        
-        // Move cursor after the inserted variable
-        range.setStartAfter(textNode)
-        range.collapse(true)
-        selection.removeAllRanges()
-        selection.addRange(range)
-        
-        console.log('✅ Variable inserted successfully at cursor position')
-        
-        // Update the content state
-        const htmlContent = element.innerHTML
-        updateStepContent(htmlContent)
-        
+        range = selection.getRangeAt(0)
+        console.log('✅ Using existing selection')
       } else {
-        console.log('⚠️ No selection found, placing variable at end')
-        // Fallback: append at end if no selection
-        const currentContent = element.innerHTML || ''
-        const newContent = currentContent + variable
-        element.innerHTML = newContent
-        updateStepContent(newContent)
-        
-        // Place cursor at end
-        const range = document.createRange()
+        // No selection - create one at the end of the content
+        range = document.createRange()
         range.selectNodeContents(element)
-        range.collapse(false)
-        const newSelection = window.getSelection()
-        newSelection?.removeAllRanges()
-        newSelection?.addRange(range)
+        range.collapse(false) // Collapse to end
+        selection?.removeAllRanges()
+        selection?.addRange(range)
+        console.log('✅ Created selection at end of content')
       }
+      
+      // Insert the variable at cursor position
+      const textNode = document.createTextNode(variable)
+      range.insertNode(textNode)
+      
+      // Move cursor after the inserted variable
+      range.setStartAfter(textNode)
+      range.collapse(true)
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+      
+      console.log('✅ Variable inserted successfully')
+      
+      // Update the content state
+      const htmlContent = element.innerHTML
+      updateStepContent(htmlContent)
+      
     } catch (error) {
       console.error('❌ Error inserting variable:', error)
+      
+      // Fallback: just append to end of content
+      const currentContent = activeStep.content || ''
+      const newContent = currentContent + variable
+      updateStepContent(newContent)
+      console.log('🔄 Used fallback method to append variable')
     }
   }
 
@@ -3835,7 +3797,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               ) : (
                                 // Rich Text View
                                 <ContentEditableDiv
-                                  ref={editorRef}
+                                  editorRef={editorRef}
                                   content={activeStep.content || 'Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because...<br/><br/>Best regards,<br/>{{senderName}}'}
                                   onContentChange={updateStepContent}
                                   stepId={activeStepId}
