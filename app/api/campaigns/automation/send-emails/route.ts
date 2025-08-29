@@ -251,7 +251,33 @@ export async function POST(request: NextRequest) {
           // For SendGrid, we don't need authentication per sender - all emails go through SendGrid API
           console.log(`✅ Using SendGrid for ${senderData.email} - no authentication required per sender`)
 
-          console.log(`📤 Sending email to ${contact.email} from ${senderData.email} (${timezoneGroup})`)
+          // Check daily limit before sending
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          const todayEnd = new Date(today)
+          todayEnd.setHours(23, 59, 59, 999)
+          
+          const { count: todaysSentCount } = await supabaseServer
+            .from('prospect_sequence_progress')
+            .select('*', { count: 'exact', head: true })
+            .eq('sender_email', senderData.email)
+            .gte('sent_at', today.toISOString())
+            .lte('sent_at', todayEnd.toISOString())
+            .eq('status', 'sent')
+          
+          const dailyLimit = senderData.daily_limit || 50
+          
+          if ((todaysSentCount || 0) >= dailyLimit) {
+            console.log(`⚠️ DAILY LIMIT REACHED: ${senderData.email} has sent ${todaysSentCount}/${dailyLimit} emails today - SKIPPING`)
+            results.skipped_sender_limit++
+            results.errors.push({
+              contact: contact.email,
+              error: `Sender ${senderData.email} has reached daily limit (${todaysSentCount}/${dailyLimit})`
+            })
+            continue
+          }
+
+          console.log(`📤 Sending email to ${contact.email} from ${senderData.email} (${timezoneGroup}) - Daily usage: ${todaysSentCount}/${dailyLimit}`)
 
           // Replace template variables
           let subject = sequence.subject

@@ -188,16 +188,7 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
     
     // For immediate emails, use timezone-aware logic (same as analytics)
     if (nextEmailData.relative === 'Immediate') {
-      // Use the same due logic as the UI instead of hardcoded overrides
-      // For immediate emails, check if intended time has passed in contact's timezone
-      const contactIdString = String(contact.id || '')
-      const contactHash = contactIdString.split('').reduce((hash, char) => {
-        return ((hash << 5) - hash) + char.charCodeAt(0)
-      }, 0)
-      const seedValue = (contactHash + 1) % 1000
-      const intendedHour = 9 + (seedValue % 8) // 9 AM - 5 PM
-      const intendedMinute = (seedValue * 7) % 60
-      
+      // Use timezone-aware due logic matching UI
       const currentHourInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
         timeZone: timezone,
         hour: 'numeric',
@@ -209,22 +200,27 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
       }).format(now))
       
       const currentTimeInMinutes = currentHourInContactTz * 60 + currentMinuteInContactTz
-      const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
       
-      // Use the same logic as UI: time reached AND business hours
+      // Reuse the intended time calculation from earlier in the function
+      const contactIdStr = String(contact.id || '')
+      const contactHashCalc = contactIdStr.split('').reduce((hash, char) => {
+        return ((hash << 5) - hash) + char.charCodeAt(0)
+      }, 0)
+      const seedVal = (contactHashCalc + 1) % 1000
+      const intendedHr = 9 + (seedVal % 8)
+      const intendedMin = (seedVal * 7) % 60
+      const intendedTimeInMinutes = intendedHr * 60 + intendedMin
+      
       const isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
-      const isDue = isTimeReached && businessHoursStatus.isBusinessHours
+      const isDue = isTimeReached && businessHoursStatus.isBusinessHours && (count || 0) === 0
       
       console.log(`     🔍 DUE CHECK for ${contact.email}:`)
-      console.log(`        Timezone: ${timezone}`)
       console.log(`        Current: ${currentHourInContactTz}:${currentMinuteInContactTz}`)
-      console.log(`        Intended: ${intendedHour}:${intendedMinute}`)
-      console.log(`        Time reached: ${isTimeReached}`)
-      console.log(`        Business hours: ${businessHoursStatus.isBusinessHours}`)
-      console.log(`        Emails sent: ${count || 0}`)
-      console.log(`        RESULT: ${isDue && (count || 0) === 0 ? 'DUE' : 'NOT DUE'}`)
+      console.log(`        Intended: ${intendedHr}:${intendedMin}`)
+      console.log(`        Time reached: ${isTimeReached}, Business hours: ${businessHoursStatus.isBusinessHours}`)
+      console.log(`        Emails sent: ${count || 0}, RESULT: ${isDue ? 'DUE' : 'NOT DUE'}`)
       
-      return isDue && (count || 0) === 0
+      return isDue
       
       // 🔧 EXPLICIT FUTURE DATE CHECK: Never send emails scheduled for future dates (even immediate ones)
       const isInFuture = scheduledDate > now
