@@ -157,7 +157,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Warming metrics state
   const [warmingMetrics, setWarmingMetrics] = useState<WarmingMetrics | null>(null)
   const [warmingLoading, setWarmingLoading] = useState(false)
-  const [healthScoresExpanded, setHealthScoresExpanded] = useState(true)
+  const [healthScoresExpanded, setHealthScoresExpanded] = useState(false)
   const [warmingProgressExpanded, setWarmingProgressExpanded] = useState(false)
   
   // Warmup warning state
@@ -2673,120 +2673,27 @@ Sequence Info:
                       {warmingProgressExpanded && (
                         <div className="mt-4 space-y-2 border-t pt-4">
                           {senders.map((sender: any, index: number) => {
-                            const phase = sender.phase || 1
                             // Use actual health score from senderHealthScores if available, otherwise use warmup data
                             const actualHealthScore = senderHealthScores[sender.sender_email]?.health_score
                             const healthScore = actualHealthScore !== undefined ? actualHealthScore : (sender.current_health_score || 0)
-                            const dayInPhase = sender.day_in_phase || 1
-                            const emailsToday = sender.emails_sent_today || 0
-                            const opensToday = sender.opens_today || 0
-                            const repliesToday = sender.replies_today || 0
-                            const dailyTarget = sender.daily_target || 5
+                            const phase = sender.phase || 1
                             
                             return (
-                              <div key={sender.sender_email || index} className="p-4 bg-gray-50 rounded-lg">
-                                <div className="flex items-center justify-between mb-3">
-                                  <div className="flex items-center space-x-2">
-                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${getPhaseColor(phase)}`}>
-                                      <Flame className="w-3 h-3" />
+                              <div key={sender.sender_email || index} className="p-3 bg-gray-50 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getPhaseColor(phase)}`}>
+                                      <Mail className="w-4 h-4" />
                                     </div>
-                                    <div className="flex flex-col">
+                                    <div>
                                       <p className="text-sm font-medium text-gray-900">{sender.sender_email}</p>
-                                      <div className="flex items-center space-x-2 text-xs text-gray-500">
-                                        <span>{t('analytics.phase')} {phase} • {t('analytics.day')} {dayInPhase}</span>
-                                        <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
-                                        <span>{healthScore}% {t('analytics.health')}</span>
-                                      </div>
+                                      <p className="text-xs text-gray-500">Phase {phase} • {sender.total_warming_days || 0}/35 days</p>
                                     </div>
                                   </div>
-                                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPhaseColor(phase)}`}>
-                                    {t('analytics.phase')} {phase}
-                                  </div>
-                                </div>
-                                
-                                {/* Today's Activity */}
-                                <div className="grid grid-cols-3 gap-3 mb-4">
-                                  <div className="text-center p-3 bg-white rounded-lg border">
-                                    <p className="text-lg font-medium text-gray-900">{emailsToday}</p>
-                                    <p className="text-xs text-gray-500">{t('analytics.emailsSent')}</p>
-                                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                                      <div 
-                                        className="bg-blue-500 h-1.5 rounded-full" 
-                                        style={{ width: `${Math.min((emailsToday / dailyTarget) * 100, 100)}%` }}
-                                      ></div>
+                                  <div className="text-right">
+                                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(healthScore)}`}>
+                                      {healthScore}% health
                                     </div>
-                                    <p className="text-xs text-gray-400 mt-1">{dailyTarget} {t('analytics.target')}</p>
-                                  </div>
-                                  <div className="text-center p-3 bg-white rounded-lg border">
-                                    <p className="text-lg font-medium text-gray-900">{opensToday}</p>
-                                    <p className="text-xs text-gray-500">{t('analytics.opensToday')}</p>
-                                    <p className="text-xs text-gray-400 mt-1">
-                                      {emailsToday > 0 ? `${((opensToday / emailsToday) * 100).toFixed(1)}%` : '0%'} {t('analytics.rate')}
-                                    </p>
-                                  </div>
-                                  <div className="text-center p-3 bg-white rounded-lg border">
-                                    <p className="text-lg font-medium text-gray-900">{repliesToday}</p>
-                                    <p className="text-xs text-gray-500">{t('analytics.repliesToday')}</p>
-                                    <p className="text-xs text-gray-400 mt-1">
-                                      {emailsToday > 0 ? `${((repliesToday / emailsToday) * 100).toFixed(1)}%` : '0%'} {t('analytics.rate')}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {/* Overall Progress */}
-                                <div className="grid grid-cols-2 gap-3 mb-4">
-                                  <div className="p-3 bg-white rounded-lg border">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <span className="text-sm font-medium text-gray-700">{t('analytics.totalWarmingDays')}</span>
-                                      <span className="text-sm text-gray-900">{sender.total_warming_days || 0}</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                      <div 
-                                        className="bg-orange-500 h-2 rounded-full" 
-                                        style={{ width: `${Math.min(((sender.total_warming_days || 0) / 35) * 100, 100)}%` }}
-                                      ></div>
-                                    </div>
-                                    <p className="text-xs text-gray-400 mt-1">35 {t('analytics.dayTarget')}</p>
-                                  </div>
-                                  <div className="p-3 bg-white rounded-lg border">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <span className="text-sm font-medium text-gray-700">{t('analytics.healthScore')}</span>
-                                      <span className="text-sm text-gray-900">{healthScore}%</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                      <div 
-                                        className={`h-2 rounded-full ${healthScore >= 80 ? 'bg-green-500' : healthScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                                        style={{ width: `${healthScore}%` }}
-                                      ></div>
-                                    </div>
-                                    <p className="text-xs text-gray-400 mt-1">{sender.target_health_score || 90}% target</p>
-                                  </div>
-                                </div>
-
-                                {/* Phase Progress */}
-                                <div className="p-3 bg-white rounded-lg border">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-gray-700">{t('analytics.phase')} {phase} {t('analytics.phaseProgress')}</span>
-                                    <span className="text-xs text-gray-500">{t('analytics.day')} {dayInPhase}</span>
-                                  </div>
-                                  
-                                  {/* Phase timeline */}
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    {[1, 2, 3].map((phaseNum) => (
-                                      <div key={phaseNum} className="flex-1">
-                                        <div className={`h-2 rounded-full ${
-                                          phaseNum < phase ? 'bg-green-500' : 
-                                          phaseNum === phase ? 'bg-orange-500' : 'bg-gray-200'
-                                        }`}></div>
-                                        <p className="text-xs text-center mt-1 text-gray-500">{t('analytics.phase')} {phaseNum}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  
-                                  <div className="text-xs text-gray-500 text-center">
-                                    {phase === 1 && t('analytics.buildingInitialReputation')}
-                                    {phase === 2 && t('analytics.increasingVolumeEngagement')}
-                                    {phase === 3 && t('analytics.fullWarmingCapacity')}
                                   </div>
                                 </div>
                               </div>
