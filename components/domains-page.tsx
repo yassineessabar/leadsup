@@ -777,21 +777,21 @@ export default function DomainsPage() {
           </Button>
           
           <div className="mb-8">
-            <h1 className="text-4xl font-light text-gray-900 dark:text-gray-100 tracking-tight mb-2">{t('dnsSetup.title', { domain: selectedDomain })}</h1>
-            <p className="text-gray-500 dark:text-gray-400 font-light">
+            <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('dnsSetup.title', { domain: selectedDomain })}</h1>
+            <p className="text-gray-500 font-light">
               {t('dnsSetup.subtitle')}
             </p>
           </div>
 
           {/* Quick Steps Guide */}
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 mb-8">
+          <div className="bg-gray-50 rounded-xl p-6 mb-8">
             <div className="flex items-start gap-4">
-              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                <span className="text-gray-600 dark:text-gray-300 font-medium text-sm">?</span>
+              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <span className="text-gray-600 font-medium text-sm">?</span>
               </div>
               <div>
-                <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-3">{t('dnsSetup.quickSteps.title')}</h3>
-                <ol className="space-y-2 text-gray-700 dark:text-gray-300 text-sm">
+                <h3 className="font-medium text-gray-900 mb-3">{t('dnsSetup.quickSteps.title')}</h3>
+                <ol className="space-y-2 text-gray-700 text-sm">
                   <li><span className="font-medium">1.</span> {t('dnsSetup.quickSteps.step1')}</li>
                   <li><span className="font-medium">2.</span> {t('dnsSetup.quickSteps.step2')}</li>
                   <li><span className="font-medium">3.</span> {t('dnsSetup.quickSteps.step3')}</li>
@@ -803,10 +803,10 @@ export default function DomainsPage() {
 
           {/* DNS Settings */}
           {loadingDnsRecords ? (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-8 mb-8">
+            <div className="bg-white rounded-xl border p-8 mb-8">
               <div className="flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400 dark:text-gray-500" />
-                <span className="ml-3 text-gray-600 dark:text-gray-400">{t('dnsSetup.loading')}</span>
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                <span className="ml-3 text-gray-600">{t('dnsSetup.loading')}</span>
               </div>
             </div>
           ) : dnsRecords.length > 0 ? (
@@ -814,34 +814,34 @@ export default function DomainsPage() {
               {/* Regular DNS Records (non-MX) */}
               {dnsRecords.filter(r => r.type !== 'MX').length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">{t('dnsSetup.dnsRecords')}</h3>
-                  <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 overflow-hidden">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">{t('dnsSetup.dnsRecords')}</h3>
+                  <div className="bg-white rounded-xl border overflow-hidden">
                     <table className="w-full">
-                      <thead className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
+                      <thead className="bg-gray-50 border-b">
                         <tr>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">{t('dnsSetup.table.type')}</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">{t('dnsSetup.table.host')}</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">{t('dnsSetup.table.value')}</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.type')}</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.host')}</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.value')}</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      <tbody className="divide-y divide-gray-200">
                         {dnsRecords.filter(r => r.type !== 'MX').map((record, index) => (
-                          <tr key={`regular-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                          <tr key={`regular-${index}`} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                                 {record.type}
                               </span>
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
-                                <code className="text-sm font-mono text-gray-700 dark:text-gray-300">
+                                <code className="text-sm font-mono text-gray-700">
                                   {record.host}
                                 </code>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => copyToClipboard(record.host, `host-regular-${index}`)}
-                                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-1 h-6 w-6"
+                                  className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6"
                                   title={t('dnsSetup.copyHost')}
                                 >
                                   {copiedStates[`host-regular-${index}`] ? (
@@ -854,14 +854,14 @@ export default function DomainsPage() {
                             </td>
                             <td className="px-6 py-4 max-w-md">
                               <div className="flex items-center gap-2">
-                                <code className="text-sm font-mono text-gray-700 dark:text-gray-300 break-all">
+                                <code className="text-sm font-mono text-gray-700 break-all">
                                   {record.value}
                                 </code>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => copyToClipboard(record.value, `value-regular-${index}`)}
-                                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-1 h-6 w-6 flex-shrink-0"
+                                  className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6 flex-shrink-0"
                                   title={t('dnsSetup.copyValue')}
                                 >
                                   {copiedStates[`value-regular-${index}`] ? (
@@ -883,20 +883,20 @@ export default function DomainsPage() {
               {/* MX Records with Priority */}
               {dnsRecords.filter(r => r.type === 'MX').length > 0 && (
                 <div className="mb-8">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">{t('dnsSetup.mxRecords')}</h3>
-                  <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 overflow-hidden">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">{t('dnsSetup.mxRecords')}</h3>
+                  <div className="bg-white rounded-xl border overflow-hidden">
                     <table className="w-full">
-                      <thead className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
+                      <thead className="bg-gray-50 border-b">
                         <tr>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">{t('dnsSetup.table.type')}</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">{t('dnsSetup.table.host')}</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">{t('dnsSetup.table.priority')}</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700 dark:text-gray-300">{t('dnsSetup.table.value')}</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.type')}</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.host')}</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.priority')}</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">{t('dnsSetup.table.value')}</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      <tbody className="divide-y divide-gray-200">
                         {dnsRecords.filter(r => r.type === 'MX').map((record, index) => (
-                          <tr key={`mx-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                          <tr key={`mx-${index}`} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                                 {record.type}
@@ -904,14 +904,14 @@ export default function DomainsPage() {
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
-                                <code className="text-sm font-mono text-gray-700 dark:text-gray-300">
+                                <code className="text-sm font-mono text-gray-700">
                                   {record.host}
                                 </code>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => copyToClipboard(record.host, `host-mx-${index}`)}
-                                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-1 h-6 w-6"
+                                  className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6"
                                   title={t('dnsSetup.copyHost')}
                                 >
                                   {copiedStates[`host-mx-${index}`] ? (
@@ -931,7 +931,7 @@ export default function DomainsPage() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => copyToClipboard(String(record.priority || '10'), `priority-mx-${index}`)}
-                                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-1 h-6 w-6"
+                                  className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6"
                                   title={t('dnsSetup.copyPriority')}
                                 >
                                   {copiedStates[`priority-mx-${index}`] ? (
@@ -944,14 +944,14 @@ export default function DomainsPage() {
                             </td>
                             <td className="px-6 py-4 max-w-md">
                               <div className="flex items-center gap-2">
-                                <code className="text-sm font-mono text-gray-700 dark:text-gray-300 break-all">
+                                <code className="text-sm font-mono text-gray-700 break-all">
                                   {record.value}
                                 </code>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => copyToClipboard(record.value, `value-mx-${index}`)}
-                                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-1 h-6 w-6 flex-shrink-0"
+                                  className="text-gray-500 hover:text-gray-700 p-1 h-6 w-6 flex-shrink-0"
                                   title={t('dnsSetup.copyValue')}
                                 >
                                   {copiedStates[`value-mx-${index}`] ? (
