@@ -3408,19 +3408,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <h4 className="text-sm font-medium text-blue-900 mb-2">{t('campaignManagement.sequence.sequences.initialOutreach')}</h4>
                         <div className="text-xs text-gray-500">
                           <div className="flex items-start gap-2">
-                            <span className="flex-1 break-words">{(() => {
-                              const subjectValue = steps.find(s => s.sequence === 1)?.subject || t('campaignManagement.sequence.sequences.noSubject');
-                              console.log('🔍 Debug subject value:', subjectValue, typeof subjectValue);
-                              const result = t('campaignManagement.sequence.sequences.subject', { subject: subjectValue });
-                              console.log('🔍 Subject t() result:', result);
-                              return result;
-                            })()}</span>
+                            <span className="flex-1 break-words">{t('campaignManagement.sequence.sequences.subject').replace('{subject}', steps.find(s => s.sequence === 1)?.subject || t('campaignManagement.sequence.sequences.noSubject'))}</span>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-4 w-4 p-0 flex-shrink-0" style={{ color: 'rgb(87, 140, 255)' }}
                               onClick={() => {
-                                const newSubject = prompt(t('campaignManagement.sequence.editor.editSubjectPrompt', { sequence: t('campaignManagement.sequence.sequences.initialOutreach') }), steps.find(s => s.sequence === 1)?.subject || '')
+                                const newSubject = prompt(t('campaignManagement.sequence.editor.editSubjectPrompt').replace('{sequence}', t('campaignManagement.sequence.sequences.initialOutreach')), steps.find(s => s.sequence === 1)?.subject || '')
                                 if (newSubject !== null) updateSequenceSubject(1, newSubject)
                               }}
                               title="Edit sequence subject"
@@ -3464,12 +3458,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   {step.title}
                                 </div>
                                 <div className="text-sm text-gray-500 mt-1">
-                                  {step.timing === 0 ? t('campaignManagement.sequence.steps.immediately') : (() => {
-                                    console.log('🔍 Debug step.timing:', step.timing, typeof step.timing);
-                                    const result = t('campaignManagement.sequence.steps.day', { timing: step.timing });
-                                    console.log('🔍 t() result:', result);
-                                    return result;
-                                  })()}
+                                  {step.timing === 0 ? t('campaignManagement.sequence.steps.immediately') : t('campaignManagement.sequence.steps.day').replace('{timing}', step.timing)}
                                 </div>
                               </div>
                               <div className="flex items-center space-x-2">
@@ -3540,7 +3529,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                             const seq1End = Math.max(...steps.filter(s => s.sequence === 1).map(s => s.timing))
                             const seq2Start = Math.min(...steps.filter(s => s.sequence === 2).map(s => s.timing))
                             const gap = seq2Start - seq1End
-                            return t('campaignManagement.sequence.gap.waitingPeriod', { gap })
+                            return t('campaignManagement.sequence.gap.waitingPeriod').replace('{gap}', gap)
                           })()}
                         </div>
                         <Edit2 className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -3573,13 +3562,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <div className="flex-1">
                           <h4 className="text-sm font-medium text-green-900 mb-2">{t('campaignManagement.sequence.sequences.followUpOutreach')}</h4>
                           <div className="text-xs text-gray-500 flex items-center space-x-2">
-                            <span>{t('campaignManagement.sequence.sequences.subject', { subject: steps.find(s => s.sequence === 2)?.subject || t('campaignManagement.sequence.sequences.noSubject') })}</span>
+                            <span>{t('campaignManagement.sequence.sequences.subject').replace('{subject}', steps.find(s => s.sequence === 2)?.subject || t('campaignManagement.sequence.sequences.noSubject'))}</span>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-4 w-4 p-0 text-green-600 hover:bg-green-100"
                               onClick={() => {
-                                const newSubject = prompt(t('campaignManagement.sequence.editor.editSubjectPrompt', { sequence: t('campaignManagement.sequence.sequences.followUpOutreach') }), steps.find(s => s.sequence === 2)?.subject || '')
+                                const newSubject = prompt(t('campaignManagement.sequence.editor.editSubjectPrompt').replace('{sequence}', t('campaignManagement.sequence.sequences.followUpOutreach')), steps.find(s => s.sequence === 2)?.subject || '')
                                 if (newSubject !== null) updateSequenceSubject(2, newSubject)
                               }}
                               title="Edit sequence subject"
@@ -3696,7 +3685,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               <div className="flex items-center space-x-2 text-sm text-gray-500">
                                 <span>{activeStep.sequence === 1 ? t('campaignManagement.sequence.sequences.initialOutreach') : t('campaignManagement.sequence.sequences.followUpOutreach')}</span>
                                 <span>•</span>
-                                <span>{activeStep.timing === 0 ? t('campaignManagement.sequence.steps.immediately') : t('campaignManagement.sequence.steps.day', { timing: activeStep.timing })}</span>
+                                <span>{activeStep.timing === 0 ? t('campaignManagement.sequence.steps.immediately') : t('campaignManagement.sequence.steps.day').replace('{timing}', activeStep.timing)}</span>
                               </div>
                             </div>
                           </div>
@@ -3715,7 +3704,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               />
                               <p className="text-xs text-gray-500 mt-2 flex items-center space-x-1">
                                 <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
-                                <span>{t('campaignManagement.sequence.editor.sharedAcrossEmails', { sequence: activeStep.sequence === 1 ? t('campaignManagement.sequence.sequences.initialOutreach') : t('campaignManagement.sequence.sequences.followUpOutreach') })}</span>
+                                <span>{t('campaignManagement.sequence.editor.sharedAcrossEmails').replace('{sequence}', activeStep.sequence === 1 ? t('campaignManagement.sequence.sequences.initialOutreach') : t('campaignManagement.sequence.sequences.followUpOutreach'))}</span>
                               </p>
                             </div>
                             <div>
@@ -4181,7 +4170,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       <Mail className="h-4 w-4" />
                       {(() => {
                         const typeValue = campaign?.type || 'Email'
-                        const result = t('campaignManagement.header.campaignType', { type: typeValue })
+                        const result = t('campaignManagement.header.campaignType').replace('{type}', typeValue)
                         // If translation fails (shows placeholder), use English fallback
                         if (result.includes('{type}')) {
                           return `${typeValue} Campaign`
@@ -4303,7 +4292,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </DialogTitle>
               <DialogDescription>
                 {deleteConfirm.type === 'sequence' 
-                  ? t('campaignManagement.dialogs.delete.sequenceConfirmation', { name: deleteConfirm.item?.name })
+                  ? t('campaignManagement.dialogs.delete.sequenceConfirmation').replace('{name}', deleteConfirm.item?.name || '')
                   : t('campaignManagement.dialogs.delete.stepConfirmation')
                 }
               </DialogDescription>
@@ -4352,11 +4341,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium">{step.title}</h3>
                     <span className="text-sm text-gray-500">
-                      {step.timing === 0 ? t('campaignManagement.dialogs.preview.immediately') : t('campaignManagement.dialogs.preview.waitDays', { timing: step.timing })}
+                      {step.timing === 0 ? t('campaignManagement.dialogs.preview.immediately') : t('campaignManagement.dialogs.preview.waitDays').replace('{timing}', step.timing)}
                     </span>
                   </div>
                   <div className="text-sm text-gray-600 mb-2">
-                    {t('campaignManagement.dialogs.preview.subject', { subject: step.subject })}
+                    {t('campaignManagement.dialogs.preview.subject').replace('{subject}', step.subject || '')}
                   </div>
                   <div 
                     className="prose prose-sm max-w-none"
@@ -4380,7 +4369,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 {t('campaignManagement.dialogs.deleteCampaign.title')}
               </DialogTitle>
               <DialogDescription>
-                {t('campaignManagement.dialogs.deleteCampaign.confirmation', { name: campaign?.name })}
+                {t('campaignManagement.dialogs.deleteCampaign.confirmation').replace('{name}', campaign?.name || '')}
                 <br />
                 <span className="text-red-600 font-medium">{t('campaignManagement.dialogs.deleteCampaign.warning')}</span>
               </DialogDescription>
@@ -4663,8 +4652,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               <div className="text-center">
                 <div className="text-2xl font-medium text-gray-900 mb-1">
                   {lowDeliverabilityAccounts.length === 1 
-                    ? t('senderManagement.healthScoreDialog.accountCount', { count: lowDeliverabilityAccounts.length })
-                    : t('senderManagement.healthScoreDialog.accountCountPlural', { count: lowDeliverabilityAccounts.length })
+                    ? t('senderManagement.healthScoreDialog.accountCount').replace('{count}', lowDeliverabilityAccounts.length)
+                    : t('senderManagement.healthScoreDialog.accountCountPlural').replace('{count}', lowDeliverabilityAccounts.length)
                   }
                 </div>
                 <div className="text-sm text-gray-500">{t('senderManagement.healthScoreDialog.needEnhancement')}</div>
