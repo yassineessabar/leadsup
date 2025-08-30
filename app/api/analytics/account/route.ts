@@ -184,29 +184,101 @@ export async function GET(request: NextRequest) {
       unsubscribeRate: 0
     }
 
-    // Method 3: Use direct webhook data aggregation from sendgrid_events
+    // Method 3: Aggregate metrics across all campaigns using same logic as campaign analytics
     try {
-      console.log('📡 Method 3: Using webhook data aggregation...')
+      console.log('📡 Method 3: Aggregating metrics across all user campaigns...')
       
-      // Query sendgrid_events table directly for account metrics
-      // STRICT: Exclude fake/demo/test events
-      const { data: webhookEvents, error: webhookError } = await supabase
-        .from('sendgrid_events')
-        .select('event_type, timestamp, email, sg_event_id')
+      // Get all campaigns for this user
+      const { data: userCampaigns } = await supabase
+        .from('campaigns')
+        .select('id')
         .eq('user_id', userId)
-        .gte('timestamp', startDate + 'T00:00:00Z')
-        .lte('timestamp', endDate + 'T23:59:59Z')
-        // Exclude demo/test/fake events
-        .not('email', 'like', '%example.com%')
-        .not('email', 'like', '%demo%')
-        .not('email', 'like', '%test%')
-        .not('sg_event_id', 'like', '%demo%')
-        .not('sg_event_id', 'like', '%fix%')
-        .not('sg_event_id', 'like', '%fake%')
+      
+      if (!userCampaigns || userCampaigns.length === 0) {
+        console.log('⚠️ No campaigns found for user')
+        return NextResponse.json({
+          success: true,
+          data: {
+            metrics: accountMetrics,
+            source: 'no_campaigns',
+            period: `${startDate} to ${endDate}`,
+            debug: 'No campaigns found for user'
+          }
+        })
+      }
+      
+      console.log(`📊 Found ${userCampaigns.length} campaigns for user ${userId}`)
+      
+      // Use the same campaign analytics logic for all campaigns
+      const { getCampaignEmailTrackingMetrics } = await import('@/lib/campaign-email-tracking-analytics')
+      
+      let aggregatedMetrics = {
+        emailsSent: 0,
+        emailsDelivered: 0,
+        emailsBounced: 0,
+        emailsBlocked: 0,
+        uniqueOpens: 0,
+        totalOpens: 0,
+        uniqueClicks: 0,
+        totalClicks: 0,
+        unsubscribes: 0,
+        spamReports: 0,
+        deliveryRate: 0,
+        bounceRate: 0,
+        openRate: 0,
+        clickRate: 0,
+        unsubscribeRate: 0
+      }
+      
+      // Aggregate metrics from all campaigns
+      for (const campaign of userCampaigns) {
+        const campaignMetrics = await getCampaignEmailTrackingMetrics(campaign.id, startDate, endDate)
+        if (campaignMetrics) {
+          aggregatedMetrics.emailsSent += campaignMetrics.emailsSent
+          aggregatedMetrics.emailsDelivered += campaignMetrics.emailsDelivered
+          aggregatedMetrics.emailsBounced += campaignMetrics.emailsBounced
+          aggregatedMetrics.emailsBlocked += campaignMetrics.emailsBlocked
+          aggregatedMetrics.uniqueOpens += campaignMetrics.uniqueOpens
+          aggregatedMetrics.totalOpens += campaignMetrics.totalOpens
+          aggregatedMetrics.uniqueClicks += campaignMetrics.uniqueClicks
+          aggregatedMetrics.totalClicks += campaignMetrics.totalClicks
+          aggregatedMetrics.unsubscribes += campaignMetrics.unsubscribes
+          aggregatedMetrics.spamReports += campaignMetrics.spamReports
+        }
+      }
+      
+      // Recalculate rates
+      aggregatedMetrics.deliveryRate = aggregatedMetrics.emailsSent > 0 
+        ? (aggregatedMetrics.emailsDelivered / aggregatedMetrics.emailsSent) * 100 
+        : 0
+      aggregatedMetrics.bounceRate = aggregatedMetrics.emailsSent > 0 
+        ? (aggregatedMetrics.emailsBounced / aggregatedMetrics.emailsSent) * 100 
+        : 0
+      aggregatedMetrics.openRate = aggregatedMetrics.emailsDelivered > 0 
+        ? (aggregatedMetrics.uniqueOpens / aggregatedMetrics.emailsDelivered) * 100 
+        : 0
+      aggregatedMetrics.clickRate = aggregatedMetrics.emailsDelivered > 0 
+        ? (aggregatedMetrics.uniqueClicks / aggregatedMetrics.emailsDelivered) * 100 
+        : 0
+      
+      console.log('✅ Aggregated metrics across all campaigns:', aggregatedMetrics)
+      
+      if (aggregatedMetrics.emailsSent > 0) {
+        return NextResponse.json({
+          success: true,
+          data: {
+            metrics: aggregatedMetrics,
+            source: 'campaign_aggregation',
+            period: `${startDate} to ${endDate}`,
+            campaignCount: userCampaigns.length,
+            debug: 'Aggregated from all user campaigns'
+          }
+        })
+      }
 
       console.log(`🔍 Webhook events query result:`, { 
-        error: webhookError, 
-        eventCount: webhookEvents?.length || 0,
+        error: null, 
+        eventCount: 0,
         events: webhookEvents?.slice(0, 3) // Show first 3 events for debugging
       })
 
@@ -303,9 +375,9 @@ export async function GET(request: NextRequest) {
 
         console.log('✅ Webhook aggregation successful:', accountMetrics)
 
-        // STRICT CHECK: Only return metrics if we have real email sends AND deliveries
-        if (accountMetrics.emailsSent > 0 && accountMetrics.emailsDelivered > 0) {
-          console.log('✅ Real email activity detected, returning metrics')
+        // Return metrics if we have any email activity
+        if (accountMetrics.emailsSent > 0 || accountMetrics.emailsDelivered > 0) {
+          console.log('✅ Email activity detected, returning metrics:', accountMetrics)
           return NextResponse.json({
             success: true,
             data: {
@@ -313,11 +385,11 @@ export async function GET(request: NextRequest) {
               source: 'webhook_aggregation',
               period: `${startDate} to ${endDate}`,
               eventCount: webhookEvents.length,
-              debug: 'Real webhook events found'
+              debug: 'Webhook events found'
             }
           })
         } else {
-          console.log('⚠️ No real email sends detected, ignoring webhook events')
+          console.log('⚠️ No email activity detected, counts:', accountMetrics)
         }
       } else {
         console.log('⚠️ No webhook events found for this period')
