@@ -865,7 +865,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             } else if (campaign.status === 'Warming') {
               status = "Warming Up"
             } else if (actualSequenceStep === 0) {
-              status = "Pending"
+              status = t('analytics.pending') as Contact["status"]
             } else if (contact.email_status && ["Completed", "Replied", "Unsubscribed", "Bounced"].includes(contact.email_status)) {
               // Use the actual email_status from database if it's a final state
               status = contact.email_status as Contact["status"]
@@ -921,7 +921,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           } else if (sequenceStatus) {
             // Use real sequence status if campaign is active
             if (sequenceStatus.sequences_sent === 0) {
-              status = "Pending"
+              status = t('analytics.pending') as Contact["status"]
             } else if (sequenceStatus.status === 'completed') {
               status = "Completed"
             } else if (sequenceStatus.sequences_scheduled > 0) {
@@ -935,7 +935,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 contact.email_status === 'Unsubscribed' || contact.email_status === 'Bounced') {
               status = contact.email_status as Contact["status"]
             } else if ((contact.sequence_step || 0) === 0) {
-              status = "Pending"
+              status = t('analytics.pending') as Contact["status"]
             } else if ((contact.sequence_step || 0) <= (campaignSequences.length || 6)) {
               status = `Email ${contact.sequence_step}` as Contact["status"]
             } else {
@@ -1068,7 +1068,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               nextEmailIn = t('analytics.sequenceComplete')
               console.log(`   ✅ PATH 1 RESULT: Setting "Sequence Complete"`)
             } else {
-              nextEmailIn = isDue ? "Due next" : "Pending Start"
+              nextEmailIn = isDue ? t('analytics.dueNext') : t('analytics.pendingStart')
               console.log(`   📧 PATH 1 RESULT: Setting "${nextEmailIn}" (isDue: ${isDue})`)
             }
             
@@ -1269,7 +1269,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                   nextEmailIn = t('analytics.sequenceComplete')
                   console.log(`   ✅ PATH 2 RESULT: Setting "Sequence Complete"`)
                 } else {
-                  nextEmailIn = isDue ? "Due next" : "Pending Start"
+                  nextEmailIn = isDue ? t('analytics.dueNext') : t('analytics.pendingStart')
                   console.log(`   ❌ PATH 2 RESULT: Setting "${nextEmailIn}"`)
                 }
                 
@@ -1321,7 +1321,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                     isDue = nextEmailData.date <= now
                   }
                 }
-                nextEmailIn = isDue ? "Due next" : nextEmailData.relative
+                nextEmailIn = isDue ? t('analytics.dueNext') : nextEmailData.relative
               } else {
                 nextEmailIn = t('analytics.sequenceComplete')
               }
@@ -1374,7 +1374,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               nextEmailIn = t('analytics.sequenceComplete')
               console.log(`   ✅ PATH 3 RESULT: Setting "Sequence Complete"`)
             } else {
-              nextEmailIn = isDue ? "Due next" : "Pending Start"
+              nextEmailIn = isDue ? t('analytics.dueNext') : t('analytics.pendingStart')
               console.log(`   ❌ PATH 3 RESULT: Setting "${nextEmailIn}"`)
             }
             
@@ -1448,8 +1448,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 
                 if (businessStatus.isBusinessHours) {
                   isDue = true
-                  nextEmailIn = "Due next"
-                  status = "Due next" as Contact["status"]
+                  nextEmailIn = t('analytics.dueNext')
+                  status = t('analytics.dueNext') as Contact["status"]
                   console.log(`✅ FINAL OVERRIDE: ${contact.email} is DUE NEXT - step ${nextStep.step} due at ${nextDueDate.toLocaleString('en-US', { timeZone: timezone })}`)
                 }
               }
@@ -1464,7 +1464,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           console.log(`==========================================\n`)
           
           // Store the result for batch database update
-          const emailStatusForDB = nextEmailIn === "Due next" ? "Due next" : 
+          const emailStatusForDB = nextEmailIn === t('analytics.dueNext') ? "Due next" : 
                                    nextEmailIn === "Sequence complete" ? "Completed" : "Valid"
           
           return {
@@ -1924,6 +1924,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const getContactStatusBadgeColor = (status: Contact["status"]) => {
     switch (status) {
       case "Pending":
+        return "bg-blue-50 text-blue-700 border-blue-200"
+      case "En attente": // French translation
+        return "bg-blue-50 text-blue-700 border-blue-200"
+      case "Due next":
+        return "bg-blue-50 text-blue-700 border-blue-200"
+      case "Échéance suivante": // French translation  
         return "bg-blue-50 text-blue-700 border-blue-200"
       case "Email 1":
       case "Email 2":
@@ -2863,7 +2869,7 @@ Sequence Info:
                   </p>
                 )}
                 <span className="text-sm text-gray-400 font-medium">
-                  {hasBeenStarted ? (metrics?.emailsBounced ? `${metrics.emailsBounced} bounced` : 'No bounces') : t('analytics.notStarted')}
+                  {hasBeenStarted ? (metrics?.emailsBounced ? `${metrics.emailsBounced} bounced` : t('analytics.noBounces')) : t('analytics.notStarted')}
                 </span>
               </div>
             </CardContent>
@@ -3738,7 +3744,7 @@ Sequence Info:
                                   </div>
                                   {contact.nextEmailIn && contact.nextEmailIn !== "Sequence complete" && (
                                     <div className={`text-xs ${
-                                      contact.isDue && contact.nextEmailIn === "Due next" 
+                                      contact.isDue && contact.nextEmailIn === t('analytics.dueNext') 
                                         ? "text-blue-700 font-medium" 
                                         : "text-blue-600"
                                     }`}>
@@ -3748,15 +3754,15 @@ Sequence Info:
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-1">
-                                  {contact.isDue && contact.nextEmailIn === "Due next" ? (
+                                  {contact.isDue && contact.nextEmailIn === t('analytics.dueNext') ? (
                                     <>
                                       <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                                      <span className="text-xs text-blue-600 font-medium">Due next</span>
+                                      <span className="text-xs text-blue-600 font-medium">{t('analytics.dueNext')}</span>
                                     </>
                                   ) : (
                                     <>
                                       <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
-                                      <span className="text-xs text-yellow-600">Pending Start</span>
+                                      <span className="text-xs text-yellow-600">{t('analytics.pendingStart')}</span>
                                     </>
                                   )}
                                 </div>
@@ -3884,7 +3890,7 @@ Sequence Info:
                       )}
                       {inProgressContacts > 0 && (
                         <div className="flex justify-between text-xs">
-                          <span className="text-gray-600">In Progress:</span>
+                          <span className="text-gray-600">{t('analytics.inProgress')}:</span>
                           <span className="font-medium text-blue-600">{inProgressContacts}</span>
                         </div>
                       )}

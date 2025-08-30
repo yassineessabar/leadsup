@@ -142,6 +142,7 @@
     "deliveryRate": "Taux de livraison",
     "bounceRate": "Taux de rebond",
     "responseRate": "Taux de réponse",
+    "noBounces": "Aucun rebond",
     "campaignProgress": "Progrès de la campagne",
     "contactStatus": "Statut du contact",
     "statusDistribution": "Répartition des statuts",

@@ -550,6 +550,7 @@
     "deliveryRate": "Delivery Rate",
     "bounceRate": "Bounce Rate",
     "responseRate": "Response Rate",
+    "noBounces": "No bounces",
     "campaignProgress": "Campaign Progress",
     "contactStatus": "Contact Status",
     "statusDistribution": "Status Distribution",
