@@ -961,7 +961,9 @@ async function sendEmail({ from, to, template, campaign }: any) {
     // SendGrid integration for real email sending
     if (process.env.SENDGRID_API_KEY) {
       const sgMail = require('@sendgrid/mail')
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+      // Clean the API key - remove any whitespace or newlines
+      const cleanApiKey = process.env.SENDGRID_API_KEY.trim().replace(/[\r\n\s]/g, '')
+      sgMail.setApiKey(cleanApiKey)
       
       // Personalize the template content
       const personalizedSubject = template.subject?.replace(/\{\{companyName\}\}/g, to.company || 'your company') || 'Email from LeadsUp'

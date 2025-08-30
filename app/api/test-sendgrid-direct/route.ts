@@ -22,9 +22,12 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
     
-    // Direct SendGrid test
+    // Direct SendGrid test - clean the API key
     const sgMail = require('@sendgrid/mail')
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+    const cleanApiKey = process.env.SENDGRID_API_KEY.trim().replace(/[\r\n\s]/g, '')
+    console.log('🔑 API Key first 7 chars:', cleanApiKey.substring(0, 7))
+    console.log('🔑 API Key last 3 chars:', cleanApiKey.slice(-3))
+    sgMail.setApiKey(cleanApiKey)
     
     const msg = {
       to: to || 'ya.essabarry@gmail.com',

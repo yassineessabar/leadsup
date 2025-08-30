@@ -219,7 +219,9 @@ export async function POST(request: NextRequest) {
               if (process.env.SENDGRID_API_KEY) {
                 console.log(`✅ SENDGRID_API_KEY found, length: ${process.env.SENDGRID_API_KEY.length}`)
                 const sgMail = require('@sendgrid/mail')
-                sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+                // Clean the API key - remove any whitespace or newlines
+                const cleanApiKey = process.env.SENDGRID_API_KEY.trim().replace(/[\r\n\s]/g, '')
+                sgMail.setApiKey(cleanApiKey)
                 
                 // Personalize content (same as working automation)
                 const personalizedSubject = sequenceTemplate.subject?.replace(/\{\{companyName\}\}/g, contact.company || 'your company') || 'Email from LeadsUp'
