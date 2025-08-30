@@ -122,30 +122,30 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* Accounts to use */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Accounts to use</h3>
-              <p className="text-sm text-gray-600 mt-1">Select one or more accounts to send emails from</p>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Accounts to use</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Select one or more accounts to send emails from</p>
             </div>
             
             <div className="flex flex-wrap gap-2">
               {selectedAccounts.map((account, index) => (
-                <div key={index} className="flex items-center space-x-2 bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md text-sm">
+                <div key={index} className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-md text-sm">
                   <span>{account}</span>
                   <button
                     onClick={() => removeAccount(account)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   >
                     <X className="w-3 h-3" />
                   </button>
                 </div>
               ))}
-              <div className="flex items-center space-x-2 bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md text-sm">
+              <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-md text-sm">
                 <span>+19 more</span>
                 <ChevronDown className="w-3 h-3" />
               </div>
@@ -154,11 +154,11 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
         </div>
 
         {/* Stop sending emails on reply */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Stop sending emails on reply</h3>
-              <p className="text-sm text-gray-600 mt-1">Stop sending emails to a lead if a response has been received</p>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Stop sending emails on reply</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Stop sending emails to a lead if a response has been received</p>
             </div>
             
             <div className="flex items-center space-x-2">
@@ -166,7 +166,7 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
                 variant={stopOnReply ? "outline" : "outline"}
                 size="sm"
                 onClick={() => setStopOnReply(false)}
-                className={`${!stopOnReply ? 'bg-gray-100 text-gray-700' : 'text-gray-600 border-gray-300'}`}
+                className={`${!stopOnReply ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600'}`}
               >
                 Disable
               </Button>
@@ -174,7 +174,7 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
                 variant={stopOnReply ? "default" : "outline"}
                 size="sm"
                 onClick={() => setStopOnReply(true)}
-                className={`${stopOnReply ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-600 border-gray-300'}`}
+                className={`${stopOnReply ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600'}`}
               >
                 Enable
               </Button>
@@ -183,11 +183,11 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
         </div>
 
         {/* Open Tracking */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Open Tracking</h3>
-              <p className="text-sm text-gray-600 mt-1">Track email opens</p>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Open Tracking</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Track email opens</p>
             </div>
             
             <div className="flex items-center space-x-6">
@@ -196,9 +196,9 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
                   id="link-tracking"
                   checked={linkTracking}
                   onCheckedChange={setLinkTracking}
-                  className="border-gray-300"
+                  className="border-gray-300 dark:border-gray-600"
                 />
-                <label htmlFor="link-tracking" className="text-sm text-gray-700">
+                <label htmlFor="link-tracking" className="text-sm text-gray-700 dark:text-gray-300">
                   Link tracking
                 </label>
               </div>
@@ -208,7 +208,7 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
                   variant={openTracking ? "outline" : "outline"}
                   size="sm"
                   onClick={() => setOpenTracking(false)}
-                  className={`${!openTracking ? 'bg-gray-100 text-gray-700' : 'text-gray-600 border-gray-300'}`}
+                  className={`${!openTracking ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600'}`}
                 >
                   Disable
                 </Button>
@@ -216,7 +216,7 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
                   variant={openTracking ? "default" : "outline"}
                   size="sm"
                   onClick={() => setOpenTracking(true)}
-                  className={`${openTracking ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-600 border-gray-300'}`}
+                  className={`${openTracking ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600'}`}
                 >
                   Enable
                 </Button>
@@ -226,16 +226,16 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
         </div>
 
         {/* Delivery Optimization */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center space-x-2 mb-1">
-                <h3 className="text-lg font-medium text-gray-900">Delivery Optimization</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Delivery Optimization</h3>
                 <Badge className="bg-green-100 text-green-800 text-xs">
                   Recommended
                 </Badge>
               </div>
-              <p className="text-sm text-gray-600">Disables open tracking</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Disables open tracking</p>
             </div>
             
             <div className="space-y-3">
@@ -244,9 +244,9 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
                   id="text-only-emails"
                   checked={textOnlyEmails}
                   onCheckedChange={setTextOnlyEmails}
-                  className="border-gray-300"
+                  className="border-gray-300 dark:border-gray-600"
                 />
-                <label htmlFor="text-only-emails" className="text-sm text-gray-700">
+                <label htmlFor="text-only-emails" className="text-sm text-gray-700 dark:text-gray-300">
                   Send emails as text-only (no HTML)
                 </label>
               </div>
@@ -256,9 +256,9 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
                   id="first-email-text-only"
                   checked={firstEmailTextOnly}
                   onCheckedChange={setFirstEmailTextOnly}
-                  className="border-gray-300"
+                  className="border-gray-300 dark:border-gray-600"
                 />
-                <label htmlFor="first-email-text-only" className="text-sm text-gray-700 flex items-center space-x-2">
+                <label htmlFor="first-email-text-only" className="text-sm text-gray-700 dark:text-gray-300 flex items-center space-x-2">
                   <span>Send first email as text-only</span>
                   <Badge className="bg-orange-100 text-orange-800 text-xs">
                     Pro
@@ -270,11 +270,11 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
         </div>
 
         {/* Daily Limit */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Daily Limit</h3>
-              <p className="text-sm text-gray-600 mt-1">Max number of emails to send per day for this campaign</p>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Daily Limit</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Max number of emails to send per day for this campaign</p>
             </div>
             
             <div className="w-32">
@@ -282,7 +282,7 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
                 type="number"
                 value={dailyLimit}
                 onChange={(e) => setDailyLimit(e.target.value)}
-                className="text-center border-gray-300 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
+                className="text-center border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
               />
             </div>
           </div>
@@ -292,7 +292,7 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
         <div className="text-center">
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors mx-auto"
+            className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors mx-auto"
           >
             <span className="text-sm">Show advanced options</span>
             <ChevronDown className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />

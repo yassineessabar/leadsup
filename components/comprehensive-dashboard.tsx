@@ -654,23 +654,23 @@ export function ComprehensiveDashboard() {
               
               {/* AI Insights - 2/3 Width */}
               <div className="lg:col-span-2">
-                <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl h-full">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full opacity-30 transform translate-x-16 -translate-y-16"></div>
+                <Card className="relative overflow-hidden border-slate-200/60 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl h-full">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-slate-100 dark:from-gray-700 to-slate-200 dark:to-gray-600 rounded-full opacity-30 transform translate-x-16 -translate-y-16"></div>
                   <CardContent className="p-8 h-full">
                     <div className="flex items-center justify-between mb-8">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center">
-                          <Brain className="w-6 h-6 text-slate-600" />
+                        <div className="w-12 h-12 bg-slate-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center">
+                          <Brain className="w-6 h-6 text-slate-600 dark:text-gray-400" />
                         </div>
                         <div>
-                          <h3 className="text-xl font-medium text-slate-900">{t('dashboardAnalytics.aiPoweredInsights')}</h3>
-                          <p className="text-slate-500 text-sm mt-1">{t('dashboardAnalytics.smartRecommendations')}</p>
+                          <h3 className="text-xl font-medium text-slate-900 dark:text-gray-100">{t('dashboardAnalytics.aiPoweredInsights')}</h3>
+                          <p className="text-slate-500 dark:text-gray-400 text-sm mt-1">{t('dashboardAnalytics.smartRecommendations')}</p>
                         </div>
                       </div>
                       <Button 
                         variant="outline" 
                         size="sm"
-                        className="border-slate-200 hover:bg-slate-50 text-slate-600 font-normal px-4"
+                        className="border-slate-200 dark:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-slate-600 dark:text-gray-400 font-normal px-4"
                       >
                         {t('dashboardAnalytics.viewAll')}
                       </Button>
@@ -706,14 +706,14 @@ export function ComprehensiveDashboard() {
                         </div>
                       </div>
 
-                      <div className="p-6 rounded-2xl border border-slate-200/60 hover:border-slate-300 hover:bg-slate-50/50 transition-all duration-300">
+                      <div className="p-6 rounded-2xl border border-slate-200/60 dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600 hover:bg-slate-50/50 dark:hover:bg-gray-800/50 transition-all duration-300">
                         <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-                            <Clock className="w-5 h-5 text-slate-600" />
+                          <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
+                            <Clock className="w-5 h-5 text-slate-600 dark:text-gray-400" />
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-3">
-                              <h4 className="text-base font-medium text-slate-900">{t('dashboardAnalytics.perfectTiming')}</h4>
+                              <h4 className="text-base font-medium text-slate-900 dark:text-gray-100">{t('dashboardAnalytics.perfectTiming')}</h4>
                               <Badge className="bg-slate-100 text-slate-700 border-none text-xs font-normal px-2 py-1">
                                 {t('dashboardAnalytics.mediumImpact')}
                               </Badge>
@@ -721,9 +721,9 @@ export function ComprehensiveDashboard() {
                             <p className="text-sm text-slate-600 mb-4">
                               {t('dashboardAnalytics.bestEngagementTiming')}
                             </p>
-                            <div className="text-sm text-slate-600">
+                            <div className="text-sm text-slate-600 dark:text-gray-400">
                               <span className="inline-flex items-center gap-2">
-                                <Star className="w-4 h-4 text-slate-500" />
+                                <Star className="w-4 h-4 text-slate-500 dark:text-gray-500" />
                                 {t('dashboardAnalytics.optimalTime')}
                               </span>
                             </div>
@@ -740,16 +740,16 @@ export function ComprehensiveDashboard() {
                 
                 {/* Deliverability Health - Only show if user has email activity */}
                 {sendGridMetrics ? (
-                  <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
+                  <Card className="relative overflow-hidden border-slate-200/60 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full opacity-30 transform translate-x-12 -translate-y-12"></div>
                     <CardContent className="p-8">
                       <div className="text-center space-y-6">
-                        <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto">
-                          <ShieldCheck className="w-6 h-6 text-slate-600" />
+                        <div className="w-12 h-12 bg-slate-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto">
+                          <ShieldCheck className="w-6 h-6 text-slate-600 dark:text-gray-400" />
                         </div>
                         <div>
-                          <h3 className="text-xl font-medium text-slate-900">{t('dashboardAnalytics.deliverability')}</h3>
-                          <p className="text-slate-500 text-sm mt-1">{t('dashboardAnalytics.emailHealthScore')}</p>
+                          <h3 className="text-xl font-medium text-slate-900 dark:text-gray-100">{t('dashboardAnalytics.deliverability')}</h3>
+                          <p className="text-slate-500 dark:text-gray-400 text-sm mt-1">{t('dashboardAnalytics.emailHealthScore')}</p>
                         </div>
                         <div>
                           <div className="text-4xl font-light text-green-600 mb-3">{sendGridMetrics.deliveryRate.toFixed(0)}%</div>
@@ -771,22 +771,22 @@ export function ComprehensiveDashboard() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
+                  <Card className="relative overflow-hidden border-slate-200/60 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
                     <CardContent className="p-8">
                       <div className="text-center space-y-6">
-                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto">
-                          <ShieldCheck className="w-6 h-6 text-slate-400" />
+                        <div className="w-12 h-12 bg-slate-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto">
+                          <ShieldCheck className="w-6 h-6 text-slate-400 dark:text-gray-500" />
                         </div>
                         <div>
-                          <h3 className="text-xl font-medium text-slate-900">{t('dashboardAnalytics.deliverability')}</h3>
-                          <p className="text-slate-500 text-sm mt-1">{t('dashboardAnalytics.emailHealthScore')}</p>
+                          <h3 className="text-xl font-medium text-slate-900 dark:text-gray-100">{t('dashboardAnalytics.deliverability')}</h3>
+                          <p className="text-slate-500 dark:text-gray-400 text-sm mt-1">{t('dashboardAnalytics.emailHealthScore')}</p>
                         </div>
                         <div>
-                          <p className="text-slate-500 text-sm mb-4">
+                          <p className="text-slate-500 dark:text-gray-400 text-sm mb-4">
                             {t('dashboardAnalytics.connectEmailAccountToSeeScore')}
                           </p>
                           <Button 
-                            className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-4 py-2 text-sm"
+                            className="bg-slate-900 dark:bg-gray-100 hover:bg-slate-800 dark:hover:bg-gray-200 text-white dark:text-black rounded-xl px-4 py-2 text-sm"
                             onClick={() => {
                               const event = new CustomEvent('tab-switched', { detail: 'campaigns-email' })
                               window.dispatchEvent(event)
@@ -801,16 +801,16 @@ export function ComprehensiveDashboard() {
                 )}
 
                 {/* Quick Start */}
-                <Card className="relative overflow-hidden border-slate-200/60 bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full opacity-30 transform translate-x-12 -translate-y-12"></div>
+                <Card className="relative overflow-hidden border-slate-200/60 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 rounded-3xl">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-slate-100 dark:from-gray-700 to-slate-200 dark:to-gray-600 rounded-full opacity-30 transform translate-x-12 -translate-y-12"></div>
                   <CardContent className="p-8">
                     <div className="text-center space-y-6">
-                      <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto">
-                        <Zap className="w-6 h-6 text-slate-600" />
+                      <div className="w-12 h-12 bg-slate-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto">
+                        <Zap className="w-6 h-6 text-slate-600 dark:text-gray-400" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-medium text-slate-900">{t('dashboardAnalytics.quickStart')}</h3>
-                        <p className="text-slate-500 text-sm mt-1">{t('dashboardAnalytics.getThingsDone')}</p>
+                        <h3 className="text-xl font-medium text-slate-900 dark:text-gray-100">{t('dashboardAnalytics.quickStart')}</h3>
+                        <p className="text-slate-500 dark:text-gray-400 text-sm mt-1">{t('dashboardAnalytics.getThingsDone')}</p>
                       </div>
                       <div className="space-y-3">
                         <button 

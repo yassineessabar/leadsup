@@ -45,23 +45,39 @@ export async function GET(
 
     const campaignId = params.id
 
-    const { data: campaign, error } = await supabaseServer
+    // First verify campaign belongs to user
+    const { data: campaign, error: campaignError } = await supabaseServer
       .from('campaigns')
-      .select('settings')
+      .select('id')
       .eq('id', campaignId)
       .eq('user_id', userId)
       .single()
 
-    if (error || !campaign) {
+    if (campaignError || !campaign) {
       return NextResponse.json({ 
         success: false, 
         error: 'Campaign not found' 
       }, { status: 404 })
     }
 
+    // Fetch settings from campaign_settings table
+    const { data: settings, error: settingsError } = await supabaseServer
+      .from('campaign_settings')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .single()
+
+    if (settingsError) {
+      console.error('Error fetching campaign settings:', settingsError)
+      return NextResponse.json({
+        success: true,
+        settings: {} // Return empty settings if none found
+      })
+    }
+
     return NextResponse.json({
       success: true,
-      settings: campaign.settings || {}
+      settings: settings || {}
     })
 
   } catch (error) {

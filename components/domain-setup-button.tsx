@@ -198,7 +198,7 @@ export function DomainSetupButton({ campaignId, campaignName }: DomainSetupButto
         setShowSetup(open)
         if (!open) resetModal()
       }}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl bg-white dark:bg-gray-800">
           <DialogHeader>
             <DialogTitle>
               {step === 'domain' && 'Add Your Domain'}

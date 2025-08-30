@@ -159,16 +159,16 @@ export default function WarmingDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-800 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
+                <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
               ))}
             </div>
-            <div className="h-96 bg-gray-200 rounded-lg"></div>
+            <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
           </div>
         </div>
       </div>
@@ -177,12 +177,12 @@ export default function WarmingDashboard() {
 
   if (!warmingData || warmingData.campaigns.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-800 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-16">
             <Flame className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">No Active Auto Warm-ups</h2>
-            <p className="text-gray-600 mb-6">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No Active Auto Warm-ups</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               Auto warm-up will activate automatically when you launch campaigns with low health score senders.
             </p>
             <Button 
@@ -199,17 +199,17 @@ export default function WarmingDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
               <Flame className="w-8 h-8 text-orange-500" />
               Auto Warm-up Dashboard
             </h1>
-            <p className="text-gray-600 mt-1">Monitor your automated warm-up progress and sender health improvements</p>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Monitor your automated warm-up progress and sender health improvements</p>
           </div>
           <Button 
             onClick={fetchWarmingProgress}
@@ -223,15 +223,15 @@ export default function WarmingDashboard() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
+          <Card className="dark:bg-gray-900 dark:border-gray-800">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
                   <Flame className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Active Warmups</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Active Warmups</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {warmingData.summary.activeWarmups}
                   </p>
                 </div>
@@ -239,14 +239,14 @@ export default function WarmingDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="dark:bg-gray-900 dark:border-gray-800">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center">
                   <TrendingUp className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Avg Health Score</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Avg Health Score</p>
                   <p className={`text-2xl font-bold ${getHealthScoreColor(warmingData.summary.averageHealthScore)}`}>
                     {warmingData.summary.averageHealthScore}%
                   </p>
@@ -255,15 +255,15 @@ export default function WarmingDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="dark:bg-gray-900 dark:border-gray-800">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-xl flex items-center justify-center">
                   <Mail className="w-6 h-6 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Emails Today</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Emails Today</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {warmingData.summary.totalEmailsSentToday}
                   </p>
                 </div>
@@ -271,15 +271,15 @@ export default function WarmingDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="dark:bg-gray-900 dark:border-gray-800">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center">
                   <Eye className="w-6 h-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Open Rate</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Open Rate</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {warmingData.summary.openRate}%
                   </p>
                 </div>
@@ -291,12 +291,12 @@ export default function WarmingDashboard() {
         {/* Campaign Cards */}
         <div className="space-y-6">
           {warmingData.campaigns.map((campaign) => (
-            <Card key={campaign.id} className="overflow-hidden">
+            <Card key={campaign.id} className="overflow-hidden dark:bg-gray-900 dark:border-gray-800">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-xl">{campaign.name}</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-xl dark:text-gray-100">{campaign.name}</CardTitle>
+                    <CardDescription className="dark:text-gray-400">
                       {campaign.senders.length} sender(s) warming up
                     </CardDescription>
                   </div>
@@ -312,20 +312,20 @@ export default function WarmingDashboard() {
                     const isUpdating = updating === `${campaign.id}-${sender.sender_email}`
                     
                     return (
-                      <Card key={sender.sender_email} className="border border-gray-100">
+                      <Card key={sender.sender_email} className="border border-gray-100 dark:border-gray-800 dark:bg-gray-900">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                              <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
                                 <Mail className="w-5 h-5 text-gray-600" />
                               </div>
                               <div>
-                                <p className="font-medium text-gray-900">{sender.sender_email}</p>
+                                <p className="font-medium text-gray-900 dark:text-gray-100">{sender.sender_email}</p>
                                 <div className="flex items-center space-x-2 mt-1">
                                   <Badge className={phaseInfo.color}>
                                     Phase {sender.phase}: {phaseInfo.name}
                                   </Badge>
-                                  <span className="text-sm text-gray-500">
+                                  <span className="text-sm text-gray-500 dark:text-gray-400">
                                     Day {sender.day_in_phase} • {phaseInfo.days}
                                   </span>
                                 </div>
@@ -345,7 +345,7 @@ export default function WarmingDashboard() {
 
                           {/* Progress Bar */}
                           <div className="mb-4">
-                            <div className="flex justify-between text-sm text-gray-600 mb-2">
+                            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
                               <span>Health Score Progress</span>
                               <span>{sender.progress_percentage}%</span>
                             </div>
@@ -354,33 +354,33 @@ export default function WarmingDashboard() {
 
                           {/* Daily Stats */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className="text-center p-3 bg-gray-50 rounded-lg">
-                              <p className="text-xs text-gray-500 uppercase tracking-wide">Target</p>
-                              <p className="text-lg font-semibold text-gray-900">{sender.daily_target}</p>
+                            <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Target</p>
+                              <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{sender.daily_target}</p>
                             </div>
-                            <div className="text-center p-3 bg-blue-50 rounded-lg">
+                            <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                               <p className="text-xs text-blue-600 uppercase tracking-wide">Sent</p>
-                              <p className="text-lg font-semibold text-blue-900">{sender.emails_sent_today}</p>
+                              <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">{sender.emails_sent_today}</p>
                             </div>
-                            <div className="text-center p-3 bg-green-50 rounded-lg">
+                            <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                               <p className="text-xs text-green-600 uppercase tracking-wide">Opens</p>
-                              <p className="text-lg font-semibold text-green-900">{sender.opens_today}</p>
+                              <p className="text-lg font-semibold text-green-900 dark:text-green-100">{sender.opens_today}</p>
                             </div>
-                            <div className="text-center p-3 bg-purple-50 rounded-lg">
+                            <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                               <p className="text-xs text-purple-600 uppercase tracking-wide">Replies</p>
-                              <p className="text-lg font-semibold text-purple-900">{sender.replies_today}</p>
+                              <p className="text-lg font-semibold text-purple-900 dark:text-purple-100">{sender.replies_today}</p>
                             </div>
                           </div>
 
                           {/* Health Score */}
-                          <div className="mt-4 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg">
+                          <div className="mt-4 p-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-lg">
                             <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium text-gray-700">Health Score</span>
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Health Score</span>
                               <div className="flex items-center space-x-2">
                                 <span className={`text-lg font-bold ${getHealthScoreColor(sender.current_health_score)}`}>
                                   {sender.current_health_score}%
                                 </span>
-                                <span className="text-sm text-gray-500">
+                                <span className="text-sm text-gray-500 dark:text-gray-400">
                                   / {sender.target_health_score}%
                                 </span>
                               </div>

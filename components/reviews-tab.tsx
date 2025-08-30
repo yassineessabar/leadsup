@@ -273,7 +273,7 @@ export function ReviewsTab() {
           </UpgradeProDialog>
           <Button
             variant="outline"
-            className="rounded-full gap-2 shadow-sm bg-white hover:bg-gray-50"
+            className="rounded-full gap-2 shadow-sm bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
             onClick={handleManualRefresh}
             disabled={refreshing}
           >
@@ -283,7 +283,7 @@ export function ReviewsTab() {
           <Button
             onClick={handleExport}
             variant="outline"
-            className="rounded-full gap-2 shadow-sm bg-white hover:bg-gray-50"
+            className="rounded-full gap-2 shadow-sm bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             <Download className="w-4 h-4" />
             Export
@@ -351,7 +351,7 @@ export function ReviewsTab() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Total Customers</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Customers</p>
                   <p className="text-2xl font-bold">{data.length}</p>
                 </div>
                 <MousePointer className="h-8 w-8 text-gray-400" />
@@ -362,7 +362,7 @@ export function ReviewsTab() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">With Activity</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">With Activity</p>
                   <p className="text-2xl font-bold">{data.filter(d => d.activity.hasActivity).length}</p>
                 </div>
                 <Eye className="h-8 w-8 text-gray-400" />
@@ -373,7 +373,7 @@ export function ReviewsTab() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Gave Rating</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Gave Rating</p>
                   <p className="text-2xl font-bold">{data.filter(d => d.activity.lastStarRating).length}</p>
                 </div>
                 <Star className="h-8 w-8 text-gray-400" />
@@ -384,7 +384,7 @@ export function ReviewsTab() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Platform Clicks</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Platform Clicks</p>
                   <p className="text-2xl font-bold">{data.filter(d => d.activity.redirectPlatforms.length > 0).length}</p>
                 </div>
                 <ExternalLink className="h-8 w-8 text-gray-400" />
@@ -405,8 +405,8 @@ export function ReviewsTab() {
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading reviews...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100 mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-400">Loading reviews...</p>
             </div>
           </div>
         ) : paginatedData.length === 0 ? (

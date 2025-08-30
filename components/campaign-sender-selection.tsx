@@ -1038,8 +1038,8 @@ export default function CampaignSenderSelection({
           <div className="flex items-center justify-center min-h-[500px]">
             <div className="text-center">
               <div className="w-12 h-12 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('senderManagement.loading.title')}</h3>
-              <p className="text-gray-600">{t('senderManagement.loading.description')}</p>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">{t('senderManagement.loading.title')}</h3>
+              <p className="text-gray-600 dark:text-gray-400">{t('senderManagement.loading.description')}</p>
             </div>
           </div>
         </div>
@@ -1053,7 +1053,7 @@ export default function CampaignSenderSelection({
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center min-h-[500px]">
             <div className="text-center bg-white dark:bg-gray-900 rounded-3xl p-12 shadow-sm border border-gray-100/50 dark:border-gray-800">
-              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <AlertCircle className="w-8 h-8 text-red-500" />
               </div>
               <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-3">Failed to Load Accounts</h3>
@@ -1534,14 +1534,14 @@ export default function CampaignSenderSelection({
   }
 
   return (
-    <div className="min-h-screen bg-[rgb(243,243,241)] p-6 md:p-8">
+    <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900 p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-medium text-gray-900 mb-2">{t('senderManagement.header.title')}</h1>
-              <p className="text-gray-500 text-sm">
+              <h1 className="text-2xl font-medium text-gray-900 dark:text-gray-100 mb-2">{t('senderManagement.header.title')}</h1>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
                 {t('senderManagement.header.description')}
               </p>
             </div>
@@ -1560,7 +1560,7 @@ export default function CampaignSenderSelection({
                     }
                   }}
                   variant="outline"
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50 rounded-2xl px-5 py-2.5 font-medium transition-colors"
+                  className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-2xl px-5 py-2.5 font-medium transition-colors"
                 >
                   <Settings className="h-4 w-4 mr-2" />
                   {t('senderManagement.buttons.editAccounts')}
@@ -1616,13 +1616,13 @@ export default function CampaignSenderSelection({
             const someSelected = selectedInDomain > 0 && !allSelected
 
             return (
-              <div key={domain.id} className="bg-white border-0 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden shadow-sm">
+              <div key={domain.id} className="bg-white dark:bg-gray-900 border-0 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden shadow-sm">
                 <div className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <button
                         onClick={() => toggleDomainExpansion(domain.id)}
-                        className="flex items-center gap-4 hover:bg-gray-50 rounded-2xl p-3 -ml-3 transition-colors duration-200"
+                        className="flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-2xl p-3 -ml-3 transition-colors duration-200"
                       >
                         {isExpanded ? (
                           <ChevronDown className="h-5 w-5 text-gray-400" />
@@ -1630,17 +1630,17 @@ export default function CampaignSenderSelection({
                           <ChevronRight className="h-5 w-5 text-gray-400" />
                         )}
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center">
+                          <div className="w-10 h-10 bg-gray-50 dark:bg-gray-800 rounded-xl flex items-center justify-center">
                             <Globe className="h-5 w-5 text-gray-600" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 group-hover:text-gray-700 transition-colors">
                               {domain.domain}
                             </h3>
-                            <p className="text-gray-500 mt-1">
+                            <p className="text-gray-500 dark:text-gray-400 mt-1">
                               {domain.senders.length} {domain.senders.length === 1 ? t('senderManagement.senderAccount') : t('senderManagement.senderAccounts')}
                               {selectedInDomain > 0 && (
-                                <span className="ml-2 text-gray-700 font-medium">
+                                <span className="ml-2 text-gray-700 dark:text-gray-300 font-medium">
                                   • {selectedInDomain} {t('senderManagement.selected')}
                                 </span>
                               )}
@@ -1651,12 +1651,12 @@ export default function CampaignSenderSelection({
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <Badge className="bg-gray-100 text-gray-600 border-0 px-3 py-1 rounded-xl text-xs font-medium">
+                      <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-0 px-3 py-1 rounded-xl text-xs font-medium">
                         {t('senderManagement.verified')}
                       </Badge>
                       
                       {domain.senders.length > 0 && (
-                        <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-1.5">
+                        <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-1.5">
                           <Checkbox
                             checked={allSelected}
                             onCheckedChange={(checked) => handleDomainToggle(domain, checked === true)}
@@ -1667,7 +1667,7 @@ export default function CampaignSenderSelection({
                               }
                             }}
                           />
-                          <label className="text-xs text-gray-600 cursor-pointer font-medium">
+                          <label className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer font-medium">
                             {t('senderManagement.selectAll')}
                           </label>
                         </div>
@@ -1680,7 +1680,7 @@ export default function CampaignSenderSelection({
                           e.stopPropagation()
                           handleDeleteDomain(domain)
                         }}
-                        className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 rounded-xl"
+                        className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700 rounded-xl"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         {t('senderManagement.buttons.delete')}
@@ -1693,12 +1693,12 @@ export default function CampaignSenderSelection({
                   <CollapsibleContent>
                     <div className="px-8 pb-8">
                       {domain.senders.length === 0 ? (
-                        <div className="text-center py-12 bg-gray-50 rounded-2xl">
-                          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-6">
                             <User className="h-8 w-8 text-gray-400" />
                           </div>
-                          <h4 className="text-lg font-medium text-gray-900 mb-3">{t('senderManagement.noSenderAccounts.title')}</h4>
-                          <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+                          <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">{t('senderManagement.noSenderAccounts.title')}</h4>
+                          <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-sm mx-auto">
                             {t('senderManagement.noSenderAccounts.description')}
                           </p>
                           <Button
@@ -1726,8 +1726,8 @@ export default function CampaignSenderSelection({
                             return (
                             <div 
                               key={sender.id} 
-                              className={`border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-2xl p-6 ${
-                                isSelected ? 'bg-blue-50/50 border-blue-200' : 'bg-white hover:shadow-sm'
+                              className={`border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-2xl p-6 ${
+                                isSelected ? 'bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'bg-white dark:bg-gray-900 hover:shadow-sm'
                               }`}
                             >
                               <div className="flex items-center justify-between">
@@ -1751,33 +1751,33 @@ export default function CampaignSenderSelection({
                                   />
                                   
                                   <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center">
                                       <User className="h-6 w-6 text-gray-600" />
                                     </div>
                                     <div>
                                       <div className="flex items-center gap-3">
-                                        <h4 className="font-medium text-gray-900 text-lg">
+                                        <h4 className="font-medium text-gray-900 dark:text-gray-100 text-lg">
                                           {sender.display_name || sender.email.split('@')[0]}
                                         </h4>
                                         {sender.is_default && (
-                                          <Badge className="bg-blue-50 text-blue-700 border-blue-200 px-2 py-1 rounded-lg text-xs font-medium">
+                                          <Badge className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 px-2 py-1 rounded-lg text-xs font-medium">
                                             Primary
                                           </Badge>
                                         )}
                                       </div>
-                                      <p className="text-gray-600 mt-1">{sender.email}</p>
+                                      <p className="text-gray-600 dark:text-gray-400 mt-1">{sender.email}</p>
                                     </div>
                                   </div>
                                 </div>
 
                                 <div className="flex items-center gap-8">
                                   <div className="text-center">
-                                    <div className="text-sm text-gray-500 mb-1">{t('senderManagement.dailyLimit')}</div>
-                                    <div className="font-semibold text-gray-900 text-lg">{sender.daily_limit || 50}</div>
-                                    <div className="text-xs text-gray-500">{t('senderManagement.emailsPerDay')}</div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t('senderManagement.dailyLimit')}</div>
+                                    <div className="font-semibold text-gray-900 dark:text-gray-100 text-lg">{sender.daily_limit || 50}</div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('senderManagement.emailsPerDay')}</div>
                                   </div>
                                   <div className="text-center">
-                                    <div className="text-sm text-gray-500 mb-1">{t('senderManagement.healthScore')}</div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t('senderManagement.healthScore')}</div>
                                     {healthScoresLoading ? (
                                       <div className="font-semibold text-xl text-gray-400">
                                         <div className="animate-pulse">--</div>
@@ -1789,7 +1789,7 @@ export default function CampaignSenderSelection({
                                     )}
                                   </div>
                                   <div className="text-center">
-                                    <div className="text-sm text-gray-500 mb-1">Warmup Status</div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Warmup Status</div>
                                     {(() => {
                                       const statusInfo = getWarmupStatusInfo(sender.warmup_status)
                                       const StatusIcon = statusInfo.icon
@@ -1802,12 +1802,12 @@ export default function CampaignSenderSelection({
                                             </span>
                                           </div>
                                           {sender.warmup_phase && sender.warmup_phase > 0 && (
-                                            <div className="text-xs text-gray-500">
+                                            <div className="text-xs text-gray-500 dark:text-gray-400">
                                               Phase {sender.warmup_phase}: {getWarmupPhaseLabel(sender.warmup_phase)}
                                             </div>
                                           )}
                                           {sender.warmup_days_completed && sender.warmup_days_completed > 0 && (
-                                            <div className="text-xs text-gray-500">
+                                            <div className="text-xs text-gray-500 dark:text-gray-400">
                                               Day {sender.warmup_days_completed}
                                             </div>
                                           )}
@@ -1821,7 +1821,7 @@ export default function CampaignSenderSelection({
                                       handleTestClick(sender)
                                     }}
                                     variant="outline"
-                                    className="border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl px-3 py-1.5 text-xs font-medium"
+                                    className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-xl px-3 py-1.5 text-xs font-medium"
                                   >
                                     Test
                                   </Button>
@@ -1829,19 +1829,19 @@ export default function CampaignSenderSelection({
                                 
                                 {/* Warmup Activity Section */}
                                 {sender.warmup_status === 'active' && (
-                                  <div className="mt-4 pt-4 border-t border-gray-100">
+                                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center gap-6 text-sm">
                                       <div className="flex items-center gap-2">
                                         <TrendingUp className="h-4 w-4 text-blue-500" />
-                                        <span className="text-gray-600">
+                                        <span className="text-gray-600 dark:text-gray-400">
                                           Today's Warmup: 
-                                          <span className="font-medium text-gray-900 ml-1">
+                                          <span className="font-medium text-gray-900 dark:text-gray-100 ml-1">
                                             {sender.warmup_emails_sent_today || 0} emails
                                           </span>
                                         </span>
                                       </div>
                                       {sender.last_warmup_sent && (
-                                        <div className="flex items-center gap-2 text-gray-500">
+                                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                                           <Activity className="h-4 w-4" />
                                           <span>
                                             Last: {new Date(sender.last_warmup_sent).toLocaleDateString()}
@@ -1869,24 +1869,24 @@ export default function CampaignSenderSelection({
         {/* Test Email Modal */}
         {showTestModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl p-0 max-w-md w-full shadow-2xl border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-0 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
               {/* Header */}
               <div className="p-6 pb-0">
                 <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                  <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center">
                     <Mail className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {t('senderManagement.testModal.title')}
                     </h3>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       {t('senderManagement.testModal.description')}
                     </p>
                   </div>
                   <button
                     onClick={() => setShowTestModal(false)}
-                    className="ml-auto w-8 h-8 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+                    className="ml-auto w-8 h-8 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   >
                     <span className="text-lg">×</span>
                   </button>
@@ -1896,16 +1896,16 @@ export default function CampaignSenderSelection({
               {/* Content */}
               <div className="px-6 pb-4">
                 {testModalSender && (
-                  <div className="bg-blue-50/50 rounded-xl p-4 mb-4">
+                  <div className="bg-blue-50/50 dark:bg-blue-900/20 rounded-xl p-4 mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
                         <Mail className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {testModalSender.email}
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-gray-600 dark:text-gray-400">
                           {testModalSender.display_name || 'Sender Account'}
                         </div>
                       </div>
@@ -1914,7 +1914,7 @@ export default function CampaignSenderSelection({
                 )}
 
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Send test email to:
                   </label>
                   <input
@@ -1922,19 +1922,19 @@ export default function CampaignSenderSelection({
                     value={testModalEmail}
                     onChange={(e) => setTestModalEmail(e.target.value)}
                     placeholder={t('senderManagement.testModal.emailPlaceholder')}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm"
+                    className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm dark:bg-gray-900 dark:text-gray-100"
                   />
                 </div>
 
-                <div className="bg-amber-50/50 rounded-xl p-3 mb-4">
-                  <p className="text-xs text-amber-800">
+                <div className="bg-amber-50/50 dark:bg-amber-900/20 rounded-xl p-3 mb-4">
+                  <p className="text-xs text-amber-800 dark:text-amber-200">
                     {t('senderManagement.testModal.note')}
                   </p>
                 </div>
               </div>
 
               {/* Footer */}
-              <div className="flex gap-3 p-6 pt-3 border-t border-gray-100">
+              <div className="flex gap-3 p-6 pt-3 border-t border-gray-100 dark:border-gray-800">
                 <Button
                   onClick={() => setShowTestModal(false)}
                   variant="outline"
@@ -1963,24 +1963,24 @@ export default function CampaignSenderSelection({
 
         {/* Delete Domain Confirmation Dialog */}
         <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md dark:bg-gray-900 dark:border-gray-800">
             <DialogHeader>
-              <DialogTitle className="text-xl font-medium text-gray-900">Delete Domain</DialogTitle>
-              <DialogDescription className="text-gray-500 pt-2">
+              <DialogTitle className="text-xl font-medium text-gray-900 dark:text-gray-100">Delete Domain</DialogTitle>
+              <DialogDescription className="text-gray-500 dark:text-gray-400 pt-2">
                 Are you sure you want to delete "{domainToDelete?.domain}"?
               </DialogDescription>
             </DialogHeader>
             
             <div className="py-4">
-              <div className="bg-red-50 rounded-lg p-4 mb-4">
-                <h4 className="font-medium text-red-900 mb-2">This will permanently remove:</h4>
-                <ul className="text-sm text-red-800 space-y-1">
+              <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 mb-4">
+                <h4 className="font-medium text-red-900 dark:text-red-200 mb-2">This will permanently remove:</h4>
+                <ul className="text-sm text-red-800 dark:text-red-200 space-y-1">
                   <li>• The domain and all its DNS settings</li>
                   <li>• {domainToDelete?.senders.length || 0} {(domainToDelete?.senders.length || 0) === 1 ? t('senderManagement.senderAccount') : t('senderManagement.senderAccounts')}</li>
                   <li>• All email history for this domain</li>
                 </ul>
               </div>
-              <p className="text-sm text-gray-600 font-medium">
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
                 This action cannot be undone.
               </p>
             </div>
@@ -1989,7 +1989,7 @@ export default function CampaignSenderSelection({
               <Button
                 variant="outline"
                 onClick={() => setShowDeleteDialog(false)}
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 Cancel
               </Button>
@@ -2005,7 +2005,7 @@ export default function CampaignSenderSelection({
 
         {/* Loading Popup for Sender Account Creation */}
         <Dialog open={creatingSenderAccounts} onOpenChange={() => {}}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md dark:bg-gray-900 dark:border-gray-800">
             <DialogHeader>
               <DialogTitle className="sr-only">Creating Email Accounts</DialogTitle>
             </DialogHeader>
@@ -2016,8 +2016,8 @@ export default function CampaignSenderSelection({
                 <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-green-600 animate-spin"></div>
                 <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-green-400 animate-spin animate-reverse"></div>
               </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">Creating Email Accounts...</h3>
-              <p className="text-gray-600">
+              <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">Creating Email Accounts...</h3>
+              <p className="text-gray-600 dark:text-gray-400">
                 Setting up your sender accounts automatically
               </p>
             </div>

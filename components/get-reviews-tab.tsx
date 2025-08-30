@@ -62,7 +62,7 @@ const QRCodeSVG = dynamic(
       // Return a fallback component
       return Promise.resolve({
         default: () => (
-          <div className="p-4 text-center text-gray-500 border border-gray-300 rounded">
+          <div className="p-4 text-center text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded">
             <div className="text-sm">QR Code temporarily unavailable</div>
             <div className="text-xs mt-1">Please refresh the page</div>
           </div>
@@ -75,7 +75,7 @@ const QRCodeSVG = dynamic(
     loading: () => (
       <div className="p-4 text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-        <div className="mt-2 text-sm text-gray-600">Loading QR Code...</div>
+        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading QR Code...</div>
       </div>
     )
   }
@@ -111,15 +111,15 @@ function SmsPhonePreview({
   reviewLink: string
 }) {
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-lg bg-white">
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-lg bg-white dark:bg-gray-900">
       {/* Phone header */}
-      <div className="flex w-full items-center justify-between border-b bg-gray-50 p-4 text-sm font-semibold text-gray-800">
-        <span className="text-gray-500">Messages</span>
-        <span className="text-gray-500">9:41 AM</span>
+      <div className="flex w-full items-center justify-between border-b bg-gray-50 dark:bg-gray-800 p-4 text-sm font-semibold text-gray-800 dark:text-gray-200">
+        <span className="text-gray-500 dark:text-gray-400">Messages</span>
+        <span className="text-gray-500 dark:text-gray-400">9:41 AM</span>
       </div>
       {/* Message content */}
       <div className="flex flex-1 flex-col justify-center p-4">
-        <div className="max-w-[85%] rounded-2xl bg-gray-100 p-4 text-sm text-gray-800 shadow-sm">
+        <div className="max-w-[85%] rounded-2xl bg-gray-100 dark:bg-gray-700 p-4 text-sm text-gray-800 dark:text-gray-200 shadow-sm">
           <p className="mb-2 font-semibold">{sender}</p>
           <p className="leading-relaxed">{message}</p>
           <p className="mt-3 break-all font-medium underline" style={{ color: 'rgb(87, 140, 255)' }}>{reviewLink}</p>
@@ -142,8 +142,8 @@ function EmailPreview({
   reviewLink: string
 }) {
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-lg bg-white">
-      {/* Email Header */}
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-lg bg-white dark:bg-gray-900">
+      {/* Email Header */>
       <div className="bg-black p-4 text-white">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
@@ -159,8 +159,8 @@ function EmailPreview({
       {/* Email Content */}
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         <div>
-          <h4 className="mb-2 text-sm font-semibold text-gray-900">Subject: {subject}</h4>
-          <div className="text-sm leading-relaxed text-gray-700">
+          <h4 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">Subject: {subject}</h4>
+          <div className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
             <p>{message}</p>
             <div className="mt-3 rounded-lg p-2" style={{ backgroundColor: 'rgba(87, 140, 255, 0.1)' }}>
               <p className="break-all text-xs font-medium underline" style={{ color: 'rgb(87, 140, 255)' }}>{reviewLink}</p>
@@ -368,14 +368,14 @@ function QrCodeTab({ reviewLink, qrCodeData, companyName, loadingReviewLink }: Q
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <Card className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
         <CardHeader className="pb-4 text-center">
-          <CardTitle className="text-xl font-semibold text-gray-900">QR Code Campaign</CardTitle>
-          <p className="text-sm text-gray-600">Generate and share QR codes for easy review access</p>
+          <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">QR Code Campaign</CardTitle>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Generate and share QR codes for easy review access</p>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="space-y-6 text-center">
-            <div className="mx-auto flex h-64 w-64 items-center justify-center rounded-lg border-2 border-gray-200 bg-white shadow-sm">
+            <div className="mx-auto flex h-64 w-64 items-center justify-center rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
               {loadingReviewLink ? (
                 <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-[#9198e5]" />
               ) : reviewLink ? (
@@ -395,12 +395,12 @@ function QrCodeTab({ reviewLink, qrCodeData, companyName, loadingReviewLink }: Q
             <div className="space-y-4">
               <div className="rounded-lg border border-violet-200 bg-violet-50 p-4">
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-gray-700">Review Link:</p>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Review Link:</p>
                   <p className="break-all font-mono text-sm text-violet-800">
                     {loadingReviewLink ? "Loading..." : reviewLink}
                   </p>
                   {!loadingReviewLink && reviewLink && (
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
                       Customers can scan this QR code or visit this link to leave reviews
                     </p>
                   )}
@@ -410,7 +410,7 @@ function QrCodeTab({ reviewLink, qrCodeData, companyName, loadingReviewLink }: Q
               <div className="flex flex-wrap justify-center gap-3">
                 <Button
                   variant="outline"
-                  className="flex items-center gap-2 transition-colors hover:border-violet-300 hover:bg-violet-50 bg-white border-gray-200 rounded-full"
+                  className="flex items-center gap-2 transition-colors hover:border-violet-300 hover:bg-violet-50 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-full"
                   onClick={handleDownloadQR}
                   disabled={loadingReviewLink || !reviewLink}
                 >
@@ -419,7 +419,7 @@ function QrCodeTab({ reviewLink, qrCodeData, companyName, loadingReviewLink }: Q
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex items-center gap-2 transition-colors hover:border-violet-300 hover:bg-violet-50 bg-white border-gray-200 rounded-full"
+                  className="flex items-center gap-2 transition-colors hover:border-violet-300 hover:bg-violet-50 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-full"
                   onClick={handleCopyLink}
                   disabled={loadingReviewLink || !reviewLink}
                 >
@@ -428,7 +428,7 @@ function QrCodeTab({ reviewLink, qrCodeData, companyName, loadingReviewLink }: Q
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex items-center gap-2 transition-colors hover:border-violet-300 hover:bg-violet-50 bg-white border-gray-200 rounded-full"
+                  className="flex items-center gap-2 transition-colors hover:border-violet-300 hover:bg-violet-50 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-full"
                   onClick={handleShare}
                   disabled={loadingReviewLink || !reviewLink}
                 >
@@ -479,7 +479,7 @@ function LivePreviewPanel({
           <div className="h-1 w-10 rounded-full bg-gray-700" />
         </div>
         {/* Screen */}
-        <div className="relative h-full w-full overflow-hidden rounded-[30px] bg-white">
+        <div className="relative h-full w-full overflow-hidden rounded-[30px] bg-white dark:bg-gray-900">
           {(() => {
             const shouldShowSms = previewContent ? previewContent.type === "sms" : activeSubTab === "sms"
             const shouldShowEmail = previewContent ? previewContent.type === "email" : activeSubTab === "email"
@@ -527,7 +527,7 @@ function LivePreviewPanel({
               return (
                 <div className="flex h-full items-center justify-center p-4">
                   <div className="space-y-4 text-center">
-                    <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-lg border-2 border-gray-200 bg-white shadow-sm">
+                    <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
                       {loadingReviewLink ? (
                         <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[#9198e5]" />
                       ) : reviewLink ? (
@@ -544,8 +544,8 @@ function LivePreviewPanel({
                       )}
                     </div>
                     <div className="px-4">
-                      <p className="text-sm font-medium text-gray-800">Scan to leave a review</p>
-                      <p className="mt-1 break-all text-xs text-gray-600">{reviewLink}</p>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Scan to leave a review</p>
+                      <p className="mt-1 break-all text-xs text-gray-600 dark:text-gray-400">{reviewLink}</p>
                     </div>
                   </div>
                 </div>
@@ -558,7 +558,7 @@ function LivePreviewPanel({
 
       <div className="mt-4 flex justify-center">
         <div className="text-center">
-          <p className="text-sm font-medium text-gray-700">Live Preview</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Live Preview</p>
           <p className="mt-1 text-xs text-gray-500">
             See how your {activeSubTab === "sms" ? "SMS" : activeSubTab === "email" ? "email" : "QR code"} will appear
           </p>
@@ -630,7 +630,7 @@ function WorkflowEditor({
               <Collapsible
                 open={step.isOpen}
                 onOpenChange={() => onToggleStep(step.id)}
-                className="rounded-xl border bg-white text-card-foreground shadow-sm"
+                className="rounded-xl border bg-white dark:bg-gray-800 text-card-foreground shadow-sm"
               >
                 <CollapsibleTrigger asChild>
                   <div className="flex cursor-pointer items-center justify-between p-4">
@@ -664,7 +664,7 @@ function WorkflowEditor({
                           id={`subject-${step.id}`}
                           value={step.subject || ""}
                           onChange={(e) => onSubjectChange?.(step.id, e.target.value)}
-                          className="rounded-lg border-gray-200 focus:border-violet-300 focus:ring-violet-100"
+                          className="rounded-lg border-gray-200 dark:border-gray-600 focus:border-violet-300 focus:ring-violet-100 dark:bg-gray-700 dark:text-gray-100"
                         />
                       </div>
                     )}
@@ -674,12 +674,12 @@ function WorkflowEditor({
                         id={`content-${step.id}`}
                         value={step.content}
                         onChange={(e) => onContentChange(step.id, e.target.value)}
-                        className={`${type === "sms" ? "min-h-[120px]" : "min-h-[200px]"} rounded-lg border-gray-200 focus:border-violet-300 focus:ring-violet-100`}
+                        className={`${type === "sms" ? "min-h-[120px]" : "min-h-[200px]"} rounded-lg border-gray-200 dark:border-gray-600 focus:border-violet-300 focus:ring-violet-100 dark:bg-gray-700 dark:text-gray-100`}
                       />
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-7 bg-white border-gray-200 hover:bg-violet-50 hover:border-violet-300 rounded-full px-2">
+                            <Button variant="outline" size="sm" className="h-7 bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-violet-50 dark:hover:bg-violet-900 hover:border-violet-300 rounded-full px-2">
                               <Plus className="mr-1 h-3 w-3" /> Insert Placeholder
                             </Button>
                           </DropdownMenuTrigger>
@@ -712,7 +712,7 @@ function WorkflowEditor({
                         variant="outline"
                         size="sm"
                         onClick={() => onPreviewStep(step.id, type)}
-                        className="bg-white border-gray-200 hover:bg-violet-50 hover:border-violet-300 rounded-full"
+                        className="bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-violet-50 dark:hover:bg-violet-900 hover:border-violet-300 rounded-full"
                       >
                         Preview
                       </Button>
@@ -745,7 +745,7 @@ function WorkflowEditor({
                       min="1"
                       value={step.days || 1}
                       onChange={(e) => onDaysChange(step.id, Number(e.target.value))}
-                      className="w-24 rounded-lg border-gray-200 focus:border-violet-300 focus:ring-violet-100"
+                      className="w-24 rounded-lg border-gray-200 dark:border-gray-600 focus:border-violet-300 focus:ring-violet-100 dark:bg-gray-700 dark:text-gray-100"
                     />
                   </div>
                 </CollapsibleContent>
@@ -766,7 +766,7 @@ function WorkflowEditor({
                     size="sm"
                     variant={step.branchDecision === "yes" ? "default" : "outline"}
                     className={
-                      step.branchDecision === "yes" ? "bg-violet-600 hover:bg-violet-700 text-white rounded-full" : "bg-white border-gray-200 hover:bg-violet-50 hover:border-violet-300 rounded-full"
+                      step.branchDecision === "yes" ? "bg-violet-600 hover:bg-violet-700 text-white rounded-full" : "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-violet-50 dark:hover:bg-violet-900 hover:border-violet-300 rounded-full"
                     }
                     onClick={() => onBranchDecision(step.id, "yes", type)}
                   >
@@ -776,7 +776,7 @@ function WorkflowEditor({
                     size="sm"
                     variant={step.branchDecision === "no" ? "default" : "outline"}
                     className={
-                      step.branchDecision === "no" ? "bg-gray-600 hover:bg-gray-700 text-white rounded-full" : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 rounded-full"
+                      step.branchDecision === "no" ? "bg-gray-600 hover:bg-gray-700 text-white rounded-full" : "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-300 dark:hover:border-gray-500 rounded-full"
                     }
                     onClick={() => onBranchDecision(step.id, "no", type)}
                   >
@@ -995,10 +995,10 @@ function EmailCampaignTab({
 
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:grid-cols-1 xl:col-span-2">
-      <Card className="rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+      <Card className="rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
         <CardHeader className="pb-4">
-          <CardTitle className="text-xl font-semibold text-gray-900">Campaign Start</CardTitle>
-          <p className="text-sm text-gray-600">Choose when the campaign should begin.</p>
+          <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">Campaign Start</CardTitle>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Choose when the campaign should begin.</p>
         </CardHeader>
         <CardContent className="pt-6">
           <RadioGroup
@@ -1021,7 +1021,7 @@ function EmailCampaignTab({
                   min="1"
                   value={emailInitialWaitDays}
                   onChange={(e) => setEmailInitialWaitDays(Number(e.target.value))}
-                  className="w-20 rounded-lg border-gray-200 focus:border-violet-300 focus:ring-violet-100"
+                  className="w-20 rounded-lg border-gray-200 dark:border-gray-600 focus:border-violet-300 focus:ring-violet-100 dark:bg-gray-700 dark:text-gray-100"
                 />
                 <Label>business days</Label>
               </div>
@@ -1030,10 +1030,10 @@ function EmailCampaignTab({
         </CardContent>
       </Card>
 
-      <Card className="rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+      <Card className="rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
         <CardHeader className="pb-4">
-          <CardTitle className="text-xl font-semibold text-gray-900">Email Workflow</CardTitle>
-          <p className="text-sm text-gray-600">Define the sequence of messages for your Email campaign.</p>
+          <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">Email Workflow</CardTitle>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Define the sequence of messages for your Email campaign.</p>
         </CardHeader>
         <CardContent className="pt-6">
           <WorkflowEditor
@@ -1227,10 +1227,10 @@ function SmsCampaignTab({
 
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:grid-cols-1 xl:col-span-2">
-      <Card className="rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+      <Card className="rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
         <CardHeader className="pb-4">
-          <CardTitle className="text-xl font-semibold text-gray-900">Campaign Start</CardTitle>
-          <p className="text-sm text-gray-600">Choose when the campaign should begin.</p>
+          <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">Campaign Start</CardTitle>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Choose when the campaign should begin.</p>
         </CardHeader>
         <CardContent className="pt-6">
           <RadioGroup
@@ -1253,7 +1253,7 @@ function SmsCampaignTab({
                   min="1"
                   value={smsInitialWaitDays}
                   onChange={(e) => setSmsInitialWaitDays(Number(e.target.value))}
-                  className="w-20 rounded-lg border-gray-200 focus:border-violet-300 focus:ring-violet-100"
+                  className="w-20 rounded-lg border-gray-200 dark:border-gray-600 focus:border-violet-300 focus:ring-violet-100 dark:bg-gray-700 dark:text-gray-100"
                 />
                 <Label>business days</Label>
               </div>
@@ -1262,10 +1262,10 @@ function SmsCampaignTab({
         </CardContent>
       </Card>
 
-      <Card className="rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+      <Card className="rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
         <CardHeader className="pb-4">
-          <CardTitle className="text-xl font-semibold text-gray-900">SMS Workflow</CardTitle>
-          <p className="text-sm text-gray-600">Define the sequence of messages for your SMS campaign.</p>
+          <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">SMS Workflow</CardTitle>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Define the sequence of messages for your SMS campaign.</p>
         </CardHeader>
         <CardContent className="pt-6">
           <WorkflowEditor
@@ -1918,13 +1918,13 @@ export function GetReviewsTab() {
   )
 
   return (
-    <div className="flex min-h-screen flex-col bg-[rgb(243,243,241)] p-6">
+    <div className="flex min-h-screen flex-col bg-[rgb(243,243,241)] dark:bg-gray-900 p-6">
       <ReviewCampaignHeader onSaveConfiguration={handleSaveConfiguration} isSaving={isSavingConfiguration} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3 space-y-6">
           <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
             <div className="flex justify-start">
-              <TabsList className="grid h-12 w-fit grid-cols-3 rounded-xl bg-white p-1 shadow-sm border border-gray-200">
+              <TabsList className="grid h-12 w-fit grid-cols-3 rounded-xl bg-white dark:bg-gray-800 p-1 shadow-sm border border-gray-200 dark:border-gray-700">
                 <TabsTrigger
                   value="email"
                   className="flex items-center gap-2 rounded-lg px-6 py-2 transition-all data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 data-[state=active]:shadow-sm"

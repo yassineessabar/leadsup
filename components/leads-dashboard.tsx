@@ -190,17 +190,17 @@ export function LeadsDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-end space-x-4">
-          <Button variant="outline" className="text-gray-700 border-gray-300">
+          <Button variant="outline" className="text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600">
             <Share className="w-4 h-4 mr-2" />
             Share
           </Button>
           
           <Select defaultValue="all">
-            <SelectTrigger className="w-32 border-gray-300">
+            <SelectTrigger className="w-32 border-gray-300 dark:border-gray-600">
               <SelectValue placeholder="Filter" />
             </SelectTrigger>
             <SelectContent>
@@ -211,7 +211,7 @@ export function LeadsDashboard() {
           </Select>
           
           <Select defaultValue="4weeks">
-            <SelectTrigger className="w-40 border-gray-300">
+            <SelectTrigger className="w-40 border-gray-300 dark:border-gray-600">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -225,19 +225,19 @@ export function LeadsDashboard() {
         {/* Metrics Cards - Single Row Full Width */}
         <div className="grid grid-cols-5 gap-4 w-full">
           {metricsData.map((metric, index) => (
-            <Card key={index} className="bg-white border border-gray-200">
+            <Card key={index} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
                     <div className={`w-3 h-3 rounded-full ${metric.color}`}></div>
-                    <span className="text-sm text-gray-600">{metric.title}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{metric.title}</span>
                   </div>
-                  <Info className="w-4 h-4 text-gray-400" />
+                  <Info className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 </div>
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                   {metric.value}
                   {metric.subValue && (
-                    <span className="text-sm text-gray-500 ml-2">| {metric.subValue}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">| {metric.subValue}</span>
                   )}
                 </div>
               </CardContent>
@@ -246,40 +246,40 @@ export function LeadsDashboard() {
         </div>
 
         {/* Chart Area */}
-        <Card className="bg-white border border-gray-200">
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardContent className="p-6">
             {/* Chart Legend */}
             <div className="flex flex-wrap items-center gap-6 mb-6">
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                <span className="text-sm text-gray-600">Sent</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Sent</span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-                <span className="text-sm text-gray-600">Total opens</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Total opens</span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span className="text-sm text-gray-600">Unique opens</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Unique opens</span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 rounded-full bg-teal-500"></div>
-                <span className="text-sm text-gray-600">Total replies</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Total replies</span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 rounded-full bg-gray-300"></div>
-                <span className="text-sm text-gray-400">Total clicks</span>
+                <span className="text-sm text-gray-400 dark:text-gray-500">Total clicks</span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 rounded-full bg-gray-300"></div>
-                <span className="text-sm text-gray-400">Unique clicks</span>
+                <span className="text-sm text-gray-400 dark:text-gray-500">Unique clicks</span>
               </div>
             </div>
 
             {/* Chart Container */}
             <div className="relative h-80">
               {/* Y-axis labels */}
-              <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-sm text-gray-500 pr-4">
+              <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-sm text-gray-500 dark:text-gray-400 pr-4">
                 <span>1000</span>
                 <span>800</span>
                 <span>600</span>
@@ -324,7 +324,7 @@ export function LeadsDashboard() {
                 </svg>
 
                 {/* X-axis labels */}
-                <div className="absolute bottom-0 left-0 right-0 flex justify-between text-sm text-gray-500 pt-4">
+                <div className="absolute bottom-0 left-0 right-0 flex justify-between text-sm text-gray-500 dark:text-gray-400 pt-4">
                   <span>08 Jul</span>
                   <span>16 Jul</span>
                   <span>24 Jul</span>
@@ -334,34 +334,34 @@ export function LeadsDashboard() {
 
                 {/* Tooltip */}
                 {showTooltip && (
-                  <div className="absolute top-8 right-8 bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-48">
-                    <div className="font-medium text-gray-900 mb-3">Tuesday, 05 Aug</div>
+                  <div className="absolute top-8 right-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 min-w-48">
+                    <div className="font-medium text-gray-900 dark:text-gray-100 mb-3">Tuesday, 05 Aug</div>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                          <span className="text-sm text-gray-600">Sent:</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Sent:</span>
                         </div>
                         <span className="text-sm font-medium">797</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                          <span className="text-sm text-gray-600">Total opens:</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Total opens:</span>
                         </div>
                         <span className="text-sm font-medium">510</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                          <span className="text-sm text-gray-600">Unique opens:</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Unique opens:</span>
                         </div>
                         <span className="text-sm font-medium">447</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 rounded-full bg-teal-500"></div>
-                          <span className="text-sm text-gray-600">Total replies:</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Total replies:</span>
                         </div>
                         <span className="text-sm font-medium">1</span>
                       </div>
@@ -374,7 +374,7 @@ export function LeadsDashboard() {
         </Card>
 
         {/* Tabs */}
-        <div className="flex space-x-8 border-b border-gray-200">
+        <div className="flex space-x-8 border-b border-gray-200 dark:border-gray-700">
           <button
             className={`pb-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
               activeTab === "campaign"
@@ -402,44 +402,44 @@ export function LeadsDashboard() {
         {/* Campaign Analytics Table */}
         {activeTab === "campaign" && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900">Campaign analytics</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Campaign analytics</h2>
             
-            <Card className="bg-white border border-gray-200">
+            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
+                    <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                       <tr>
-                        <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Campaign
                         </th>
-                        <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Sequence started
                         </th>
-                        <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Opened
                         </th>
-                        <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Replied
                         </th>
-                        <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Opportunities
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {loading ? (
                         <tr>
-                          <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                          <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                             Loading campaigns...
                           </td>
                         </tr>
                       ) : campaignAnalytics.length > 0 ? (
                         campaignAnalytics.map((analytics) => (
-                          <tr key={analytics.campaign.id} className="hover:bg-gray-50">
+                          <tr key={analytics.campaign.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                             <td className="px-6 py-4">
                               <div className="flex items-center space-x-3">
-                                <span className="text-sm font-medium text-gray-900">
+                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                   {analytics.campaign.name}
                                 </span>
                                 <Badge className={`text-xs ${
@@ -453,23 +453,23 @@ export function LeadsDashboard() {
                                 </Badge>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-900">
+                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                               {analytics.metrics.sequenceStarted || 0}
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-900">
+                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                               {analytics.metrics.opened || 0} | {analytics.metrics.openRate || 0}%
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-900">
+                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                               {analytics.metrics.clicked || 0} | {analytics.metrics.clickRate || 0}%
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-900">
+                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                               0
                             </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                          <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                             No campaigns found. Create your first campaign to see analytics.
                           </td>
                         </tr>

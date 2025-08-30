@@ -296,6 +296,77 @@ export function getBusinessHoursStatus(timezone: string): {
 }
 
 /**
+ * Check if current time is within business hours for a timezone with custom active days
+ * @param timezone - Timezone identifier
+ * @param activeDays - Array of active day names (e.g., ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
+ * @param startHour - Business start hour (24-hour format, default: 8)
+ * @param endHour - Business end hour (24-hour format, default: 17)
+ * @returns Object with business hours status
+ */
+export function getBusinessHoursStatusWithActiveDays(
+  timezone: string,
+  activeDays: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+  startHour: number = 8,
+  endHour: number = 17
+): {
+  isBusinessHours: boolean
+  emoji: string
+  text: string
+  currentTime: string
+} {
+  try {
+    const now = new Date()
+    const currentTime = getCurrentTimeInTimezone(timezone)
+    
+    // Get the day of week and hour in the target timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hour12: false,
+      weekday: 'short'
+    })
+    
+    const parts = formatter.formatToParts(now)
+    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0')
+    const weekday = parts.find(p => p.type === 'weekday')?.value
+    
+    // Check if current day is in active days
+    const isActiveDay = activeDays.includes(weekday || '')
+    
+    // Check if it's within business hours
+    const isWithinHours = hour >= startHour && hour < endHour
+    
+    const isBusinessHours = isActiveDay && isWithinHours
+    
+    let text = 'Outside hours'
+    if (isBusinessHours) {
+      text = 'Business hours'
+    } else if (!isActiveDay) {
+      // Check if it's a weekend day specifically
+      const isWeekend = weekday === 'Sat' || weekday === 'Sun'
+      text = isWeekend ? 'Weekend' : 'Inactive day'
+    } else if (!isWithinHours) {
+      text = 'Outside hours'
+    }
+    
+    return {
+      isBusinessHours,
+      emoji: isBusinessHours ? '🟢' : '🔴',
+      text,
+      currentTime
+    }
+  } catch (error) {
+    const currentTime = getCurrentTimeInTimezone(timezone)
+    return {
+      isBusinessHours: false,
+      emoji: '🔴',
+      text: 'Outside hours',
+      currentTime
+    }
+  }
+}
+
+/**
  * Batch process multiple contacts to add derived timezones
  * @param contacts - Array of contacts with location data
  * @returns Contacts with derived timezone field added

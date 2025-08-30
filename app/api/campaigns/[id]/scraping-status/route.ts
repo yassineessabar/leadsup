@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const campaignId = params.id
+    const campaignId = (await params).id
 
     // Check the campaign's scrapping_status field directly
     const { data: campaign, error } = await supabase

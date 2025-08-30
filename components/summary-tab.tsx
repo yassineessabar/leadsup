@@ -186,14 +186,14 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
       <div className="flex items-center justify-between mb-4">
       <Button
             variant="outline"
-            className="rounded-full bg-white shadow-sm px-4 py-2 flex items-center gap-2 text-lg font-semibold hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700"
+            className="rounded-full bg-white dark:bg-gray-900 shadow-sm px-4 py-2 flex items-center gap-2 text-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Insights
           </Button>
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-1 rounded-lg bg-transparent">
+              <Button variant="outline" className="gap-1 rounded-lg bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
                 <CalendarDays className="h-4 w-4" /> {selectedDateRange} <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -205,7 +205,7 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
           </DropdownMenu>
           <Button
             variant="outline"
-            className="gap-1 rounded-lg bg-transparent"
+            className="gap-1 rounded-lg bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             onClick={() => onTabChange?.("integrations")}
           >
             <Plug className="h-4 w-4" /> Integrations
@@ -229,7 +229,7 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
         </div>
         <Button
       variant="outline"
-      className="rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-sm hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700"
+      className="rounded-full bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800"
       onClick={() => window.open(reviewLink, "_blank", "noopener,noreferrer")}
     >
       Open URL
@@ -238,7 +238,7 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
 
       {/* Lifetime Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="rounded-xl shadow-sm border">
+        <Card className="rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Page Views</CardTitle>
             <Eye className="h-4 w-4 text-muted-foreground" />
@@ -251,7 +251,7 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
             </span>
           </CardContent>
         </Card>
-        <Card className="rounded-xl shadow-sm border">
+        <Card className="rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Platform Clicks</CardTitle>
             <MousePointer className="h-4 w-4 text-muted-foreground" />
@@ -264,7 +264,7 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
             </span>
           </CardContent>
         </Card>
-        <Card className="rounded-xl shadow-sm border">
+        <Card className="rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Star Ratings</CardTitle>
             <Sparkles className="h-4 w-4 text-muted-foreground" />
@@ -277,7 +277,7 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
             </span>
           </CardContent>
         </Card>
-        <Card className="rounded-xl shadow-sm border">
+        <Card className="rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Conversion Rate</CardTitle>
             <UserPlus className="h-4 w-4 text-muted-foreground" />
@@ -293,7 +293,7 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
       </div>
 
       {/* Activity Section */}
-      <Card className="rounded-xl shadow-sm border">
+      <Card className="rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
             <CardTitle className="text-lg font-semibold">Activity</CardTitle>
@@ -339,8 +339,8 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
                 onClick={() => setShowViews(!showViews)}
                 className={`inline-flex items-center px-4 py-2 border rounded-full transition-colors ${
                   showViews
-                    ? 'border-gray-300 bg-white hover:bg-gray-50'
-                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                    ? 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 <span className="relative inline-flex items-center">
@@ -353,11 +353,11 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
                     style={{borderColor: '#2665d6'}}
                   />
                 </span>
-                <p className="text-black text-sm mr-2">Views</p>
+                <p className="text-black dark:text-white text-sm mr-2">Views</p>
                 <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                  showViews ? 'bg-black' : 'bg-gray-300'
+                  showViews ? 'bg-black dark:bg-white' : 'bg-gray-300 dark:bg-gray-600'
                 }`}>
-                  <Check className="h-3 w-3 text-white" />
+                  <Check className={`h-3 w-3 ${showViews ? 'text-white dark:text-black' : 'text-white'}`} />
                 </div>
               </button>
 
@@ -365,8 +365,8 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
                 onClick={() => setShowUniqueViews(!showUniqueViews)}
                 className={`inline-flex items-center px-4 py-2 border rounded-full transition-colors ${
                   showUniqueViews
-                    ? 'border-gray-300 bg-white hover:bg-gray-50'
-                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                    ? 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 <span className="relative inline-flex items-center">
@@ -379,11 +379,11 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
                     style={{borderColor: '#02acc4'}}
                   />
                 </span>
-                <p className="text-black text-sm mr-2">Unique views</p>
+                <p className="text-black dark:text-white text-sm mr-2">Unique views</p>
                 <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                  showUniqueViews ? 'bg-black' : 'bg-gray-300'
+                  showUniqueViews ? 'bg-black dark:bg-white' : 'bg-gray-300 dark:bg-gray-600'
                 }`}>
-                  <Check className="h-3 w-3 text-white" />
+                  <Check className={`h-3 w-3 ${showUniqueViews ? 'text-white dark:text-black' : 'text-white'}`} />
                 </div>
               </button>
 
@@ -391,8 +391,8 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
                 onClick={() => setShowClicks(!showClicks)}
                 className={`inline-flex items-center px-4 py-2 border rounded-full transition-colors ${
                   showClicks
-                    ? 'border-gray-300 bg-white hover:bg-gray-50'
-                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                    ? 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 <span className="relative inline-flex items-center">
@@ -405,11 +405,11 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
                     style={{borderColor: '#D717E7'}}
                   />
                 </span>
-                <p className="text-black text-sm mr-2">Clicks</p>
+                <p className="text-black dark:text-white text-sm mr-2">Clicks</p>
                 <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                  showClicks ? 'bg-black' : 'bg-gray-300'
+                  showClicks ? 'bg-black dark:bg-white' : 'bg-gray-300 dark:bg-gray-600'
                 }`}>
-                  <Check className="h-3 w-3 text-white" />
+                  <Check className={`h-3 w-3 ${showClicks ? 'text-white dark:text-black' : 'text-white'}`} />
                 </div>
               </button>
 
@@ -417,8 +417,8 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
                 onClick={() => setShowUniqueClicks(!showUniqueClicks)}
                 className={`inline-flex items-center px-4 py-2 border rounded-full transition-colors ${
                   showUniqueClicks
-                    ? 'border-gray-300 bg-white hover:bg-gray-50'
-                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                    ? 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 <span className="relative inline-flex items-center">
@@ -431,11 +431,11 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
                     style={{borderColor: '#FC3E4B'}}
                   />
                 </span>
-                <p className="text-black text-sm mr-2">Unique clicks</p>
+                <p className="text-black dark:text-white text-sm mr-2">Unique clicks</p>
                 <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                  showUniqueClicks ? 'bg-black' : 'bg-gray-300'
+                  showUniqueClicks ? 'bg-black dark:bg-white' : 'bg-gray-300 dark:bg-gray-600'
                 }`}>
-                  <Check className="h-3 w-3 text-white" />
+                  <Check className={`h-3 w-3 ${showUniqueClicks ? 'text-white dark:text-black' : 'text-white'}`} />
                 </div>
               </button>
             </div>
@@ -457,7 +457,7 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
           </div>
           <div className="sm:w-fit w-full">
             <UpgradeProDialog>
-              <Button className="w-full bg-black text-white hover:bg-gray-900">
+              <Button className="w-full bg-black dark:bg-white text-white dark:text-black hover:bg-gray-900 dark:hover:bg-gray-100">
                 <Sparkles className="h-4 w-4 mr-2" />
                 Try Pro for free
               </Button>
@@ -468,18 +468,18 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
 
       {/* Upgrade Banner - Hide for Pro/Enterprise users */}
       {showUpgradeBanner && !((userInfo.subscription_type === 'pro' || userInfo.subscription_type === 'enterprise') && userInfo.subscription_status === 'active') && (
-        <Card className="rounded-xl shadow-sm border" style={{ background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
+        <Card className="rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" style={{ background: 'linear-gradient(to right, rgba(87, 140, 255, 0.05), rgba(87, 140, 255, 0.1))' }}>
           <CardContent className="p-6 relative">
             <button
-              className="absolute right-4 top-4 h-6 w-6 rounded-full hover:bg-gray-100 flex items-center justify-center"
+              className="absolute right-4 top-4 h-6 w-6 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center"
               onClick={() => setShowUpgradeBanner(false)}
             >
               <X className="h-4 w-4" />
             </button>
 
             <div className="max-w-2xl">
-              <h2 className="text-xl font-bold mb-2">Unlock powerful insights</h2>
-              <p className="text-muted-foreground mb-4">Find out how your Linktree is performing and chat with our AI assistant for personalized advice.</p>
+              <h2 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">Unlock powerful insights</h2>
+              <p className="text-muted-foreground dark:text-gray-400 mb-4">Find out how your Linktree is performing and chat with our AI assistant for personalized advice.</p>
 
               <ul className="space-y-2 mb-4 text-sm">
                 <li className="flex items-center gap-2">
@@ -497,7 +497,7 @@ export function SummaryTab({ onTabChange }: SummaryTabProps) {
               </ul>
 
               <UpgradeProDialog>
-                <Button className="bg-black text-white hover:bg-gray-900">
+                <Button className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-900 dark:hover:bg-gray-100">
                   <Sparkles className="h-4 w-4 mr-2" />
                   Try it for free
                 </Button>

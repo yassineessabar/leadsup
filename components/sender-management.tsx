@@ -356,12 +356,12 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-800 p-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="flex items-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              <span className="text-gray-600">
+              <span className="text-gray-600 dark:text-gray-300">
                 {creatingPresets ? t('emailSenders.loading.settingUp') : t('emailSenders.loading.loadingAccounts')}
               </span>
             </div>
@@ -372,7 +372,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[rgb(243,243,241)]">
+    <div className="min-h-screen bg-[rgb(243,243,241)] dark:bg-gray-900">
       <div className="max-w-7xl mx-auto p-6 md:p-8">
         {/* Header */}
         <div className="mb-8">
@@ -388,15 +388,15 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
           <div className="mb-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
-                <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">{t('emailSenders.title')}</h1>
+                <h1 className="text-4xl font-light text-gray-900 dark:text-gray-100 tracking-tight mb-2">{t('emailSenders.title')}</h1>
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-gray-700 font-medium">{domain?.domain}</span>
+                    <span className="text-gray-700 dark:text-gray-300 font-medium">{domain?.domain}</span>
                     <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">{t('emailSenders.connected')}</span>
                   </div>
                 </div>
-                <p className="text-gray-500 font-light">
+                <p className="text-gray-500 dark:text-gray-400 font-light">
                   {t('emailSenders.description')}
                 </p>
               </div>
@@ -420,28 +420,28 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                 const stats = getStats()
                 return (
                   <>
-                    <div className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+                    <div className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
                       <div className="p-6">
-                        <div className="text-3xl font-light text-gray-900">{stats.totalAccounts}</div>
-                        <div className="text-sm text-gray-500 mt-1">{t('emailSenders.stats.totalAccounts')}</div>
+                        <div className="text-3xl font-light text-gray-900 dark:text-gray-100">{stats.totalAccounts}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('emailSenders.stats.totalAccounts')}</div>
                       </div>
                     </div>
-                    <div className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+                    <div className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
                       <div className="p-6">
                         <div className="text-3xl font-light text-blue-600">{stats.activeWarmup}</div>
-                        <div className="text-sm text-gray-500 mt-1">{t('emailSenders.stats.activeWarmup')}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('emailSenders.stats.activeWarmup')}</div>
                       </div>
                     </div>
-                    <div className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+                    <div className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
                       <div className="p-6">
                         <div className="text-3xl font-light text-red-600">{stats.needAttention}</div>
-                        <div className="text-sm text-gray-500 mt-1">{t('emailSenders.stats.needAttention')}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('emailSenders.stats.needAttention')}</div>
                       </div>
                     </div>
-                    <div className="bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden">
+                    <div className="bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden">
                       <div className="p-6">
                         <div className={`text-3xl font-light ${getHealthScoreColor(stats.avgScore)}`}>{stats.avgScore}%</div>
-                        <div className="text-sm text-gray-500 mt-1">{t('emailSenders.stats.avgScore')}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('emailSenders.stats.avgScore')}</div>
                       </div>
                     </div>
                   </>
@@ -455,11 +455,11 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
         <div>
           {senders.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Mail className="h-8 w-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('emailSenders.noSenders.title')}</h3>
-              <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">{t('emailSenders.noSenders.title')}</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
                 {t('emailSenders.noSenders.description')}
               </p>
               <Button 
@@ -484,10 +484,10 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                senders.some(s => s.email.startsWith('contact@')) && 
                senders.some(s => s.email.startsWith('hello@')) && 
                senders.some(s => s.email.startsWith('info@')) && (
-                <div className="bg-blue-50 rounded-2xl p-6 mb-8">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-6 mb-8">
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                    <p className="text-sm text-blue-800">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
                       {t('emailSenders.presetAccountsInfo')}
                     </p>
                   </div>
@@ -495,31 +495,31 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
               )}
               
               {senders.map((sender) => (
-                <div key={sender.id} className={`bg-white border border-gray-100/50 hover:border-gray-200 transition-all duration-300 rounded-3xl overflow-hidden ${sender.is_default ? 'ring-2 ring-blue-200' : ''}`}>
+                <div key={sender.id} className={`bg-white dark:bg-gray-900 border border-gray-100/50 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 rounded-3xl overflow-hidden ${sender.is_default ? 'ring-2 ring-blue-200 dark:ring-blue-800' : ''}`}>
                   <div className="p-8">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-4 flex-1">
-                        <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center flex-shrink-0">
+                        <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center flex-shrink-0">
                           <User className="h-6 w-6 text-blue-600" />
                         </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-medium text-gray-900 truncate">{sender.display_name || sender.email.split('@')[0]}</h3>
+                          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 truncate">{sender.display_name || sender.email.split('@')[0]}</h3>
                           {sender.is_default && (
-                            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full flex-shrink-0">{t('emailSenders.primary')}</span>
+                            <span className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs px-2 py-1 rounded-full flex-shrink-0">{t('emailSenders.primary')}</span>
                           )}
                         </div>
-                        <p className="text-gray-600 mb-3 truncate">{sender.email}</p>
+                        <p className="text-gray-600 dark:text-gray-400 mb-3 truncate">{sender.email}</p>
                         
                         {/* Sender details in grid */}
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
-                            <div className="text-gray-500 mb-1">{t('emailSenders.dailyLimit')}</div>
-                            <div className="font-medium text-gray-900">{sender.daily_limit || 50}/day</div>
+                            <div className="text-gray-500 dark:text-gray-400 mb-1">{t('emailSenders.dailyLimit')}</div>
+                            <div className="font-medium text-gray-900 dark:text-gray-100">{sender.daily_limit || 50}/day</div>
                           </div>
                           <div>
-                            <div className="text-gray-500 mb-1">{t('emailSenders.healthScore')}</div>
+                            <div className="text-gray-500 dark:text-gray-400 mb-1">{t('emailSenders.healthScore')}</div>
                             {Object.keys(healthScores).length === 0 ? (
                               <div className="font-medium text-lg text-gray-400">
                                 <div className="animate-pulse">--</div>
@@ -532,8 +532,8 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                           </div>
                         </div>
 
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+                          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                             <span>{t('emailSenders.emailsSent', { count: sender.emails_sent || 0 })}</span>
                             <span>{t('emailSenders.addedOn', { date: new Date(sender.created_at).toLocaleDateString() })}</span>
                           </div>
@@ -553,7 +553,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                           })
                           setShowEditDialog(sender.id)
                         }}
-                        className="border-gray-300 hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-2xl font-medium transition-all duration-300"
+                        className="border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 px-3 py-2 rounded-2xl font-medium transition-all duration-300"
                       >
                         <Edit3 className="h-4 w-4" />
                       </Button>
@@ -561,7 +561,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowDeleteDialog(sender.id)}
-                        className="border-red-300 hover:bg-red-50 text-red-600 px-3 py-2 rounded-2xl font-medium transition-all duration-300"
+                        className="border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 px-3 py-2 rounded-2xl font-medium transition-all duration-300"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -576,40 +576,40 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
 
         {/* Add Sender Dialog */}
         <Dialog open={showAddSender} onOpenChange={setShowAddSender}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg dark:bg-gray-900 dark:border-gray-800">
             <DialogHeader className="text-center pb-4">
-              <DialogTitle className="text-xl font-medium text-gray-900">{t('emailSenders.addDialog.title')}</DialogTitle>
-              <DialogDescription className="text-gray-500">
+              <DialogTitle className="text-xl font-medium text-gray-900 dark:text-gray-100">{t('emailSenders.addDialog.title')}</DialogTitle>
+              <DialogDescription className="text-gray-500 dark:text-gray-400">
                 {t('emailSenders.addDialog.description', { domain: domain?.domain })}
               </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleAddSender} className="space-y-6">
               <div>
-                <Label htmlFor="localPart" className="text-sm font-medium text-gray-700 mb-2 block">
+                <Label htmlFor="localPart" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
                   {t('emailSenders.addDialog.emailAddress')}
                 </Label>
-                <div className="flex border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-black focus-within:border-black transition-colors">
+                <div className="flex border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-black focus-within:border-black transition-colors">
                   <Input
                     id="localPart"
                     type="text"
                     value={addSenderForm.localPart}
                     onChange={(e) => handleLocalPartChange(e.target.value)}
                     placeholder="support"
-                    className="flex-1 border-none rounded-none focus:ring-0 focus:border-transparent"
+                    className="flex-1 border-none rounded-none focus:ring-0 focus:border-transparent dark:bg-gray-900 dark:text-gray-100"
                     required
                   />
-                  <div className="bg-gray-50 px-4 py-2.5 text-gray-600 flex items-center border-l border-gray-300">
+                  <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2.5 text-gray-600 dark:text-gray-400 flex items-center border-l border-gray-300 dark:border-gray-700">
                     @{domain?.domain || 'loading...'}
                   </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                   {t('emailSenders.addDialog.willCreate', { email: `${addSenderForm.localPart || 'example'}@${domain?.domain}` })}
                 </p>
               </div>
 
               <div>
-                <Label htmlFor="display_name" className="text-sm font-medium text-gray-700 mb-2 block">
+                <Label htmlFor="display_name" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
                   {t('emailSenders.addDialog.displayName')}
                 </Label>
                 <Input
@@ -617,18 +617,18 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                   value={addSenderForm.display_name}
                   onChange={(e) => setAddSenderForm(prev => ({ ...prev, display_name: e.target.value }))}
                   placeholder={t('emailSenders.addDialog.displayPlaceholder')}
-                  className="border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-colors"
+                  className="border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-black focus:border-black transition-colors dark:bg-gray-900 dark:text-gray-100"
                 />
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                   {t('emailSenders.addDialog.displayDescription')}
                 </p>
               </div>
 
               {senders.length === 0 && (
-                <div className="bg-blue-50 rounded-lg p-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                    <p className="text-sm text-blue-800">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
                       {t('emailSenders.addDialog.primaryNote')}
                     </p>
                   </div>
@@ -641,7 +641,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
                   variant="outline"
                   onClick={() => setShowAddSender(false)}
                   disabled={submitting}
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors"
+                  className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 px-4 py-2 rounded-lg font-medium transition-colors"
                 >
                   {t('emailSenders.cancel')}
                 </Button>

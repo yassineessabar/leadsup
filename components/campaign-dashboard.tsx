@@ -3481,8 +3481,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                 </div>
                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 ${
                                   activeStepId === step.id
-                                    ? 'bg-white border-2 border-blue-500 text-blue-700 shadow-sm'
-                                    : 'bg-gray-50 border border-gray-300 text-gray-600 hover:bg-white hover:border-gray-400'
+                                    ? 'bg-white dark:bg-gray-800 border-2 border-blue-500 text-blue-700 dark:text-blue-400 shadow-sm'
+                                    : 'bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
                                 }`}>
                                   {step.sequenceStep}
                                 </div>
@@ -3630,8 +3630,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   </div>
                                   <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 ${
                                     activeStepId === step.id
-                                      ? 'bg-white border-2 border-emerald-500 text-emerald-700 shadow-sm'
-                                      : 'bg-gray-50 border border-gray-300 text-gray-600 hover:bg-white hover:border-gray-400'
+                                      ? 'bg-white dark:bg-gray-800 border-2 border-emerald-500 text-emerald-700 dark:text-emerald-400 shadow-sm'
+                                      : 'bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
                                   }`}>
                                     {step.sequenceStep}
                                   </div>
@@ -3673,8 +3673,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           <div className="flex items-center space-x-3 mb-6">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shadow-sm transition-all duration-300 ${
                               activeStep.sequence === 1 
-                                ? 'bg-white border-2 border-blue-500 text-blue-700' 
-                                : 'bg-white border-2 border-emerald-500 text-emerald-700'
+                                ? 'bg-white dark:bg-gray-800 border-2 border-blue-500 text-blue-700 dark:text-blue-400' 
+                                : 'bg-white dark:bg-gray-800 border-2 border-emerald-500 text-emerald-700 dark:text-emerald-400'
                             }`}>
                               {activeStep.sequenceStep}
                             </div>

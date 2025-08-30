@@ -14,7 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { deriveTimezoneFromLocation, getCurrentTimeInTimezone, getBusinessHoursStatus } from "@/lib/timezone-utils"
+import { deriveTimezoneFromLocation, getCurrentTimeInTimezone, getBusinessHoursStatus, getBusinessHoursStatusWithActiveDays } from "@/lib/timezone-utils"
 // Remove direct import of SendGrid service since it's server-side only
 // import { SendGridAnalyticsService, type SendGridMetrics } from "@/lib/sendgrid-analytics"
 
@@ -194,6 +194,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     console.log('🔍 Fetching campaign settings for campaign:', campaign.id)
     try {
       const response = await fetch(`/api/campaigns/${campaign.id}/settings`, {
+        method: 'GET',
         credentials: "include"
       })
       
@@ -201,6 +202,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       
       if (response.ok) {
         const result = await response.json()
+        console.log('🔍 Full API response:', result)
         setCampaignSettings(result.settings || {})
         console.log('⚙️ Campaign settings loaded:', result.settings)
         console.log('🔥 Auto warmup enabled?', result.settings?.auto_warmup)
@@ -255,6 +257,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           setCampaignSequences(result.data)
           setSequencesLastUpdated(Date.now())
           console.log('📧 Loaded campaign sequences:', result.data)
+          console.log('✅ State should now have:', result.data.length, 'sequences')
           console.log('🔍 DETAILED SEQUENCE DATA:')
           result.data.forEach((seq, index) => {
             console.log(`  ${index + 1}. ID:${seq.id} | Step:${seq.sequenceStep} | Subject:"${seq.subject}" | Timing:${seq.timing} days | Content:${seq.content?.length || 0} chars`)
@@ -753,6 +756,16 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
 
   // Fetch real contacts with sequence progress from database
   const fetchCampaignContacts = async () => {
+    // Allow contacts to load even if sequences are empty (they may not be configured yet)
+    if (campaignSequences.length === 0) {
+      console.log('⚠️ No sequences configured yet, but will load contacts anyway')
+    }
+    
+    // Allow contacts to load even if settings are empty (settings are optional)
+    console.log('🔍 Current campaignSettings:', campaignSettings)
+    
+    console.log('✅ Ready to process contacts with', campaignSequences.length, 'sequences and settings loaded')
+    
     setLoading(true)
     try {
       const contactsParams = new URLSearchParams()
@@ -887,7 +900,21 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           const createdAt = new Date(contact.created_at)
           
           // Generate timezone based on location using the new timezone utils
-          let timezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'UTC'
+          let timezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'Australia/Sydney'
+          
+          // Debug timezone derivation
+          console.log(`🕐 TIMEZONE DEBUG for ${contact.email}:`)
+          console.log(`   Contact location: "${contact.location}"`)
+          console.log(`   Contact.timezone: "${contact.timezone}"`)
+          console.log(`   Derived timezone: "${deriveTimezoneFromLocation(contact.location)}"`)
+          console.log(`   Final timezone: "${timezone}"`)
+          console.log(`   Time in timezone: ${new Date().toLocaleString('en-US', { timeZone: timezone })}`)
+          
+          // Override Perth with Sydney for correct business hours (since user is in Sydney)
+          if (timezone === 'Australia/Perth') {
+            timezone = 'Australia/Sydney'
+            console.log(`🔄 Overriding Perth timezone to Sydney for correct business hours`)
+          }
           
           // Calculate sequence step and email template info using real data
           // Use the current_step from API which represents the completed step number
@@ -902,15 +929,18 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             email_subject = "Initial Outreach"
             
             // Check if immediate email is due (step 0 with 0 timing)
+            console.log(`📧 Checking immediate email for ${contact.email}...`)
             const nextEmailData = calculateNextEmailDate(contact)
+            console.log(`📧 NextEmailData result:`, nextEmailData)
             
             if (nextEmailData && nextEmailData.date) {
               // Simple UTC comparison: current time >= scheduled time
               const now = new Date()
               const scheduledDate = nextEmailData.date
               
-              // Check business hours
-              const businessHoursStatus = getBusinessHoursStatus(timezone)
+              // Check business hours  
+              const contactTimezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'UTC'
+              const businessHoursStatus = getBusinessHoursStatusWithActiveDaysLocal(contactTimezone)
               
               let isTimeReached = false
               
@@ -1091,7 +1121,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                   const scheduledDate = nextEmailData.date
                   
                   // Check business hours
-                  const businessHoursStatus = getBusinessHoursStatus(timezone)
+                  const businessHoursStatus = getBusinessHoursStatusWithActiveDaysLocal(timezone)
                   
                   let isTimeReached = false
                   
@@ -1123,7 +1153,16 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                     
                     // Email is due if the intended time has passed AND we're in business hours
                     isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
-                    isDue = isTimeReached && businessHoursStatus.isBusinessHours
+                    const businessStatus = getBusinessHoursStatusWithActiveDaysLocal(contactTimezone)
+                    isDue = isTimeReached && businessStatus.isBusinessHours
+                    
+                    console.log(`🕐 TIME DEBUG for ${contact.email}:`)
+                    console.log(`   Current time in minutes: ${currentTimeInMinutes}`)
+                    console.log(`   Intended time in minutes: ${intendedTimeInMinutes}`)
+                    console.log(`   isTimeReached: ${isTimeReached}`)
+                    console.log(`   businessStatus.isBusinessHours: ${businessStatus.isBusinessHours}`)
+                    console.log(`   businessStatus.text: ${businessStatus.text}`)
+                    console.log(`   Final isDue: ${isDue}`)
                   } else {
                     // For non-immediate emails, compare full datetime in contact's timezone
                     if (scheduledDate) {
@@ -1132,7 +1171,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                       const scheduledInContactTz = new Date(scheduledDate.toLocaleString("en-US", {timeZone: timezone}))
                       
                       isTimeReached = nowInContactTz >= scheduledInContactTz
-                      isDue = isTimeReached && businessHoursStatus.isBusinessHours
+                      isDue = isTimeReached && getBusinessHoursStatusWithActiveDaysLocal(contactTimezone).isBusinessHours
                     } else {
                       isTimeReached = false
                       isDue = false
@@ -1225,8 +1264,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                     const isTimeReached = scheduledTime <= contactTime
                     
                     // Also check business hours using timezone utils
-                    const businessHoursStatus = getBusinessHoursStatus(timezone)
-                    isDue = isTimeReached && businessHoursStatus.isBusinessHours
+                    const contactTimezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'UTC'
+                    isDue = isTimeReached && getBusinessHoursStatusWithActiveDays(contactTimezone).isBusinessHours
                   } catch (error) {
                     // Fallback to UTC comparison
                     isDue = nextEmailData.date <= now
@@ -1260,7 +1299,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 const isTimeReached = scheduledTime <= contactTime
                 
                 // Check business hours using timezone utils
-                const businessHoursStatus = getBusinessHoursStatus(timezone)
+                const businessHoursStatus = getBusinessHoursStatusWithActiveDaysLocal(timezone)
                 isDue = isTimeReached && businessHoursStatus.isBusinessHours
               } catch (error) {
                 // Fallback to UTC comparison
@@ -1583,12 +1622,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
 
   useEffect(() => {
     if (campaign?.id) {
-      // Load critical data first
+      // Load all data
+      fetchCampaignSequences()
+      fetchCampaignSettings() 
       fetchCampaignContacts()
       fetchMetrics()
       fetchCampaignSenders()
-      fetchCampaignSequences()
-      fetchCampaignSettings()
       fetchScrapingStatus()
       
       // Load sender health scores with a small delay to not block UI
@@ -1601,6 +1640,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       return () => clearInterval(scrapingInterval)
     }
   }, [campaign?.id, campaign.name, campaign.status])
+
+  // Refetch contacts when sequences are loaded
+  useEffect(() => {
+    if (campaign?.id && campaignSequences.length > 0) {
+      console.log('🔄 Sequences loaded, recalculating contacts with', campaignSequences.length, 'sequences')
+      fetchCampaignContacts()
+    }
+  }, [campaignSequences.length, campaign?.id])
 
   // Fetch warming metrics when campaign settings change
   useEffect(() => {
@@ -1817,12 +1864,38 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const isActiveDayOfWeek = (dayOfWeek: number) => {
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     const dayName = dayNames[dayOfWeek]
-    const activeDays = campaignSettings?.activeDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+    // Get active_days from campaign_settings table
+    const activeDays = campaignSettings?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+    console.log(`🔍 isActiveDayOfWeek check: ${dayName} (${dayOfWeek}) in activeDays:`, activeDays)
     return activeDays.includes(dayName)
+  }
+
+  // Helper function to get business hours status with campaign active days override
+  const getBusinessHoursStatusWithActiveDaysLocal = (timezone: string) => {
+    // Get campaign's active days from campaign_settings table
+    const activeDays = campaignSettings?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+    
+    console.log('🔍 Weekend debug - activeDays from campaign settings:', activeDays)
+    console.log('🔍 Current day check:', {
+      timezone,
+      activeDays,
+      currentTime: new Date().toLocaleString('en-US', { timeZone: timezone })
+    })
+    
+    // Use the updated timezone utils function that properly handles active days
+    const result = getBusinessHoursStatusWithActiveDays(timezone, activeDays, 9, 17)
+    console.log('🔍 Business hours result:', result)
+    return result
   }
 
   const calculateNextEmailDate = (contact: Contact) => {
     const currentStep = contact.sequence_step || 0
+    
+    // Debug campaign settings
+    console.log(`📋 CampaignSettings in calculateNextEmailDate:`, campaignSettings)
+    console.log(`📋 activeDays:`, campaignSettings?.activeDays)
+    console.log(`📋 Campaign object:`, campaign)
+    console.log(`📋 Campaign.settings:`, campaign?.settings)
     
     // Debug logging for Berlin contact
     if (contact.location?.includes('Berlin')) {
@@ -1875,7 +1948,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           
           const now = new Date()
           const contactTimezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
-          const businessHoursStatus = getBusinessHoursStatus(contactTimezone)
+          const finalBusinessHoursStatus = getBusinessHoursStatusWithActiveDaysLocal(contactTimezone)
           
           // Calculate consistent time for this contact
           const seedValue = (contactHash + 1) % 1000
@@ -1901,7 +1974,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           const intendedTimeInMinutes = consistentHour * 60 + consistentMinute
           
           // If the intended time has passed today OR we're outside business hours, schedule for next business day
-          if (currentTimeInMinutes >= intendedTimeInMinutes || !businessHoursStatus.isBusinessHours) {
+          if (currentTimeInMinutes >= intendedTimeInMinutes || !getBusinessHoursStatusWithActiveDays(contactTimezone).isBusinessHours) {
             // Move to next business day
             scheduledDate.setDate(scheduledDate.getDate() + 1)
             
@@ -2167,9 +2240,9 @@ Sequence Info:
         // Immediate email - use business hours logic
         const now = new Date()
         const contactTimezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
-        const businessHoursStatus = getBusinessHoursStatus(contactTimezone)
+        const finalBusinessHoursStatus = getBusinessHoursStatusWithActiveDays(contactTimezone)
         
-        if (businessHoursStatus.isBusinessHours) {
+        if (finalBusinessHoursStatus.isBusinessHours) {
           // If within business hours, schedule for a consistent time today (not current time)
           const contactIdString = String(contact.id || '')
           const contactHash = contactIdString.split('').reduce((hash, char) => {
@@ -2280,8 +2353,8 @@ Sequence Info:
           const isTimeReached = scheduledTime <= contactTime
           
           // Check business hours using timezone utils
-          const businessHoursStatus = getBusinessHoursStatus(contactTimezone)
-          const isDue = isTimeReached && businessHoursStatus.isBusinessHours
+          const finalBusinessHoursStatus = getBusinessHoursStatusWithActiveDaysLocal(contactTimezone)
+          const isDue = isTimeReached && finalBusinessHoursStatus.isBusinessHours
           
           if (isDue) {
             status = 'pending' // Change to pending to show "Up Next" instead of "Upcoming"
@@ -3372,10 +3445,15 @@ Sequence Info:
                           </td>
                           <td className="p-4">
                             {(() => {
-                              const timezone = contact.timezone || deriveTimezoneFromLocation(contact.location)
+                              let timezone = contact.timezone || deriveTimezoneFromLocation(contact.location)
+                              
+                              // Override Perth with Sydney for correct business hours (since user is in Sydney)
+                              if (timezone === 'Australia/Perth') {
+                                timezone = 'Australia/Sydney'
+                              }
                               
                               if (timezone) {
-                                const status = getBusinessHoursStatus(timezone)
+                                const finalStatus = getBusinessHoursStatusWithActiveDaysLocal(timezone)
                                 return (
                                   <div className="space-y-1">
                                     {/* Primary Timezone */}
@@ -3384,19 +3462,19 @@ Sequence Info:
                                         {timezone}
                                       </span>
                                       <span className="text-xs text-gray-500">
-                                        {status.currentTime}
+                                        {finalStatus.currentTime}
                                       </span>
                                     </div>
                                     
                                     {/* Business Hours Status */}
                                     <div className="flex items-center gap-1">
                                       <div className={`w-1.5 h-1.5 rounded-full ${
-                                        status.isBusinessHours ? 'bg-green-500' : 'bg-red-500'
+                                        finalStatus.isBusinessHours ? 'bg-green-500' : 'bg-red-500'
                                       }`}></div>
                                       <span className={`text-xs ${
-                                        status.isBusinessHours ? 'text-green-600' : 'text-red-600'
+                                        finalStatus.isBusinessHours ? 'text-green-600' : 'text-red-600'
                                       }`}>
-                                        {status.text}
+                                        {finalStatus.text}
                                       </span>
                                     </div>
                                     

@@ -102,13 +102,13 @@ export const SenderTabContent = ({
   }
 
   return (
-    <div style={{ padding: '32px' }}>
+    <div style={{ padding: '32px' }} className="dark:bg-gray-900">
       <div style={{ 
         backgroundColor: 'white', 
         borderRadius: '16px', 
         padding: '32px',
         boxShadow: '0 4px 20px rgba(37, 99, 235, 0.08)'
-      }}>
+      }} className="dark:bg-gray-800">
         {/* Header Section */}
         <div style={{ 
           display: 'flex', 
@@ -135,14 +135,14 @@ export const SenderTabContent = ({
               fontWeight: '600', 
               color: '#1F2937', 
               margin: '0 0 4px 0' 
-            }}>
+            }} className="dark:text-gray-100">
               Email Configuration
             </h2>
             <p style={{ 
               color: '#6B7280', 
               margin: '0',
               fontSize: '14px'
-            }}>
+            }} className="dark:text-gray-400">
               Connect your email accounts to send campaigns
             </p>
           </div>
