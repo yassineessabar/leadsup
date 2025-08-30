@@ -98,6 +98,8 @@ export function SenderManagement({ domainId, onBack, campaignId }: SenderManagem
         params.set('campaignId', campaignId)
         console.log('🎯 Using campaignId like analytics:', campaignId)
       }
+      // Force real-time calculation instead of cached values
+      params.set('forceRefresh', 'true')
       
       const response = await fetch(`/api/sender-accounts/health-score?${params}${timestamp}`, {
         credentials: 'include',

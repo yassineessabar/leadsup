@@ -339,10 +339,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             if (senderEmails.length > 0) {
               params.set('emails', senderEmails.join(','))
             }
-            // Don't pass campaignId to get the same real-time calculated scores as sender management
-            // if (campaign.id) {
-            //   params.set('campaignId', campaign.id)
-            // }
+            if (campaign.id) {
+              params.set('campaignId', campaign.id)
+            }
+            // Force real-time calculation instead of cached values
+            params.set('forceRefresh', 'true')
             
             console.log('📡 Calling health score API with URL:', `/api/sender-accounts/health-score?${params}`)
             
