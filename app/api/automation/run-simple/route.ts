@@ -1,256 +1,151 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase"
-import { v4 as uuidv4 } from 'uuid'
+import { deriveTimezoneFromLocation, getBusinessHoursStatusWithActiveDays } from "@/lib/timezone-utils"
 
-// Simplified automation that works with existing schema
 export async function POST(request: NextRequest) {
-  const runId = uuidv4()
-  const startTime = Date.now()
-  
   try {
-    const { testMode = false, campaignId } = await request.json()
+    const { testMode = false } = await request.json()
     
-    // Log automation run start
-    await logEvent({
-      runId,
-      logType: 'run_start',
-      status: 'success',
-      message: `Automation run started ${testMode ? '(TEST MODE)' : ''}`,
-      details: { testMode, campaignId }
-    })
-
-    // Get active campaigns
-    const { data: campaigns, error: campaignError } = await supabaseServer
+    console.log(`🚀 SIMPLE AUTOMATION: Starting - ${new Date().toISOString()}`)
+    
+    // Get all active campaigns (same as debug API)
+    const { data: campaigns, error: campaignsError } = await supabaseServer
       .from('campaigns')
-      .select(`
-        *,
-        settings:campaign_settings(*)
-      `)
+      .select('*')
       .eq('status', 'Active')
-      .limit(10)
     
-    if (campaignError) {
-      console.error('Error fetching campaigns:', campaignError)
-      await logEvent({
-        runId,
-        logType: 'error',
-        status: 'failed',
-        message: 'Failed to fetch active campaigns',
-        details: { error: campaignError.message }
-      })
-      
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Failed to fetch campaigns' 
-      }, { status: 500 })
+    if (campaignsError || !campaigns) {
+      return NextResponse.json({ error: 'No active campaigns found' }, { status: 404 })
     }
-
-    if (!campaigns || campaigns.length === 0) {
-      await logEvent({
-        runId,
-        logType: 'run_complete',
-        status: 'skipped',
-        message: 'No active campaigns found',
-        executionTimeMs: Date.now() - startTime
-      })
-      
-      return NextResponse.json({ 
-        success: true, 
-        runId,
-        message: 'No active campaigns to process',
-        stats: { processed: 0, sent: 0, skipped: 0 }
-      })
-    }
-
-    let totalStats = {
-      processed: 0,
-      sent: 0,
-      skipped: 0,
-      errors: 0
-    }
-
-    // Process each campaign
+    
+    console.log(`📋 Found ${campaigns.length} active campaigns`)
+    
+    let totalProcessed = 0
+    let totalSent = 0
+    const results = []
+    
     for (const campaign of campaigns) {
-      if (campaignId && campaign.id !== campaignId) continue
+      console.log(`\n🎯 Processing campaign: ${campaign.name}`)
       
-      // Get contacts for this campaign (without status filter)
-      const { data: contacts, error: contactError } = await supabaseServer
+      // Get campaign settings directly
+      const { data: campaignSettings } = await supabaseServer
+        .from('campaign_settings')
+        .select('*')
+        .eq('campaign_id', campaign.id)
+        .single()
+      
+      if (!campaignSettings) {
+        console.log(`⚠️ No settings for ${campaign.name}`)
+        continue
+      }
+      
+      // Get all contacts for this campaign
+      const { data: contacts } = await supabaseServer
         .from('contacts')
         .select('*')
         .eq('campaign_id', campaign.id)
-        .limit(50)
+        .limit(100)
       
-      if (contactError) {
-        console.error(`Error fetching contacts for campaign ${campaign.id}:`, contactError)
-        await logEvent({
-          runId,
-          campaignId: campaign.id,
-          logType: 'error',
-          status: 'failed',
-          message: 'Failed to fetch contacts',
-          details: { error: contactError.message }
-        })
-        totalStats.errors++
-        continue
-      }
-
       if (!contacts || contacts.length === 0) {
-        await logEvent({
-          runId,
-          campaignId: campaign.id,
-          logType: 'campaign_skipped',
-          status: 'skipped',
-          message: 'No contacts found for campaign',
-          skipReason: 'no_contacts'
-        })
-        totalStats.skipped++
+        console.log(`⚠️ No contacts for ${campaign.name}`)
         continue
       }
-
-      // Check daily cap
-      const dailyLimit = campaign.settings?.[0]?.daily_contacts_limit || 35
-      const sentToday = await getTodaySentCount(campaign.id)
       
-      if (sentToday >= dailyLimit) {
-        await logEvent({
-          runId,
-          campaignId: campaign.id,
-          logType: 'campaign_skipped',
-          status: 'skipped',
-          message: `Daily cap reached (${sentToday}/${dailyLimit})`,
-          skipReason: 'cap_reached'
-        })
-        totalStats.skipped++
-        continue
-      }
-
-      // Process contacts (simplified)
-      const remainingCapacity = dailyLimit - sentToday
-      let sentCount = 0
-
+      console.log(`📊 Found ${contacts.length} contacts in ${campaign.name}`)
+      
+      const dueContacts = []
+      
+      // Use EXACT same logic as debug API
       for (const contact of contacts) {
-        if (sentCount >= remainingCapacity) {
-          await logEvent({
-            runId,
-            campaignId: campaign.id,
-            contactId: contact.id,
-            logType: 'email_skipped',
-            status: 'skipped',
-            message: 'Daily cap would be exceeded',
-            skipReason: 'cap_reached'
-          })
-          totalStats.skipped++
+        // Skip completed contacts
+        if (contact.email_status === 'Completed' || contact.email_status === 'Replied' || 
+            contact.email_status === 'Unsubscribed' || contact.email_status === 'Bounced') {
           continue
         }
-
-        totalStats.processed++
-
-        // Get sequence template (step 1 for now)
-        const { data: template } = await supabaseServer
-          .from('campaign_sequences')
-          .select('*')
-          .eq('campaign_id', campaign.id)
-          .eq('step_number', 1)
-          .single()
-
-        if (!template) {
-          await logEvent({
-            runId,
-            campaignId: campaign.id,
-            contactId: contact.id,
-            logType: 'email_skipped',
-            status: 'skipped',
-            message: 'No email template found',
-            skipReason: 'no_template'
-          })
-          totalStats.skipped++
+        
+        // Skip contacts without next_email_due
+        if (!contact.next_email_due) {
           continue
         }
-
-        // In test mode, just log what would be sent
-        if (testMode) {
-          await logEvent({
-            runId,
-            campaignId: campaign.id,
-            contactId: contact.id,
-            logType: 'email_sent',
-            status: 'success',
-            message: `[TEST] Would send email to ${contact.email}`,
-            emailSubject: template.subject,
-            sequenceStep: 1,
-            details: {
-              testMode: true,
-              template: template.subject,
-              contact: {
-                email: contact.email,
-                name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
-              }
-            }
-          })
-          sentCount++
-          totalStats.sent++
-        } else {
-          // In production, you would actually send the email here
-          await logEvent({
-            runId,
-            campaignId: campaign.id,
-            contactId: contact.id,
-            logType: 'email_sent',
-            status: 'success',
-            message: `Email sent to ${contact.email}`,
-            emailSubject: template.subject,
-            sequenceStep: 1,
-            details: {
-              template: template.subject
-            }
-          })
-          sentCount++
-          totalStats.sent++
+        
+        // Check timezone and timing - EXACT same as debug API
+        let timezone = deriveTimezoneFromLocation(contact.location) || 'Australia/Sydney'
+        
+        // Override Perth with Sydney (same as automation)
+        if (timezone === 'Australia/Perth') {
+          timezone = 'Australia/Sydney'
         }
+        
+        const scheduledDate = new Date(contact.next_email_due)
+        const now = new Date()
+        const isTimeReached = now >= scheduledDate
+        
+        if (!isTimeReached) {
+          continue
+        }
+        
+        // Check business hours using exact same function as automation
+        const activeDays = campaignSettings.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+        const businessStatus = getBusinessHoursStatusWithActiveDays(timezone, activeDays, 9, 17)
+        
+        if (!businessStatus.isBusinessHours) {
+          continue
+        }
+        
+        // This contact is due!
+        dueContacts.push(contact)
+        console.log(`✅ PROCESSING: ${contact.email} - due since ${scheduledDate.toLocaleString('en-US', { timeZone: timezone })}`)
+        
+        if (!testMode) {
+          // In real mode, update the contact (mark as contacted)
+          const { error: updateError } = await supabaseServer
+            .from('contacts')
+            .update({ 
+              last_contacted_at: new Date().toISOString(),
+              sequence_step: (contact.sequence_step || 0) + 1
+            })
+            .eq('id', contact.id)
+          
+          if (updateError) {
+            console.log(`❌ Error updating ${contact.email}:`, updateError.message)
+          } else {
+            totalSent++
+          }
+        }
+        
+        totalProcessed++
       }
-
-      await logEvent({
-        runId,
+      
+      results.push({
         campaignId: campaign.id,
-        logType: 'campaign_complete',
-        status: 'success',
-        message: `Campaign processed: ${sentCount} emails sent`,
-        details: { sent: sentCount, total: contacts.length }
+        campaignName: campaign.name,
+        totalContacts: contacts.length,
+        dueContacts: dueContacts.length,
+        activeDays: campaignSettings.active_days
       })
+      
+      console.log(`📈 ${campaign.name}: processed ${dueContacts.length} contacts`)
     }
-
-    // Log run completion
-    await logEvent({
-      runId,
-      logType: 'run_complete',
-      status: 'success',
-      message: `Automation completed: ${totalStats.sent} sent, ${totalStats.skipped} skipped`,
-      details: totalStats,
-      executionTimeMs: Date.now() - startTime
-    })
-
+    
+    console.log(`\n🏁 SIMPLE AUTOMATION COMPLETE`)
+    console.log(`   Total processed: ${totalProcessed}`)
+    console.log(`   Total sent: ${totalSent}`)
+    
     return NextResponse.json({
       success: true,
-      runId,
-      stats: totalStats
+      testMode,
+      stats: {
+        processed: totalProcessed,
+        sent: totalSent,
+        campaigns: results.length
+      },
+      campaigns: results,
+      message: `Processed ${totalProcessed} contacts across ${results.length} campaigns`
     })
-
-  } catch (error) {
-    console.error('❌ Automation run error:', error)
     
-    await logEvent({
-      runId,
-      logType: 'error',
-      status: 'failed',
-      message: 'Automation run failed',
-      details: { error: error instanceof Error ? error.message : 'Unknown error' },
-      executionTimeMs: Date.now() - startTime
-    })
-
-    return NextResponse.json(
-      { success: false, error: 'Automation run failed' },
-      { status: 500 }
-    )
+  } catch (error: any) {
+    console.error('❌ Simple automation error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
 

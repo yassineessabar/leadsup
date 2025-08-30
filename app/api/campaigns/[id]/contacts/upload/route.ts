@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { deriveTimezoneFromLocation } from '@/lib/timezone-utils'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -202,6 +203,70 @@ function parseCsvData(csvText: string): any[] {
   return contacts
 }
 
+// Calculate next_email_due using same logic as UI
+function calculateContactNextEmailDue(contact: any, sequences: any[], campaignSettings: any) {
+  const currentStep = contact.sequence_step || 0
+  
+  // Find next sequence step (first email for new contacts)
+  const nextStepIndex = currentStep === 0 ? 0 : currentStep
+  const nextSequence = sequences[nextStepIndex]
+  
+  if (!nextSequence) {
+    return null // No sequences defined
+  }
+  
+  const timezone = deriveTimezoneFromLocation(contact.location) || 'Australia/Sydney'
+  const contactIdString = contact.id?.toString() || '0'
+  
+  // Use same hash-based timing logic as UI
+  const contactHash = contactIdString.split('').reduce((hash, char) => {
+    return ((hash << 5) - hash) + char.charCodeAt(0)
+  }, 0)
+  
+  const seedValue = (contactHash + 1) % 1000
+  const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM
+  const consistentMinute = (seedValue * 7) % 60
+  
+  // Calculate scheduled date
+  let scheduledDate: Date
+  const timingDays = nextSequence.timing_days || 0
+  
+  if (currentStep === 0) {
+    // First email for new contact
+    if (timingDays === 0) {
+      scheduledDate = new Date()
+    } else {
+      scheduledDate = new Date()
+      scheduledDate.setDate(scheduledDate.getDate() + timingDays)
+    }
+  } else {
+    // This shouldn't happen for new contacts, but handle it
+    scheduledDate = new Date()
+    scheduledDate.setDate(scheduledDate.getDate() + timingDays)
+  }
+  
+  // Set consistent time
+  scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+  
+  // Handle campaign active days
+  const activeDays = campaignSettings?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+  
+  function isActiveDayOfWeek(dayOfWeek: number) {
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const dayName = dayNames[dayOfWeek]
+    return activeDays.includes(dayName)
+  }
+  
+  // Skip inactive days
+  let dayOfWeek = scheduledDate.getDay()
+  while (!isActiveDayOfWeek(dayOfWeek)) {
+    scheduledDate.setDate(scheduledDate.getDate() + 1)
+    dayOfWeek = scheduledDate.getDay()
+  }
+  
+  return scheduledDate
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -226,6 +291,19 @@ export async function POST(
     if (campaignError || !campaign) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
     }
+
+    // Get campaign sequences and settings for next_email_due calculation
+    const { data: campaignSequences } = await supabase
+      .from('campaign_sequences')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .order('step_number', { ascending: true })
+
+    const { data: campaignSettings } = await supabase
+      .from('campaign_settings')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .single()
 
     // Parse form data
     const formData = await request.formData()
@@ -300,9 +378,10 @@ export async function POST(
     for (let i = 0; i < newContacts.length; i += batchSize) {
       const batch = newContacts.slice(i, i + batchSize)
       
-      const { error: insertError } = await supabase
+      const { data: insertedBatch, error: insertError } = await supabase
         .from('contacts')
         .insert(batch)
+        .select('id, email, location')
 
       if (insertError) {
         console.error('Error inserting batch:', insertError)
@@ -310,6 +389,28 @@ export async function POST(
       }
       
       insertedCount += batch.length
+      
+      // Calculate and update next_email_due for the inserted contacts
+      if (insertedBatch && campaignSequences && campaignSequences.length > 0) {
+        console.log(`📅 Calculating next_email_due for ${insertedBatch.length} contacts...`)
+        
+        for (const contact of insertedBatch) {
+          const nextEmailDue = calculateContactNextEmailDue(contact, campaignSequences, campaignSettings)
+          
+          if (nextEmailDue) {
+            const { error: updateError } = await supabase
+              .from('contacts')
+              .update({ next_email_due: nextEmailDue.toISOString() })
+              .eq('id', contact.id)
+            
+            if (updateError) {
+              console.error(`❌ Error updating next_email_due for ${contact.email}:`, updateError.message)
+            } else {
+              console.log(`✅ Set next_email_due for ${contact.email}: ${nextEmailDue.toLocaleString('en-US', { timeZone: 'Australia/Sydney' })}`)
+            }
+          }
+        }
+      }
     }
 
     // Update campaign totalPlanned

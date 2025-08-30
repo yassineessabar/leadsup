@@ -25,11 +25,15 @@ interface ContactWithTimezone {
 
 // Main automation run endpoint
 export async function POST(request: NextRequest) {
+  console.log(`🔥🔥🔥 AUTOMATION ENDPOINT CALLED - ${new Date().toISOString()}`)
+  
   const runId = uuidv4()
   const startTime = Date.now()
   
   try {
     const { testMode = false, campaignId, forceUnhealthySenders = false } = await request.json() as AutomationConfig
+    
+    console.log(`🎯 AUTOMATION: Starting run - testMode: ${testMode}, forceUnhealthy: ${forceUnhealthySenders}, campaignId: ${campaignId}`)
     
     // Log automation run start
     await logEvent({
@@ -512,7 +516,7 @@ async function getAllContacts(campaignId: string) {
 }
 
 // Replicate the UI's "Due next" logic for automation
-function calculateContactIsDue(contact: any, campaignSettings: any, campaignSequences: any[], timezone: string): boolean {
+async function calculateContactIsDue(contact: any, campaignSettings: any, campaignSequences: any[], timezone: string): Promise<boolean> {
   if (!campaignSettings || !campaignSequences || campaignSequences.length === 0) {
     console.log(`🔍 AUTOMATION: Missing data for ${contact.email} - settings:${!!campaignSettings} sequences:${campaignSequences?.length || 0}`)
     return false
@@ -526,6 +530,63 @@ function calculateContactIsDue(contact: any, campaignSettings: any, campaignSequ
     console.log(`🔍 AUTOMATION: ${contact.email} sequence complete (step ${currentStep}/${campaignSequences.length})`)
     return false
   }
+  
+  // CRITICAL: Use next_email_due from database if available
+  if (contact.next_email_due) {
+    const scheduledDate = new Date(contact.next_email_due)
+    const now = new Date()
+    
+    // Check if scheduled time has passed (isTimeReached) - direct UTC comparison since next_email_due is in UTC
+    const isTimeReached = now >= scheduledDate
+    
+    // But for logging, show times in contact's timezone
+    const nowInContactTz = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit', 
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(now)
+    
+    const scheduledInContactTz = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit', 
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(scheduledDate)
+    
+    // Check if it's business hours with campaign active_days (use contact's timezone)
+    const activeDays = campaignSettings?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+    const businessStatus = getBusinessHoursStatusWithActiveDays(timezone, activeDays, 9, 17)
+    
+    const isDue = isTimeReached && businessStatus.isBusinessHours
+    
+    console.log(`🔍 AUTOMATION DUE CHECK (using saved timing): ${contact.email}`)
+    console.log(`   Contact timezone: ${timezone}`)
+    console.log(`   Saved next_email_due (UTC): ${contact.next_email_due}`)
+    console.log(`   Current time in contact TZ: ${nowInContactTz}`)
+    console.log(`   Scheduled time in contact TZ: ${scheduledInContactTz}`)
+    console.log(`   isTimeReached (UTC comparison): ${isTimeReached}`)
+    console.log(`   activeDays: [${activeDays.join(',')}]`)
+    console.log(`   businessStatus: ${JSON.stringify(businessStatus)}`)
+    console.log(`   Final isDue: ${isDue}`)
+    
+    return isDue
+  }
+  
+  // If no saved next_email_due, contact is not ready for automation
+  if (!contact.next_email_due) {
+    console.log(`⚠️ AUTOMATION: ${contact.email} has no saved next_email_due - skipping`)
+    return false
+  }
+  
+  // FALLBACK: If no saved timing, calculate dynamically (this should be rare)
+  console.log(`⚠️ AUTOMATION: No saved timing for ${contact.email}, calculating dynamically`)
   
   // Get next sequence step (either step 1 for new contacts, or next step for in-sequence)
   const nextStep = currentStep === 0 ? 1 : currentStep + 1
@@ -542,9 +603,18 @@ function calculateContactIsDue(contact: any, campaignSettings: any, campaignSequ
   let scheduledDate: Date
   
   if (timingDays === 0) {
-    // Immediate email - schedule for a consistent time today
+    // Use hash-based consistent timing like UI
+    const contactIdString = String(contact.id || '')
+    const contactHash = contactIdString.split('').reduce((hash, char) => {
+      return ((hash << 5) - hash) + char.charCodeAt(0)
+    }, 0)
+    
+    const seedValue = (contactHash + 1) % 1000
+    const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM
+    const consistentMinute = (seedValue * 7) % 60
+    
     scheduledDate = new Date()
-    scheduledDate.setHours(9, 0, 0, 0) // 9 AM consistent time
+    scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
   } else {
     // Delayed email - calculate based on last contact date + timing
     if (!contact.last_contacted_at) {
@@ -613,7 +683,8 @@ async function getEligibleContacts(campaignId: string): Promise<ContactWithTimez
   const allContacts = data || []
   
   // Filter contacts to only those that are "Due next" using same logic as UI
-  const eligibleContacts = allContacts.filter(contact => {
+  const eligibleContacts = []
+  for (const contact of allContacts) {
     // Add derived timezone from location for each contact
     let timezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'Australia/Sydney'
     
@@ -622,12 +693,17 @@ async function getEligibleContacts(campaignId: string): Promise<ContactWithTimez
       timezone = 'Australia/Sydney'
     }
     
-    // Calculate if this contact is "Due next" using UI logic
-    const isDue = calculateContactIsDue(contact, campaignSettings, campaignSequences, timezone)
+    // Skip saving timezone for now due to missing column
+    // Will derive timezone consistently each time
     
-    console.log(`🔍 AUTOMATION: Contact ${contact.email} isDue: ${isDue}`)
-    return isDue
-  })
+    // Calculate if this contact is "Due next" using UI logic
+    const isDue = await calculateContactIsDue(contact, campaignSettings, campaignSequences, timezone)
+    
+    console.log(`🔍 AUTOMATION: Contact ${contact.email} (${timezone}) isDue: ${isDue}`)
+    if (isDue) {
+      eligibleContacts.push(contact)
+    }
+  }
   
   // Add derived timezone to eligible contacts
   const contactsWithTimezones = eligibleContacts.map(contact => {
