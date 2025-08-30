@@ -61,113 +61,11 @@ export async function GET(request: NextRequest) {
     // Skip campaign verification - we want to show SendGrid data regardless
     console.log('📊 Attempting to fetch real SendGrid metrics...')
 
-    // Method 1: Local email tracking analytics (PRIORITY)
-    try {
-      console.log('📡 Method 1: Using local email tracking analytics...')
-      
-      const { getEmailTrackingMetrics } = await import('@/lib/email-tracking-analytics')
-      
-      const trackingMetrics = await getEmailTrackingMetrics(userId, startDate, endDate)
-      
-      if (trackingMetrics && trackingMetrics.emailsSent > 0) {
-        console.log('✅ SUCCESS! Local email tracking metrics found:', trackingMetrics)
-        
-        return NextResponse.json({
-          success: true,
-          data: {
-            metrics: trackingMetrics,
-            source: 'local_email_tracking',
-            period: `${startDate} to ${endDate}`,
-            debug: `Local email tracking data for user ${userId}`
-          }
-        })
-      } else if (trackingMetrics) {
-        console.log('⚠️ User has no email activity in local tracking')
-        
-        return NextResponse.json({
-          success: true,
-          data: {
-            metrics: trackingMetrics,
-            source: 'local_email_tracking',
-            period: `${startDate} to ${endDate}`,
-            debug: `No email activity for user ${userId} in this period`
-          }
-        })
-      } else {
-        console.log('⚠️ Could not get local tracking metrics, trying fallback methods')
-      }
-    } catch (trackingAnalyticsError) {
-      console.error('❌ Local email tracking analytics failed:', trackingAnalyticsError)
-    }
+    // Skip Method 1 (local email tracking) - use campaign aggregation instead
+    console.log('⚠️ Skipping local email tracking, using campaign aggregation method')
 
-    // Method 2: User-specific analytics with SendGrid events (FALLBACK)
-    try {
-      console.log('📡 Method 2: Calculating user-specific metrics with SendGrid events...')
-      
-      const { UserSpecificAnalytics } = await import('@/lib/user-specific-analytics')
-      const { fetchSendGridEventsForUser } = await import('@/lib/sendgrid-event-fetcher')
-      
-      const userMetrics = await UserSpecificAnalytics.getUserMetrics(userId, startDate, endDate)
-      
-      if (userMetrics && userMetrics.emailsSent > 0) {
-        // Enhance with real SendGrid open/click events
-        console.log('📊 Fetching real SendGrid open/click events...')
-        const eventMetrics = await fetchSendGridEventsForUser(userId, startDate, endDate)
-        
-        if (eventMetrics) {
-          // Merge user metrics with SendGrid event metrics
-          const enhancedMetrics = {
-            ...userMetrics,
-            openRate: eventMetrics.openRate,
-            clickRate: eventMetrics.clickRate,
-            totalOpens: eventMetrics.totalOpens,
-            uniqueOpens: eventMetrics.uniqueOpens,
-            totalClicks: eventMetrics.totalClicks,
-            uniqueClicks: eventMetrics.uniqueClicks
-          }
-          
-          console.log('✅ SUCCESS! Enhanced metrics with real SendGrid events:', enhancedMetrics)
-          
-          return NextResponse.json({
-            success: true,
-            data: {
-              metrics: enhancedMetrics,
-              source: 'user_specific_analytics_with_sendgrid_events',
-              period: `${startDate} to ${endDate}`,
-              debug: `Real user-specific data with SendGrid events for user ${userId}`
-            }
-          })
-        } else {
-          console.log('⚠️ Could not fetch SendGrid events, using basic metrics')
-          
-          return NextResponse.json({
-            success: true,
-            data: {
-              metrics: userMetrics,
-              source: 'user_specific_analytics_only',
-              period: `${startDate} to ${endDate}`,
-              debug: `Real user-specific data (no SendGrid events) for user ${userId}`
-            }
-          })
-        }
-      } else if (userMetrics) {
-        console.log('⚠️ User has no email activity in this period')
-        
-        return NextResponse.json({
-          success: true,
-          data: {
-            metrics: userMetrics,
-            source: 'user_specific_analytics',
-            period: `${startDate} to ${endDate}`,
-            debug: `No email activity for user ${userId} in this period`
-          }
-        })
-      } else {
-        console.log('⚠️ Could not calculate user metrics')
-      }
-    } catch (userAnalyticsError) {
-      console.error('❌ User-specific analytics failed:', userAnalyticsError)
-    }
+    // Skip Method 2 - go directly to campaign aggregation
+    console.log('⚠️ Skipping user-specific analytics, using campaign aggregation method')
 
     // Fallback: Initialize empty metrics for other methods
     let accountMetrics = {
