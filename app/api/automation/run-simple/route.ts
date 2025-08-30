@@ -187,6 +187,22 @@ export async function POST(request: NextRequest) {
             continue
           }
           
+          // Check if sequence has actual content (not just placeholders)
+          if (!sequenceTemplate.content || sequenceTemplate.content.trim() === '') {
+            console.log(`❌ Sequence step ${nextStep} has no content - skipping email send`)
+            continue
+          }
+          
+          if (!sequenceTemplate.subject || sequenceTemplate.subject.trim() === '') {
+            console.log(`❌ Sequence step ${nextStep} has no subject - skipping email send`)
+            continue
+          }
+          
+          console.log(`✅ Using sequence template for step ${nextStep}:`)
+          console.log(`   Subject: "${sequenceTemplate.subject}"`)
+          console.log(`   Content: "${sequenceTemplate.content.substring(0, 100)}${sequenceTemplate.content.length > 100 ? '...' : ''}"`)
+          console.log(`   For contact: ${contact.email}`)
+          
           // Get sender for this campaign
           const { data: campaignSender, error: senderError } = await supabaseServer
             .from('campaign_senders')
@@ -223,11 +239,11 @@ export async function POST(request: NextRequest) {
                 const cleanApiKey = process.env.SENDGRID_API_KEY.trim().replace(/[\r\n\s]/g, '')
                 sgMail.setApiKey(cleanApiKey)
                 
-                // Personalize content (same as working automation)
-                const personalizedSubject = sequenceTemplate.subject?.replace(/\{\{companyName\}\}/g, contact.company || 'your company') || 'Email from LeadsUp'
-                let personalizedContent = sequenceTemplate.content?.replace(/\{\{companyName\}\}/g, contact.company || 'your company')
+                // Personalize content - we already validated content exists above
+                const personalizedSubject = sequenceTemplate.subject.replace(/\{\{companyName\}\}/g, contact.company || 'your company')
+                let personalizedContent = sequenceTemplate.content.replace(/\{\{companyName\}\}/g, contact.company || 'your company')
                   .replace(/\{\{firstName\}\}/g, contact.first_name || 'there')
-                  .replace(/\{\{lastName\}\}/g, contact.last_name || '') || 'Hello from LeadsUp!'
+                  .replace(/\{\{lastName\}\}/g, contact.last_name || '')
                 
                 // Convert line breaks to HTML (same as working automation)
                 personalizedContent = personalizedContent

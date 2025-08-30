@@ -101,6 +101,7 @@ export default function AdminPanel() {
   const [managementMessage, setManagementMessage] = useState<string | null>(null)
   const [simulationMode, setSimulationMode] = useState<boolean>(false)
   const [simulationToggling, setSimulationToggling] = useState(false)
+  const [sendgridStatus, setSendgridStatus] = useState<any>(null)
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -143,7 +144,8 @@ export default function AdminPanel() {
         await Promise.all([
           fetchActivityData(),
           fetchGitHubAutomationData(),
-          fetchSimulationMode()
+          fetchSimulationMode(),
+          fetchSendGridStatus()
         ])
       } catch (error) {
         console.warn('Admin data fetch failed, showing basic view:', error)
@@ -222,6 +224,19 @@ export default function AdminPanel() {
     }
   }
 
+  const fetchSendGridStatus = async () => {
+    try {
+      const response = await fetch('/api/admin/sendgrid-status')
+      if (response.ok) {
+        const result = await response.json()
+        setSendgridStatus(result)
+      }
+    } catch (error) {
+      console.error('Error fetching SendGrid status:', error)
+      setSendgridStatus({ success: false, error: 'Failed to check status' })
+    }
+  }
+
   const toggleSimulationMode = async () => {
     try {
       setSimulationToggling(true)
@@ -262,7 +277,8 @@ export default function AdminPanel() {
     await Promise.all([
       fetchActivityData(),
       fetchGitHubAutomationData(),
-      fetchSimulationMode()
+      fetchSimulationMode(),
+      fetchSendGridStatus()
     ])
     setRefreshing(false)
   }
@@ -477,14 +493,45 @@ export default function AdminPanel() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Health</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">SendGrid Status</CardTitle>
+            <Mail className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">Operational</div>
-            <p className="text-xs text-muted-foreground">
-              All systems running
-            </p>
+            {sendgridStatus ? (
+              <>
+                <div className={`text-2xl font-bold ${
+                  sendgridStatus.success && sendgridStatus.sending?.status === 'operational' 
+                    ? 'text-green-600' 
+                    : sendgridStatus.sending?.status === 'credits_exceeded'
+                    ? 'text-red-600'
+                    : 'text-yellow-600'
+                }`}>
+                  {sendgridStatus.success 
+                    ? sendgridStatus.sending?.status === 'operational'
+                      ? 'Operational'
+                      : sendgridStatus.sending?.status === 'credits_exceeded'
+                      ? 'Credits Exceeded'
+                      : 'Issues Detected'
+                    : 'Error'
+                  }
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {sendgridStatus.success 
+                    ? sendgridStatus.sending?.status === 'credits_exceeded'
+                      ? 'Email sending blocked - add credits'
+                      : sendgridStatus.sending?.status === 'operational'
+                      ? 'Ready to send emails'
+                      : sendgridStatus.sending?.error || 'Unknown issue'
+                    : sendgridStatus.error || 'Unable to check status'
+                  }
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-gray-400">Checking...</div>
+                <p className="text-xs text-muted-foreground">Loading SendGrid status</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -493,6 +540,7 @@ export default function AdminPanel() {
         <TabsList>
           <TabsTrigger value="accounts">Account Activity</TabsTrigger>
           <TabsTrigger value="sender-health">Sender Health</TabsTrigger>
+          <TabsTrigger value="sendgrid">SendGrid Status</TabsTrigger>
           <TabsTrigger value="github">GitHub Automation</TabsTrigger>
           <TabsTrigger value="settings">System Settings</TabsTrigger>
         </TabsList>
@@ -647,6 +695,119 @@ export default function AdminPanel() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="sendgrid" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>SendGrid Integration Status</CardTitle>
+              <CardDescription>Monitor email sending capability and credit usage</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {sendgridStatus ? (
+                <div className="space-y-4">
+                  {/* API Status */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <h4 className="font-medium">API Connection</h4>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${
+                          sendgridStatus.success ? 'bg-green-500' : 'bg-red-500'
+                        }`}></div>
+                        <span className="text-sm">
+                          {sendgridStatus.success ? 'Connected' : 'Connection Failed'}
+                        </span>
+                      </div>
+                      {sendgridStatus.account && (
+                        <p className="text-xs text-muted-foreground">
+                          Account Type: {sendgridStatus.account.type}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Email Sending</h4>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${
+                          sendgridStatus.sending?.status === 'operational' 
+                            ? 'bg-green-500' 
+                            : sendgridStatus.sending?.status === 'credits_exceeded'
+                            ? 'bg-red-500'
+                            : 'bg-yellow-500'
+                        }`}></div>
+                        <span className="text-sm">
+                          {sendgridStatus.sending?.status === 'operational' 
+                            ? 'Ready to Send'
+                            : sendgridStatus.sending?.status === 'credits_exceeded'
+                            ? 'Credits Exceeded'
+                            : sendgridStatus.sending?.status === 'error'
+                            ? 'Error'
+                            : 'Unknown Status'
+                          }
+                        </span>
+                      </div>
+                      {sendgridStatus.sending?.error && (
+                        <p className="text-xs text-red-600">
+                          {sendgridStatus.sending.error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Credit Usage (if available) */}
+                  {sendgridStatus.usage && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Credit Usage</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {sendgridStatus.usage.remain !== undefined && (
+                          <div>
+                            <p className="text-sm font-medium">Remaining Credits</p>
+                            <p className="text-2xl font-bold">{sendgridStatus.usage.remain}</p>
+                          </div>
+                        )}
+                        {sendgridStatus.usage.used !== undefined && (
+                          <div>
+                            <p className="text-sm font-medium">Used Credits</p>
+                            <p className="text-2xl font-bold">{sendgridStatus.usage.used}</p>
+                          </div>
+                        )}
+                        {sendgridStatus.usage.total !== undefined && (
+                          <div>
+                            <p className="text-sm font-medium">Total Credits</p>
+                            <p className="text-2xl font-bold">{sendgridStatus.usage.total}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Warning for Credits Exceeded */}
+                  {sendgridStatus.sending?.status === 'credits_exceeded' && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                        <h4 className="font-medium text-red-800">Email Sending Blocked</h4>
+                      </div>
+                      <p className="text-sm text-red-700 mt-2">
+                        Your SendGrid account has reached its credit limit. Emails cannot be sent until you add more credits or upgrade your plan.
+                      </p>
+                      <p className="text-sm text-red-700 mt-1">
+                        This is why automation shows "processed" but "sent: 0".
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="text-xs text-muted-foreground">
+                    Last checked: {sendgridStatus.timestamp ? new Date(sendgridStatus.timestamp).toLocaleString() : 'Unknown'}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                  <p className="text-sm text-muted-foreground mt-2">Checking SendGrid status...</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="github" className="space-y-4">
           <Card>
