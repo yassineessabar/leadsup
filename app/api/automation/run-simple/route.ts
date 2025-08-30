@@ -2,6 +2,54 @@ import { NextRequest, NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase"
 import { deriveTimezoneFromLocation, getBusinessHoursStatusWithActiveDays } from "@/lib/timezone-utils"
 
+function calculateNextEmailDue(
+  contact: any,
+  nextSequence: any,
+  campaignSettings: any,
+  timezone: string
+): Date | null {
+  if (!nextSequence) return null
+  
+  const contactIdString = contact.id.toString()
+  
+  // Use same hash-based timing logic as UI
+  const contactHash = contactIdString.split('').reduce((hash: number, char: string) => {
+    return ((hash << 5) - hash) + char.charCodeAt(0)
+  }, 0)
+  
+  const seedValue = (contactHash + 1) % 1000
+  const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM
+  const consistentMinute = (seedValue * 7) % 60
+  
+  // Calculate scheduled date based on timing_days from the sequence
+  const timingDays = nextSequence.timing_days || 0
+  let scheduledDate = new Date()
+  
+  // Add timing days from last contact or now
+  if (contact.last_contacted_at) {
+    scheduledDate = new Date(contact.last_contacted_at)
+  }
+  scheduledDate.setDate(scheduledDate.getDate() + timingDays)
+  
+  // Set consistent time
+  scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+  
+  // Handle campaign active days
+  const activeDays = campaignSettings?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+  const dayMap: Record<number, string> = {
+    0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat'
+  }
+  
+  // Skip inactive days
+  let dayOfWeek = scheduledDate.getDay()
+  while (!activeDays.includes(dayMap[dayOfWeek])) {
+    scheduledDate.setDate(scheduledDate.getDate() + 1)
+    dayOfWeek = scheduledDate.getDay()
+  }
+  
+  return scheduledDate
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { testMode = false } = await request.json()
@@ -97,13 +145,50 @@ export async function POST(request: NextRequest) {
         console.log(`✅ PROCESSING: ${contact.email} - due since ${scheduledDate.toLocaleString('en-US', { timeZone: timezone })}`)
         
         if (!testMode) {
-          // In real mode, update the contact (mark as contacted)
+          // Calculate next email due date for the next sequence step
+          const nextStep = (contact.sequence_step || 0) + 1
+          
+          // Get the next sequence step
+          const { data: nextSequence, error: seqError } = await supabaseServer
+            .from('campaign_sequences')
+            .select('*')
+            .eq('campaign_id', campaign.id)
+            .eq('step_number', nextStep)
+            .single()
+          
+          if (seqError && seqError.code !== 'PGRST116') {
+            console.log(`⚠️ Error fetching sequence step ${nextStep}:`, seqError.message)
+          }
+          
+          let updateData: any = {
+            last_contacted_at: new Date().toISOString(),
+            sequence_step: nextStep
+          }
+          
+          if (nextSequence) {
+            // Calculate next email timing
+            const nextEmailDue = calculateNextEmailDue(
+              contact,
+              nextSequence,
+              campaignSettings,
+              timezone
+            )
+            
+            if (nextEmailDue) {
+              updateData.next_email_due = nextEmailDue.toISOString()
+              console.log(`📅 Next email for ${contact.email} scheduled for: ${nextEmailDue.toLocaleString('en-US', { timeZone: timezone })}`)
+            }
+          } else {
+            // No more sequences, mark as completed
+            updateData.email_status = 'Completed'
+            updateData.next_email_due = null
+            console.log(`✅ ${contact.email} completed all sequences`)
+          }
+          
+          // Update the contact
           const { error: updateError } = await supabaseServer
             .from('contacts')
-            .update({ 
-              last_contacted_at: new Date().toISOString(),
-              sequence_step: (contact.sequence_step || 0) + 1
-            })
+            .update(updateData)
             .eq('id', contact.id)
           
           if (updateError) {
