@@ -31,7 +31,7 @@ function calculateNextEmailDue(
   }
   scheduledDate.setDate(scheduledDate.getDate() + timingDays)
   
-  // Set consistent time
+  // Set consistent time (ALWAYS use the hash-based minute for this contact)
   scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
   
   // Handle campaign active days
@@ -87,10 +87,10 @@ export async function POST(request: NextRequest) {
         continue
       }
       
-      // Get all contacts for this campaign
+      // Get all contacts for this campaign including sequence_schedule
       const { data: contacts } = await supabaseServer
         .from('contacts')
-        .select('*')
+        .select('*, sequence_schedule')
         .eq('campaign_id', campaign.id)
         .limit(100)
       
@@ -145,44 +145,43 @@ export async function POST(request: NextRequest) {
         console.log(`✅ PROCESSING: ${contact.email} - due since ${scheduledDate.toLocaleString('en-US', { timeZone: timezone })}`)
         
         if (!testMode) {
-          // Calculate next email due date for the next sequence step
           const nextStep = (contact.sequence_step || 0) + 1
-          
-          // Get the next sequence step
-          const { data: nextSequence, error: seqError } = await supabaseServer
-            .from('campaign_sequences')
-            .select('*')
-            .eq('campaign_id', campaign.id)
-            .eq('step_number', nextStep)
-            .single()
-          
-          if (seqError && seqError.code !== 'PGRST116') {
-            console.log(`⚠️ Error fetching sequence step ${nextStep}:`, seqError.message)
-          }
           
           let updateData: any = {
             last_contacted_at: new Date().toISOString(),
             sequence_step: nextStep
           }
           
-          if (nextSequence) {
-            // Calculate next email timing
-            const nextEmailDue = calculateNextEmailDue(
-              contact,
-              nextSequence,
-              campaignSettings,
-              timezone
-            )
+          // Update sequence_schedule status and get next_email_due
+          if (contact.sequence_schedule) {
+            const schedule = contact.sequence_schedule
             
-            if (nextEmailDue) {
-              updateData.next_email_due = nextEmailDue.toISOString()
-              console.log(`📅 Next email for ${contact.email} scheduled for: ${nextEmailDue.toLocaleString('en-US', { timeZone: timezone })}`)
+            // Update status of current step to 'sent'
+            const updatedSteps = schedule.steps.map(step => {
+              if (step.step === (contact.sequence_step || 0) + 1) {
+                return { ...step, status: 'sent', sent_at: new Date().toISOString() }
+              }
+              return step
+            })
+            
+            // Find next step for next_email_due
+            const nextStepInSchedule = updatedSteps.find(step => step.step === nextStep + 1)
+            
+            if (nextStepInSchedule) {
+              updateData.next_email_due = nextStepInSchedule.scheduled_date
+              console.log(`📅 Next email for ${contact.email} from schedule: ${new Date(nextStepInSchedule.scheduled_date).toLocaleString('en-US', { timeZone: schedule.timezone })}`)
+            } else {
+              // No more sequences, mark as completed
+              updateData.email_status = 'Completed'
+              updateData.next_email_due = null
+              console.log(`✅ ${contact.email} completed all sequences`)
             }
+            
+            // Update the schedule with new status
+            updateData.sequence_schedule = { ...schedule, steps: updatedSteps }
           } else {
-            // No more sequences, mark as completed
-            updateData.email_status = 'Completed'
-            updateData.next_email_due = null
-            console.log(`✅ ${contact.email} completed all sequences`)
+            // Fallback for contacts without schedule (shouldn't happen)
+            console.log(`⚠️ ${contact.email} has no sequence_schedule`)
           }
           
           // Update the contact

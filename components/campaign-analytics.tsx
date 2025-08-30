@@ -2110,14 +2110,53 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
 
   // Generate full email schedule for a contact with real sequence progression data
   const generateContactSchedule = (contact: Contact) => {
+    // Check if contact has sequence_schedule
+    if (contact.sequence_schedule) {
+      console.log(`📊 USING SEQUENCE_SCHEDULE for ${contact.email}`)
+      console.log(`📋 Database sequence_step: ${contact.sequence_step}`)
+      
+      // Assign sender for this contact
+      const contactIdNum = parseInt(String(contact.id)) || 0
+      const senderIndex = campaignSenders.length > 0 ? contactIdNum % campaignSenders.length : 0
+      const assignedSender = campaignSenders[senderIndex] || 'Unknown sender'
+      
+      // Use the stored schedule with current status
+      const schedule = contact.sequence_schedule
+      const currentStep = contact.sequence_step || 0
+      
+      return schedule.steps.map(step => {
+        // Update status based on current sequence_step
+        let status = step.status
+        if (step.step <= currentStep) {
+          status = 'sent'
+        } else if (step.step === currentStep + 1) {
+          status = 'pending' // Up Next
+        } else {
+          status = 'upcoming'
+        }
+        
+        return {
+          step: step.step,
+          subject: step.subject,
+          scheduledDate: new Date(step.scheduled_date),
+          status: status,
+          timezone: step.timezone,
+          sender: assignedSender,
+          content: `Email content for step ${step.step}`,
+          label: step.timing_days === 0 ? 'Immediate' : `${step.timing_days} day${step.timing_days === 1 ? '' : 's'}`
+        }
+      })
+    }
+    
+    // Fallback to old calculation if no sequence_schedule
+    console.log(`⚠️ FALLBACK CALCULATION for ${contact.email} (no sequence_schedule)`)
+    
     // Assign one sender for the entire sequence for this contact
     // Use EXACT same logic as automation backend for consistency
     const contactIdNum = parseInt(String(contact.id)) || 0
     const senderIndex = campaignSenders.length > 0 ? contactIdNum % campaignSenders.length : 0
     const assignedSender = campaignSenders[senderIndex] || 'Unknown sender'
     
-    console.log(`🎯 SEQUENCE GENERATION: Contact ${contact.email}`)
-    console.log(`📊 Database sequence_step: ${contact.sequence_step}`)
     console.log(`📧 Available campaign senders for assignment:`, campaignSenders)
     console.log(`🔢 Sender index: ${senderIndex} (from ${campaignSenders.length} total selected senders)`)
     

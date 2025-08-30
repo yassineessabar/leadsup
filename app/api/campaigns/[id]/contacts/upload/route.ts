@@ -203,22 +203,16 @@ function parseCsvData(csvText: string): any[] {
   return contacts
 }
 
-// Calculate next_email_due using same logic as UI
-function calculateContactNextEmailDue(contact: any, sequences: any[], campaignSettings: any) {
-  const currentStep = contact.sequence_step || 0
-  
-  // Find next sequence step (first email for new contacts)
-  const nextStepIndex = currentStep === 0 ? 0 : currentStep
-  const nextSequence = sequences[nextStepIndex]
-  
-  if (!nextSequence) {
-    return null // No sequences defined
+// Generate complete sequence schedule for a contact
+function generateContactSequenceSchedule(contact: any, sequences: any[], campaignSettings: any) {
+  if (!sequences || sequences.length === 0) {
+    return null
   }
   
   const timezone = deriveTimezoneFromLocation(contact.location) || 'Australia/Sydney'
   const contactIdString = contact.id?.toString() || '0'
   
-  // Use same hash-based timing logic as UI
+  // Calculate consistent timing for this contact
   const contactHash = contactIdString.split('').reduce((hash, char) => {
     return ((hash << 5) - hash) + char.charCodeAt(0)
   }, 0)
@@ -227,26 +221,63 @@ function calculateContactNextEmailDue(contact: any, sequences: any[], campaignSe
   const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM
   const consistentMinute = (seedValue * 7) % 60
   
-  // Calculate scheduled date
-  let scheduledDate: Date
-  const timingDays = nextSequence.timing_days || 0
+  // Get active days for scheduling
+  const activeDays = campaignSettings?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+  const dayMap = { 0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat' }
   
-  if (currentStep === 0) {
-    // First email for new contact
-    if (timingDays === 0) {
-      scheduledDate = new Date()
-    } else {
-      scheduledDate = new Date()
-      scheduledDate.setDate(scheduledDate.getDate() + timingDays)
-    }
-  } else {
-    // This shouldn't happen for new contacts, but handle it
-    scheduledDate = new Date()
-    scheduledDate.setDate(scheduledDate.getDate() + timingDays)
+  function isActiveDayOfWeek(dayOfWeek) {
+    return activeDays.includes(dayMap[dayOfWeek])
   }
   
-  // Set consistent time
-  scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+  // Sort sequences by step_number
+  const sortedSequences = sequences.sort((a, b) => (a.step_number || 1) - (b.step_number || 1))
+  
+  const steps = []
+  let baseDate = new Date() // Start from contact creation
+  
+  for (const seq of sortedSequences) {
+    const stepNumber = seq.step_number || 1
+    const timingDays = seq.timing_days || 0
+    
+    // Calculate scheduled date for this step
+    let scheduledDate = new Date(baseDate)
+    scheduledDate.setDate(scheduledDate.getDate() + timingDays)
+    scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+    
+    // Skip inactive days
+    let dayOfWeek = scheduledDate.getDay()
+    while (!isActiveDayOfWeek(dayOfWeek)) {
+      scheduledDate.setDate(scheduledDate.getDate() + 1)
+      dayOfWeek = scheduledDate.getDay()
+    }
+    
+    steps.push({
+      step: stepNumber,
+      subject: seq.subject || `Email ${stepNumber}`,
+      scheduled_date: scheduledDate.toISOString(),
+      timezone: timezone,
+      timing_days: timingDays,
+      status: 'pending' // Will be updated as emails are sent
+    })
+  }
+  
+  return {
+    steps,
+    contact_hash: contactHash,
+    consistent_hour: consistentHour,
+    consistent_minute: consistentMinute,
+    timezone,
+    generated_at: new Date().toISOString()
+  }
+}
+
+// Get next_email_due from sequence schedule based on current step
+function getNextEmailDueFromSchedule(sequenceSchedule: any, currentStep: number) {
+  if (!sequenceSchedule?.steps) return null
+  
+  // Find the next step to be sent
+  const nextStep = sequenceSchedule.steps.find(step => step.step === currentStep + 1)
+  return nextStep ? new Date(nextStep.scheduled_date) : null
   
   // Handle campaign active days
   const activeDays = campaignSettings?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
@@ -390,23 +421,39 @@ export async function POST(
       
       insertedCount += batch.length
       
-      // Calculate and update next_email_due for the inserted contacts
+      // Generate sequence schedule and set next_email_due for the inserted contacts
       if (insertedBatch && campaignSequences && campaignSequences.length > 0) {
-        console.log(`📅 Calculating next_email_due for ${insertedBatch.length} contacts...`)
+        console.log(`📅 Generating sequence schedule for ${insertedBatch.length} contacts...`)
         
         for (const contact of insertedBatch) {
-          const nextEmailDue = calculateContactNextEmailDue(contact, campaignSequences, campaignSettings)
+          // Generate complete sequence schedule
+          const sequenceSchedule = generateContactSequenceSchedule(contact, campaignSequences, campaignSettings)
           
-          if (nextEmailDue) {
+          if (sequenceSchedule) {
+            // Get next_email_due based on current sequence_step (0 for new contacts)
+            const currentStep = contact.sequence_step || 0
+            const nextEmailDue = getNextEmailDueFromSchedule(sequenceSchedule, currentStep)
+            
+            const updateData: any = {
+              sequence_schedule: sequenceSchedule
+            }
+            
+            if (nextEmailDue) {
+              updateData.next_email_due = nextEmailDue.toISOString()
+            }
+            
             const { error: updateError } = await supabase
               .from('contacts')
-              .update({ next_email_due: nextEmailDue.toISOString() })
+              .update(updateData)
               .eq('id', contact.id)
             
             if (updateError) {
-              console.error(`❌ Error updating next_email_due for ${contact.email}:`, updateError.message)
+              console.error(`❌ Error updating schedule for ${contact.email}:`, updateError.message)
             } else {
-              console.log(`✅ Set next_email_due for ${contact.email}: ${nextEmailDue.toLocaleString('en-US', { timeZone: 'Australia/Sydney' })}`)
+              console.log(`✅ Generated schedule for ${contact.email}`)
+              if (nextEmailDue) {
+                console.log(`📅 Next email due: ${nextEmailDue.toLocaleString('en-US', { timeZone: sequenceSchedule.timezone })}`)
+              }
             }
           }
         }
