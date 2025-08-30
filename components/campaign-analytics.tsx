@@ -1028,6 +1028,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             if (contact.email === 'lukas.schmidt.berlin@example.com' || 
                 contact.email === 'aisha.khan.mumbai@example.com' || 
                 contact.email === 'arjun.patel.delhi@example.com' ||
+                contact.email === 'contact@leadsup.io' ||
                 contact.location?.includes('Kolkata') ||
                 contact.location?.includes('Berlin')) {
               console.log(`🔍 DUE CHECK PATH 1 for ${contact.email}:`)
@@ -1153,7 +1154,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                     
                     // Email is due if the intended time has passed AND we're in business hours
                     isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
-                    const businessStatus = getBusinessHoursStatusWithActiveDaysLocal(contactTimezone)
+                    const businessStatus = getBusinessHoursStatusWithActiveDaysLocal(timezone)
                     isDue = isTimeReached && businessStatus.isBusinessHours
                     
                     console.log(`🕐 TIME DEBUG for ${contact.email}:`)
@@ -1171,7 +1172,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                       const scheduledInContactTz = new Date(scheduledDate.toLocaleString("en-US", {timeZone: timezone}))
                       
                       isTimeReached = nowInContactTz >= scheduledInContactTz
-                      isDue = isTimeReached && getBusinessHoursStatusWithActiveDaysLocal(contactTimezone).isBusinessHours
+                      isDue = isTimeReached && getBusinessHoursStatusWithActiveDaysLocal(timezone).isBusinessHours
                     } else {
                       isTimeReached = false
                       isDue = false
@@ -1228,6 +1229,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 if (contact.email === 'lukas.schmidt.berlin@example.com' || 
                     contact.email === 'aisha.khan.mumbai@example.com' || 
                     contact.email === 'arjun.patel.delhi@example.com' ||
+                    contact.email === 'contact@leadsup.io' ||
                     contact.location?.includes('Kolkata') ||
                     contact.location?.includes('Berlin')) {
                   console.log(`🔍 DUE CHECK PATH 2 FINAL for ${contact.email}:`)
@@ -1265,7 +1267,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                     
                     // Also check business hours using timezone utils
                     const contactTimezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'UTC'
-                    isDue = isTimeReached && getBusinessHoursStatusWithActiveDays(contactTimezone).isBusinessHours
+                    isDue = isTimeReached && getBusinessHoursStatusWithActiveDaysLocal(contactTimezone).isBusinessHours
                   } catch (error) {
                     // Fallback to UTC comparison
                     isDue = nextEmailData.date <= now
@@ -1332,6 +1334,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             if (contact.email === 'lukas.schmidt.berlin@example.com' || 
                 contact.email === 'aisha.khan.mumbai@example.com' || 
                 contact.email === 'arjun.patel.delhi@example.com' ||
+                contact.email === 'contact@leadsup.io' ||
                 contact.location?.includes('Kolkata') ||
                 contact.location?.includes('Berlin')) {
               console.log(`🔍 DUE CHECK PATH 3 for ${contact.email}:`)
@@ -1875,16 +1878,18 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     // Get campaign's active days from campaign_settings table
     const activeDays = campaignSettings?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
     
-    console.log('🔍 Weekend debug - activeDays from campaign settings:', activeDays)
-    console.log('🔍 Current day check:', {
-      timezone,
-      activeDays,
-      currentTime: new Date().toLocaleString('en-US', { timeZone: timezone })
-    })
+    console.log('🔍 CRITICAL WEEKEND DEBUG:')
+    console.log('   Full campaignSettings object:', campaignSettings)
+    console.log('   activeDays from campaignSettings.active_days:', activeDays)
+    console.log('   Current timezone:', timezone)
+    console.log('   Current day:', new Date().toLocaleDateString('en-US', { timeZone: timezone, weekday: 'short' }))
+    console.log('   Current time:', new Date().toLocaleString('en-US', { timeZone: timezone }))
     
     // Use the updated timezone utils function that properly handles active days
     const result = getBusinessHoursStatusWithActiveDays(timezone, activeDays, 9, 17)
     console.log('🔍 Business hours result:', result)
+    console.log('   Should Saturday be active?', activeDays.includes('Sat'))
+    console.log('   Is current time in business hours?', result.isBusinessHours)
     return result
   }
 
@@ -1974,7 +1979,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           const intendedTimeInMinutes = consistentHour * 60 + consistentMinute
           
           // If the intended time has passed today OR we're outside business hours, schedule for next business day
-          if (currentTimeInMinutes >= intendedTimeInMinutes || !getBusinessHoursStatusWithActiveDays(contactTimezone).isBusinessHours) {
+          if (currentTimeInMinutes >= intendedTimeInMinutes || !getBusinessHoursStatusWithActiveDaysLocal(contactTimezone).isBusinessHours) {
             // Move to next business day
             scheduledDate.setDate(scheduledDate.getDate() + 1)
             
@@ -2240,9 +2245,9 @@ Sequence Info:
         // Immediate email - use business hours logic
         const now = new Date()
         const contactTimezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
-        const finalBusinessHoursStatus = getBusinessHoursStatusWithActiveDays(contactTimezone)
+        const finalBusinessHoursStatus = getBusinessHoursStatusWithActiveDaysLocal(contactTimezone)
         
-        if (finalBusinessHoursStatus.isBusinessHours) {
+        if (getBusinessHoursStatusWithActiveDaysLocal(contactTimezone).isBusinessHours) {
           // If within business hours, schedule for a consistent time today (not current time)
           const contactIdString = String(contact.id || '')
           const contactHash = contactIdString.split('').reduce((hash, char) => {
