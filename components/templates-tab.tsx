@@ -39,7 +39,7 @@ export function TemplatesTab() {
   
   if (!ready) {
     return <div className="flex items-center justify-center h-64">
-      <div className="text-gray-500 dark:text-gray-400">{t ? t('common.loading') : 'Loading...'}</div>
+      <div className="text-gray-500 dark:text-gray-400">Loading...</div>
     </div>
   }
 
