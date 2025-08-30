@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase"
 import { v4 as uuidv4 } from 'uuid'
-import { deriveTimezoneFromLocation } from "@/lib/timezone-utils"
+import { deriveTimezoneFromLocation, getBusinessHoursStatusWithActiveDays } from "@/lib/timezone-utils"
 
 interface AutomationConfig {
   runId: string
@@ -268,8 +268,9 @@ async function processCampaign(campaign: any, runId: string, testMode: boolean, 
 
       stats.processed++
 
-      // Check timezone eligibility
-      const isBusinessHours = await checkBusinessHours(contact.timezone, campaign.settings)
+      // Check timezone eligibility using campaign_settings.active_days
+      const campaignSettings = campaign.settings?.[0] || {} // Get first settings object from join
+      const isBusinessHours = await checkBusinessHours(contact.timezone, campaignSettings)
       
       if (!isBusinessHours) {
         await logEvent({
@@ -510,7 +511,93 @@ async function getAllContacts(campaignId: string) {
   return data || []
 }
 
+// Replicate the UI's "Due next" logic for automation
+function calculateContactIsDue(contact: any, campaignSettings: any, campaignSequences: any[], timezone: string): boolean {
+  if (!campaignSettings || !campaignSequences || campaignSequences.length === 0) {
+    console.log(`🔍 AUTOMATION: Missing data for ${contact.email} - settings:${!!campaignSettings} sequences:${campaignSequences?.length || 0}`)
+    return false
+  }
+  
+  // Get current sequence step
+  const currentStep = contact.sequence_step || 0
+  
+  // Check if sequence is complete
+  if (currentStep >= campaignSequences.length) {
+    console.log(`🔍 AUTOMATION: ${contact.email} sequence complete (step ${currentStep}/${campaignSequences.length})`)
+    return false
+  }
+  
+  // Get next sequence step (either step 1 for new contacts, or next step for in-sequence)
+  const nextStep = currentStep === 0 ? 1 : currentStep + 1
+  const sequence = campaignSequences.find(s => s.step_number === nextStep)
+  
+  if (!sequence) {
+    console.log(`🔍 AUTOMATION: ${contact.email} no sequence found for step ${nextStep}`)
+    return false
+  }
+  
+  const timingDays = parseInt(sequence.timing_days || sequence.timing || '0')
+  
+  // Calculate when this email should be sent
+  let scheduledDate: Date
+  
+  if (timingDays === 0) {
+    // Immediate email - schedule for a consistent time today
+    scheduledDate = new Date()
+    scheduledDate.setHours(9, 0, 0, 0) // 9 AM consistent time
+  } else {
+    // Delayed email - calculate based on last contact date + timing
+    if (!contact.last_contacted_at) {
+      return false // Can't calculate timing without last contact date
+    }
+    
+    const lastContactDate = new Date(contact.last_contacted_at)
+    scheduledDate = new Date(lastContactDate)
+    scheduledDate.setDate(scheduledDate.getDate() + timingDays)
+    scheduledDate.setHours(9, 0, 0, 0) // 9 AM consistent time
+  }
+  
+  // Check if scheduled time has passed (isTimeReached)
+  const now = new Date()
+  const nowInContactTz = new Date(now.toLocaleString("en-US", { timeZone: timezone }))
+  const scheduledInContactTz = new Date(scheduledDate.toLocaleString("en-US", { timeZone: timezone }))
+  
+  const isTimeReached = nowInContactTz >= scheduledInContactTz
+  
+  // Check if it's business hours with campaign active_days
+  const activeDays = campaignSettings?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+  const businessStatus = getBusinessHoursStatusWithActiveDays(timezone, activeDays, 9, 17)
+  
+  const isDue = isTimeReached && businessStatus.isBusinessHours
+  
+  console.log(`🔍 AUTOMATION DUE CHECK: ${contact.email}`)
+  console.log(`   Sequence step: ${currentStep} -> ${nextStep}`)
+  console.log(`   Timing days: ${timingDays}`)
+  console.log(`   Scheduled: ${scheduledDate.toLocaleString('en-US', { timeZone: timezone })}`)
+  console.log(`   Current: ${now.toLocaleString('en-US', { timeZone: timezone })}`)
+  console.log(`   isTimeReached: ${isTimeReached}`)
+  console.log(`   activeDays: [${activeDays.join(',')}]`)
+  console.log(`   businessStatus: ${JSON.stringify(businessStatus)}`)
+  console.log(`   Final isDue: ${isDue}`)
+  
+  return isDue
+}
+
 async function getEligibleContacts(campaignId: string): Promise<ContactWithTimezone[]> {
+  // Get campaign settings first to check active_days
+  const { data: campaignSettings } = await supabaseServer
+    .from('campaign_settings')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .single()
+    
+  // Get campaign sequences for "Due next" calculation
+  const { data: campaignSequences } = await supabaseServer
+    .from('campaign_sequences')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .order('step_number', { ascending: true })
+  
   const { data, error } = await supabaseServer
     .from('contacts')
     .select('*')
@@ -523,14 +610,38 @@ async function getEligibleContacts(campaignId: string): Promise<ContactWithTimez
     return []
   }
   
-  // For now, consider all contacts eligible since next_sequence_at column doesn't exist
-  const eligibleContacts = data || []
+  const allContacts = data || []
   
-  // Add derived timezone from location for each contact
-  const contactsWithTimezones = eligibleContacts.map(contact => ({
-    ...contact,
-    timezone: contact.timezone || deriveTimezoneFromLocation(contact.location)
-  }))
+  // Filter contacts to only those that are "Due next" using same logic as UI
+  const eligibleContacts = allContacts.filter(contact => {
+    // Add derived timezone from location for each contact
+    let timezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'Australia/Sydney'
+    
+    // Override Perth with Sydney for correct business hours (same as UI)
+    if (timezone === 'Australia/Perth') {
+      timezone = 'Australia/Sydney'
+    }
+    
+    // Calculate if this contact is "Due next" using UI logic
+    const isDue = calculateContactIsDue(contact, campaignSettings, campaignSequences, timezone)
+    
+    console.log(`🔍 AUTOMATION: Contact ${contact.email} isDue: ${isDue}`)
+    return isDue
+  })
+  
+  // Add derived timezone to eligible contacts
+  const contactsWithTimezones = eligibleContacts.map(contact => {
+    let timezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'Australia/Sydney'
+    if (timezone === 'Australia/Perth') {
+      timezone = 'Australia/Sydney'
+    }
+    return {
+      ...contact,
+      timezone
+    }
+  })
+  
+  console.log(`🔍 AUTOMATION: Filtered ${allContacts.length} total contacts down to ${eligibleContacts.length} "Due next" contacts`)
   
   return contactsWithTimezones as ContactWithTimezone[]
 }
@@ -683,10 +794,6 @@ async function getSentToday(campaignId: string) {
 }
 
 async function checkBusinessHours(timezone: string, settings: any) {
-  // Always return true for now since contacts might not have timezone field
-  return true
-  
-  /* TODO: Enable when timezone field is added to contacts table
   if (!timezone || !settings) return true // Default to true if no timezone
   
   try {
@@ -696,36 +803,36 @@ async function checkBusinessHours(timezone: string, settings: any) {
       timeZone: timezone,
       hour: 'numeric',
       minute: 'numeric',
-      hour12: true,
+      hour12: false,
       weekday: 'short'
     })
     
     const parts = formatter.formatToParts(now)
     const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0')
-    const period = parts.find(p => p.type === 'dayPeriod')?.value
     const weekday = parts.find(p => p.type === 'weekday')?.value
     
-    // Check if today is an active day
+    // Check if today is an active day using campaign_settings.active_days
     const activeDays = settings.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
     if (!activeDays.includes(weekday)) {
+      console.log(`⏰ AUTOMATION: ${weekday} not in active_days [${activeDays.join(',')}] for timezone ${timezone}`)
       return false
     }
     
-    // Parse sending times
-    const startTime = parseTime(settings.sending_start_time || '08:00 AM')
-    const endTime = parseTime(settings.sending_end_time || '05:00 PM')
+    // Check if within business hours (9 AM - 5 PM to match UI)
+    const isWithinHours = hour >= 9 && hour < 17
     
-    // Convert current time to 24-hour format
-    let currentHour = hour
-    if (period === 'PM' && hour !== 12) currentHour += 12
-    if (period === 'AM' && hour === 12) currentHour = 0
+    console.log(`⏰ AUTOMATION: Business hours check for ${timezone}:`)
+    console.log(`   Current day: ${weekday}`)
+    console.log(`   Active days: [${activeDays.join(',')}]`)
+    console.log(`   Current hour: ${hour}`)
+    console.log(`   Within hours (9-17): ${isWithinHours}`)
+    console.log(`   Final result: ${isWithinHours}`)
     
-    return currentHour >= startTime && currentHour < endTime
+    return isWithinHours
   } catch (error) {
     console.error('Error checking business hours:', error)
     return true // Default to true on error
   }
-  */
 }
 
 function parseTime(timeStr: string): number {
