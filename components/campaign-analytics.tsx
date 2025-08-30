@@ -2116,15 +2116,17 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     const senderIndex = campaignSenders.length > 0 ? contactIdNum % campaignSenders.length : 0
     const assignedSender = campaignSenders[senderIndex] || 'Unknown sender'
     
-    console.log(`🎯 SEQUENCE ASSIGNMENT: Contact ${contact.email} assigned to sender:`, assignedSender)
+    console.log(`🎯 SEQUENCE GENERATION: Contact ${contact.email}`)
+    console.log(`📊 Database sequence_step: ${contact.sequence_step}`)
     console.log(`📧 Available campaign senders for assignment:`, campaignSenders)
     console.log(`🔢 Sender index: ${senderIndex} (from ${campaignSenders.length} total selected senders)`)
     
     // Get real sequence status from our progression tracking
     const realSequenceStatus = contactSequenceStatus.get(contact.email)
     
-    // Track current step to preserve scheduled times for past emails
+    // Track current step - use database value directly
     const currentStep = contact.sequence_step || 0
+    console.log(`📋 Using currentStep from database: ${currentStep}`)
     
     // Use actual campaign sequences if available, otherwise fallback to default
     console.log('🎯 Generating schedule for contact:', contact.id, 'with', campaignSequences.length, 'sequences')
@@ -2313,7 +2315,10 @@ Sequence Info:
       // Determine status based on real sequence progression data
       let status: 'sent' | 'pending' | 'skipped' | 'upcoming'
       
-      if (realSequenceStatus && realSequenceStatus.sequences) {
+      console.log(`📊 STATUS CALC for Step ${email.step}: currentStep=${currentStep}, contact.sequence_step=${contact.sequence_step}`)
+      
+      if (false && realSequenceStatus && realSequenceStatus.sequences) {
+        console.log(`🔍 USING realSequenceStatus for ${contact.email}:`, realSequenceStatus)
         // Use real sequence progression data from API
         const sequenceForStep = realSequenceStatus.sequences.find(s => s.step === email.step)
         if (sequenceForStep) {
@@ -2324,6 +2329,7 @@ Sequence Info:
           } else {
             status = 'upcoming'
           }
+          console.log(`📋 Step ${email.step} from realSequenceStatus: ${status}`)
         } else {
           // No progression record for this step yet
           if (email.step <= (realSequenceStatus.sequences_sent || 0)) {
@@ -2333,17 +2339,27 @@ Sequence Info:
           } else {
             status = 'upcoming'
           }
+          console.log(`📋 Step ${email.step} fallback from realSequenceStatus: ${status}`)
         }
       } else {
-        // Fallback to old logic if no real data available
-        if (email.step < currentStep) {
+        // Fallback to logic based on sequence_step from database
+        // sequence_step represents the LAST COMPLETED step
+        console.log(`📋 FALLBACK LOGIC: email.step=${email.step}, currentStep=${currentStep}, currentStep+1=${currentStep + 1}`)
+        
+        if (email.step <= currentStep) {
+          // This step was already completed
           status = 'sent'
-        } else if (email.step === currentStep) {
-          status = contact.status === 'Completed' || contact.status === 'Replied' ? 'sent' : 'pending'
-        } else if (contact.status === 'Completed' || contact.status === 'Replied' || contact.status === 'Unsubscribed') {
+          console.log(`✅ Step ${email.step} = SENT (step <= currentStep)`)
+        } else if (email.step === currentStep + 1) {
+          // This is the next step to be sent - should be pending (Up Next)
+          status = contact.email_status === 'Completed' || contact.email_status === 'Replied' ? 'skipped' : 'pending'
+          console.log(`🔄 Step ${email.step} = PENDING (next step)`)
+        } else if (contact.email_status === 'Completed' || contact.email_status === 'Replied' || contact.email_status === 'Unsubscribed') {
           status = 'skipped'
+          console.log(`⏭️ Step ${email.step} = SKIPPED (contact completed)`)
         } else {
           status = 'upcoming'
+          console.log(`⏳ Step ${email.step} = UPCOMING (future step)`)
         }
       }
 
@@ -3776,9 +3792,10 @@ Sequence Info:
                     <div className="text-lg font-semibold text-gray-900">
                       {(() => {
                         const schedule = generateContactSchedule(sequenceModalContact)
-                        const completedSteps = schedule.filter(step => step.status === 'sent').length
-                        const currentStep = completedSteps + 1 // Next step to be sent
-                        return `Step ${currentStep} of ${schedule.length}`
+                        const currentStep = sequenceModalContact.sequence_step || 0
+                        // Show current step position, not next step
+                        const displayStep = currentStep === 0 ? 1 : currentStep
+                        return `Step ${displayStep} of ${schedule.length}`
                       })()}
                     </div>
                   </div>
