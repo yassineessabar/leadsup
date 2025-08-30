@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase"
 import { deriveTimezoneFromLocation, getBusinessHoursStatusWithActiveDays } from "@/lib/timezone-utils"
-import { generateTrackingId } from "@/lib/email-tracking"
+import { generateTrackingId, addEmailTracking } from "@/lib/email-tracking"
 
 function calculateNextEmailDue(
   contact: any,
@@ -236,25 +236,33 @@ export async function POST(request: NextRequest) {
                   .replace(/\n\n+/g, '<br/><br/>')  // Convert paragraph breaks (double+ newlines)
                   .replace(/\n/g, '<br/>')  // Convert remaining single newlines
                 
+                // Generate tracking ID and add tracking to email
+                const trackingId = generateTrackingId()
+                const trackedHtmlContent = addEmailTracking(personalizedContent, { trackingId })
+                
+                // Generate proper reply-to address for inbound capture
+                const senderDomain = campaignSender.email.split('@')[1] || 'leadsup.io'
+                const replyToEmail = `reply@reply.${senderDomain}`
+                
                 const msg = {
                   to: contact.email,
                   from: campaignSender.email,
                   subject: personalizedSubject,
-                  html: personalizedContent,
-                  text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '') // Convert br tags to line breaks, then strip HTML
+                  html: trackedHtmlContent, // Use tracked HTML content
+                  text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''), // Convert br tags to line breaks, then strip HTML
+                  replyTo: replyToEmail // Add proper reply-to for inbound capture
                 }
                 
                 console.log(`📧 SENDING REAL EMAIL:`)
                 console.log(`   From: ${campaignSender.email}`)
+                console.log(`   Reply-To: ${replyToEmail}`)
                 console.log(`   To: ${contact.email}`)
                 console.log(`   Subject: ${personalizedSubject}`)
+                console.log(`   Tracking ID: ${trackingId}`)
                 
                 const result = await sgMail.send(msg)
                 
                 console.log(`✅ Email sent successfully via SendGrid - Message ID: ${result[0]?.headers?.['x-message-id']}`)
-                
-                // Generate tracking ID for logging
-                const trackingId = generateTrackingId()
                 
                 // Log email tracking
                 await supabaseServer

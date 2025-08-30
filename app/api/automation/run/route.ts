@@ -978,18 +978,30 @@ async function sendEmail({ from, to, template, campaign }: any) {
         .replace(/\n\n+/g, '<br/><br/>')  // Convert paragraph breaks (double+ newlines)
         .replace(/\n/g, '<br/>')  // Convert remaining single newlines
       
+      // Generate tracking ID and add tracking to email
+      const { generateTrackingId, addEmailTracking } = require('@/lib/email-tracking')
+      const trackingId = generateTrackingId()
+      const trackedHtmlContent = addEmailTracking(personalizedContent, { trackingId })
+      
+      // Generate proper reply-to address for inbound capture
+      const senderDomain = from.email.split('@')[1] || 'leadsup.io'
+      const replyToEmail = `reply@reply.${senderDomain}`
+      
       const msg = {
         to: to.email,
         from: from.email,
         subject: personalizedSubject,
-        html: personalizedContent,
-        text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '') // Convert br tags to line breaks, then strip HTML
+        html: trackedHtmlContent, // Use tracked HTML content
+        text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''), // Convert br tags to line breaks, then strip HTML
+        replyTo: replyToEmail // Add proper reply-to for inbound capture
       }
       
       console.log(`📧 SENDING REAL EMAIL:`)
       console.log(`   From: ${from.email}`)
+      console.log(`   Reply-To: ${replyToEmail}`)
       console.log(`   To: ${to.email}`)
       console.log(`   Subject: ${personalizedSubject}`)
+      console.log(`   Tracking ID: ${trackingId}`)
       
       const result = await sgMail.send(msg)
       
