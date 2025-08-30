@@ -111,20 +111,39 @@ export async function POST(request: NextRequest) {
           continue
         }
         
-        // Skip contacts without next_email_due
-        if (!contact.next_email_due) {
+        // Get next due date from sequence_schedule (EXACT same logic as debug API)
+        let nextDueDate = null
+        let timezone = 'Australia/Sydney'
+        
+        if (contact.sequence_schedule) {
+          const schedule = contact.sequence_schedule
+          const currentStep = contact.sequence_step || 0
+          const nextStep = schedule.steps.find(step => step.step === currentStep + 1)
+          
+          if (nextStep) {
+            nextDueDate = nextStep.scheduled_date
+            timezone = schedule.timezone || 'Australia/Sydney'
+            console.log(`📅 ${contact.email} next step ${nextStep.step} due: ${nextStep.scheduled_date}`)
+          } else {
+            console.log(`⚠️ ${contact.email} has no next step in sequence_schedule - skipping`)
+            continue
+          }
+        } else if (contact.next_email_due) {
+          // Fallback to next_email_due
+          nextDueDate = contact.next_email_due
+          timezone = deriveTimezoneFromLocation(contact.location) || 'Australia/Sydney'
+          console.log(`📅 ${contact.email} using fallback next_email_due: ${contact.next_email_due}`)
+        } else {
+          console.log(`⚠️ ${contact.email} has no sequence_schedule or next_email_due - skipping`)
           continue
         }
         
-        // Check timezone and timing - EXACT same as debug API
-        let timezone = deriveTimezoneFromLocation(contact.location) || 'Australia/Sydney'
-        
-        // Override Perth with Sydney (same as automation)
+        // Override Perth with Sydney for correct business hours (same as debug API)
         if (timezone === 'Australia/Perth') {
           timezone = 'Australia/Sydney'
         }
         
-        const scheduledDate = new Date(contact.next_email_due)
+        const scheduledDate = new Date(nextDueDate)
         const now = new Date()
         const isTimeReached = now >= scheduledDate
         

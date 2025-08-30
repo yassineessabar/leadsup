@@ -29,10 +29,10 @@ export async function GET(request: NextRequest) {
     for (const campaign of campaigns) {
       console.log(`\n🎯 Checking campaign: ${campaign.name}`)
       
-      // Get all contacts for this campaign
+      // Get all contacts for this campaign including sequence_schedule
       const { data: contacts, error: contactsError } = await supabaseServer
         .from('contacts')
-        .select('*')
+        .select('*, sequence_schedule')
         .eq('campaign_id', campaign.id)
         .limit(100)
       
@@ -66,20 +66,38 @@ export async function GET(request: NextRequest) {
           continue
         }
         
-        // Check if contact has next_email_due
-        if (!contact.next_email_due) {
-          console.log(`⚠️ ${contact.email} has no next_email_due - skipping`)
+        // Get next due date from sequence_schedule
+        let nextDueDate = null
+        let timezone = 'Australia/Sydney'
+        
+        if (contact.sequence_schedule) {
+          const schedule = contact.sequence_schedule
+          const currentStep = contact.sequence_step || 0
+          const nextStep = schedule.steps.find(step => step.step === currentStep + 1)
+          
+          if (nextStep) {
+            nextDueDate = nextStep.scheduled_date
+            timezone = schedule.timezone || 'Australia/Sydney'
+            console.log(`📅 ${contact.email} next step ${nextStep.step} due: ${nextStep.scheduled_date}`)
+          } else {
+            console.log(`⚠️ ${contact.email} has no next step in sequence_schedule - skipping`)
+            continue
+          }
+        } else if (contact.next_email_due) {
+          // Fallback to next_email_due
+          nextDueDate = contact.next_email_due
+          timezone = deriveTimezoneFromLocation(contact.location) || 'Australia/Sydney'
+          console.log(`📅 ${contact.email} using fallback next_email_due: ${contact.next_email_due}`)
+        } else {
+          console.log(`⚠️ ${contact.email} has no sequence_schedule or next_email_due - skipping`)
           continue
         }
-        
-        // Check timezone and timing - use same logic as automation
-        let timezone = deriveTimezoneFromLocation(contact.location) || 'Australia/Sydney'
         
         // Override Perth with Sydney for correct business hours (same as automation)
         if (timezone === 'Australia/Perth') {
           timezone = 'Australia/Sydney'
         }
-        const scheduledDate = new Date(contact.next_email_due)
+        const scheduledDate = new Date(nextDueDate)
         const now = new Date()
         
         // Convert both times to contact's timezone for proper comparison
@@ -128,8 +146,8 @@ export async function GET(request: NextRequest) {
         dueNextCount++
         dueContacts.push({
           email: contact.email,
-          nextDue: contact.next_email_due,
-          sydneyTime: scheduledDate.toLocaleString('en-US', { timeZone: 'Australia/Sydney' }),
+          nextDue: nextDueDate,
+          sydneyTime: scheduledDate.toLocaleString('en-US', { timeZone: timezone }),
           timezone,
           currentStep: contact.sequence_step || 0
         })
