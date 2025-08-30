@@ -1871,7 +1871,39 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const clickRate = metrics?.clickRate || 0
   const deliveryRate = metrics?.deliveryRate || (totalSent > 0 ? 100 : 0)
   const bounceRate = hasBeenStarted && hasRealCampaignData ? (metrics?.bounceRate || 0) : 0
-  const responseRate = hasBeenStarted && hasRealCampaignData ? (Math.floor(Math.random() * 10) + 5) : 0 // Keep this as fallback until we have reply tracking
+  // Get response rate from dedicated API endpoint
+  const [responseRateData, setResponseRateData] = useState<{inboundCount: number, outboundCount: number, responseRate: number}>({
+    inboundCount: 0,
+    outboundCount: 0, 
+    responseRate: 0
+  })
+  
+  useEffect(() => {
+    const fetchResponseRate = async () => {
+      if (!campaign?.id) return
+      
+      try {
+        const response = await fetch(`/api/campaigns/${campaign.id}/response-rate`, {
+          credentials: "include"
+        })
+        const result = await response.json()
+        
+        if (result.success && result.data) {
+          setResponseRateData(result.data)
+          console.log(`📊 Response rate data: ${result.data.inboundCount} inbound / ${result.data.totalEmailsSent} sent = ${result.data.responseRate}%`)
+          console.log(`🔍 Debug data:`, result.debug)
+        } else {
+          console.log('❌ Response rate API failed:', result)
+        }
+      } catch (error) {
+        console.warn('Failed to fetch response rate:', error)
+      }
+    }
+    
+    fetchResponseRate()
+  }, [campaign?.id])
+  
+  const responseRate = responseRateData.responseRate
   
   // Progress = total emails sent / total sequences planned
   const progressPercentage = hasBeenStarted && totalPlannedSequences > 0 ? Math.min(Math.round((totalSent / totalPlannedSequences) * 100), 100) : 0
@@ -2789,11 +2821,11 @@ Sequence Info:
             <CardContent className="p-6">
               <div className="flex items-center space-x-4 mb-6">
                 <div className="w-12 h-12 bg-violet-50 rounded-2xl flex items-center justify-center">
-                  <MousePointer className="w-6 h-6 text-violet-600" />
+                  <MessageSquare className="w-6 h-6 text-violet-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('analytics.clickRate')}</h3>
-                  <p className="text-gray-500 text-sm">{t('analytics.linkEngagement')}</p>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('analytics.responseRate')}</h3>
+                  <p className="text-gray-500 text-sm">Email replies received</p>
                 </div>
               </div>
               <div className="flex items-end justify-between">
@@ -2801,11 +2833,11 @@ Sequence Info:
                   <div className="text-3xl font-light text-gray-400">...</div>
                 ) : (
                   <p className="text-3xl font-light text-gray-900 dark:text-gray-100">
-                    {hasBeenStarted ? `${clickRate.toFixed(1)}%` : '—'}
+                    {hasBeenStarted ? `${responseRate.toFixed(1)}%` : '—'}
                   </p>
                 )}
                 <span className="text-sm text-gray-400 font-medium">
-                  {hasBeenStarted ? (metrics?.uniqueClicks ? `${metrics.uniqueClicks} unique` : 'No data') : t('analytics.notStarted')}
+                  {hasBeenStarted ? 'Email engagement' : t('analytics.notStarted')}
                 </span>
               </div>
             </CardContent>

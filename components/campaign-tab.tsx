@@ -1194,12 +1194,16 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               const hasRealCampaignData = campaign.sendgridMetrics && 
                 campaign.sendgridMetrics.emailsSent > 0
               
-              // Use real campaign metrics from email tracking
-              const deliveryRate = hasBeenStarted && hasRealCampaignData 
+              // Use SendGrid metrics if available
+              const hasSendGridMetrics = campaign.sendgridMetrics && (
+                campaign.sendgridMetrics.emailsSent > 0 || 
+                campaign.sendgridMetrics.emailsDelivered > 0
+              )
+              const deliveryRate = hasBeenStarted && hasSendGridMetrics 
                 ? Math.round(campaign.sendgridMetrics.deliveryRate || 100) 
                 : 0
-              const responseRate = hasBeenStarted && hasRealCampaignData 
-                ? Math.round(campaign.sendgridMetrics.openRate || 0) // Use open rate as response rate
+              const openRate = hasBeenStarted && hasSendGridMetrics 
+                ? Math.round(campaign.sendgridMetrics.openRate || 0)
                 : 0
               
               return (
@@ -1336,7 +1340,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                     <div className="grid grid-cols-2 gap-4 mb-6">
                         <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
                           <p className="text-2xl font-light text-gray-900 dark:text-gray-100">
-                            {hasBeenStarted && hasRealCampaignData ? `${deliveryRate}%` : 
+                            {hasBeenStarted && hasSendGridMetrics ? `${deliveryRate}%` : 
                              hasBeenStarted ? '100%' : '—'}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -1345,11 +1349,11 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                         </div>
                         <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
                           <p className="text-2xl font-light text-gray-900 dark:text-gray-100">
-                            {hasBeenStarted && hasRealCampaignData ? `${responseRate}%` : 
+                            {hasBeenStarted && hasSendGridMetrics ? `${openRate}%` : 
                              hasBeenStarted ? '0%' : '—'}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            {hasBeenStarted ? t('campaigns.response') : t('campaigns.notStarted')}
+                            {hasBeenStarted ? t('campaigns.openRate') : t('campaigns.notStarted')}
                           </p>
                         </div>
                       </div>
