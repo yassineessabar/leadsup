@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
     }
 
-    // Fetch campaigns with only essential fields for better performance
+    // Fetch campaigns with essential fields
     const { data: campaigns, error: campaignError } = await supabaseServer
       .from("campaigns")
       .select("id, name, type, trigger_type, status, created_at, updated_at, scraping_status")
@@ -53,20 +53,49 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: campaignError.message }, { status: 500 })
     }
 
-    // Format the data for frontend consumption (without sequences/schedules for performance)
+    // Get contact counts and sequence counts for each campaign
+    const campaignIds = campaigns?.map(c => c.id) || []
+    
+    // Fetch contact counts
+    const contactCounts: Record<string, number> = {}
+    const sequenceCounts: Record<string, number> = {}
+    
+    if (campaignIds.length > 0) {
+      // Get contact counts for all campaigns
+      const { data: contactCountData } = await supabaseServer
+        .from('contacts')
+        .select('campaign_id')
+        .in('campaign_id', campaignIds)
+        .not('campaign_id', 'is', null)
+      
+      // Count contacts per campaign
+      contactCountData?.forEach(contact => {
+        contactCounts[contact.campaign_id] = (contactCounts[contact.campaign_id] || 0) + 1
+      })
+      
+      // Get sequence counts for all campaigns
+      const { data: sequenceCountData } = await supabaseServer
+        .from('campaign_sequences')
+        .select('campaign_id')
+        .in('campaign_id', campaignIds)
+      
+      // Count sequences per campaign
+      sequenceCountData?.forEach(seq => {
+        sequenceCounts[seq.campaign_id] = (sequenceCounts[seq.campaign_id] || 0) + 1
+      })
+    }
+
+    // Format the data for frontend consumption with real counts
     const formattedCampaigns = campaigns?.map(campaign => ({
       id: campaign.id,
       name: campaign.name,
       type: campaign.type,
       trigger: campaign.trigger_type,
       status: campaign.status,
-      progress: campaign.status === "Active" ? Math.floor(Math.random() * 100) : null, // TODO: Calculate real progress
-      sent: campaign.status === "Active" ? Math.floor(Math.random() * 500) : null, // TODO: Get real metrics
-      click: campaign.status === "Active" ? Math.floor(Math.random() * 50) : null, // TODO: Get real metrics
-      replied: campaign.status === "Active" ? Math.floor(Math.random() * 25) : null, // TODO: Get real metrics
-      opportunities: campaign.status === "Active" ? `${Math.floor(Math.random() * 10)}.${Math.floor(Math.random() * 10)}%` : null, // TODO: Get real metrics
-      sequences: [], // Load separately when needed
-      schedules: [], // Load separately when needed
+      totalPlanned: contactCounts[campaign.id] || 0,
+      sequences: Array.from({ length: sequenceCounts[campaign.id] || 0 }, (_, i) => ({ step: i + 1 })), // Mock sequence objects for count
+      sent: 0, // Will be populated by metrics fetch
+      sendgridMetrics: undefined, // Will be populated by metrics fetch
       created_at: campaign.created_at,
       updated_at: campaign.updated_at
     })) || []

@@ -866,9 +866,9 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               status = "Warming Up"
             } else if (actualSequenceStep === 0) {
               status = "Pending"
-            } else if (contact.status && ["Completed", "Replied", "Unsubscribed", "Bounced"].includes(contact.status)) {
-              // Use the actual status from database if it's a final state
-              status = contact.status as Contact["status"]
+            } else if (contact.email_status && ["Completed", "Replied", "Unsubscribed", "Bounced"].includes(contact.email_status)) {
+              // Use the actual email_status from database if it's a final state
+              status = contact.email_status as Contact["status"]
             } else if (actualSequenceStep <= (campaignSequences.length || 6)) {
               status = `Email ${actualSequenceStep}` as Contact["status"]
             } else {
@@ -930,8 +930,17 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               status = `Email ${sequenceStatus.sequences_sent + 1} Ready` as Contact["status"]
             }
           } else {
-            // Fallback to old logic
-            status = (sequenceProgressMap[contact.id] || "Pending") as Contact["status"]
+            // Fallback: derive status from email_status and sequence_step
+            if (contact.email_status === 'Completed' || contact.email_status === 'Replied' || 
+                contact.email_status === 'Unsubscribed' || contact.email_status === 'Bounced') {
+              status = contact.email_status as Contact["status"]
+            } else if ((contact.sequence_step || 0) === 0) {
+              status = "Pending"
+            } else if ((contact.sequence_step || 0) <= (campaignSequences.length || 6)) {
+              status = `Email ${contact.sequence_step}` as Contact["status"]
+            } else {
+              status = "Completed"
+            }
           }
           
           const createdAt = new Date(contact.created_at)
@@ -1840,7 +1849,12 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const completedContacts = contacts.filter(c => c.email_status === 'Completed').length
   const repliedContacts = contacts.filter(c => c.email_status === 'Replied').length
   const pendingContacts = contacts.filter(c => c.email_status === 'Pending').length
-  const inProgressContacts = contacts.filter(c => (c.sequence_step || 0) > 0 && c.last_contacted_at).length
+  const inProgressContacts = contacts.filter(c => {
+    const step = c.sequence_step || 0
+    const emailStatus = c.email_status || ''
+    // In progress if: has started sequence AND not in final state
+    return step > 0 && !['Completed', 'Replied', 'Unsubscribed', 'Bounced'].includes(emailStatus)
+  }).length
   
   // Calculate total emails actually sent (completed + replied + in progress)
   const actualEmailsSent = completedContacts + repliedContacts + inProgressContacts
@@ -1848,14 +1862,19 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Calculate metrics - use metrics from API when available
   const totalSent = metrics?.emailsSent || actualEmailsSent || 0
   const totalDelivered = metrics?.emailsDelivered || totalSent
-  const totalPlanned = contacts.length > 0 ? contacts.length : (campaign.totalPlanned || 0)
-  const totalRemaining = Math.max(0, totalPlanned - totalSent)
+  // Calculate total planned sequences (contacts × sequence steps)
+  const totalSequenceSteps = campaignSequences.length || 6 // Default to 6 steps if no sequences loaded
+  const totalPlannedSequences = contacts.length * totalSequenceSteps
+  const totalContactsPlanned = contacts.length > 0 ? contacts.length : (campaign.totalPlanned || 0)
+  const totalRemaining = Math.max(0, totalPlannedSequences - totalSent) // Remaining sequences to send
   const openRate = metrics?.openRate || 0
   const clickRate = metrics?.clickRate || 0
   const deliveryRate = metrics?.deliveryRate || (totalSent > 0 ? 100 : 0)
   const bounceRate = hasBeenStarted && hasRealCampaignData ? (metrics?.bounceRate || 0) : 0
   const responseRate = hasBeenStarted && hasRealCampaignData ? (Math.floor(Math.random() * 10) + 5) : 0 // Keep this as fallback until we have reply tracking
-  const progressPercentage = hasBeenStarted && totalPlanned > 0 ? Math.min(Math.round((totalSent / totalPlanned) * 100), 100) : 0
+  
+  // Progress = total emails sent / total sequences planned
+  const progressPercentage = hasBeenStarted && totalPlannedSequences > 0 ? Math.min(Math.round((totalSent / totalPlannedSequences) * 100), 100) : 0
 
   const getCampaignStatusBadgeColor = (status: Campaign["status"]) => {
     switch (status) {
@@ -2733,7 +2752,7 @@ Sequence Info:
                   </p>
                 )}
                 <span className="text-sm text-gray-400 font-medium">
-                  {hasBeenStarted && totalPlanned > 0 ? `${Math.round((totalSent / totalPlanned) * 100)}%` : 
+                  {hasBeenStarted && totalPlannedSequences > 0 ? `${progressPercentage}%` : 
                    hasBeenStarted ? '0%' : t('analytics.notStarted')}
                 </span>
               </div>

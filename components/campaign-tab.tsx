@@ -249,7 +249,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
         const campaignsWithoutMetrics = result.data.map((campaign: any) => ({
           ...campaign,
           outreachStrategy: campaign.outreach_strategy || campaign.outreachStrategy,
-          totalPlanned: campaign.total_planned || 0,
+          totalPlanned: campaign.totalPlanned || 0, // Use totalPlanned from API response
           sendgridMetrics: undefined
         }))
         
@@ -839,21 +839,21 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     // Check if campaign has any actual contacts uploaded
     const hasContacts = campaign.totalPlanned && campaign.totalPlanned > 0
     
-    // Check if campaign has REAL metrics that match actual campaign activity
-    const hasRealCampaignData = campaign.sendgridMetrics && 
-      campaign.sendgridMetrics.emailsSent > 0 && 
-      hasContacts && // Must have contacts to have real activity
-      campaign.sent && campaign.sent > 0 && 
-      campaign.sent === campaign.sendgridMetrics.emailsSent
+    // Use SendGrid metrics if available, regardless of strict matching
+    const hasSendGridMetrics = campaign.sendgridMetrics && campaign.sendgridMetrics.emailsSent > 0
     
-    // STRICT: Only show sent emails if campaign has contacts and real metrics
-    const sent = hasRealCampaignData ? campaign.sendgridMetrics.emailsSent : 0
-    const totalPlanned = hasContacts ? campaign.totalPlanned : 0
+    // Show sent emails from SendGrid metrics if available
+    const sent = hasSendGridMetrics ? campaign.sendgridMetrics.emailsSent : 0
+    const contactCount = hasContacts ? campaign.totalPlanned : 0
     
-    if (totalPlanned === 0) return { percentage: 0, sent, totalPlanned }
+    // Calculate total planned sequences (contacts × sequence steps) - same as analytics
+    const totalSequenceSteps = campaign.sequences?.length || 6 // Default to 6 steps if no sequences
+    const totalPlannedSequences = contactCount * totalSequenceSteps
     
-    const percentage = Math.min(Math.round((sent / totalPlanned) * 100), 100)
-    return { percentage, sent, totalPlanned }
+    if (totalPlannedSequences === 0) return { percentage: 0, sent, totalPlanned: totalPlannedSequences }
+    
+    const percentage = Math.min(Math.round((sent / totalPlannedSequences) * 100), 100)
+    return { percentage, sent, totalPlanned: totalPlannedSequences }
   }
 
   const filteredCampaigns = campaigns.filter((campaign) => {
@@ -1375,7 +1375,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
                           {hasBeenStarted ? t('campaigns.emailsSent', { count: progress.sent }) : t('campaigns.notStarted')}
                         </span>
                         <span>
-                          {progress.totalPlanned > 0 ? t('campaigns.totalContacts', { count: progress.totalPlanned }) : t('campaigns.noContacts')}
+                          {campaign.totalPlanned > 0 ? t('campaigns.totalContacts', { count: campaign.totalPlanned }) : t('campaigns.noContacts')}
                         </span>
                       </div>
                     </div>
