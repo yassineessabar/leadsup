@@ -15,12 +15,12 @@ jobs:
         run: |
           echo "🕐 Processing scheduled emails at $(date)"
           
-          # Call the automation endpoint with proper "Due next" logic
+          # Call the simple automation endpoint that aligns with UI logic
           response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -X POST \
             -H "Content-Type: application/json" \
             -d '{"testMode": false}' \
-            "${{ secrets.APP_URL }}/api/automation/run")
+            "${{ secrets.APP_URL }}/api/automation/run-simple")
           
           # Extract HTTP status and body
           http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
