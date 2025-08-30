@@ -15,11 +15,12 @@ jobs:
         run: |
           echo "🕐 Processing scheduled emails at $(date)"
           
-          # Call the automation endpoint
+          # Call the automation endpoint with proper "Due next" logic
           response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
-            -X GET \
+            -X POST \
             -H "Content-Type: application/json" \
-            "${{ secrets.APP_URL }}/api/automation/process-scheduled?lookAhead=60&testMode=false")
+            -d '{"testMode": false}' \
+            "${{ secrets.APP_URL }}/api/automation/run")
           
           # Extract HTTP status and body
           http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
@@ -35,10 +36,10 @@ jobs:
             
             # Parse and log key metrics (if jq is available)
             if command -v jq &> /dev/null; then
-              sent=$(echo "$body" | jq -r '.sent // 0')
-              processed=$(echo "$body" | jq -r '.processed // 0')
-              errors=$(echo "$body" | jq -r '.errors // 0')
-              skipped=$(echo "$body" | jq -r '.skipped // 0')
+              sent=$(echo "$body" | jq -r '.stats.sent // 0')
+              processed=$(echo "$body" | jq -r '.stats.processed // 0')
+              errors=$(echo "$body" | jq -r '.stats.errors // 0')
+              skipped=$(echo "$body" | jq -r '.stats.skipped // 0')
               
               echo "📈 Summary: $sent sent, $skipped skipped, $errors errors (total: $processed)"
               
