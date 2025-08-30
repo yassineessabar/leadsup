@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
         // Get current values first to make cumulative updates
         const { data: currentSender } = await supabaseServer
           .from('campaign_senders')
-          .select('warmup_emails_sent_today, last_warmup_sent, warmup_days_completed, created_at, updated_at')
+          .select('warmup_emails_sent_today, last_warmup_sent, warmup_days_completed, warmup_started_at, created_at, updated_at')
           .eq('campaign_id', campaign.id)
           .eq('email', sender.email)
           .single()
@@ -90,16 +90,15 @@ export async function GET(request: NextRequest) {
         // Calculate warm-up phase and volume based on health score
         const healthScore = sender.health_score || 50
         
-        // Calculate days completed based on warmup activity
+        // Calculate days completed based on warmup start date
         const now = new Date()
-        const createdAt = new Date(currentSender?.created_at || currentSender?.updated_at || now)
-        const daysSinceCreated = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
+        const warmupStarted = currentSender?.warmup_started_at ? new Date(currentSender.warmup_started_at) : null
         
-        // Use existing days completed or calculate from creation date
-        const daysCompleted = Math.max(
-          currentSender?.warmup_days_completed || 0,
-          Math.min(Math.max(daysSinceCreated, 1), 35)
-        )
+        let daysCompleted = 1
+        if (warmupStarted) {
+          const daysSinceWarmupStarted = Math.floor((now.getTime() - warmupStarted.getTime()) / (1000 * 60 * 60 * 24))
+          daysCompleted = Math.min(Math.max(daysSinceWarmupStarted + 1, 1), 35)
+        }
         
         let warmupPhase = 1
         let warmupVolume = 0
@@ -252,17 +251,23 @@ export async function GET(request: NextRequest) {
         
         // Update warmup tracking data in the new columns
         try {
+          const updateData: any = {
+            warmup_status: 'active',
+            last_warmup_sent: new Date().toISOString(),
+            warmup_phase: warmupPhase,
+            warmup_days_completed: daysCompleted,
+            warmup_emails_sent_today: newDailyCount,
+            updated_at: new Date().toISOString()
+          }
+          
+          // Set warmup_started_at if this is the first time starting warmup
+          if (!currentSender?.warmup_started_at) {
+            updateData.warmup_started_at = new Date().toISOString()
+          }
           
           await supabaseServer
             .from('campaign_senders')
-            .update({ 
-              warmup_status: 'active',
-              last_warmup_sent: new Date().toISOString(),
-              warmup_phase: warmupPhase,
-              warmup_days_completed: daysCompleted,
-              warmup_emails_sent_today: newDailyCount,
-              updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('campaign_id', campaign.id)
             .eq('email', sender.email)
           

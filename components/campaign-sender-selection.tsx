@@ -34,6 +34,7 @@ interface Sender {
   warmup_phase?: number
   warmup_days_completed?: number
   warmup_emails_sent_today?: number
+  warmup_started_at?: string
   last_warmup_sent?: string
 }
 
@@ -1806,9 +1807,14 @@ export default function CampaignSenderSelection({
                                               Phase {sender.warmup_phase}: {getWarmupPhaseLabel(sender.warmup_phase)}
                                             </div>
                                           )}
-                                          {sender.warmup_days_completed && sender.warmup_days_completed > 0 && (
+                                          {sender.warmup_started_at && (
                                             <div className="text-xs text-gray-500 dark:text-gray-400">
-                                              Day {sender.warmup_days_completed}
+                                              Day {(() => {
+                                                const now = new Date();
+                                                const startDate = new Date(sender.warmup_started_at);
+                                                const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                                                return Math.min(Math.max(daysSinceStart + 1, 1), 35);
+                                              })()} / 35
                                             </div>
                                           )}
                                         </div>

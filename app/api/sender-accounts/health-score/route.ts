@@ -241,7 +241,7 @@ export async function GET(request: NextRequest) {
         emails.length > 0 
           ? supabaseServer
               .from('campaign_senders')
-              .select('email, health_score, daily_limit, warmup_status, warmup_phase, warmup_days_completed')
+              .select('email, health_score, daily_limit, warmup_status, warmup_phase, warmup_days_completed, warmup_started_at')
               .in('email', emails)
               .eq('user_id', userId)
           : Promise.resolve({ data: [], error: null })

@@ -148,6 +148,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     warmup_phase?: number;
     warmup_days_completed?: number;
     warmup_emails_sent_today?: number;
+    warmup_started_at?: string;
     last_warmup_sent?: string;
     email: string; 
     name: string 
@@ -342,14 +343,38 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 ? assignment.health_score 
                 : 75
               
-              // Calculate warmup progress - prioritize actual tracking data from new columns
+              // Calculate warmup progress - prioritize warmup_started_at for accurate calculation
               const calculateWarmupProgress = (assignment: any) => {
                 if (assignment.warmup_status !== 'active') return { phase: 1, daysCompleted: 0, emailsToday: 0 }
                 
-                // PRIORITY 1: Use actual tracking columns if they exist and have data
+                // PRIORITY 1: Use warmup_started_at for accurate day calculation
+                if (assignment.warmup_started_at) {
+                  const now = new Date();
+                  const startDate = new Date(assignment.warmup_started_at);
+                  const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                  const daysCompleted = Math.min(Math.max(daysSinceStart + 1, 1), 35);
+                  
+                  // Calculate phase from days completed
+                  const phase = daysCompleted >= 22 ? 3 : (daysCompleted >= 8 ? 2 : 1);
+                  
+                  console.log(`✅ Using warmup_started_at for ${assignment.email}:`, {
+                    started: assignment.warmup_started_at,
+                    days: daysCompleted,
+                    phase: phase,
+                    emails: assignment.warmup_emails_sent_today
+                  });
+                  
+                  return {
+                    phase: phase,
+                    daysCompleted: daysCompleted,
+                    emailsToday: assignment.warmup_emails_sent_today || 0
+                  };
+                }
+                
+                // PRIORITY 2: Use actual tracking columns if they exist and have data
                 if (assignment.warmup_phase !== undefined && assignment.warmup_phase !== null && 
                     assignment.warmup_days_completed !== undefined && assignment.warmup_days_completed !== null) {
-                  console.log(`✅ Using actual warmup tracking data for ${assignment.email}:`, {
+                  console.log(`✅ Using stored warmup tracking data for ${assignment.email}:`, {
                     phase: assignment.warmup_phase,
                     days: assignment.warmup_days_completed, 
                     emails: assignment.warmup_emails_sent_today
@@ -397,6 +422,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 warmup_phase: warmupProgress.phase,
                 warmup_days_completed: warmupProgress.daysCompleted,
                 warmup_emails_sent_today: warmupProgress.emailsToday,
+                warmup_started_at: assignment.warmup_started_at,
                 last_warmup_sent: assignment.updated_at, // Use updated_at as proxy for last warmup
                 email: assignment.email,
                 name: assignment.name || assignment.email
@@ -465,26 +491,37 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       
       if (response.ok) {
         const result = await response.json()
-        if (result.success && result.senders) {
-          const senders = result.senders
+        if (result.success && result.assignments) {
+          const senders = result.assignments
           
           // Filter senders with warm-up data and format for display
           const warmupSenders = senders
             .filter((sender: any) => sender.warmup_status === 'active' || sender.health_score < 90)
-            .map((sender: any) => ({
-              sender_email: sender.email,
-              phase: sender.warmup_phase || 1,
-              day_in_phase: sender.warmup_days_completed || 0,
-              total_days: 35, // Standard warm-up period
-              daily_target: sender.daily_limit || 50,
-              emails_sent_today: sender.warmup_emails_sent_today || 0,
-              opens_today: 0, // Would be calculated from actual metrics
-              replies_today: 0, // Would be calculated from actual metrics  
-              current_health_score: sender.health_score || 50,
-              target_health_score: 90,
-              status: sender.warmup_status || 'active',
-              progress_percentage: Math.min(((sender.warmup_days_completed || 0) / 35) * 100, 100)
-            }))
+            .map((sender: any) => {
+              // Calculate days from warmup_started_at
+              let dayInPhase = 1;
+              if (sender.warmup_started_at) {
+                const now = new Date();
+                const startDate = new Date(sender.warmup_started_at);
+                const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                dayInPhase = Math.min(Math.max(daysSinceStart + 1, 1), 35);
+              }
+              
+              return {
+                sender_email: sender.email,
+                phase: sender.warmup_phase || 1,
+                day_in_phase: dayInPhase,
+                total_days: 35, // Standard warm-up period
+                daily_target: sender.daily_limit || 50,
+                emails_sent_today: sender.warmup_emails_sent_today || 0,
+                opens_today: 0, // Would be calculated from actual metrics
+                replies_today: 0, // Would be calculated from actual metrics  
+                current_health_score: sender.health_score || 50,
+                target_health_score: 90,
+                status: sender.warmup_status || 'active',
+                progress_percentage: Math.min((dayInPhase / 35) * 100, 100)
+              };
+            })
 
           // Calculate summary stats
           const totalEmailsSentToday = warmupSenders.reduce((sum: number, s: any) => sum + s.emails_sent_today, 0)
@@ -3181,7 +3218,13 @@ Sequence Info:
                                       <div className="flex items-center space-x-1">
                                         <span className="text-gray-500">Progress:</span>
                                         <span className="font-medium text-green-600">
-                                          Day {healthData.warmup_days_completed || 1} / 35
+                                          Day {(() => {
+                                            if (!healthData.warmup_started_at) return 1;
+                                            const now = new Date();
+                                            const startDate = new Date(healthData.warmup_started_at);
+                                            const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                                            return Math.min(Math.max(daysSinceStart + 1, 1), 35);
+                                          })()} / 35
                                         </span>
                                       </div>
                                       <div className="flex items-center space-x-1">
@@ -3197,13 +3240,25 @@ Sequence Info:
                                       <div className="flex items-center justify-between mb-1">
                                         <span className="text-xs text-gray-500">Warmup Progress</span>
                                         <span className="text-xs text-gray-600">
-                                          {Math.round(((healthData.warmup_days_completed || 1) / 35) * 100)}%
+                                          {Math.round(((() => {
+                                            if (!healthData.warmup_started_at) return 1;
+                                            const now = new Date();
+                                            const startDate = new Date(healthData.warmup_started_at);
+                                            const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                                            return Math.min(Math.max(daysSinceStart + 1, 1), 35);
+                                          })() / 35) * 100)}%
                                         </span>
                                       </div>
                                       <div className="w-full bg-gray-200 rounded-full h-1.5">
                                         <div 
                                           className="bg-green-500 h-1.5 rounded-full transition-all duration-300" 
-                                          style={{ width: `${Math.min(((healthData.warmup_days_completed || 1) / 35) * 100, 100)}%` }}
+                                          style={{ width: `${Math.min(((() => {
+                                            if (!healthData.warmup_started_at) return 1;
+                                            const now = new Date();
+                                            const startDate = new Date(healthData.warmup_started_at);
+                                            const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                                            return Math.min(Math.max(daysSinceStart + 1, 1), 35);
+                                          })() / 35) * 100, 100)}%` }}
                                         ></div>
                                       </div>
                                       
@@ -4493,7 +4548,7 @@ Sequence Info:
               {deleteConfirmation?.type === 'single' 
                 ? 'Are you sure you want to delete this contact? This action cannot be undone.'
                 : deleteConfirmation?.type === 'removeAll'
-                ? `Are you sure you want to remove ${deleteConfirmation?.count} selected contacts from this campaign? They will remain in your leads database but won't be associated with this campaign anymore.`
+                ? `Are you sure you want to delete ${deleteConfirmation?.count} selected contacts? This action cannot be undone and will permanently remove them from your database.`
                 : `Are you sure you want to delete ${deleteConfirmation?.count} contacts? This action cannot be undone.`
               }
             </p>
@@ -4514,14 +4569,14 @@ Sequence Info:
                   } else if (deleteConfirmation?.type === 'bulk') {
                     deleteSelectedContacts()
                   } else if (deleteConfirmation?.type === 'removeAll') {
-                    removeSelectedContactsFromCampaign()
+                    deleteSelectedContacts()
                   }
                   setDeleteConfirmation(null)
                 }}
                 disabled={isDeleting !== null}
                 className="flex-1 h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white"
               >
-                {isDeleting !== null ? (deleteConfirmation?.type === 'removeAll' ? 'Removing...' : 'Deleting...') : (deleteConfirmation?.type === 'removeAll' ? 'Remove from Campaign' : 'Delete')}
+                {isDeleting !== null ? 'Deleting...' : 'Delete'}
               </Button>
             </div>
           </div>
