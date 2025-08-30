@@ -317,8 +317,6 @@ export default function CampaignSenderSelection({
         params.set('campaignId', campaignId.toString())
         console.log('🎯 Using campaignId like analytics and sender management:', campaignId)
       }
-      // Force real-time calculation instead of cached values
-      params.set('forceRefresh', 'true')
       
       const response = await fetch(`/api/sender-accounts/health-score?${params}`, {
         credentials: 'include'
