@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { deriveTimezoneFromLocation, getCurrentTimeInTimezone, getBusinessHoursStatus, getBusinessHoursStatusWithActiveDays } from "@/lib/timezone-utils"
+import { fetchHealthScores, getHealthScoreColor, type HealthScoreResult } from "@/lib/health-score"
 // Remove direct import of SendGrid service since it's server-side only
 // import { SendGridAnalyticsService, type SendGridMetrics } from "@/lib/sendgrid-analytics"
 
@@ -140,20 +141,19 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Sequence status state - stores real progression data from API
   const [contactSequenceStatus, setContactSequenceStatus] = useState<Map<string, any>>(new Map())
   
-  // Health score state - updated to match the actual data structure
-  const [senderHealthScores, setSenderHealthScores] = useState<Record<string, { 
-    health_score: number; 
-    daily_limit: number; 
-    warmup_status: string; 
+  // Health score state - use same structure as sender management
+  const [senderHealthScores, setSenderHealthScores] = useState<Record<string, HealthScoreResult>>({})
+  const [healthScoresLoading, setHealthScoresLoading] = useState(false)
+  const [senderInfo, setSenderInfo] = useState<Record<string, { 
+    email: string; 
+    name: string;
+    daily_limit: number;
+    warmup_status: string;
     warmup_phase?: number;
+    warmup_started_at?: string;
     warmup_days_completed?: number;
     warmup_emails_sent_today?: number;
-    warmup_started_at?: string;
-    last_warmup_sent?: string;
-    email: string; 
-    name: string 
   }>>({})
-  const [healthScoresLoading, setHealthScoresLoading] = useState(false)
   
   // Warming metrics state
   const [warmingMetrics, setWarmingMetrics] = useState<WarmingMetrics | null>(null)
@@ -325,23 +325,73 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         console.log(`📊 Is assignments array: ${Array.isArray(senderAssignments)}`)
         
         if (senderAssignments.length > 0) {
-          // The assignments already contain health scores - no need for additional API calls
-          console.log('🔍 First assignment structure:', senderAssignments[0])
-          
-          // Extract health scores directly from assignments
-          const healthScoresFromAssignments: Record<string, any> = {}
+          // Get sender_accounts IDs for health score API (not campaign_senders IDs!)
           const senderEmails = senderAssignments.map((assignment: any) => assignment.email).filter(Boolean)
+          
+          // Call health score API with emails to get real health scores
+          console.log('🔍 Using senderEmails for health score API:', senderEmails)
+          
+          let realHealthScores = {}
+          let healthScoreResult: any = { accounts: [] }
+          
+          try {
+            const params = new URLSearchParams()
+            if (senderEmails.length > 0) {
+              params.set('emails', senderEmails.join(','))
+            }
+            // Don't pass campaignId to get the same real-time calculated scores as sender management
+            // if (campaign.id) {
+            //   params.set('campaignId', campaign.id)
+            // }
+            
+            console.log('📡 Calling health score API with URL:', `/api/sender-accounts/health-score?${params}`)
+            
+            const healthScoreResponse = await fetch(`/api/sender-accounts/health-score?${params}`, {
+              credentials: 'include'
+            })
+            
+            console.log('📊 Health score API response status:', healthScoreResponse.status)
+            
+            if (healthScoreResponse.ok) {
+              healthScoreResult = await healthScoreResponse.json()
+              console.log('📋 Health score API result:', healthScoreResult)
+              realHealthScores = healthScoreResult.success ? healthScoreResult.healthScores : {}
+            } else {
+              console.error('❌ Health score API failed with status:', healthScoreResponse.status)
+              const errorText = await healthScoreResponse.text()
+              console.error('❌ Health score API error:', errorText)
+            }
+          } catch (apiError) {
+            console.error('❌ Error calling health score API:', apiError)
+          }
+          console.log('🔥 REAL HEALTH SCORES FROM API:', realHealthScores)
+          console.log('🔥 Real health scores keys:', Object.keys(realHealthScores))
+          console.log('🔥 Real health scores values:', Object.values(realHealthScores))
+          
+          // Build final health scores object with real scores
+          const healthScoresFromAssignments: Record<string, any> = {}
           
           senderAssignments.forEach((assignment: any) => {
             console.log('🔍 DEBUG: Processing assignment:', assignment)
-            console.log('🔍 DEBUG: assignment.health_score:', assignment.health_score)
-            console.log('🔍 DEBUG: assignment.health_score type:', typeof assignment.health_score)
             
             if (assignment.email) {
-              // Use a default health score of 75 if not provided
-              const healthScore = assignment.health_score !== undefined && assignment.health_score !== null 
-                ? assignment.health_score 
-                : 75
+              // Find the sender_accounts.id for this email from the API response
+              const matchingAccount = healthScoreResult.accounts?.find((account: any) => account.email === assignment.email)
+              const senderAccountId = matchingAccount?.id
+              
+              // Get the real health score using the sender_accounts.id
+              const realHealthData = senderAccountId ? realHealthScores[senderAccountId] : null
+              const realScore = realHealthData?.score
+              
+              const healthScore = realScore !== undefined ? realScore : 
+                (assignment.health_score !== undefined && assignment.health_score !== null ? assignment.health_score : 75)
+              
+              console.log(`🔥 HEALTH SCORE CALCULATION for ${assignment.email}:`)
+              console.log(`   Campaign_senders ID: ${assignment.id}`)
+              console.log(`   Sender_accounts ID: ${senderAccountId}`)
+              console.log(`   Real score from API: ${realScore}`)
+              console.log(`   Assignment health_score: ${assignment.health_score}`)
+              console.log(`   Final calculated score: ${healthScore}`)
               
               // Calculate warmup progress - prioritize warmup_started_at for accurate calculation
               const calculateWarmupProgress = (assignment: any) => {
@@ -415,8 +465,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               
               const warmupProgress = calculateWarmupProgress(assignment)
               
-              healthScoresFromAssignments[assignment.email] = {
+              // Store by email for consistent access  
+              const healthScoreData = {
+                ...realHealthData, // Include full HealthScoreResult if available
                 health_score: healthScore,
+                score: healthScore, // Ensure score property is set for HealthScoreResult compatibility
                 daily_limit: assignment.daily_limit || 50,
                 warmup_status: assignment.warmup_status || 'inactive',
                 warmup_phase: warmupProgress.phase,
@@ -425,8 +478,11 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 warmup_started_at: assignment.warmup_started_at,
                 last_warmup_sent: assignment.updated_at, // Use updated_at as proxy for last warmup
                 email: assignment.email,
-                name: assignment.name || assignment.email
+                name: assignment.name || assignment.email,
+                id: assignment.id
               }
+              
+              healthScoresFromAssignments[assignment.email] = healthScoreData
               console.log(`✅ Added health score for ${assignment.email}:`, healthScoresFromAssignments[assignment.email])
             } else {
               console.log(`⚠️ Skipped assignment - no email: ${assignment}`)
@@ -2908,7 +2964,7 @@ Sequence Info:
                   if (Object.keys(senderHealthScores).length > 0) {
                     // Use actual health scores
                     const validScores = senders
-                      .map((s: any) => senderHealthScores[s.sender_email]?.health_score)
+                      .map((s: any) => senderHealthScores[s.sender_email]?.score || senderHealthScores[s.sender_email]?.health_score)
                       .filter((score: number | undefined) => score !== undefined)
                     if (validScores.length > 0) {
                       avgHealthScore = Math.round(validScores.reduce((a: number, b: number) => a + b, 0) / validScores.length)
@@ -3008,7 +3064,7 @@ Sequence Info:
                         <div className="mt-4 space-y-2 border-t pt-4">
                           {senders.map((sender: any, index: number) => {
                             // Use actual health score from senderHealthScores if available, otherwise use warmup data
-                            const actualHealthScore = senderHealthScores[sender.sender_email]?.health_score
+                            const actualHealthScore = senderHealthScores[sender.sender_email]?.score || senderHealthScores[sender.sender_email]?.health_score
                             const healthScore = actualHealthScore !== undefined ? actualHealthScore : (sender.current_health_score || 0)
                             const phase = sender.phase || 1
                             
@@ -3081,9 +3137,9 @@ Sequence Info:
                   const scores = Object.values(senderHealthScores || {})
                     .map((data: any) => {
                       console.log('🔍 DEBUG: Individual health data:', data)
-                      console.log('🔍 DEBUG: health_score value:', data.health_score)
-                      console.log('🔍 DEBUG: health_score type:', typeof data.health_score)
-                      return data.health_score
+                      console.log('🔍 DEBUG: health_score value:', data.score || data.health_score)
+                      console.log('🔍 DEBUG: health_score type:', typeof (data.score || data.health_score))
+                      return data.score || data.health_score
                     })
                     .filter((score): score is number => {
                       const isValid = typeof score === 'number' && !isNaN(score)
@@ -3200,8 +3256,8 @@ Sequence Info:
                       {healthScoresExpanded && (
                         <div className="mt-4 space-y-2 border-t pt-4">
                           {Object.entries(senderHealthScores).map(([emailOrId, healthData]) => {
-                            const score = healthData.health_score
-                            const email = emailOrId
+                            const score = healthData.score || healthData.health_score || 0
+                            const email = healthData.email || emailOrId
                             
                             // Get warmup data for this sender
                             const warmupStatus = healthData.warmup_status
@@ -4554,8 +4610,8 @@ Sequence Info:
                   return (
                     <div key={email} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-lg">
                       <span className="text-sm text-gray-700 truncate flex-1 mr-2">{email}</span>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getScoreColor(healthData.health_score)}`}>
-                        {healthData.health_score}%
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${getScoreColor(healthData.score || healthData.health_score || 0)}`}>
+                        {healthData.score || healthData.health_score || 0}%
                       </span>
                     </div>
                   )

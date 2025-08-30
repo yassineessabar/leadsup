@@ -306,8 +306,27 @@ export default function CampaignSenderSelection({
       }
       
       console.log('🔍 Fetching health scores for:', allSenderIds.length, 'senders')
-      const scores = await fetchHealthScores(allSenderIds, campaignId.toString())
+      
+      // Use the EXACT same API call as analytics and sender management for consistency
+      const allSenderEmails = domainsWithSenders.flatMap(domain => domain.senders).map(sender => sender.email).filter(Boolean)
+      const params = new URLSearchParams()
+      if (allSenderEmails.length > 0) {
+        params.set('emails', allSenderEmails.join(','))
+      }
+      if (campaignId) {
+        params.set('campaignId', campaignId.toString())
+        console.log('🎯 Using campaignId like analytics and sender management:', campaignId)
+      }
+      
+      const response = await fetch(`/api/sender-accounts/health-score?${params}`, {
+        credentials: 'include'
+      })
+      
+      const result = await response.json()
+      const scores = result.success ? result.healthScores : {}
+      
       setHealthScores(scores)
+      console.log('🔥 CAMPAIGN SENDER SELECTION: Health scores from API:', scores)
       
       console.log('✅ Loaded health scores for', Object.keys(scores).length, 'accounts')
     } catch (error) {
@@ -1523,6 +1542,7 @@ export default function CampaignSenderSelection({
     return (
       <SenderManagement 
         domainId={selectedDomainForSenders}
+        campaignId={campaignId.toString()}
         onBack={() => {
           if (onShowSenderManagement) {
             onShowSenderManagement(false)

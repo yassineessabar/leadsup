@@ -47,9 +47,10 @@ interface Domain {
 interface SenderManagementProps {
   domainId: string
   onBack: () => void
+  campaignId?: string
 }
 
-export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
+export function SenderManagement({ domainId, onBack, campaignId }: SenderManagementProps) {
   const { t, ready: translationsReady } = useI18n()
   const [domain, setDomain] = useState<Domain | null>(null)
   const [senders, setSenders] = useState<Sender[]>([])
@@ -72,7 +73,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
   const [healthScores, setHealthScores] = useState<Record<string, HealthScoreResult>>({})
 
   // Load health scores for all senders
-  const loadHealthScores = async () => {
+  const loadHealthScores = async (forceRefresh = false) => {
     try {
       console.log('📊 Loading health scores for domain senders...')
       
@@ -83,9 +84,44 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
         return
       }
       
-      console.log('🔍 Fetching health scores for:', senderIds.length, 'senders')
-      const scores = await fetchHealthScores(senderIds)
+      // Force refresh by adding timestamp to bypass cache
+      const timestamp = forceRefresh ? `&_t=${Date.now()}` : ''
+      console.log('🔍 Fetching health scores for:', senderIds.length, 'senders', forceRefresh ? '(force refresh)' : '')
+      
+      // Use the EXACT same API call as analytics to get consistent scores
+      const senderEmails = senders.map(sender => sender.email).filter(Boolean)
+      const params = new URLSearchParams()
+      if (senderEmails.length > 0) {
+        params.set('emails', senderEmails.join(','))
+      }
+      if (campaignId) {
+        params.set('campaignId', campaignId)
+        console.log('🎯 Using campaignId like analytics:', campaignId)
+      }
+      
+      const response = await fetch(`/api/sender-accounts/health-score?${params}${timestamp}`, {
+        credentials: 'include',
+        cache: 'no-cache' // Always bypass browser cache
+      })
+      
+      console.log('📊 Health score API response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Health score API failed:', errorText)
+        return
+      }
+      
+      const result = await response.json()
+      console.log('📋 Full health score API result:', result)
+      
+      const scores = result.success ? result.healthScores : {}
+      
       setHealthScores(scores)
+      console.log('🔥 SENDER MANAGEMENT: Health scores from API:', scores)
+      console.log('🔥 SENDER MANAGEMENT: API success:', result.success)
+      console.log('🔥 SENDER MANAGEMENT: API message:', result.message)
+      console.log('🔥 SENDER MANAGEMENT: Sender IDs sent:', senderIds)
       
       console.log('✅ Loaded health scores for', Object.keys(scores).length, 'accounts')
     } catch (error) {
@@ -150,7 +186,7 @@ export function SenderManagement({ domainId, onBack }: SenderManagementProps) {
   // Load health scores when senders are loaded
   useEffect(() => {
     if (senders.length > 0) {
-      loadHealthScores()
+      loadHealthScores(false) // Use same calculation as analytics (64%)
     }
   }, [senders])
 

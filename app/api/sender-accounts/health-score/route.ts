@@ -189,6 +189,7 @@ export async function GET(request: NextRequest) {
     const senderIds = searchParams.get('senderIds')?.split(',').filter(id => id.trim()) || []
     const emails = searchParams.get('emails')?.split(',').filter(email => email.trim()) || []
     const campaignId = searchParams.get('campaignId')
+    const forceRefresh = searchParams.get('forceRefresh') === 'true'
 
     // If no sender IDs or emails provided, return empty result
     if (senderIds.length === 0 && emails.length === 0) {
@@ -267,8 +268,8 @@ export async function GET(request: NextRequest) {
             // Find matching campaign sender by email
             const campaignSender = campaignSenders?.find(cs => cs.email === senderAccount.email)
             
-            if (campaignSender && campaignSender.health_score) {
-              // Use existing health score from campaign_senders
+            if (campaignSender && campaignSender.health_score && !forceRefresh) {
+              // Use existing health score from campaign_senders (only if not forcing refresh)
               const score = campaignSender.health_score
               
               // Create more realistic breakdown based on warmup data
@@ -287,7 +288,7 @@ export async function GET(request: NextRequest) {
                 lastUpdated: new Date().toISOString(),
                 cached: true
               }
-              console.log(`✅ Cached health score for ${senderAccount.email}: ${score}%`)
+              console.log(`✅ Cached health score for ${senderAccount.email}: ${score}% (forceRefresh: ${forceRefresh})`)
             } else {
               // Calculate health score for this sender using real data
               console.log(`🔄 Calculating real health score for ${senderAccount.email}...`)
