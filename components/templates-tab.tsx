@@ -367,7 +367,7 @@ Best regards!`
                   <Button
                     variant="outline"
                     size="sm"
-                    className="px-3 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium transition-all duration-300 rounded-2xl">
+                    className="px-3 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium transition-all duration-300 rounded-2xl"
                     onClick={() => handleShareTemplate(template)}
                   >
                     <Share2 className="w-4 h-4" />

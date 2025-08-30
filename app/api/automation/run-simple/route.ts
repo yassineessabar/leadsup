@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabase"
 import { deriveTimezoneFromLocation, getBusinessHoursStatusWithActiveDays } from "@/lib/timezone-utils"
+import { generateTrackingId } from "@/lib/email-tracking"
 
 function calculateNextEmailDue(
   contact: any,
@@ -53,6 +54,13 @@ function calculateNextEmailDue(
 export async function POST(request: NextRequest) {
   try {
     const { testMode = false } = await request.json()
+    
+    // Check for SendGrid API key from header (for GitHub Actions)
+    const sendGridKeyFromHeader = request.headers.get('x-sendgrid-key')
+    if (sendGridKeyFromHeader && !process.env.SENDGRID_API_KEY) {
+      process.env.SENDGRID_API_KEY = sendGridKeyFromHeader
+      console.log('📧 Using SendGrid API key from header')
+    }
     
     console.log(`🚀 SIMPLE AUTOMATION: Starting - ${new Date().toISOString()}`)
     
@@ -166,6 +174,123 @@ export async function POST(request: NextRequest) {
         if (!testMode) {
           const nextStep = (contact.sequence_step || 0) + 1
           
+          // Get the sequence template for this step
+          const { data: sequenceTemplate } = await supabaseServer
+            .from('campaign_sequences')
+            .select('*')
+            .eq('campaign_id', campaign.id)
+            .eq('step_number', nextStep)
+            .single()
+          
+          if (!sequenceTemplate) {
+            console.log(`❌ No sequence template found for step ${nextStep}`)
+            continue
+          }
+          
+          // Get sender for this campaign
+          const { data: campaignSender, error: senderError } = await supabaseServer
+            .from('campaign_senders')
+            .select('*')
+            .eq('campaign_id', campaign.id)
+            .eq('is_active', true)
+            .eq('is_selected', true)
+            .limit(1)
+            .single()
+          
+          console.log(`🔍 Campaign sender query result:`, { campaignSender, senderError })
+          
+          if (!campaignSender) {
+            console.log(`❌ No active sender found for campaign ${campaign.name}`)
+            continue
+          }
+          
+          console.log(`📧 Using sender: ${campaignSender.email} for ${contact.email}`)
+          
+          // Send email if not in simulation mode
+          const isSimulation = process.env.EMAIL_SIMULATION_MODE === 'true'
+          let emailSent = false
+          
+          console.log(`🧪 Simulation mode: ${isSimulation}`)
+          console.log(`🔑 SENDGRID_API_KEY exists: ${!!process.env.SENDGRID_API_KEY}`)
+          
+          if (!isSimulation) {
+            try {
+              // Use the exact same email sending logic as the working automation
+              if (process.env.SENDGRID_API_KEY) {
+                console.log(`✅ SENDGRID_API_KEY found, length: ${process.env.SENDGRID_API_KEY.length}`)
+                const sgMail = require('@sendgrid/mail')
+                sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+                
+                // Personalize content (same as working automation)
+                const personalizedSubject = sequenceTemplate.subject?.replace(/\{\{companyName\}\}/g, contact.company || 'your company') || 'Email from LeadsUp'
+                let personalizedContent = sequenceTemplate.content?.replace(/\{\{companyName\}\}/g, contact.company || 'your company')
+                  .replace(/\{\{firstName\}\}/g, contact.first_name || 'there')
+                  .replace(/\{\{lastName\}\}/g, contact.last_name || '') || 'Hello from LeadsUp!'
+                
+                // Convert line breaks to HTML (same as working automation)
+                personalizedContent = personalizedContent
+                  .replace(/\r\n/g, '\n')  // Convert Windows line breaks
+                  .replace(/\r/g, '\n')    // Convert Mac line breaks
+                  .replace(/\n\n+/g, '<br/><br/>')  // Convert paragraph breaks (double+ newlines)
+                  .replace(/\n/g, '<br/>')  // Convert remaining single newlines
+                
+                const msg = {
+                  to: contact.email,
+                  from: campaignSender.email,
+                  subject: personalizedSubject,
+                  html: personalizedContent,
+                  text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '') // Convert br tags to line breaks, then strip HTML
+                }
+                
+                console.log(`📧 SENDING REAL EMAIL:`)
+                console.log(`   From: ${campaignSender.email}`)
+                console.log(`   To: ${contact.email}`)
+                console.log(`   Subject: ${personalizedSubject}`)
+                
+                const result = await sgMail.send(msg)
+                
+                console.log(`✅ Email sent successfully via SendGrid - Message ID: ${result[0]?.headers?.['x-message-id']}`)
+                
+                // Generate tracking ID for logging
+                const trackingId = generateTrackingId()
+                
+                // Log email tracking
+                await supabaseServer
+                  .from('email_tracking')
+                  .insert({
+                    id: trackingId,
+                    user_id: campaignSender.user_id,
+                    campaign_id: campaign.id,
+                    contact_id: contact.id,
+                    sender_id: campaignSender.id,
+                    email: contact.email,
+                    sg_message_id: result[0]?.headers?.['x-message-id'] || `sg_${Date.now()}_${contact.id}`,
+                    subject: personalizedSubject,
+                    status: 'sent',
+                    sent_at: new Date().toISOString(),
+                    category: ['campaign', 'automation']
+                  })
+                
+                // Only increment totalSent if email was actually sent
+                emailSent = true
+                totalSent++
+                
+              } else {
+                console.log(`⚠️ No SENDGRID_API_KEY found - skipping email sending`)
+                emailSent = false
+              }
+              
+            } catch (emailError: any) {
+              console.log(`❌ Failed to send email to ${contact.email}:`, emailError.message)
+              console.log(`❌ Full error:`, emailError)
+              console.log(`❌ Error stack:`, emailError.stack)
+              // Email failed - don't count as sent
+              emailSent = false
+            }
+          } else {
+            console.log(`🧪 SIMULATION MODE: Would send email to ${contact.email}`)
+          }
+          
           let updateData: any = {
             last_contacted_at: new Date().toISOString(),
             sequence_step: nextStep
@@ -200,8 +325,6 @@ export async function POST(request: NextRequest) {
           
           if (updateError) {
             console.log(`❌ Error updating ${contact.email}:`, updateError.message)
-          } else {
-            totalSent++
           }
         }
         

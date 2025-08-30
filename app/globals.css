@@ -8,11 +8,6 @@ body {
   font-family: Switzer, "Switzer Placeholder", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: rgb(17, 24, 39);
-  }
-}
 
 @layer utilities {
   .text-balance {

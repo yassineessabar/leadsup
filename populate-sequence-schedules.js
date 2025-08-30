@@ -52,7 +52,29 @@ function generateContactSequenceSchedule(contact, sequences, campaignSettings) {
     // Calculate scheduled date for this step
     let scheduledDate = new Date(baseDate)
     scheduledDate.setDate(scheduledDate.getDate() + timingDays)
-    scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+    
+    // Create the correct time in the contact's timezone
+    const year = scheduledDate.getFullYear()
+    const month = scheduledDate.getMonth() + 1
+    const day = scheduledDate.getDate()
+    
+    // For Europe/London timezone offset (BST = UTC+1 in summer, GMT = UTC+0 in winter)
+    let offsetHours = 0
+    if (timezone === 'Europe/London') {
+      // BST runs from last Sunday in March to last Sunday in October
+      const tempDate = new Date(year, month - 1, day)
+      const timezoneName = new Intl.DateTimeFormat('en', {
+        timeZone: timezone,
+        timeZoneName: 'short'
+      }).formatToParts(tempDate).find(p => p.type === 'timeZoneName')?.value
+      offsetHours = (timezoneName === 'BST' || timezoneName === 'GMT+1') ? 1 : 0 // BST/GMT+1 = UTC+1, GMT = UTC+0
+    } else if (timezone === 'Australia/Sydney') {
+      // AEST/AEDT - simplified for now
+      offsetHours = 10 // Approximate
+    }
+    
+    // Create UTC time: if timezone is UTC+X, subtract X hours to get UTC
+    scheduledDate = new Date(Date.UTC(year, month - 1, day, consistentHour - offsetHours, consistentMinute, 0, 0))
     
     // Skip inactive days
     let dayOfWeek = scheduledDate.getDay()

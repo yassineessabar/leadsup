@@ -1,12 +1,13 @@
 import sgMail from '@sendgrid/mail'
 
-// Initialize SendGrid with API key
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY
-
-if (!SENDGRID_API_KEY) {
-  throw new Error('SENDGRID_API_KEY environment variable is required')
+// Helper to get SendGrid API key
+function getSendGridApiKey(): string {
+  const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY
+  if (!SENDGRID_API_KEY) {
+    throw new Error('SENDGRID_API_KEY environment variable is required')
+  }
+  return SENDGRID_API_KEY
 }
-sgMail.setApiKey(SENDGRID_API_KEY)
 
 // Helper function to generate reply-to email address
 function generateReplyToEmail(senderEmail: string): string {
@@ -35,6 +36,10 @@ export interface SendGridEmailOptions {
 
 export async function sendEmailWithSendGrid(options: SendGridEmailOptions) {
   try {
+    // Initialize SendGrid API key
+    const SENDGRID_API_KEY = getSendGridApiKey()
+    sgMail.setApiKey(SENDGRID_API_KEY)
+    
     console.log(`📧 Sending email via SendGrid from ${options.from} to ${options.to}`)
     console.log(`📧 Reply-To address: ${options.replyTo || 'not specified (will use sender)'}`)
     

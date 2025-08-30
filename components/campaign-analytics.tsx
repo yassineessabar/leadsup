@@ -4037,6 +4037,7 @@ Sequence Info:
                               <Clock className="w-4 h-4" />
                               <span>
                                 {step.scheduledDate.toLocaleTimeString('en-US', {
+                                  timeZone: step.timezone,
                                   hour: 'numeric',
                                   minute: '2-digit',
                                   hour12: true

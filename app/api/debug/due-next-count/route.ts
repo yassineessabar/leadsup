@@ -100,15 +100,15 @@ export async function GET(request: NextRequest) {
         const scheduledDate = new Date(nextDueDate)
         const now = new Date()
         
-        // Convert both times to contact's timezone for proper comparison
-        const nowInContactTz = new Date(now.toLocaleString("en-US", { timeZone: timezone }))
-        const scheduledInContactTz = new Date(scheduledDate.toLocaleString("en-US", { timeZone: timezone }))
+        // Use original UTC dates for comparison - no conversion needed
+        const nowInContactTz = now
+        const scheduledInContactTz = scheduledDate
         
         const logEntry = {
           email: contact.email,
           timezone,
-          scheduled_sydney: scheduledDate.toLocaleString('en-US', { timeZone: timezone }),
-          current_sydney: now.toLocaleString('en-US', { timeZone: timezone }),
+          scheduled_local: scheduledDate.toLocaleString('en-US', { timeZone: timezone }),
+          current_local: now.toLocaleString('en-US', { timeZone: timezone }),
           scheduled_utc: scheduledDate.toISOString(),
           current_utc: now.toISOString(),
           time_reached: now >= scheduledDate,
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
         dueContacts.push({
           email: contact.email,
           nextDue: nextDueDate,
-          sydneyTime: scheduledDate.toLocaleString('en-US', { timeZone: timezone }),
+          localTime: scheduledDate.toLocaleString('en-US', { timeZone: timezone }),
           timezone,
           currentStep: contact.sequence_step || 0
         })
@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
       success: true,
       currentTime: {
         utc: now.toISOString(),
-        sydney: now.toLocaleString('en-US', { timeZone: 'Australia/Sydney' })
+        example_timezone: now.toLocaleString('en-US', { timeZone: 'Australia/Sydney' })
       },
       summary: {
         totalCampaigns: campaigns.length,

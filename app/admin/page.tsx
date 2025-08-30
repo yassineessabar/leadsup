@@ -99,6 +99,8 @@ export default function AdminPanel() {
   const [refreshing, setRefreshing] = useState(false)
   const [workflowManaging, setWorkflowManaging] = useState(false)
   const [managementMessage, setManagementMessage] = useState<string | null>(null)
+  const [simulationMode, setSimulationMode] = useState<boolean>(false)
+  const [simulationToggling, setSimulationToggling] = useState(false)
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -140,7 +142,8 @@ export default function AdminPanel() {
       try {
         await Promise.all([
           fetchActivityData(),
-          fetchGitHubAutomationData()
+          fetchGitHubAutomationData(),
+          fetchSimulationMode()
         ])
       } catch (error) {
         console.warn('Admin data fetch failed, showing basic view:', error)
@@ -205,11 +208,61 @@ export default function AdminPanel() {
     }
   }
 
+  const fetchSimulationMode = async () => {
+    try {
+      const response = await fetch('/api/admin/simulation-mode')
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          setSimulationMode(result.simulationMode)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching simulation mode:', error)
+    }
+  }
+
+  const toggleSimulationMode = async () => {
+    try {
+      setSimulationToggling(true)
+      const response = await fetch('/api/admin/simulation-mode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ enabled: !simulationMode }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          setSimulationMode(result.simulationMode)
+          setManagementMessage(`✅ ${result.message}`)
+        } else {
+          setManagementMessage(`❌ ${result.error}`)
+        }
+      } else {
+        setManagementMessage('❌ Failed to toggle simulation mode')
+      }
+    } catch (error) {
+      console.error('Error toggling simulation mode:', error)
+      setManagementMessage('❌ Error toggling simulation mode')
+    } finally {
+      setSimulationToggling(false)
+      
+      // Clear message after 5 seconds
+      setTimeout(() => {
+        setManagementMessage(null)
+      }, 5000)
+    }
+  }
+
   const handleRefresh = async () => {
     setRefreshing(true)
     await Promise.all([
       fetchActivityData(),
-      fetchGitHubAutomationData()
+      fetchGitHubAutomationData(),
+      fetchSimulationMode()
     ])
     setRefreshing(false)
   }
@@ -441,6 +494,7 @@ export default function AdminPanel() {
           <TabsTrigger value="accounts">Account Activity</TabsTrigger>
           <TabsTrigger value="sender-health">Sender Health</TabsTrigger>
           <TabsTrigger value="github">GitHub Automation</TabsTrigger>
+          <TabsTrigger value="settings">System Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="accounts" className="space-y-4">
@@ -883,6 +937,68 @@ export default function AdminPanel() {
                   </p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>System Settings</CardTitle>
+              <CardDescription>
+                Configure system-wide settings and email behavior
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Email Simulation Mode */}
+                <div className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold">Email Simulation Mode</h3>
+                      <p className="text-sm text-gray-600">
+                        When enabled, emails are simulated instead of actually sent via SendGrid
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge 
+                        variant={simulationMode ? 'secondary' : 'default'}
+                        className={simulationMode ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}
+                      >
+                        {simulationMode ? '🧪 Simulation' : '📤 Live Emails'}
+                      </Badge>
+                      <Button
+                        onClick={toggleSimulationMode}
+                        disabled={simulationToggling}
+                        variant={simulationMode ? 'default' : 'outline'}
+                        className={simulationMode ? 'bg-green-600 hover:bg-green-700' : 'border-yellow-300 text-yellow-700 hover:bg-yellow-50'}
+                      >
+                        {simulationToggling ? '⏳ Toggling...' : simulationMode ? '📤 Enable Live Emails' : '🧪 Enable Simulation'}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="text-sm space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Current Mode:</span>
+                      <code className="bg-gray-100 px-2 py-1 rounded text-xs">
+                        EMAIL_SIMULATION_MODE={simulationMode ? 'true' : 'false'}
+                      </code>
+                    </div>
+                    <div className="text-gray-600">
+                      <p><strong>Live Emails:</strong> Real emails sent via SendGrid (production mode)</p>
+                      <p><strong>Simulation:</strong> Emails logged but not sent (testing mode)</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Management Messages */}
+                {managementMessage && (
+                  <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                    <p className="text-sm text-blue-800">{managementMessage}</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
