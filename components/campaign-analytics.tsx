@@ -2138,9 +2138,9 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         return {
           step: step.step,
           subject: step.subject,
-          scheduledDate: new Date(step.scheduled_date),
+          scheduledDate: new Date(step.scheduled_date), // Use exact stored time
           status: status,
-          timezone: step.timezone,
+          timezone: schedule.timezone, // Use schedule timezone consistently
           sender: assignedSender,
           content: `Email content for step ${step.step}`,
           label: step.timing_days === 0 ? 'Immediate' : `${step.timing_days} day${step.timing_days === 1 ? '' : 's'}`
@@ -2294,7 +2294,7 @@ Sequence Info:
           const contactHash = contactIdString.split('').reduce((hash, char) => {
             return ((hash << 5) - hash) + char.charCodeAt(0)
           }, 0)
-          const seedValue = (contactHash + email.step) % 1000
+          const seedValue = (contactHash + 1) % 1000 // Remove +email.step for consistent timing
           const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM
           const consistentMinute = (seedValue * 7) % 60
           scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
@@ -2338,8 +2338,8 @@ Sequence Info:
         const contactHash = contactIdString.split('').reduce((hash, char) => {
           return ((hash << 5) - hash) + char.charCodeAt(0)
         }, 0)
-        const seedValue = (contactHash + email.step) % 1000
-        const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM (consistent for this contact+step)
+        const seedValue = (contactHash + 1) % 1000 // Remove +email.step for consistent timing
+        const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM (consistent for this contact)
         const consistentMinute = (seedValue * 7) % 60 // Consistent minute based on seed
         scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
         
@@ -2445,8 +2445,35 @@ Sequence Info:
     })
   } 
   // Open sequence modal
-  const openSequenceModal = (contact: Contact) => {
-    setSequenceModalContact(contact)
+  const openSequenceModal = async (contact: Contact) => {
+    console.log('🔄 Fetching fresh contact data for sequence modal...')
+    
+    try {
+      // Fetch fresh contact data with sequence_schedule
+      const response = await fetch(`/api/contacts?campaign_id=${campaign.id}`, {
+        credentials: "include"
+      })
+      
+      if (response.ok) {
+        const contactsData = await response.json()
+        const freshContact = contactsData.contacts?.find((c: Contact) => c.id === contact.id)
+        
+        if (freshContact) {
+          console.log('✅ Found fresh contact data with sequence_schedule:', freshContact.sequence_schedule ? 'YES' : 'NO')
+          setSequenceModalContact(freshContact)
+        } else {
+          console.log('⚠️ Contact not found in fresh data, using cached contact')
+          setSequenceModalContact(contact)
+        }
+      } else {
+        console.log('⚠️ Failed to fetch fresh contact data, using cached contact')
+        setSequenceModalContact(contact)
+      }
+    } catch (error) {
+      console.error('❌ Error fetching fresh contact data:', error)
+      setSequenceModalContact(contact)
+    }
+    
     // Refresh sequences when modal opens to ensure we have latest data
     if (campaignSequences.length === 0) {
       console.log('🔄 No sequences loaded, fetching...')
