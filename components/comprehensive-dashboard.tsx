@@ -151,7 +151,8 @@ export function ComprehensiveDashboard() {
       const params = new URLSearchParams({
         start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         end_date: new Date().toISOString().split('T')[0],
-        _t: Date.now() // Cache buster
+        _t: Date.now(), // Cache buster
+        debug: 'true' // Force debug mode
       })
       
       const response = await fetch(`/api/analytics/account?${params.toString()}`, {
