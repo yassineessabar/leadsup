@@ -10,17 +10,24 @@ jobs:
   process-scheduled-emails:
     runs-on: ubuntu-latest
     
+    environment:
+      name: production
+    
     steps:
       - name: Process Scheduled Campaign Emails
+        env:
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          EMAIL_SIMULATION_MODE: false
         run: |
           echo "🕐 Processing scheduled emails at $(date)"
           
-          # Call the simple automation endpoint that aligns with UI logic
+          # Call the automation endpoint that extracts real email content from campaign_sequences
           response=$(curl -s -w "HTTPSTATUS:%{http_code}" \
             -X POST \
             -H "Content-Type: application/json" \
+            -H "X-SendGrid-Key: ${{ secrets.SENDGRID_API_KEY }}" \
             -d '{"testMode": false}' \
-            "${{ secrets.APP_URL }}/api/automation/run-simple")
+            "${{ secrets.APP_URL }}/api/automation/run")
           
           # Extract HTTP status and body
           http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
