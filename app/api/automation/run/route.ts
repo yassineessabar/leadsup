@@ -993,7 +993,13 @@ async function sendEmail({ from, to, template, campaign }: any) {
         subject: personalizedSubject,
         html: trackedHtmlContent, // Use tracked HTML content
         text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''), // Convert br tags to line breaks, then strip HTML
-        replyTo: replyToEmail // Add proper reply-to for inbound capture
+        replyTo: replyToEmail, // Add proper reply-to for inbound capture
+        customArgs: {
+          campaign_id: campaign.id,
+          contact_id: to.id.toString(),
+          user_id: from.user_id,
+          sender_email: from.email
+        }
       }
       
       console.log(`📧 SENDING REAL EMAIL:`)

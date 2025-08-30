@@ -1837,10 +1837,10 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   
   
   // Calculate actual progress from contact statuses
-  const completedContacts = contacts.filter(c => c.status === 'Completed').length
-  const repliedContacts = contacts.filter(c => c.status === 'Replied').length
-  const pendingContacts = contacts.filter(c => c.status === 'Pending').length
-  const inProgressContacts = contacts.filter(c => c.status === 'In Progress').length
+  const completedContacts = contacts.filter(c => c.email_status === 'Completed').length
+  const repliedContacts = contacts.filter(c => c.email_status === 'Replied').length
+  const pendingContacts = contacts.filter(c => c.email_status === 'Pending').length
+  const inProgressContacts = contacts.filter(c => (c.sequence_step || 0) > 0 && c.last_contacted_at).length
   
   // Calculate total emails actually sent (completed + replied + in progress)
   const actualEmailsSent = completedContacts + repliedContacts + inProgressContacts

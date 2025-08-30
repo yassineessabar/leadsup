@@ -250,7 +250,13 @@ export async function POST(request: NextRequest) {
                   subject: personalizedSubject,
                   html: trackedHtmlContent, // Use tracked HTML content
                   text: personalizedContent.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''), // Convert br tags to line breaks, then strip HTML
-                  replyTo: replyToEmail // Add proper reply-to for inbound capture
+                  replyTo: replyToEmail, // Add proper reply-to for inbound capture
+                  customArgs: {
+                    campaign_id: campaign.id,
+                    contact_id: contact.id.toString(),
+                    user_id: campaignSender.user_id,
+                    sender_email: campaignSender.email
+                  }
                 }
                 
                 console.log(`📧 SENDING REAL EMAIL:`)

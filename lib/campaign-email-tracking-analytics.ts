@@ -30,12 +30,13 @@ export async function getCampaignEmailTrackingMetrics(
     console.log(`📊 Fetching campaign-specific email tracking metrics for campaign ${campaignId} from ${startDate} to ${endDate}`)
     
     // Get all email tracking records for this specific campaign in the date range
+    // Use sendgrid_events since that's where webhook data is stored
     const { data: trackingRecords, error: trackingError } = await supabaseServer
-      .from('email_tracking')
+      .from('sendgrid_events')
       .select('*')
       .eq('campaign_id', campaignId) // Filter by campaign ID
-      .gte('sent_at', startDate + 'T00:00:00Z')
-      .lte('sent_at', endDate + 'T23:59:59Z')
+      .gte('timestamp', startDate + 'T00:00:00Z')
+      .lte('timestamp', endDate + 'T23:59:59Z')
     
     if (trackingError) {
       console.error('❌ Error fetching campaign email tracking records:', trackingError)
@@ -65,26 +66,48 @@ export async function getCampaignEmailTrackingMetrics(
     
     console.log(`📧 Found ${trackingRecords.length} email tracking records for campaign ${campaignId}`)
     
-    // Calculate metrics from tracking records
-    const emailsSent = trackingRecords.length
+    // Calculate metrics from sendgrid_events records
+    // Group by sg_message_id to avoid counting the same email multiple times
+    const uniqueMessages = new Map()
+    trackingRecords.forEach(event => {
+      const msgId = event.sg_message_id
+      if (!uniqueMessages.has(msgId)) {
+        uniqueMessages.set(msgId, {
+          email: event.email,
+          events: [],
+          delivered: false,
+          opened: false,
+          clicked: false,
+          bounced: false,
+          blocked: false
+        })
+      }
+      
+      const message = uniqueMessages.get(msgId)
+      message.events.push(event.event_type)
+      
+      if (event.event_type === 'delivered') message.delivered = true
+      if (event.event_type === 'open') message.opened = true
+      if (event.event_type === 'click') message.clicked = true
+      if (event.event_type === 'bounce') message.bounced = true
+      if (event.event_type === 'blocked') message.blocked = true
+    })
     
-    // Count emails by status
-    const sentEmails = trackingRecords.filter(r => ['sent', 'delivered', 'opened', 'clicked'].includes(r.status))
-    const deliveredEmails = trackingRecords.filter(r => ['delivered', 'opened', 'clicked'].includes(r.status) || r.status === 'sent') // Assume sent = delivered for local tracking
-    const bouncedEmails = trackingRecords.filter(r => r.status === 'bounced')
-    const blockedEmails = trackingRecords.filter(r => r.status === 'blocked')
+    const messageArray = Array.from(uniqueMessages.values())
+    const emailsSent = messageArray.length
+    const deliveredEmails = messageArray.filter(m => m.delivered)
+    const bouncedEmails = messageArray.filter(m => m.bounced)
+    const blockedEmails = messageArray.filter(m => m.blocked)
+    const openedEmails = messageArray.filter(m => m.opened)
+    const clickedEmails = messageArray.filter(m => m.clicked)
     
-    // Count opens and clicks
-    const openedEmails = trackingRecords.filter(r => r.first_opened_at || r.open_count > 0)
-    const clickedEmails = trackingRecords.filter(r => r.first_clicked_at || r.click_count > 0)
-    
-    // Calculate unique opens/clicks (one per email)
+    // Calculate unique opens/clicks
     const uniqueOpens = openedEmails.length
     const uniqueClicks = clickedEmails.length
     
-    // Calculate total opens/clicks (sum of all open_count/click_count)
-    const totalOpens = trackingRecords.reduce((sum, record) => sum + (record.open_count || 0), 0)
-    const totalClicks = trackingRecords.reduce((sum, record) => sum + (record.click_count || 0), 0)
+    // Calculate total opens/clicks (count all open/click events)
+    const totalOpens = trackingRecords.filter(e => e.event_type === 'open').length
+    const totalClicks = trackingRecords.filter(e => e.event_type === 'click').length
     
     // Calculate rates
     const emailsDelivered = deliveredEmails.length
