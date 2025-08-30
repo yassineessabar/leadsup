@@ -916,12 +916,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             console.log(`🔄 Overriding Perth timezone to Sydney for correct business hours`)
           }
           
+          
           // Calculate sequence step and email template info using real data
           // Use the current_step from API which represents the completed step number
           let sequence_step = sequenceStatus?.current_step || 0
           let email_subject = ''
           let nextEmailIn = ''
           let isDue = false
+          
           
           // Only treat as Step 0 if BOTH database shows Step 0 AND no emails have been sent
           if (sequenceStatus && sequenceStatus.sequences_sent === 0 && (contact.sequence_step === 0 || !contact.sequence_step)) {
@@ -1014,14 +1016,14 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             console.log(`   currentStep: ${currentStep}`)
             console.log(`   campaignSequences.length: ${campaignSequences.length}`)
             console.log(`   isSequenceComplete: ${isSequenceComplete}`)
-            console.log(`   isDue: ${isDue}`)
+            console.log(`   isDue (before PATH 1): ${isDue}`)
             
             if (isSequenceComplete) {
               nextEmailIn = t('analytics.sequenceComplete')
               console.log(`   ✅ PATH 1 RESULT: Setting "Sequence Complete"`)
             } else {
               nextEmailIn = isDue ? "Due next" : "Pending Start"
-              console.log(`   ❌ PATH 1 RESULT: Setting "${nextEmailIn}"`)
+              console.log(`   📧 PATH 1 RESULT: Setting "${nextEmailIn}" (isDue: ${isDue})`)
             }
             
             // Debug logging for problematic contacts - PATH 1
@@ -1380,6 +1382,32 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             }
           } else if (["Completed", "Replied", "Unsubscribed", "Bounced"].includes(status)) {
             next_scheduled = "None"
+          }
+          
+          // ✅ FINAL OVERRIDE: Use sequence_schedule for due next (after all PATHs)
+          if (contact.sequence_schedule) {
+            const schedule = contact.sequence_schedule
+            const currentStep = contact.sequence_step || 0
+            const nextStep = schedule.steps.find(step => step.step === currentStep + 1)
+            
+            if (nextStep) {
+              const nextDueDate = new Date(nextStep.scheduled_date)
+              const now = new Date()
+              const isTimeReached = now >= nextDueDate
+              
+              if (isTimeReached) {
+                // Check business hours using same logic as debug API
+                const activeDays = campaign.settings?.[0]?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                const businessStatus = getBusinessHoursStatusWithActiveDays(timezone, activeDays, 9, 17)
+                
+                if (businessStatus.isBusinessHours) {
+                  isDue = true
+                  nextEmailIn = "Due next"
+                  status = "Due next" as Contact["status"]
+                  console.log(`✅ FINAL OVERRIDE: ${contact.email} is DUE NEXT - step ${nextStep.step} due at ${nextDueDate.toLocaleString('en-US', { timeZone: timezone })}`)
+                }
+              }
+            }
           }
           
           // FINAL DEBUG: Log the final nextEmailIn value that will be displayed
