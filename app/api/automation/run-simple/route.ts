@@ -152,20 +152,12 @@ export async function POST(request: NextRequest) {
             sequence_step: nextStep
           }
           
-          // Update sequence_schedule status and get next_email_due
+          // Get next_email_due from sequence_schedule 
           if (contact.sequence_schedule) {
             const schedule = contact.sequence_schedule
             
-            // Update status of current step to 'sent'
-            const updatedSteps = schedule.steps.map(step => {
-              if (step.step === (contact.sequence_step || 0) + 1) {
-                return { ...step, status: 'sent', sent_at: new Date().toISOString() }
-              }
-              return step
-            })
-            
-            // Find next step for next_email_due
-            const nextStepInSchedule = updatedSteps.find(step => step.step === nextStep + 1)
+            // Find next step for next_email_due (after increment)
+            const nextStepInSchedule = schedule.steps.find(step => step.step === nextStep + 1)
             
             if (nextStepInSchedule) {
               updateData.next_email_due = nextStepInSchedule.scheduled_date
@@ -176,12 +168,9 @@ export async function POST(request: NextRequest) {
               updateData.next_email_due = null
               console.log(`✅ ${contact.email} completed all sequences`)
             }
-            
-            // Update the schedule with new status
-            updateData.sequence_schedule = { ...schedule, steps: updatedSteps }
           } else {
             // Fallback for contacts without schedule (shouldn't happen)
-            console.log(`⚠️ ${contact.email} has no sequence_schedule`)
+            console.log(`⚠️ ${contact.email} has no sequence_schedule - keeping old next_email_due`)
           }
           
           // Update the contact
