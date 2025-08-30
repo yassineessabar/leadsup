@@ -27,7 +27,7 @@ jobs:
             -H "Content-Type: application/json" \
             -H "X-SendGrid-Key: ${{ secrets.SENDGRID_API_KEY }}" \
             -d '{"testMode": false}' \
-            "${{ secrets.APP_URL }}/api/automation/run")
+            "${{ secrets.APP_URL }}/api/automation/run-simple")
           
           # Extract HTTP status and body
           http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
