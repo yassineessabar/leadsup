@@ -38,12 +38,16 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('🔍 Campaign settings API called with ID:', params.id)
+    
     const userId = await getUserIdFromSession()
     if (!userId) {
+      console.log('❌ User not authenticated')
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
     }
 
     const campaignId = params.id
+    console.log('🔍 Looking for campaign:', campaignId, 'for user:', userId)
 
     // First verify campaign belongs to user
     const { data: campaign, error: campaignError } = await supabaseServer
@@ -54,11 +58,14 @@ export async function GET(
       .single()
 
     if (campaignError || !campaign) {
+      console.log('❌ Campaign not found:', { campaignError, campaign })
       return NextResponse.json({ 
         success: false, 
         error: 'Campaign not found' 
       }, { status: 404 })
     }
+    
+    console.log('✅ Campaign found:', campaign)
 
     // Fetch settings from campaigns table (settings column)
     const { data: campaignData, error: settingsError } = await supabaseServer

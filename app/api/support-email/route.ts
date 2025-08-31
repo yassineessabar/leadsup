@@ -68,25 +68,8 @@ export async function POST(request: NextRequest) {
     
     sgMail.setApiKey(sendGridApiKey)
 
-    // Store in database (using same table as feedback)
-    const { error: dbError } = await supabaseServer
-      .from('feedback')
-      .insert({
-        user_id: userId,
-        name: name.trim(),
-        email: email.trim(),
-        subject: subject.trim(),
-        message: message.trim(),
-        status: 'pending'
-      })
-
-    if (dbError) {
-      console.error('Error saving support request:', dbError)
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Failed to save support request' 
-      }, { status: 500 })
-    }
+    // Skip database storage for now - just send email directly
+    console.log('📧 Sending support request directly via email for user:', userId)
 
     // Send email to support team
     const emailContent = {
