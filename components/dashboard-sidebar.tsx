@@ -1,5 +1,5 @@
 "use client"
-import { BarChart3, MessageSquare, User, Plug, Mail, Link, LogOut, Send, Crown, Sparkles, Settings, Users, Menu, Palette, BarChart2, Lock, Zap, Inbox, UserCheck, Plus, ChevronRight, ChevronDown, SidebarOpen, SidebarClose, Globe, FileText } from "lucide-react"
+import { BarChart3, MessageSquare, User, Plug, Mail, Link, LogOut, Send, Crown, Sparkles, Settings, Users, Menu, Palette, BarChart2, Lock, Zap, Inbox, UserCheck, Plus, ChevronRight, ChevronDown, SidebarOpen, SidebarClose, Globe, FileText, Heart } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { useCompanyLogo } from "@/hooks/useCompanyLogo"
 import { UpgradeProDialog } from "@/components/upgrade-pro-dialog"
+import { FeedbackModal } from "@/components/feedback-modal"
 import { useState, useEffect, useCallback } from "react"
 import { useI18n } from "@/hooks/use-i18n"
 
@@ -50,6 +51,7 @@ export function DashboardSidebar({
   const [campaignsExpanded, setCampaignsExpanded] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
   const [newLeadsCount, setNewLeadsCount] = useState(0)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
 
   const fetchUserData = useCallback(async (force = false) => {
     // Prevent duplicate API calls within 30 seconds unless forced
@@ -232,6 +234,7 @@ export function DashboardSidebar({
   const handleUpgrade = () => {
     onTabChange?.("upgrade")
   }
+
 
   // New design for desktop, keeping mobile responsive
   if (!isMobile) {
@@ -451,6 +454,22 @@ export function DashboardSidebar({
           <Button
             variant="outline"
             className={cn(
+              "w-full rounded-2xl border-gray-200/50 bg-gray-50/50 h-12 text-base text-gray-600 hover:bg-gray-100/60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 transition-all duration-300 font-medium",
+              isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-4 py-3"
+            )}
+            onClick={(e) => {
+              e.preventDefault()
+              setShowFeedbackModal(true)
+            }}
+            title={isCollapsed ? "Leave Feedback" : undefined}
+          >
+            <Heart className="h-4 w-4" />
+            {!isCollapsed && "Leave Feedback"}
+          </Button>
+
+          <Button
+            variant="outline"
+            className={cn(
               "w-full rounded-2xl border-gray-200/50 bg-gray-50/50 h-12 text-base text-gray-700 hover:bg-gray-100/60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-all duration-300 font-medium",
               isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-4 py-3"
             )}
@@ -464,18 +483,28 @@ export function DashboardSidebar({
             {!isCollapsed && <span className="text-base truncate font-medium">@{companyName.toLowerCase().replace(/\s+/g, '')}</span>}
           </Button>
         </div>
+
+        <FeedbackModal 
+          isOpen={showFeedbackModal}
+          onClose={() => {
+            console.log("Closing feedback modal")
+            setShowFeedbackModal(false)
+          }}
+          userEmail={userInfo.email}
+        />
       </aside>
     )
   }
 
   // Mobile sidebar remains the same
   return (
-    <div
-      className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-900 border-r border-gray-100/50 dark:border-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col md:hidden",
-        isOpen ? "translate-x-0" : "-translate-x-full",
-      )}
-    >
+    <>
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-900 border-r border-gray-100/50 dark:border-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col md:hidden",
+          isOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
       <div className="p-6 border-b border-gray-100/50">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
@@ -651,6 +680,18 @@ export function DashboardSidebar({
             />
           </Button>
         )}
+        
+        <Button
+          variant="outline"
+          className="w-full border-gray-200/50 bg-gray-50/50 h-12 text-base text-gray-600 hover:bg-gray-100/60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 transition-all duration-300 font-medium rounded-2xl px-4 py-3"
+          onClick={(e) => {
+            e.preventDefault()
+            setShowFeedbackModal(true)
+          }}
+        >
+          <Heart className="w-5 h-5 mr-3" />
+          <span className="truncate">Leave Feedback</span>
+        </Button>
       </div>
 
       <div className="p-6 border-t border-gray-100/50">
@@ -665,7 +706,17 @@ export function DashboardSidebar({
           </Avatar>
           <span className="truncate">@{companyName.toLowerCase().replace(/\s+/g, '')}</span>
         </Button>
+        </div>
       </div>
-    </div>
+
+      <FeedbackModal 
+        isOpen={showFeedbackModal}
+        onClose={() => {
+          console.log("Closing feedback modal")
+          setShowFeedbackModal(false)
+        }}
+        userEmail={userInfo.email}
+      />
+    </>
   )
 }

@@ -700,6 +700,9 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           )
         )
         
+        // Also update the selected campaign
+        setSelectedCampaign(prev => prev && prev.id === campaignId ? { ...prev, status: newStatus as "Draft" | "Active" | "Paused" | "Completed" | "Warming" } : prev)
+        
         console.log(`✅ Successfully updated campaign ${campaignId} to ${newStatus}`)
         
         // Don't show toast here - let the calling function handle it
@@ -721,10 +724,24 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     const newStatus = currentStatus === "Active" ? "Paused" : "Active"
     const action = newStatus === "Active" ? "activate" : "pause"
     
-    // No popup needed - handle warmup automatically based on health scores
-    
-    // Proceed with status change
-    await proceedWithStatusChange(campaignId, newStatus, campaignName)
+    try {
+      // Proceed with status change
+      await proceedWithStatusChange(campaignId, newStatus, campaignName)
+      
+      // Show success feedback
+      toast({
+        title: "Campaign Updated",
+        description: `Campaign "${campaignName}" has been ${action}d successfully`,
+        variant: "default"
+      })
+    } catch (error) {
+      console.error(`❌ Error in handleCampaignStatusChange:`, error)
+      toast({
+        title: "Update Failed",
+        description: `Failed to ${action} campaign "${campaignName}"`,
+        variant: "destructive"
+      })
+    }
   }
 
   const handleAdvancedCampaignComplete = async (campaignData: any) => {
