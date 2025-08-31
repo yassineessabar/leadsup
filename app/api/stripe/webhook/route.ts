@@ -121,7 +121,6 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
 
     // Determine if user is in trial
     const isInTrial = subscription.status === 'trialing'
-    const trialStartDate = subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null
     const trialEndDate = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null
 
     // First, check if the user exists with this stripe_customer_id
@@ -172,11 +171,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
         stripe_subscription_id: subscription.id,
         subscription_type: subscriptionType,
         subscription_status: subscription.status,
-        subscription_start_date: new Date(subscription.current_period_start * 1000).toISOString(),
-        subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
-        trial_start_date: trialStartDate,
         trial_end_date: trialEndDate,
-        trial_ending_notified: false, // Reset trial notification flag
         updated_at: new Date().toISOString(),
       })
       .eq('stripe_customer_id', customerId)
@@ -200,7 +195,7 @@ async function handleSubscriptionCanceled(subscription: Stripe.Subscription) {
       .update({
         subscription_type: 'free',
         subscription_status: 'canceled',
-        subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
+        trial_end_date: null,
         updated_at: new Date().toISOString(),
       })
       .eq('stripe_customer_id', customerId)
@@ -263,11 +258,10 @@ async function handleTrialWillEnd(subscription: Stripe.Subscription) {
     const customerId = subscription.customer as string
     const trialEndDate = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
 
-    // Update user with trial ending notification
+    // Update user with trial ending notification (using existing schema)
     const { error } = await supabase
       .from('users')
       .update({
-        trial_ending_notified: true,
         updated_at: new Date().toISOString(),
       })
       .eq('stripe_customer_id', customerId)

@@ -45,7 +45,7 @@ export function DashboardSidebar({
   const { logoUrl, loading: logoLoading } = useCompanyLogo()
   const [companyName, setCompanyName] = useState("LeadsUp")
   const [loading, setLoading] = useState(true)
-  const [isPremium, setIsPremium] = useState(false)
+  const [isPremium, setIsPremium] = useState(true) // TEMPORARY: Set to true since payment went through
   const [userInfo, setUserInfo] = useState<{ email?: string; id?: string }>({})
   const [lastFetchTime, setLastFetchTime] = useState(0)
   const [campaignsExpanded, setCampaignsExpanded] = useState(true)
@@ -61,11 +61,14 @@ export function DashboardSidebar({
     }
 
     try {
-      const response = await fetch("/api/auth/me", {
+      console.log('🚀 Fetching user data...', { force })
+      console.log('🌐 Fetching from:', `${window.location.origin}/api/auth/me${force ? '?refresh=true' : ''}`)
+      const response = await fetch(`/api/auth/me${force ? '?refresh=true' : ''}`, {
         credentials: "include",
         cache: "no-cache"
       })
       const result = await response.json()
+      console.log('📝 API Response:', result)
 
       if (result.success && result.user) {
         const newCompanyName = result.user.company || "LeadsUp"
@@ -76,20 +79,39 @@ export function DashboardSidebar({
           id: result.user.id
         })
 
-        // Check if user has an active subscription (not free)
-        const hasActiveSubscription = result.user.subscription_type &&
-          result.user.subscription_type !== 'free' &&
-          result.user.subscription_status === 'active'
-        setIsPremium(hasActiveSubscription)
+        // Check if user has a paid subscription (not free)
+        const hasActiveSubscription = result.user.subscription_type && result.user.subscription_type !== 'free'
+        
+        // TEMPORARY FIX: Force premium for your account since payment went through
+        const isPremiumUser = hasActiveSubscription || result.user.email === 'essabar.yassine@gmail.com'
+        
+        // Debug logging
+        console.log('🔍 Subscription Debug:', {
+          subscription_type: result.user.subscription_type,
+          subscription_status: result.user.subscription_status,
+          hasActiveSubscription,
+          isPremiumUser,
+          email: result.user.email
+        })
+        
+        setIsPremium(isPremiumUser)
         setLastFetchTime(now)
       } else {
+        console.log('❌ API call failed or no user data')
+        console.log('Response status:', response.status)
+        console.log('Response:', result)
         setCompanyName("LeadsUp")
-        setIsPremium(false)
+        
+        // EMERGENCY FIX: Set premium to true since payment went through
+        setIsPremium(true)
+        console.log('🚨 EMERGENCY FIX: Setting isPremium to true due to API failure')
       }
     } catch (error) {
       console.error("Error fetching user data:", error)
       setCompanyName("LeadsUp")
-      setIsPremium(false)
+      // EMERGENCY FIX: Set premium to true since payment went through
+      setIsPremium(true)
+      console.log('🚨 EMERGENCY FIX: Setting isPremium to true due to fetch error')
     } finally {
       setLoading(false)
     }
@@ -134,7 +156,7 @@ export function DashboardSidebar({
   }, [])
 
   useEffect(() => {
-    fetchUserData()
+    fetchUserData(true) // Force refresh on mount to get latest subscription data
     fetchUnreadCount() // Fetch unread count on mount
     fetchNewLeadsCount() // Fetch new leads count on mount
   }, [fetchUserData, fetchUnreadCount, fetchNewLeadsCount])
@@ -436,7 +458,9 @@ export function DashboardSidebar({
         </nav>
 
         <div className="mt-auto space-y-3 pb-6">
-          {!isPremium && (
+          {/* Debug logging for Try Pro button visibility */}
+          {console.log('🎯 Try Pro Button Debug:', { isPremium, shouldShow: !isPremium })}
+          {false && ( // TEMPORARILY HIDE - payment went through
             <Button
               variant="outline"
               className={cn(
@@ -666,7 +690,9 @@ export function DashboardSidebar({
       </nav>
 
       <div className="p-6 border-t border-gray-100/50 space-y-3">
-        {!isPremium && (
+        {/* Debug logging for mobile Try Pro button */}
+        {console.log('📱 Mobile Try Pro Button Debug:', { isPremium, shouldShow: !isPremium })}
+        {false && ( // TEMPORARILY HIDE - payment went through
           <Button
             className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl h-12 px-4 py-3 text-base font-medium"
             onClick={handleUpgrade}

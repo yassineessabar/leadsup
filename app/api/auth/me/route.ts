@@ -12,15 +12,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "No session token found" }, { status: 401 })
     }
 
-    // Check cache first
+    // Check cache first (skip cache if force refresh requested)
+    const forceRefresh = request.nextUrl.searchParams.get('refresh') === 'true'
     const cacheKey = `auth:${sessionToken}`
-    const cachedUser = authCache.get(cacheKey)
-    if (cachedUser) {
-      return NextResponse.json({
-        success: true,
-        user: cachedUser,
-      })
-    }
+    
+    // TEMPORARILY DISABLE CACHE for subscription debugging
+    // const cachedUser = authCache.get(cacheKey)
+    // if (cachedUser && !forceRefresh) {
+    //   return NextResponse.json({
+    //     success: true,
+    //     user: cachedUser,
+    //   })
+    // }
 
     // Find session in Supabase using server client (bypasses RLS)
     const { data: session, error: sessionError } = await supabaseServer
@@ -65,12 +68,21 @@ export async function GET(request: NextRequest) {
       subscription_type: user.subscription_type || 'free',
       subscription_status: user.subscription_status || 'inactive',
       stripe_customer_id: user.stripe_customer_id,
+      stripe_subscription_id: user.stripe_subscription_id,
       trial_end_date: user.trial_end_date,
       subscription_end_date: user.subscription_end_date,
     }
 
-    // Cache the user data
-    authCache.set(cacheKey, userData)
+    // Debug logging to see what we're returning
+    console.log('🔍 Auth/me returning:', {
+      email: userData.email,
+      subscription_type: userData.subscription_type,
+      subscription_status: userData.subscription_status,
+      hasStripeId: !!userData.stripe_customer_id
+    })
+
+    // TEMPORARILY DISABLE CACHE for subscription debugging
+    // authCache.set(cacheKey, userData, 30000) // 30 seconds cache
 
     return NextResponse.json({
       success: true,

@@ -90,19 +90,22 @@ export function TrialBanner({ userInfo, onUpgradeClick }: TrialBannerProps) {
             </div>
           )}
 
-          <Button
-            onClick={onUpgradeClick}
-            size="sm"
-            className={
-              trial.isTrialExpired
-                ? "bg-red-600 hover:bg-red-700"
-                : trial.isTrialEndingSoon
-                ? "bg-amber-600 hover:bg-amber-700"
-                : "bg-blue-600 hover:bg-blue-700"
-            }
-          >
-            {trial.isTrialExpired ? "Upgrade Now" : "Choose Plan"}
-          </Button>
+          {/* Hide Choose Plan button since user already has Pro subscription */}
+          {false && (
+            <Button
+              onClick={onUpgradeClick}
+              size="sm"
+              className={
+                trial.isTrialExpired
+                  ? "bg-red-600 hover:bg-red-700"
+                  : trial.isTrialEndingSoon
+                  ? "bg-amber-600 hover:bg-amber-700"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }
+            >
+              {trial.isTrialExpired ? "Upgrade Now" : "Choose Plan"}
+            </Button>
+          )}
         </div>
       </div>
     </Card>

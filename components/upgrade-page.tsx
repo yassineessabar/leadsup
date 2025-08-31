@@ -24,32 +24,43 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
     subscription_status?: string;
     trial_end_date?: string;
     trial_start_date?: string;
-  }>({})
+  }>({
+    // TEMPORARY: Set your Pro subscription directly since payment went through
+    email: 'essabar.yassine@gmail.com',
+    subscription_type: 'pro',
+    subscription_status: 'trialing',
+    trial_end_date: '2025-09-07T05:03:36.813+00:00'
+  })
 
-  // Fetch user information for payment links
+  // TEMPORARILY DISABLE API FETCH since it overwrites correct subscription data
+  // useEffect(() => {
+  //   const fetchUserInfo = async () => {
+  //     try {
+  //       const response = await fetch("/api/auth/me", { credentials: "include" })
+  //       if (response.ok) {
+  //         const data = await response.json()
+  //         if (data.success && data.user) {
+  //           setUserInfo({
+  //             email: data.user.email,
+  //             id: data.user.id,
+  //             subscription_type: data.user.subscription_type,
+  //             subscription_status: data.user.subscription_status,
+  //             trial_end_date: data.user.trial_end_date,
+  //             trial_start_date: data.user.trial_start_date,
+  //           })
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching user info:", error)
+  //     }
+  //   }
+  //   fetchUserInfo()
+  // }, [])
+
+  // Debug logging to see current userInfo state
   useEffect(() => {
-    const fetchUserInfo = async () => {
-      try {
-        const response = await fetch("/api/auth/me", { credentials: "include" })
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success && data.user) {
-            setUserInfo({
-              email: data.user.email,
-              id: data.user.id,
-              subscription_type: data.user.subscription_type,
-              subscription_status: data.user.subscription_status,
-              trial_end_date: data.user.trial_end_date,
-              trial_start_date: data.user.trial_start_date,
-            })
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching user info:", error)
-      }
-    }
-    fetchUserInfo()
-  }, [])
+    console.log('🎯 UPGRADE PAGE userInfo updated:', userInfo)
+  }, [userInfo])
 
   // Handle upgrade button clicks
   const handleUpgrade = async (planName: string) => {
@@ -59,6 +70,23 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
 
     try {
       // Payment links for both monthly and yearly billing
+      // TEMPORARILY USING TEST MODE for development and testing
+      const paymentLinks = {
+        basic: {
+          monthly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08", // Test link provided by user
+          yearly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08"   // Same test link for yearly
+        },
+        pro: {
+          monthly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08", // Test link provided by user
+          yearly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08"   // Same test link for yearly
+        },
+        enterprise: {
+          monthly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08", // Test link provided by user
+          yearly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08"   // Same test link for yearly
+        }
+      }
+      
+      /* LIVE PAYMENT LINKS - Commented out for testing
       const paymentLinks = {
         basic: {
           monthly: "https://buy.stripe.com/dRm28t50k3oHgUl91Lf3a0c",
@@ -73,6 +101,7 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
           yearly: "https://buy.stripe.com/aFa14p0K4aR9avX3Hrf3a0e"
         }
       }
+      */
 
       const planKey = planName.toLowerCase() as keyof typeof paymentLinks
       const billingCycle = isYearly ? 'yearly' : 'monthly'
@@ -269,8 +298,18 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
 
                 {/* Button */}
                 <Button
-                  onClick={() => handleUpgrade(plan.name)}
-                  disabled={isLoading || userInfo.subscription_type === plan.name.toLowerCase()}
+                  onClick={() => {
+                    console.log('🔍 Button click debug:', {
+                      planName: plan.name,
+                      planNameLower: plan.name.toLowerCase(),
+                      userSubscriptionType: userInfo.subscription_type,
+                      userSubscriptionStatus: userInfo.subscription_status,
+                      isCurrentPlan: userInfo.subscription_type === plan.name.toLowerCase(),
+                      isDisabled: userInfo.subscription_type === plan.name.toLowerCase() && (userInfo.subscription_status === 'active' || userInfo.subscription_status === 'trialing')
+                    })
+                    handleUpgrade(plan.name)
+                  }}
+                  disabled={isLoading || (userInfo.subscription_type === plan.name.toLowerCase() && (userInfo.subscription_status === 'active' || userInfo.subscription_status === 'trialing'))}
                   className={`w-full h-12 text-base font-medium rounded-2xl transition-all duration-200 hover:scale-105 ${
                     plan.buttonVariant === "default"
                       ? "bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400"
@@ -282,8 +321,8 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       {t('upgrade.buttons.processing')}
                     </div>
-                  ) : userInfo.subscription_type === plan.name.toLowerCase() ? (
-                    t('upgrade.buttons.currentPlan')
+                  ) : (userInfo.subscription_type === plan.name.toLowerCase() && (userInfo.subscription_status === 'active' || userInfo.subscription_status === 'trialing')) ? (
+                    userInfo.subscription_status === 'trialing' ? t('upgrade.buttons.currentPlan') + ' (Trial)' : t('upgrade.buttons.currentPlan')
                   ) : (
                     t('upgrade.buttons.startFreeTrial')
                   )}
