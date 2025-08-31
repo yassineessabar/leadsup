@@ -1672,6 +1672,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }, [campaign?.company_name, campaign?.website, emailSignature, companyName, companyWebsite])
 
+  // Update signature editor when emailSignature state changes
+  useEffect(() => {
+    if (emailSignature && signatureEditorRef.current) {
+      // Only update if the editor content is different from the state
+      if (signatureEditorRef.current.innerHTML !== emailSignature) {
+        signatureEditorRef.current.innerHTML = emailSignature
+      }
+    }
+  }, [emailSignature])
+
   // Lazy load sequences when needed
   const loadSequences = useCallback(async () => {
     console.log('🔍 loadSequences called, campaign.id:', campaign?.id)

@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   MoreHorizontal,
   ArrowRight,
+  RefreshCw,
   Sparkles,
   Eye,
   MousePointer,
@@ -378,6 +379,19 @@ export function ComprehensiveDashboard() {
               </div>
               
               <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setIsRefreshing(true)
+                    fetchDashboardStats()
+                    fetchSendGridMetrics(true)
+                  }}
+                  disabled={isRefreshing}
+                  variant="outline"
+                  className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-xl"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                </Button>
                 <Button 
                   className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-5 py-2.5 font-medium transition-all duration-300 rounded-xl"
                   onClick={() => {
