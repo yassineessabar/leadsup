@@ -18,7 +18,13 @@ export async function POST(request: NextRequest) {
     const cookieStore = await cookies()
     const sessionToken = cookieStore.get("session")?.value
 
+    console.log('🔐 Portal Debug:', {
+      hasSessionToken: !!sessionToken,
+      sessionTokenPrefix: sessionToken?.substring(0, 10) + '...'
+    })
+
     if (!sessionToken) {
+      console.log('❌ No session token found')
       return NextResponse.json({ success: false, error: "No session token found" }, { status: 401 })
     }
 
@@ -29,7 +35,14 @@ export async function POST(request: NextRequest) {
       .eq("session_token", sessionToken)
       .single()
 
+    console.log('👤 Session Debug:', {
+      sessionError: sessionError?.message,
+      hasSession: !!session,
+      userId: session?.user_id
+    })
+
     if (sessionError || !session) {
+      console.log('❌ Invalid session:', sessionError?.message)
       return NextResponse.json({ success: false, error: "Invalid session" }, { status: 401 })
     }
 

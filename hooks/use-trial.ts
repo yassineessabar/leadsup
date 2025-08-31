@@ -33,7 +33,7 @@ export function useTrial(userInfo: any): TrialInfo {
     const trialEndDate = userInfo.trial_end_date ? new Date(userInfo.trial_end_date) : null
     const subscriptionStatus = userInfo.subscription_status
 
-    if (trialEndDate && subscriptionStatus === 'trialing') {
+    if (trialEndDate && subscriptionStatus === 'trialing' && userInfo.subscription_type !== 'free') {
       const timeDiff = trialEndDate.getTime() - now.getTime()
       const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24))
 

@@ -24,38 +24,31 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
     subscription_status?: string;
     trial_end_date?: string;
     trial_start_date?: string;
-  }>({
-    // TEMPORARY: Set your Pro subscription directly since payment went through
-    email: 'essabar.yassine@gmail.com',
-    subscription_type: 'pro',
-    subscription_status: 'trialing',
-    trial_end_date: '2025-09-07T05:03:36.813+00:00'
-  })
+  }>({})
 
-  // TEMPORARILY DISABLE API FETCH since it overwrites correct subscription data
-  // useEffect(() => {
-  //   const fetchUserInfo = async () => {
-  //     try {
-  //       const response = await fetch("/api/auth/me", { credentials: "include" })
-  //       if (response.ok) {
-  //         const data = await response.json()
-  //         if (data.success && data.user) {
-  //           setUserInfo({
-  //             email: data.user.email,
-  //             id: data.user.id,
-  //             subscription_type: data.user.subscription_type,
-  //             subscription_status: data.user.subscription_status,
-  //             trial_end_date: data.user.trial_end_date,
-  //             trial_start_date: data.user.trial_start_date,
-  //           })
-  //         }
-  //       }
-  //     } catch (error) {
-  //       console.error("Error fetching user info:", error)
-  //     }
-  //   }
-  //   fetchUserInfo()
-  // }, [])
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await fetch("/api/auth/me", { credentials: "include" })
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.user) {
+            setUserInfo({
+              email: data.user.email,
+              id: data.user.id,
+              subscription_type: data.user.subscription_type,
+              subscription_status: data.user.subscription_status,
+              trial_end_date: data.user.trial_end_date,
+              trial_start_date: data.user.trial_start_date,
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user info:", error)
+      }
+    }
+    fetchUserInfo()
+  }, [])
 
   // Debug logging to see current userInfo state
   useEffect(() => {

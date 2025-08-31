@@ -27,36 +27,25 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
   const fetchBillingData = useCallback(async () => {
     setLoading(true)
     try {
-      // TEMPORARY FIX: Set your Pro subscription data directly
-      const mockSubscription = {
-        id: 'sub_test_' + Date.now(),
-        plan_name: 'Pro',
-        status: 'trialing',
-        price: 79,
-        currency: '$',
-        end_date: '2025-09-07T05:03:36.813+00:00',
-        features: [
-          'Unlimited email campaigns',
-          'Advanced analytics',
-          'Priority support',
-          'Custom templates',
-          'A/B testing',
-          'Advanced automation'
-        ]
+      // Fetch billing data directly from Stripe via API
+      const response = await fetch("/api/billing/stripe-data", {
+        method: "GET",
+        credentials: "include"
+      })
+      
+      const result = await response.json()
+      
+      console.log('🔍 Stripe billing data:', result)
+      
+      if (result.success && result.subscription) {
+        setSubscription(result.subscription)
+        setInvoices(result.invoices || [])
+      } else {
+        console.log('❌ No Stripe subscription data found:', result.error)
+        console.log('❌ Full API response:', result)
+        setSubscription(null)
+        setInvoices([])
       }
-      
-      setSubscription(mockSubscription)
-      setInvoices([]) // No invoices during trial
-      console.log('🚨 BILLING PAGE: Using hardcoded Pro subscription data')
-      
-      // Original API calls commented out since they don't work
-      // const [subscriptionRes, invoicesRes] = await Promise.all([
-      //   fetch("/api/billing/subscription"),
-      //   fetch("/api/billing/invoices"),
-      // ])
-      // const [subscriptionData, invoicesData] = await Promise.all([subscriptionRes.json(), invoicesRes.json()])
-      // if (subscriptionData.success) setSubscription(subscriptionData.data)
-      // if (invoicesData.success) setInvoices(invoicesData.data)
     } catch (error) {
       console.error("Error fetching billing data:", error)
     } finally {
@@ -139,9 +128,8 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
     return null
   }
 
-  // TEMPORARY FIX: Force Pro subscription recognition
-  const isProOrEnterprise = true // user?.subscription_type === 'pro' || user?.subscription_type === 'enterprise' 
-  const hasActiveSubscription = subscription && (subscription.status === 'active' || subscription.status === 'trialing')
+  const isProOrEnterprise = user?.subscription_type === 'pro' || user?.subscription_type === 'enterprise' 
+  const hasActiveSubscription = subscription && (subscription.status === 'active' || subscription.status === 'trialing') && user?.subscription_type !== 'free'
   
   // Debug logging
   console.log('🏦 BILLING PAGE Debug:', {

@@ -45,7 +45,7 @@ export function DashboardSidebar({
   const { logoUrl, loading: logoLoading } = useCompanyLogo()
   const [companyName, setCompanyName] = useState("LeadsUp")
   const [loading, setLoading] = useState(true)
-  const [isPremium, setIsPremium] = useState(true) // TEMPORARY: Set to true since payment went through
+  const [isPremium, setIsPremium] = useState(false)
   const [userInfo, setUserInfo] = useState<{ email?: string; id?: string }>({})
   const [lastFetchTime, setLastFetchTime] = useState(0)
   const [campaignsExpanded, setCampaignsExpanded] = useState(true)
@@ -82,8 +82,7 @@ export function DashboardSidebar({
         // Check if user has a paid subscription (not free)
         const hasActiveSubscription = result.user.subscription_type && result.user.subscription_type !== 'free'
         
-        // TEMPORARY FIX: Force premium for your account since payment went through
-        const isPremiumUser = hasActiveSubscription || result.user.email === 'essabar.yassine@gmail.com'
+        const isPremiumUser = hasActiveSubscription
         
         // Debug logging
         console.log('🔍 Subscription Debug:', {
@@ -102,16 +101,12 @@ export function DashboardSidebar({
         console.log('Response:', result)
         setCompanyName("LeadsUp")
         
-        // EMERGENCY FIX: Set premium to true since payment went through
-        setIsPremium(true)
-        console.log('🚨 EMERGENCY FIX: Setting isPremium to true due to API failure')
+        setIsPremium(false)
       }
     } catch (error) {
       console.error("Error fetching user data:", error)
       setCompanyName("LeadsUp")
-      // EMERGENCY FIX: Set premium to true since payment went through
-      setIsPremium(true)
-      console.log('🚨 EMERGENCY FIX: Setting isPremium to true due to fetch error')
+      setIsPremium(false)
     } finally {
       setLoading(false)
     }
@@ -460,7 +455,7 @@ export function DashboardSidebar({
         <div className="mt-auto space-y-3 pb-6">
           {/* Debug logging for Try Pro button visibility */}
           {console.log('🎯 Try Pro Button Debug:', { isPremium, shouldShow: !isPremium })}
-          {false && ( // TEMPORARILY HIDE - payment went through
+          {!isPremium && (
             <Button
               variant="outline"
               className={cn(
@@ -692,7 +687,7 @@ export function DashboardSidebar({
       <div className="p-6 border-t border-gray-100/50 space-y-3">
         {/* Debug logging for mobile Try Pro button */}
         {console.log('📱 Mobile Try Pro Button Debug:', { isPremium, shouldShow: !isPremium })}
-        {false && ( // TEMPORARILY HIDE - payment went through
+        {!isPremium && (
           <Button
             className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl h-12 px-4 py-3 text-base font-medium"
             onClick={handleUpgrade}

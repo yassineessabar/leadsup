@@ -75,7 +75,12 @@ export async function POST(request: NextRequest) {
         await handleTrialWillEnd(event.data.object as Stripe.Subscription)
         break
 
+      case 'billing_portal.session.created':
+        await handleBillingPortalSessionCreated(event.data.object as Stripe.BillingPortal.Session)
+        break
+
       default:
+        console.log(`🔔 Unhandled event type: ${event.type}`)
         break
     }
 
@@ -288,6 +293,25 @@ async function handleTrialWillEnd(subscription: Stripe.Subscription) {
 
   } catch (error) {
     console.error('Error:', error)
+  }
+}
+
+async function handleBillingPortalSessionCreated(session: Stripe.BillingPortal.Session) {
+  try {
+    const customerId = session.customer as string
+    
+    console.log('🏦 Billing portal session created:', {
+      id: session.id,
+      customer: customerId,
+      url: session.url,
+      return_url: session.return_url
+    })
+
+    // You can log this event or track portal usage
+    // For now, just log it for debugging
+    
+  } catch (error) {
+    console.error('Error handling billing portal session:', error)
   }
 }
 
