@@ -262,6 +262,7 @@
     "viewWarming": "View Warming",
     "delete": "Delete",
     "responseRate": "Response Rate",
+    "start": "Start Campaign",
     "conversionRate": "Conversion Rate", 
     "totalContacts": "{{count}} contacts",
     "loading": "Loading campaigns...",
@@ -295,7 +296,9 @@
         "startScraping": "Start Scraping",
         "fillRequiredFields": "Please fill in all required fields",
         "confirmationTitle": "Start Scraping Confirmation",
-        "confirmStart": "Start scraping?"
+        "confirmStart": "Start scraping?",
+        "startingScraping": "Starting scraping process...",
+        "startingProcess": "Starting process, please wait..."
       },
       "import": {
         "title": "Import Contacts from File",

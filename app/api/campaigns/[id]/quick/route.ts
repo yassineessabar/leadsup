@@ -69,24 +69,33 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Campaign not found" }, { status: 404 })
     }
 
-    // Get basic counts for tabs (using count instead of full selects)
+    // Get basic counts for tabs (using count instead of full selects) with timeout
     const [
       { count: sequenceCount },
       { count: senderCount },
       { count: contactCount }
-    ] = await Promise.all([
-      supabaseServer
-        .from("campaign_sequences")
-        .select("*", { count: "exact", head: true })
-        .eq("campaign_id", campaignId),
-      supabaseServer
-        .from("campaign_senders")
-        .select("*", { count: "exact", head: true })
-        .eq("campaign_id", campaignId),
-      supabaseServer
-        .from("contacts")
-        .select("*", { count: "exact", head: true })
-        .eq("campaign_id", campaignId)
+    ] = await Promise.race([
+      Promise.all([
+        supabaseServer
+          .from("campaign_sequences")
+          .select("*", { count: "exact", head: true })
+          .eq("campaign_id", campaignId),
+        supabaseServer
+          .from("campaign_senders")
+          .select("*", { count: "exact", head: true })
+          .eq("campaign_id", campaignId),
+        supabaseServer
+          .from("contacts")
+          .select("*", { count: "exact", head: true })
+          .eq("campaign_id", campaignId)
+      ]),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 2000)
+      )
+    ]).catch(() => [
+      { count: 0 },
+      { count: 0 }, 
+      { count: 0 }
     ])
 
     const quickData = {

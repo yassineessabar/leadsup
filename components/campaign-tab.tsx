@@ -456,14 +456,21 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       console.log('🔄 Current view set to list')
     }
 
+    const handleCampaignsChanged = () => {
+      console.log('🔄 Campaigns changed event received, refreshing list...')
+      fetchCampaigns()
+    }
+
     window.addEventListener('create-campaign', handleCreateCampaign)
     window.addEventListener('open-campaign-popup', handleOpenCampaignPopup)
     window.addEventListener('reset-to-campaign-list', handleResetToCampaignList)
+    window.addEventListener('campaigns-changed', handleCampaignsChanged)
     
     return () => {
       window.removeEventListener('create-campaign', handleCreateCampaign)
       window.removeEventListener('open-campaign-popup', handleOpenCampaignPopup)
       window.removeEventListener('reset-to-campaign-list', handleResetToCampaignList)
+      window.removeEventListener('campaigns-changed', handleCampaignsChanged)
     }
   }, [])
 
@@ -1013,7 +1020,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           window.history.pushState({}, '', url.toString())
         }}
         onDelete={(campaignId) => {
-          // Remove from local state and go back to list view
+          // Remove from local state and redirect to dashboard
           setCampaigns(campaigns.filter(campaign => campaign.id !== campaignId))
           setCurrentView("list")
           setSelectedCampaign(null)
@@ -1021,6 +1028,11 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
           // Notify sidebar that campaigns have changed
           const event = new CustomEvent('campaigns-changed')
           window.dispatchEvent(event)
+          
+          // Redirect to dashboard
+          setTimeout(() => {
+            window.location.href = '/?tab=dashboard'
+          }, 100)
         }}
         onStatusUpdate={async (campaignId, newStatus) => {
           try {

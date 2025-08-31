@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -75,89 +75,147 @@ export function ComprehensiveDashboard() {
   // SendGrid metrics state
   const [sendGridMetrics, setSendGridMetrics] = useState<SendGridMetrics | null>(null)
   const [metricsLoading, setMetricsLoading] = useState(true)
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-  useEffect(() => {
-    fetchDashboardStats()
-    fetchSendGridMetrics()
-  }, [])
-
-  const fetchSendGridMetrics = async () => {
-    try {
-      setMetricsLoading(true)
-      
-      
-      // First, check if user has any real emails in their inbox
-      const inboxResponse = await fetch('/api/inbox/stats', {
-        credentials: 'include'
-      })
-      
-      if (!inboxResponse.ok) {
-        setSendGridMetrics(null)
-        setMetricsLoading(false)
-        return
+  const fetchSendGridMetrics = useCallback(async (forceRefresh = false) => {
+    // Aggressive caching strategy for dashboard performance
+    const MEMORY_CACHE_DURATION = 10 * 60 * 1000 // 10 minutes in memory
+    const STORAGE_CACHE_DURATION = 2 * 60 * 60 * 1000 // 2 hours in localStorage
+    const CACHE_KEY = 'dashboard_email_metrics'
+    const now = Date.now()
+    
+    // Check memory cache first (fastest)
+    if (!forceRefresh && sendGridMetrics && (now - lastFetchTime) < MEMORY_CACHE_DURATION) {
+      console.log('📊 Using memory cached SendGrid metrics')
+      return
+    }
+    
+    // Check localStorage cache (fast)
+    if (!forceRefresh && typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY)
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached)
+          if ((now - timestamp) < STORAGE_CACHE_DURATION) {
+            console.log('💾 Using localStorage cached SendGrid metrics')
+            setSendGridMetrics(data)
+            setLastFetchTime(timestamp)
+            setMetricsLoading(false)
+            return
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to read cache:', error)
       }
-      
-      const inboxData = await inboxResponse.json()
-      const hasRealEmails = inboxData.success && 
-        inboxData.data?.summary?.total_messages > 0
-      
-      
-      // Skip fake email check - always try to fetch SendGrid metrics
-      
-      // Always try to fetch SendGrid metrics, even if inbox appears empty
-      // The inbox might be empty but SendGrid could still have sent emails
-      
-      if (!hasRealEmails) {
+    }
+    
+    try {
+      if (!sendGridMetrics) {
+        setMetricsLoading(true)
       } else {
+        setIsRefreshing(true)
       }
       
       // Build query parameters for last 30 days
       const params = new URLSearchParams({
         start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         end_date: new Date().toISOString().split('T')[0],
-        _t: Date.now(), // Cache buster
-        debug: 'true' // Force debug mode
+        _t: now // Cache buster
       })
       
-      const response = await fetch(`/api/analytics/account?${params.toString()}`, {
+      // Only fetch metrics API (remove inbox dependency for speed)
+      const metricsResponse = await fetch(`/api/analytics/account?${params.toString()}`, {
         credentials: 'include',
-        cache: 'no-cache',
+        cache: 'default', // Allow browser caching
         headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Accept': 'application/json'
         }
       })
       
-      if (!response.ok) {
-        setSendGridMetrics(null)
-        return
-      }
-      
-      const result = await response.json()
-      
-      if (result.success && result.data?.metrics) {
-        const metrics = result.data.metrics
+      // Process metrics response
+      if (metricsResponse.ok) {
+        const result = await metricsResponse.json()
         
-        
-        // Only set metrics if there's actual email activity that matches inbox data
-        if (metrics.emailsSent > 0) {
-          setSendGridMetrics(metrics)
+        if (result.success && result.data?.metrics) {
+          const metrics = result.data.metrics
+          
+          // Set metrics if there's actual email activity
+          if (metrics.emailsSent > 0) {
+            setSendGridMetrics(metrics)
+            setLastFetchTime(now)
+            
+            // Save to localStorage for persistent caching
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem(CACHE_KEY, JSON.stringify({
+                  data: metrics,
+                  timestamp: now
+                }))
+                console.log('💾 Saved metrics to localStorage cache')
+              } catch (error) {
+                console.warn('Failed to save to cache:', error)
+              }
+            }
+          } else {
+            setSendGridMetrics(null)
+          }
         } else {
           setSendGridMetrics(null)
         }
       } else {
         setSendGridMetrics(null)
       }
+      
     } catch (error) {
+      console.error('Error fetching SendGrid metrics:', error)
       setSendGridMetrics(null)
     } finally {
       setMetricsLoading(false)
+      setIsRefreshing(false)
     }
-  }
+  }, [])
+
+  // Load cached data immediately on component mount
+  useEffect(() => {
+    const CACHE_KEY = 'dashboard_email_metrics'
+    const STORAGE_CACHE_DURATION = 2 * 60 * 60 * 1000 // 2 hours
+    
+    // Try to load from localStorage immediately for instant display
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY)
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached)
+          const now = Date.now()
+          
+          if ((now - timestamp) < STORAGE_CACHE_DURATION) {
+            console.log('⚡ Instant load from localStorage cache')
+            setSendGridMetrics(data)
+            setLastFetchTime(timestamp)
+            setMetricsLoading(false)
+            
+            // Background refresh if cache is older than 30 minutes
+            if ((now - timestamp) > 30 * 60 * 1000) {
+              console.log('🔄 Background refresh of metrics')
+              setTimeout(() => fetchSendGridMetrics(true), 100)
+            }
+            return
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to read cache on mount:', error)
+      }
+    }
+    
+    // No valid cache found, fetch normally
+    fetchDashboardStats()
+    fetchSendGridMetrics()
+  }, [])
 
   const fetchDashboardStats = async () => {
     try {
@@ -490,9 +548,30 @@ export function ComprehensiveDashboard() {
             </div>
           ) : metricsLoading ? (
             <div className="mb-8">
-              <div className="flex items-center justify-center py-8">
-                <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mr-3"></div>
-                <div className="text-slate-500 dark:text-slate-400">Loading email metrics...</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[1, 2, 3, 4].map((i) => (
+                  <Card key={i} className="border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-2xl overflow-hidden">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-2xl animate-pulse"></div>
+                          <div>
+                            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-24 animate-pulse mb-2"></div>
+                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16 animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-end justify-between">
+                        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16 animate-pulse"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8 animate-pulse"></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <div className="flex items-center justify-center py-4 mt-4">
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mr-2"></div>
+                <div className="text-slate-500 dark:text-slate-400 text-sm">Loading email metrics...</div>
               </div>
             </div>
           ) : (

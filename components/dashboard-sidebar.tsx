@@ -153,7 +153,7 @@ export function DashboardSidebar({
     fetchUserData(true) // Force refresh on mount to get latest subscription data
     fetchUnreadCount() // Fetch unread count on mount
     fetchNewLeadsCount() // Fetch new leads count on mount
-  }, [fetchUserData, fetchUnreadCount, fetchNewLeadsCount])
+  }, []) // Remove function dependencies to prevent infinite loop
 
   // Poll for unread count and leads count updates every 30 seconds
   useEffect(() => {
@@ -163,7 +163,7 @@ export function DashboardSidebar({
     }, 30000) // 30 seconds
 
     return () => clearInterval(interval)
-  }, [fetchUnreadCount, fetchNewLeadsCount])
+  }, []) // Remove function dependencies to prevent infinite loop
 
   // Listen for subscription changes and tab switches
   useEffect(() => {

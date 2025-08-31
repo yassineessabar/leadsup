@@ -138,6 +138,42 @@ export async function POST(request: NextRequest) {
       }
       
       campaign = newCampaign
+      
+      // Create default campaign settings with signature for new campaigns
+      if (!isUpdating) {
+        const defaultSignature = `<br/><br/>Best regards,<br/><strong>${formData.companyName.trim()}</strong><br/><br/><a href="${formData.website?.trim() || ''}" target="_blank">${formData.website?.trim() || ''}</a>`
+        
+        const defaultSettings = {
+          campaign_id: campaign.id,
+          dailyContactsLimit: 35,
+          dailySequenceLimit: 100,
+          activeDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+          sendingStartTime: '08:00 AM',
+          sendingEndTime: '05:00 PM',
+          signature: {
+            firstName: '',
+            lastName: '',
+            companyName: formData.companyName.trim(),
+            companyWebsite: formData.website?.trim() || '',
+            emailSignature: defaultSignature
+          }
+        }
+        
+        try {
+          const { error: settingsError } = await supabaseServer
+            .from("campaign_settings")
+            .insert(defaultSettings)
+            .select()
+          
+          if (settingsError) {
+            console.error("❌ Error creating campaign settings:", settingsError)
+          } else {
+            console.log("✅ Campaign settings created with signature")
+          }
+        } catch (settingsErr) {
+          console.error("❌ Failed to create campaign settings:", settingsErr)
+        }
+      }
     }
 
     console.log("✅ Campaign created successfully:", campaign.name)

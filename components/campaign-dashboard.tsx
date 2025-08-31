@@ -688,12 +688,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [isLoadingCampaignData, setIsLoadingCampaignData] = useState(true)
   const [campaignDataLoaded, setCampaignDataLoaded] = useState(false)
   
-  // Email signature state
-  const [firstName, setFirstName] = useState("Loop")
-  const [lastName, setLastName] = useState("Review")
-  const [companyName, setCompanyName] = useState("LeadsUp")
-  const [companyWebsite, setCompanyWebsite] = useState("https://www.leadsup.com")
-  const [emailSignature, setEmailSignature] = useState(`<br/><br/>Best regards,<br/><strong>${firstName} ${lastName}</strong><br/>${companyName}<br/><a href="${companyWebsite}" target="_blank">${companyWebsite}</a>`)
+  // Email signature state - initialize with campaign data
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [companyName, setCompanyName] = useState(campaign?.company_name || "")
+  const [companyWebsite, setCompanyWebsite] = useState(campaign?.website || "")
+  const [emailSignature, setEmailSignature] = useState("")
   const signatureEditorRef = useRef<HTMLDivElement>(null)
   
   // Daily limit warning state
@@ -1536,15 +1536,21 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     
     setIsLoadingCampaignData(true)
     try {
-      // Use the new quick endpoint with caching
+      // Use the new quick endpoint with caching and timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+      
       const response = await fetch(`/api/campaigns/${campaign.id}/quick`, {
-        credentials: "include"
+        credentials: "include",
+        signal: controller.signal,
+        cache: 'default' // Allow browser caching
       })
       
+      clearTimeout(timeoutId)
+      
       if (!response.ok) {
-        // Fallback to regular endpoint if quick endpoint fails
-        console.log('Quick API not available, falling back to regular endpoint')
-        await loadCampaignData()
+        console.log('Quick API not available, falling back to minimal load')
+        setCampaignDataLoaded(true)
         return
       }
       
@@ -1553,26 +1559,22 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       if (result.success && result.data) {
         const data = result.data
         
-        // Update counts for tabs
         if (data.counts) {
           console.log('📊 Campaign counts loaded:', data.counts)
         }
         
-        // Campaign data loaded successfully
-        
         setCampaignDataLoaded(true)
         
-        // Load full data only for active tab
-        if (activeTab === 'sequences') {
-          loadSequences()
-        } else if (activeTab === 'settings') {
-          loadSettingsData()
-        }
+        // Only load full data if user navigates to specific tabs
+        // Remove automatic tab-specific loading for faster initial render
       }
     } catch (error) {
-      console.error("Error loading quick campaign data:", error)
-      // Fallback to regular loading
-      await loadCampaignData()
+      if (error.name === 'AbortError') {
+        console.log('Quick API timed out, proceeding with minimal load')
+      } else {
+        console.error("Error loading quick campaign data:", error)
+      }
+      setCampaignDataLoaded(true)
     } finally {
       setIsLoadingCampaignData(false)
     }
@@ -1602,14 +1604,31 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           
           // Load signature data
           if (data.settings.signature) {
-            setFirstName(data.settings.signature.firstName || 'Loop')
-            setLastName(data.settings.signature.lastName || 'Review')
-            setCompanyName(data.settings.signature.companyName || 'LeadsUp')
-            setCompanyWebsite(data.settings.signature.companyWebsite || 'https://www.leadsup.com')
-            const signatureHtml = data.settings.signature.emailSignature || `<br/><br/>Best regards,<br/><strong>${data.settings.signature.firstName || 'Loop'} ${data.settings.signature.lastName || 'Review'}</strong><br/>${data.settings.signature.companyName || 'LeadsUp'}<br/><a href="${data.settings.signature.companyWebsite || 'https://www.leadsup.com'}" target="_blank">${data.settings.signature.companyWebsite || 'https://www.leadsup.com'}</a>`
+            setFirstName(data.settings.signature.firstName || '')
+            setLastName(data.settings.signature.lastName || '')
+            setCompanyName(data.settings.signature.companyName || campaign?.company_name || '')
+            setCompanyWebsite(data.settings.signature.companyWebsite || campaign?.website || '')
+            
+            // Use saved emailSignature if it exists, otherwise generate from campaign data
+            const signatureHtml = data.settings.signature.emailSignature || 
+              `<br/><br/>Best regards,<br/><strong>${campaign?.company_name || ''}</strong><br/><br/><a href="${campaign?.website || ''}" target="_blank">${campaign?.website || ''}</a>`
+            
             setEmailSignature(signatureHtml)
             if (signatureEditorRef.current) {
               signatureEditorRef.current.innerHTML = signatureHtml
+            }
+          } else {
+            // No saved signature data, initialize with campaign data
+            const campaignCompany = campaign?.company_name || ""
+            const campaignWebsite = campaign?.website || ""
+            if (campaignCompany || campaignWebsite) {
+              setCompanyName(campaignCompany)
+              setCompanyWebsite(campaignWebsite)
+              const signatureHtml = `<br/><br/>Best regards,<br/><strong>${campaignCompany}</strong><br/><br/><a href="${campaignWebsite}" target="_blank">${campaignWebsite}</a>`
+              setEmailSignature(signatureHtml)
+              if (signatureEditorRef.current) {
+                signatureEditorRef.current.innerHTML = signatureHtml
+              }
             }
           }
         }
@@ -1628,6 +1647,30 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       setIsLoadingCampaignData(false)
     }
   }
+
+  // Initialize signature with campaign data when available  
+  useEffect(() => {
+    if (campaign?.company_name || campaign?.website) {
+      const campaignCompany = campaign.company_name || ""
+      const campaignWebsite = campaign.website || ""
+      
+      // Update company data from campaign if not already set
+      if (!companyName) setCompanyName(campaignCompany)
+      if (!companyWebsite) setCompanyWebsite(campaignWebsite)
+      
+      // Generate signature if empty and we have campaign data
+      if (!emailSignature && (campaignCompany || campaignWebsite)) {
+        const signatureHtml = `<br/><br/>Best regards,<br/><strong>${campaignCompany}</strong><br/><br/><a href="${campaignWebsite}" target="_blank">${campaignWebsite}</a>`
+        setEmailSignature(signatureHtml)
+        
+        setTimeout(() => {
+          if (signatureEditorRef.current) {
+            signatureEditorRef.current.innerHTML = signatureHtml
+          }
+        }, 100)
+      }
+    }
+  }, [campaign?.company_name, campaign?.website, emailSignature, companyName, companyWebsite])
 
   // Lazy load sequences when needed
   const loadSequences = useCallback(async () => {
@@ -1758,6 +1801,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     if (tabId === 'sequence' || tabId === 'automation') {
       console.log('🔄 Loading sequences for sequence/automation tab...')
       loadSequences()
+    } else if (tabId === 'settings') {
+      console.log('🔄 Loading settings data for settings tab...')
+      loadCampaignData() // Load full campaign data including signature
     }
     
     if (tabId === 'sender') {
@@ -2419,12 +2465,23 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       const result = await response.json()
 
       if (result.success) {
+        // Refresh campaigns list to remove deleted campaign
+        window.dispatchEvent(new CustomEvent('campaigns-changed'))
         
         // Call onDelete to update parent state and navigate back
         if (onDelete) {
           onDelete(campaign.id)
         }
+        
+        // Navigate back to dashboard
+        if (onBack) {
+          onBack()
+        } else {
+          // Fallback navigation to dashboard
+          window.location.href = '/?tab=dashboard'
+        }
       } else {
+        console.error("Failed to delete campaign:", result.error)
       }
     } catch (error) {
       console.error("Error deleting campaign:", error)
@@ -3257,48 +3314,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-3">{t('campaignManagement.settings.senderInformation.firstName')}</label>
-                      <input
-                        type="text"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        className="w-full h-12 px-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 transition-all duration-300 dark:text-gray-100"
-                        placeholder={t('campaignManagement.settings.placeholders.firstName')}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-800 mb-3">{t('campaignManagement.settings.senderInformation.lastName')}</label>
-                      <input
-                        type="text"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        className="w-full h-12 px-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 transition-all duration-300 dark:text-gray-100"
-                        placeholder={t('campaignManagement.settings.placeholders.lastName')}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-800 mb-3">{t('campaignManagement.settings.senderInformation.company')}</label>
-                      <input
-                        type="text"
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        className="w-full h-12 px-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 transition-all duration-300 dark:text-gray-100"
-                        placeholder={t('campaignManagement.settings.placeholders.company')}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-800 mb-3">{t('campaignManagement.settings.senderInformation.website')}</label>
-                      <input
-                        type="text"
-                        value={companyWebsite}
-                        onChange={(e) => setCompanyWebsite(e.target.value)}
-                        className="w-full h-12 px-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 transition-all duration-300 dark:text-gray-100"
-                        placeholder={t('campaignManagement.settings.placeholders.website')}
-                      />
-                    </div>
-                  </div>
 
                   {/* Signature Section */}
                   <div>
@@ -3310,10 +3325,20 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         contentEditable
                         suppressContentEditableWarning
                         className="p-6 min-h-[180px] outline-none bg-white dark:bg-gray-800 m-1 rounded-xl"
-                        dangerouslySetInnerHTML={{ __html: emailSignature }}
                         onInput={(e) => {
                           const target = e.currentTarget
                           setEmailSignature(target.innerHTML)
+                        }}
+                        onFocus={(e) => {
+                          // Set cursor to end on focus if empty
+                          if (!e.currentTarget.textContent?.trim()) {
+                            const range = document.createRange()
+                            const selection = window.getSelection()
+                            range.selectNodeContents(e.currentTarget)
+                            range.collapse(false)
+                            selection?.removeAllRanges()
+                            selection?.addRange(range)
+                          }
                         }}
                       />
                       
