@@ -473,7 +473,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
             totalPlanned: 0 // No contacts uploaded yet
           }
 
-          setCampaigns([newCampaign, ...campaigns])
+          setCampaigns(prev => [newCampaign, ...prev])
           setShowCreateModal(false)
           setCreateStep(1)
           setNewCampaignName("My Campaign")
@@ -907,7 +907,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
             if (response.ok && result.success) {
               // Update the campaign status in local state only after successful API call
-              setCampaigns(campaigns.map(campaign => 
+              setCampaigns(prev => prev.map(campaign => 
                 campaign.id === campaignId 
                   ? { ...campaign, status: newStatus }
                   : campaign
@@ -992,7 +992,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
             if (response.ok && result.success) {
               // Update the campaign status in local state only after successful API call
-              setCampaigns(campaigns.map(campaign => 
+              setCampaigns(prev => prev.map(campaign => 
                 campaign.id === campaignId 
                   ? { ...campaign, status: newStatus }
                   : campaign
@@ -1071,7 +1071,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
               console.log(`✅ Campaign name updated successfully: "${result.data.previousName}" → "${result.data.name}"`)
               
               // Update the campaign name in local state
-              setCampaigns(campaigns.map(campaign => 
+              setCampaigns(prev => prev.map(campaign => 
                 campaign.id === campaignId 
                   ? { ...campaign, name: newName }
                   : campaign
