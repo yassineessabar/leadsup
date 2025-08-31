@@ -55,6 +55,23 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
     console.log('🎯 UPGRADE PAGE userInfo updated:', userInfo)
   }, [userInfo])
 
+  // Helper function to map database subscription types to plan names
+  const getDbSubscriptionTypeForPlan = (planName: string): string => {
+    const planToDbType: Record<string, string> = {
+      'basic': 'starter',  // Basic plan maps to 'starter' in database
+      'pro': 'pro',
+      'enterprise': 'enterprise'
+    }
+    return planToDbType[planName.toLowerCase()] || planName.toLowerCase()
+  }
+
+  // Helper function to check if user is on this plan
+  const isCurrentPlan = (planName: string): boolean => {
+    const dbType = getDbSubscriptionTypeForPlan(planName)
+    return userInfo.subscription_type === dbType && 
+           (userInfo.subscription_status === 'active' || userInfo.subscription_status === 'trialing')
+  }
+
   // Handle upgrade button clicks
   const handleUpgrade = async (planName: string) => {
     if (isLoading) return
@@ -297,12 +314,13 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
                       planNameLower: plan.name.toLowerCase(),
                       userSubscriptionType: userInfo.subscription_type,
                       userSubscriptionStatus: userInfo.subscription_status,
-                      isCurrentPlan: userInfo.subscription_type === plan.name.toLowerCase(),
-                      isDisabled: userInfo.subscription_type === plan.name.toLowerCase() && (userInfo.subscription_status === 'active' || userInfo.subscription_status === 'trialing')
+                      dbTypeForPlan: getDbSubscriptionTypeForPlan(plan.name),
+                      isCurrentPlan: isCurrentPlan(plan.name),
+                      isDisabled: isCurrentPlan(plan.name)
                     })
                     handleUpgrade(plan.name)
                   }}
-                  disabled={isLoading || (userInfo.subscription_type === plan.name.toLowerCase() && (userInfo.subscription_status === 'active' || userInfo.subscription_status === 'trialing'))}
+                  disabled={isLoading || isCurrentPlan(plan.name)}
                   className={`w-full h-12 text-base font-medium rounded-2xl transition-all duration-200 hover:scale-105 ${
                     plan.buttonVariant === "default"
                       ? "bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400"
@@ -314,7 +332,7 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       {t('upgrade.buttons.processing')}
                     </div>
-                  ) : (userInfo.subscription_type === plan.name.toLowerCase() && (userInfo.subscription_status === 'active' || userInfo.subscription_status === 'trialing')) ? (
+                  ) : isCurrentPlan(plan.name) ? (
                     userInfo.subscription_status === 'trialing' ? t('upgrade.buttons.currentPlan') + ' (Trial)' : t('upgrade.buttons.currentPlan')
                   ) : (
                     t('upgrade.buttons.startFreeTrial')
