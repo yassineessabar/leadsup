@@ -847,7 +847,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     const contactCount = hasContacts ? campaign.totalPlanned : 0
     
     // Calculate total planned sequences (contacts × sequence steps) - same as analytics
-    const totalSequenceSteps = campaign.sequences?.length || 6 // Default to 6 steps if no sequences
+    const totalSequenceSteps = campaign.sequences?.length || 0 // Use actual sequence count
     const totalPlannedSequences = contactCount * totalSequenceSteps
     
     if (totalPlannedSequences === 0) return { percentage: 0, sent, totalPlanned: totalPlannedSequences }

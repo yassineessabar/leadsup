@@ -925,7 +925,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             } else if (contact.email_status && ["Completed", "Replied", "Unsubscribed", "Bounced"].includes(contact.email_status)) {
               // Use the actual email_status from database if it's a final state
               status = contact.email_status as Contact["status"]
-            } else if (actualSequenceStep <= (campaignSequences.length || 6)) {
+            } else if (campaignSequences.length > 0 && actualSequenceStep <= campaignSequences.length) {
               status = `Email ${actualSequenceStep}` as Contact["status"]
             } else {
               status = "Completed"
@@ -992,7 +992,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               status = contact.email_status as Contact["status"]
             } else if ((contact.sequence_step || 0) === 0) {
               status = t('analytics.pending') as Contact["status"]
-            } else if ((contact.sequence_step || 0) <= (campaignSequences.length || 6)) {
+            } else if (campaignSequences.length > 0 && (contact.sequence_step || 0) <= campaignSequences.length) {
               status = `Email ${contact.sequence_step}` as Contact["status"]
             } else {
               status = "Completed"
@@ -1457,7 +1457,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             next_scheduled = "Now"
           } else if (status.startsWith("Email ")) {
             const currentStep = parseInt(status.split(" ")[1]) || 1
-            if (currentStep < (campaignSequences.length || 6)) {
+            if (campaignSequences.length > 0 && currentStep < campaignSequences.length) {
               const emailSchedule = [
                 { day: 0, label: 'Immediate' },
                 { day: 3, label: '3 days' },
@@ -1919,7 +1919,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const totalSent = metrics?.emailsSent || actualEmailsSent || 0
   const totalDelivered = metrics?.emailsDelivered || totalSent
   // Calculate total planned sequences (contacts × sequence steps)
-  const totalSequenceSteps = campaignSequences.length || 6 // Default to 6 steps if no sequences loaded
+  const totalSequenceSteps = campaignSequences.length || 0 // Use actual sequence count, don't default to 6
   const totalPlannedSequences = contacts.length * totalSequenceSteps
   const totalContactsPlanned = contacts.length > 0 ? contacts.length : (campaign.totalPlanned || 0)
   const totalRemaining = Math.max(0, totalPlannedSequences - totalSent) // Remaining sequences to send
