@@ -66,16 +66,16 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
       // TEMPORARILY USING TEST MODE for development and testing
       const paymentLinks = {
         basic: {
-          monthly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08", // Test link provided by user
-          yearly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08"   // Same test link for yearly
+          monthly: "https://buy.stripe.com/test_dRmbJ38cw9N55bDem5f3a02", // Basic monthly
+          yearly: "https://buy.stripe.com/test_8x26oJeAU5wP1Zr91Lf3a03"   // Basic yearly
         },
         pro: {
-          monthly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08", // Test link provided by user
-          yearly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08"   // Same test link for yearly
+          monthly: "https://buy.stripe.com/test_cNidRb9gAbVdcE5cdXf3a05", // Pro monthly
+          yearly: "https://buy.stripe.com/test_5kQ00l50k9N57jLdi1f3a06"   // Pro yearly
         },
         enterprise: {
-          monthly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08", // Test link provided by user
-          yearly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08"   // Same test link for yearly
+          monthly: "https://buy.stripe.com/test_cNibJ31O86AT9rTb9Tf3a07", // Enterprise monthly
+          yearly: "https://buy.stripe.com/test_00waEZ1O88J1eMddi1f3a08"   // Enterprise yearly
         }
       }
       

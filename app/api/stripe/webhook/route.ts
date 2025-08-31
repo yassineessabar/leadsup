@@ -389,21 +389,34 @@ function getSubscriptionTypeFromSubscription(subscription: Stripe.Subscription):
 
   // Fallback to price amount mapping
   if (price) {
-    const monthlyAmount = price.unit_amount || 0
+    const amount = price.unit_amount || 0
     const interval = price.recurring?.interval
     
-    // Convert yearly amounts to monthly equivalents for comparison
-    let effectiveMonthlyAmount = monthlyAmount
-    if (interval === 'year') {
-      effectiveMonthlyAmount = Math.round(monthlyAmount / 12)
+    console.log('💰 Price mapping debug:', {
+      priceId,
+      amount,
+      interval,
+      amountInDollars: amount / 100
+    })
+    
+    // Map based on exact amounts from your test payment links
+    if (interval === 'month') {
+      // Monthly subscriptions
+      if (amount === 3900) return 'basic'    // $39/month
+      if (amount === 7900) return 'pro'      // $79/month  
+      if (amount === 18000) return 'enterprise' // $180/month
+    } else if (interval === 'year') {
+      // Yearly subscriptions (approximate annual amounts)
+      if (amount >= 35000 && amount <= 40000) return 'basic'    // ~$372/year ($31/month)
+      if (amount >= 70000 && amount <= 80000) return 'pro'      // ~$756/year ($63/month)
+      if (amount >= 150000 && amount <= 160000) return 'enterprise' // ~$1536/year ($128/month)
     }
-
-    // Basic: $39/month = 3900 cents
-    if (effectiveMonthlyAmount >= 2900 && effectiveMonthlyAmount <= 4200) return 'basic'
-    // Pro: $79/month = 7900 cents  
-    if (effectiveMonthlyAmount >= 6900 && effectiveMonthlyAmount <= 8500) return 'pro'
-    // Enterprise: $180/month = 18000 cents
-    if (effectiveMonthlyAmount >= 15000) return 'enterprise'
+    
+    // Fallback ranges for any edge cases
+    const effectiveMonthlyAmount = interval === 'year' ? Math.round(amount / 12) : amount
+    if (effectiveMonthlyAmount >= 2500 && effectiveMonthlyAmount <= 4500) return 'basic'
+    if (effectiveMonthlyAmount >= 6500 && effectiveMonthlyAmount <= 9000) return 'pro'
+    if (effectiveMonthlyAmount >= 12000) return 'enterprise'
   }
 
   // Default to basic if we can't determine
