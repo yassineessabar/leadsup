@@ -22,13 +22,14 @@ import { IntegrationsTab } from "@/components/integrations-tab"
 import { DomainTab } from "@/components/domain-tab"
 import { TemplatesTab } from "@/components/templates-tab"
 import { CampaignAnalytics } from "@/components/campaign-analytics"
-// import { SupportChatbot } from "@/components/support-chatbot"
+import { SupportChatbot } from "@/components/support-chatbot"
 
 // Wrapper component to fetch campaign data and render analytics
-function CampaignAnalyticsWrapper({ campaignId, campaignData, onBack }: { 
+function CampaignAnalyticsWrapper({ campaignId, campaignData, onBack, onCampaignUpdate }: { 
   campaignId: string | null, 
   campaignData?: any,
-  onBack: () => void 
+  onBack: () => void,
+  onCampaignUpdate: (campaignId: string, updatedCampaign: any) => void
 }) {
   const [campaign, setCampaign] = useState(campaignData || null)
   const [loading, setLoading] = useState(!campaignData)
@@ -127,8 +128,21 @@ function CampaignAnalyticsWrapper({ campaignId, campaignData, onBack }: {
       const result = await response.json()
       console.log('📊 Status update API response:', result)
       if (result.success) {
-        setCampaign(prev => prev ? { ...prev, status: newStatus } : prev)
-        console.log('✅ Campaign status updated locally')
+        const updatedCampaign = { ...campaign, status: newStatus }
+        setCampaign(updatedCampaign)
+        console.log('📊 Local campaign state updated:', updatedCampaign)
+        
+        // Update the campaign cache via callback
+        onCampaignUpdate(campaignId.toString(), updatedCampaign)
+        console.log('💾 Campaign cache updated for ID:', campaignId.toString())
+        
+        // Dispatch event to notify campaign list of the update
+        window.dispatchEvent(new CustomEvent('campaigns-updated', { 
+          detail: { campaigns: [updatedCampaign] } 
+        }))
+        console.log('📡 Dispatched campaigns-updated event')
+        
+        console.log('✅ Campaign status updated locally and cache updated')
       } else {
         console.error('📊 API returned success=false:', result)
       }
@@ -343,7 +357,34 @@ export default function Home() {
         return <CampaignAnalyticsWrapper 
           campaignId={campaignId} 
           campaignData={cachedCampaign}
-          onBack={() => handleTabChange("campaigns-email")} 
+          onBack={() => {
+            console.log('🔙 Back button clicked from analytics')
+            
+            // Clear campaign-specific URL parameters
+            if (typeof window !== 'undefined') {
+              const url = new URL(window.location.href)
+              url.searchParams.delete('campaign')
+              url.searchParams.set('tab', 'campaigns-email')
+              window.history.pushState({}, '', url.toString())
+              console.log('🔗 URL updated:', url.toString())
+            }
+            
+            // Switch back to campaigns tab
+            handleTabChange("campaigns-email")
+            console.log('📄 Tab changed to campaigns-email')
+            
+            // Dispatch event to reset campaign view to list
+            setTimeout(() => {
+              console.log('📡 Dispatching reset-to-campaign-list event')
+              window.dispatchEvent(new CustomEvent('reset-to-campaign-list'))
+            }, 100)
+          }}
+          onCampaignUpdate={(campaignId, updatedCampaign) => {
+            setCampaignCache(prev => ({
+              ...prev,
+              [campaignId]: updatedCampaign
+            }))
+          }}
         />
       case "billing":
         return <BillingSubscriptionPage />
@@ -429,8 +470,7 @@ export default function Home() {
         </main>
       </div>
 
-      {/* Support Chatbot - Temporarily commented out */}
-      {/* <SupportChatbot /> */}
+      <SupportChatbot />
     </div>
   )
 }

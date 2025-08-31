@@ -189,12 +189,12 @@ export function SupportChatbot({ className }: SupportChatbotProps) {
       {!isOpen && (
         <Button
           onClick={handleToggle}
-          className="w-16 h-16 rounded-full bg-gradient-to-r from-[#e66465] to-[#9198e5] hover:from-[#d55555] hover:to-[#8088d5] shadow-lg hover:shadow-xl transition-all duration-300 relative group"
+          className="w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 relative group"
           aria-label="Open support chat"
         >
-          <MessageCircle className="w-6 h-6 text-white" />
+          <MessageCircle className="w-5 h-5 text-white" />
 
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#e66465] to-[#9198e5] animate-ping opacity-20"></div>
+          <div className="absolute inset-0 rounded-full bg-blue-600 animate-ping opacity-20"></div>
 
           <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
             Need help? Chat with us!
@@ -204,18 +204,22 @@ export function SupportChatbot({ className }: SupportChatbotProps) {
 
       {isOpen && (
         <Card className={cn(
-          "w-96 shadow-2xl border-0 flex flex-col transition-all duration-300",
+          "w-96 shadow-2xl border border-gray-100 rounded-3xl flex flex-col transition-all duration-300 bg-white dark:bg-gray-900",
           isMinimized ? "h-16" : "h-[500px]"
         )}>
-          <CardHeader className="bg-gradient-to-r from-[#e66465] to-[#9198e5] text-white p-4 flex-shrink-0">
+          <CardHeader className="bg-blue-600 text-white p-4 flex-shrink-0 rounded-t-3xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                  <User className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                  <img 
+                    src="https://framerusercontent.com/images/yar0HFd2Ii54LrLgUJ1sPLmjoS0.svg" 
+                    alt="LeadsUp Logo" 
+                    className="h-6 w-6"
+                  />
                 </div>
                 <div>
-                  <CardTitle className="text-lg font-semibold">Support Team</CardTitle>
-                  <CardDescription className="text-white/80 text-sm flex items-center gap-1">
+                  <CardTitle className="text-lg font-semibold">LeadsUp Support</CardTitle>
+                  <CardDescription className="text-white/90 text-sm flex items-center gap-1">
                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                     Online • Avg response: 2 min
                   </CardDescription>
@@ -248,13 +252,17 @@ export function SupportChatbot({ className }: SupportChatbotProps) {
             <div className="flex-1 flex flex-col min-h-0">
               {!isSubmitted ? (
                 <>
-                  <div className="flex-1 p-4 space-y-4 overflow-y-auto bg-gray-50/50">
+                  <div className="flex-1 p-4 space-y-4 overflow-y-auto bg-[rgb(243,243,241)] dark:bg-gray-800">
                     <div className="flex gap-2">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#e66465] to-[#9198e5] flex items-center justify-center flex-shrink-0">
-                        <User className="w-4 h-4 text-white" />
+                      <div className="w-8 h-8 rounded-2xl bg-blue-600 flex items-center justify-center flex-shrink-0">
+                        <img 
+                          src="https://framerusercontent.com/images/yar0HFd2Ii54LrLgUJ1sPLmjoS0.svg" 
+                          alt="LeadsUp" 
+                          className="h-4 w-4"
+                        />
                       </div>
-                      <div className="bg-white rounded-lg p-3 max-w-[80%] shadow-sm border">
-                        <p className="text-sm text-gray-700">
+                      <div className="bg-white dark:bg-gray-700 rounded-2xl p-3 max-w-[80%] shadow-sm border border-gray-100 dark:border-gray-600">
+                        <p className="text-sm text-gray-700 dark:text-gray-200">
                           👋 Hi there! I'm here to help you get support. I'll need a few details to connect you with our team.
                         </p>
                       </div>
@@ -268,22 +276,26 @@ export function SupportChatbot({ className }: SupportChatbotProps) {
                       return (
                         <div key={key} className="space-y-2">
                           <div className="flex gap-2">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#e66465] to-[#9198e5] flex items-center justify-center flex-shrink-0">
-                              <User className="w-4 h-4 text-white" />
+                            <div className="w-8 h-8 rounded-2xl bg-blue-600 flex items-center justify-center flex-shrink-0">
+                              <img 
+                                src="https://framerusercontent.com/images/yar0HFd2Ii54LrLgUJ1sPLmjoS0.svg" 
+                                alt="LeadsUp" 
+                                className="h-4 w-4"
+                              />
                             </div>
-                            <div className="bg-white rounded-lg p-3 max-w-[80%] shadow-sm border">
-                              <p className="text-sm text-gray-700">{stepData.question}</p>
+                            <div className="bg-white dark:bg-gray-700 rounded-2xl p-3 max-w-[80%] shadow-sm border border-gray-100 dark:border-gray-600">
+                              <p className="text-sm text-gray-700 dark:text-gray-200">{stepData.question}</p>
                             </div>
                           </div>
                           <div className="flex gap-2 justify-end">
-                            <div className="bg-gradient-to-r from-[#e66465] to-[#9198e5] text-white rounded-lg p-3 max-w-[80%] shadow-sm">
+                            <div className="bg-blue-600 text-white rounded-2xl p-3 max-w-[80%] shadow-sm">
                               <p className="text-sm break-words">{value}</p>
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            <div className="w-8 h-8 rounded-2xl bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
                               {logoUrl ? (
-                                <img src={logoUrl} alt="User" className="w-full h-full object-cover" />
+                                <img src={logoUrl} alt="User" className="w-full h-full object-cover rounded-2xl" />
                               ) : (
-                                <User className="w-4 h-4 text-gray-600" />
+                                <User className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                               )}
                             </div>
                           </div>
@@ -293,12 +305,16 @@ export function SupportChatbot({ className }: SupportChatbotProps) {
 
                     {step < steps.length && (
                       <div className="flex gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#e66465] to-[#9198e5] flex items-center justify-center flex-shrink-0">
-                          <User className="w-4 h-4 text-white" />
+                        <div className="w-8 h-8 rounded-2xl bg-blue-600 flex items-center justify-center flex-shrink-0">
+                          <img 
+                            src="https://framerusercontent.com/images/yar0HFd2Ii54LrLgUJ1sPLmjoS0.svg" 
+                            alt="LeadsUp" 
+                            className="h-4 w-4"
+                          />
                         </div>
-                        <div className="bg-white rounded-lg p-3 max-w-[80%] shadow-sm border">
-                          <p className="text-sm text-gray-700">{steps[step].question}</p>
-                          <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                        <div className="bg-white dark:bg-gray-700 rounded-2xl p-3 max-w-[80%] shadow-sm border border-gray-100 dark:border-gray-600">
+                          <p className="text-sm text-gray-700 dark:text-gray-200">{steps[step].question}</p>
+                          <div className="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                             <Clock className="w-3 h-3" />
                             Step {step + 1} of {steps.length}
                           </div>
@@ -309,7 +325,7 @@ export function SupportChatbot({ className }: SupportChatbotProps) {
                     <div ref={messagesEndRef} />
                   </div>
 
-                  <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
+                  <div className="border-t border-gray-200 dark:border-gray-600 p-4 bg-white dark:bg-gray-900 flex-shrink-0 rounded-b-3xl">
                     {validationError && (
                       <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
@@ -326,7 +342,7 @@ export function SupportChatbot({ className }: SupportChatbotProps) {
                           onChange={(e) => handleInputChange(e as any)}
                           required
                           rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e66465] focus:border-transparent resize-none"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
                           disabled={isSubmitting}
                         />
                       ) : (
@@ -337,7 +353,7 @@ export function SupportChatbot({ className }: SupportChatbotProps) {
                           onChange={handleInputChange}
                           type={step < steps.length ? steps[step].type : "text"}
                           required
-                          className="w-full h-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e66465] focus:border-transparent"
+                          className="w-full h-10 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
                           disabled={isSubmitting}
                         />
                       )}
@@ -346,7 +362,7 @@ export function SupportChatbot({ className }: SupportChatbotProps) {
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           {isSubmitting && (
                             <>
-                              <div className="w-3 h-3 border-2 border-gray-300 border-t-[#e66465] rounded-full animate-spin" />
+                              <div className="w-3 h-3 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
                               <span>Sending...</span>
                             </>
                           )}
@@ -356,7 +372,7 @@ export function SupportChatbot({ className }: SupportChatbotProps) {
                           type="submit"
                           size="sm"
                           disabled={isSubmitting || !currentInput.trim()}
-                          className="bg-gradient-to-r from-[#e66465] to-[#9198e5] hover:from-[#d55555] hover:to-[#8088d5] text-white px-4 shadow-md"
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 shadow-md rounded-xl"
                         >
                           {isSubmitting ? (
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -388,14 +404,14 @@ export function SupportChatbot({ className }: SupportChatbotProps) {
                   <div className="space-y-3 w-full max-w-xs">
                     <Button
                       onClick={resetChat}
-                      className="w-full bg-gradient-to-r from-[#e66465] to-[#9198e5] hover:from-[#d55555] hover:to-[#8088d5] text-white shadow-md"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-md rounded-xl"
                     >
                       Send Another Message
                     </Button>
                     <Button
                       onClick={handleToggle}
                       variant="outline"
-                      className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
+                      className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl"
                     >
                       Close Chat
                     </Button>

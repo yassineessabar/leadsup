@@ -365,6 +365,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
 
   // Refresh campaigns when returning to list view from analytics/dashboard
   useEffect(() => {
+    console.log('🔄 currentView changed to:', currentView)
     if (currentView === "list") {
       console.log('🔄 Returning to campaign list - refreshing data...')
       fetchCampaigns()
@@ -439,12 +440,21 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       setShowAdvancedPopup(true)
     }
 
+    const handleResetToCampaignList = () => {
+      console.log('🔄 Reset to campaign list event received')
+      console.log('🔄 Current view before reset:', currentView)
+      setCurrentView("list")
+      console.log('🔄 Current view set to list')
+    }
+
     window.addEventListener('create-campaign', handleCreateCampaign)
     window.addEventListener('open-campaign-popup', handleOpenCampaignPopup)
+    window.addEventListener('reset-to-campaign-list', handleResetToCampaignList)
     
     return () => {
       window.removeEventListener('create-campaign', handleCreateCampaign)
       window.removeEventListener('open-campaign-popup', handleOpenCampaignPopup)
+      window.removeEventListener('reset-to-campaign-list', handleResetToCampaignList)
     }
   }, [])
 

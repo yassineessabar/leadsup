@@ -60,11 +60,12 @@ export async function GET(
       }, { status: 404 })
     }
 
-    // Fetch settings from campaign_settings table
-    const { data: settings, error: settingsError } = await supabaseServer
-      .from('campaign_settings')
-      .select('*')
-      .eq('campaign_id', campaignId)
+    // Fetch settings from campaigns table (settings column)
+    const { data: campaignData, error: settingsError } = await supabaseServer
+      .from('campaigns')
+      .select('settings')
+      .eq('id', campaignId)
+      .eq('user_id', userId)
       .single()
 
     if (settingsError) {
@@ -77,7 +78,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      settings: settings || {}
+      settings: campaignData?.settings || {}
     })
 
   } catch (error) {
