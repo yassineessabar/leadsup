@@ -228,6 +228,13 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
       return
     }
 
+    console.log('👤 Found user for subscription update:', {
+      userId: existingUser.id,
+      email: existingUser.email,
+      currentSubscriptionType: 'Unknown', // We'll add this in a moment
+      newSubscriptionType: subscriptionType
+    })
+
     // Update user subscription information
     const { data: updateResult, error } = await supabaseServer
       .from('users')
@@ -242,9 +249,16 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
       .select()
 
     if (error) {
-      console.error('Error:', error)
+      console.error('❌ Error updating user subscription:', error)
     } else {
-      }
+      console.log('✅ Subscription updated successfully:', {
+        userId: updateResult?.[0]?.id,
+        email: updateResult?.[0]?.email,
+        subscriptionType: updateResult?.[0]?.subscription_type,
+        subscriptionStatus: updateResult?.[0]?.subscription_status,
+        stripeSubscriptionId: updateResult?.[0]?.stripe_subscription_id
+      })
+    }
   } catch (error) {
     console.error('Error:', error)
   }
@@ -367,22 +381,33 @@ async function handleBillingPortalSessionCreated(session: Stripe.BillingPortal.S
   }
 }
 
-function getSubscriptionTypeFromSubscription(subscription: Stripe.Subscription): 'basic' | 'pro' | 'enterprise' {
+function getSubscriptionTypeFromSubscription(subscription: Stripe.Subscription): 'starter' | 'pro' | 'enterprise' {
   const priceId = subscription.items.data[0]?.price.id
   const price = subscription.items.data[0]?.price
+  
+  console.log('🔍 Starting subscription type detection:', {
+    subscriptionId: subscription.id,
+    priceId,
+    priceData: price ? {
+      amount: price.unit_amount,
+      interval: price.recurring?.interval,
+      currency: price.currency
+    } : null
+  })
   
   // First try to map by price ID if we have specific test price IDs
   if (priceId) {
     // Map specific test price IDs to subscription types
     // Note: These would need to be updated with actual price IDs from your Stripe dashboard
-    const priceIdToType: Record<string, 'basic' | 'pro' | 'enterprise'> = {
+    const priceIdToType: Record<string, 'starter' | 'pro' | 'enterprise'> = {
       // Add your actual test price IDs here when available
-      // 'price_1234567890abcdef': 'basic',
+      // 'price_1234567890abcdef': 'starter',
       // 'price_0987654321fedcba': 'pro',
       // 'price_enterprise_test': 'enterprise',
     }
     
     if (priceIdToType[priceId]) {
+      console.log('✅ Mapped by price ID:', priceIdToType[priceId])
       return priceIdToType[priceId]
     }
   }
@@ -402,23 +427,51 @@ function getSubscriptionTypeFromSubscription(subscription: Stripe.Subscription):
     // Map based on exact amounts from your test payment links
     if (interval === 'month') {
       // Monthly subscriptions
-      if (amount === 3900) return 'basic'    // $39/month
-      if (amount === 7900) return 'pro'      // $79/month  
-      if (amount === 18000) return 'enterprise' // $180/month
+      if (amount === 3900) {
+        console.log('✅ Detected: Starter monthly ($39)')
+        return 'starter'
+      }
+      if (amount === 7900) {
+        console.log('✅ Detected: Pro monthly ($79)')
+        return 'pro'
+      }
+      if (amount === 18000) {
+        console.log('✅ Detected: Enterprise monthly ($180)')
+        return 'enterprise'
+      }
     } else if (interval === 'year') {
       // Yearly subscriptions (approximate annual amounts)
-      if (amount >= 35000 && amount <= 40000) return 'basic'    // ~$372/year ($31/month)
-      if (amount >= 70000 && amount <= 80000) return 'pro'      // ~$756/year ($63/month)
-      if (amount >= 150000 && amount <= 160000) return 'enterprise' // ~$1536/year ($128/month)
+      if (amount >= 35000 && amount <= 40000) {
+        console.log('✅ Detected: Starter yearly (~$372)')
+        return 'starter'
+      }
+      if (amount >= 70000 && amount <= 80000) {
+        console.log('✅ Detected: Pro yearly (~$756)')
+        return 'pro'
+      }
+      if (amount >= 150000 && amount <= 160000) {
+        console.log('✅ Detected: Enterprise yearly (~$1536)')
+        return 'enterprise'
+      }
     }
     
     // Fallback ranges for any edge cases
     const effectiveMonthlyAmount = interval === 'year' ? Math.round(amount / 12) : amount
-    if (effectiveMonthlyAmount >= 2500 && effectiveMonthlyAmount <= 4500) return 'basic'
-    if (effectiveMonthlyAmount >= 6500 && effectiveMonthlyAmount <= 9000) return 'pro'
-    if (effectiveMonthlyAmount >= 12000) return 'enterprise'
+    if (effectiveMonthlyAmount >= 2500 && effectiveMonthlyAmount <= 4500) {
+      console.log('⚡ Fallback detection: Starter')
+      return 'starter'
+    }
+    if (effectiveMonthlyAmount >= 6500 && effectiveMonthlyAmount <= 9000) {
+      console.log('⚡ Fallback detection: Pro')
+      return 'pro'
+    }
+    if (effectiveMonthlyAmount >= 12000) {
+      console.log('⚡ Fallback detection: Enterprise')
+      return 'enterprise'
+    }
   }
 
-  // Default to basic if we can't determine
-  return 'basic'
+  // Default to starter if we can't determine
+  console.log('⚠️ Could not determine subscription type, defaulting to starter')
+  return 'starter'
 }
