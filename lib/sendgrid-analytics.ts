@@ -258,21 +258,30 @@ export class SendGridAnalyticsService {
       const { limit = 50, offset = 0, status, selectedSenderEmails } = options || {}
       const supabase = getSupabaseClient()
       
+      // Check if sender_email column exists by attempting a simple query first
+      let hasSenderEmailColumn = true
+      try {
+        await supabase
+          .from('email_tracking')
+          .select('sender_email')
+          .limit(1)
+      } catch (e: any) {
+        if (e.code === '42703' && e.message.includes('sender_email')) {
+          hasSenderEmailColumn = false
+          console.warn("⚠️ sender_email column doesn't exist in email_tracking table")
+        }
+      }
+
       let query = supabase
         .from('email_tracking')
-        .select('*')
+        .select(hasSenderEmailColumn ? '*' : 'id, campaign_id, user_id, email, event_type, timestamp, sent_at, delivered_at, opened_at, clicked_at, bounced_at, status, sendgrid_message_id, created_at, updated_at')
         .eq('campaign_id', campaignId)
         .order('sent_at', { ascending: false })
         .range(offset, offset + limit - 1)
       
-      // Filter by selected sender emails if provided
-      // Note: sender_email column may not exist yet, so we wrap this in a try-catch
-      if (selectedSenderEmails && selectedSenderEmails.length > 0) {
-        try {
-          query = query.in('sender_email', selectedSenderEmails)
-        } catch (e) {
-          console.warn("⚠️ sender_email column may not exist in email_tracking table yet")
-        }
+      // Filter by selected sender emails if provided and column exists
+      if (selectedSenderEmails && selectedSenderEmails.length > 0 && hasSenderEmailColumn) {
+        query = query.in('sender_email', selectedSenderEmails)
       }
       
       if (status) {
@@ -289,7 +298,7 @@ export class SendGridAnalyticsService {
           // Retry without sender_email filter
           let retryQuery = supabase
             .from('email_tracking')
-            .select('*')
+            .select('id, campaign_id, user_id, email, event_type, timestamp, sent_at, delivered_at, opened_at, clicked_at, bounced_at, status, sendgrid_message_id, created_at, updated_at')
             .eq('campaign_id', campaignId)
             .order('sent_at', { ascending: false })
             .range(offset, offset + limit - 1)
