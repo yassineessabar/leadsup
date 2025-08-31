@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { supabase } from "@/lib/supabase"
+import { supabase, supabaseServer } from "@/lib/supabase"
 import Stripe from "stripe"
 
 // Initialize Stripe only when needed to avoid build-time errors
@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "No session token found" }, { status: 401 })
     }
 
-    // Get user from session
-    const { data: session, error: sessionError } = await supabase
+    // Get user from session using server client (bypasses RLS)
+    const { data: session, error: sessionError } = await supabaseServer
       .from("user_sessions")
       .select("user_id")
       .eq("session_token", sessionToken)
@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Invalid session" }, { status: 401 })
     }
 
-    // Get user's stripe customer ID
-    const { data: user, error: userError } = await supabase
+    // Get user's stripe customer ID using server client
+    const { data: user, error: userError } = await supabaseServer
       .from("users")
       .select("stripe_customer_id")
       .eq("id", session.user_id)
