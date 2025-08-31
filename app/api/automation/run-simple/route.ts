@@ -358,8 +358,7 @@ export async function POST(request: NextRequest) {
               updateData.next_email_due = nextStepInSchedule.scheduled_date
               console.log(`📅 Next email for ${contact.email} from schedule: ${new Date(nextStepInSchedule.scheduled_date).toLocaleString('en-US', { timeZone: schedule.timezone })}`)
             } else {
-              // No more sequences, mark as completed
-              updateData.email_status = 'Completed'
+              // No more sequences, clear next_email_due
               updateData.next_email_due = null
               console.log(`✅ ${contact.email} completed all sequences`)
             }
