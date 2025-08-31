@@ -9,7 +9,14 @@ export function useI18n(namespace?: string) {
   // Wait for translations to be fully loaded
   useEffect(() => {
     const checkTranslations = (lng?: string) => {
-      const currentLanguage = lng || i18n.language;
+      const currentLanguage = lng || i18n.language || 'en';
+      
+      // Ensure currentLanguage is a valid string
+      if (!currentLanguage || typeof currentLanguage !== 'string') {
+        console.log('⚠️ Invalid language detected, defaulting to en');
+        return;
+      }
+      
       const hasResources = i18n.hasResourceBundle(currentLanguage, 'translation');
       if (ready && hasResources) {
         setIsFullyReady(true);

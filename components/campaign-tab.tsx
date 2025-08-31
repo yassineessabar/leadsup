@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Search, Plus, MoreHorizontal, Play, Mail, MessageSquare, Users, MousePointer, UserPlus, Trash2, Eye, UserCheck, Send, Reply, TrendingUp, TrendingDown, UserX, ChevronDown, ChevronRight, RefreshCw, Flame, Pause } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   const [newCampaignType, setNewCampaignType] = useState<"Email">("Email")
   const [newCampaignTrigger, setNewCampaignTrigger] = useState("New Client")
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
   const [sortBy, setSortBy] = useState("newest")
@@ -79,7 +80,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
   ]
 
   // Fetch health scores for a specific campaign
-  const fetchCampaignHealthScores = async (campaignId: string | number) => {
+  const fetchCampaignHealthScores = useCallback(async (campaignId: string | number) => {
     try {
       const healthResponse = await fetch(`/api/sender-accounts/health-score?campaignId=${campaignId}`, {
         credentials: "include"
@@ -104,10 +105,10 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       console.warn(`Error fetching health scores for campaign ${campaignId}:`, error)
     }
     return []
-  }
+  }, [])
 
   // Fetch warming progress for warming campaigns
-  const fetchWarmingProgress = async () => {
+  const fetchWarmingProgress = useCallback(async () => {
     try {
       const response = await fetch('/api/warming/progress', {
         credentials: 'include'
@@ -153,7 +154,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     } catch (error) {
       console.error('Error fetching warming progress:', error)
     }
-  }
+  }, [])
 
   // Sync campaign with SendGrid API
   const syncCampaignWithSendGrid = async (campaignId: string | number, userId: string) => {
@@ -178,11 +179,7 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       if (!response.ok) {
         // Handle specific case where no stats are found (normal for new campaigns)
         if (result.error && result.error.includes('No stats found')) {
-          toast({
-            title: t('campaigns.noSendGridData'),
-            description: t('campaigns.noEmailsSentYet'),
-            variant: "default"
-          })
+          // Silently handle this case - no need to show toast for new campaigns
           return // Exit gracefully, this is not an error
         }
         throw new Error(result.error || 'Failed to sync with SendGrid')
@@ -236,8 +233,8 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     }
   }
 
-  // Fetch campaigns from API with SendGrid metrics
-  const fetchCampaigns = async () => {
+  // Fetch campaigns from API with optimized loading
+  const fetchCampaigns = useCallback(async () => {
     try {
       const response = await fetch("/api/campaigns", {
         credentials: "include"
@@ -245,34 +242,33 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       const result = await response.json()
       
       if (result.success) {
-        // First set campaigns without metrics for immediate UI response
-        const campaignsWithoutMetrics = result.data.map((campaign: any) => ({
+        // Set campaigns immediately for fast UI response
+        const campaigns = result.data.map((campaign: any) => ({
           ...campaign,
           outreachStrategy: campaign.outreach_strategy || campaign.outreachStrategy,
-          totalPlanned: campaign.totalPlanned || 0, // Use totalPlanned from API response
+          totalPlanned: campaign.totalPlanned || 0,
           sendgridMetrics: undefined
         }))
         
-        setCampaigns(campaignsWithoutMetrics)
-        setLoading(false) // Show campaigns immediately
+        setCampaigns(campaigns)
+        setLoading(false)
         
-        // Dispatch event to share campaign data with other components
+        // Dispatch event once
         window.dispatchEvent(new CustomEvent('campaigns-updated', { 
-          detail: { campaigns: campaignsWithoutMetrics } 
+          detail: { campaigns } 
         }))
         
-        // Then fetch metrics in batches for better performance
-        const batchSize = 5
-        const campaignBatches = []
-        for (let i = 0; i < result.data.length; i += batchSize) {
-          campaignBatches.push(result.data.slice(i, i + batchSize))
-        }
+        // Fetch metrics only for campaigns that need them (have sent emails)
+        const campaignsNeedingMetrics = campaigns.filter(c => c.sent > 0)
         
-        // Process batches sequentially to avoid overwhelming the server
-        for (const batch of campaignBatches) {
-          const batchPromises = batch.map(async (campaign: any) => {
+        if (campaignsNeedingMetrics.length > 0) {
+          // Fetch all metrics in parallel for better performance
+          const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          const endDate = new Date().toISOString().split('T')[0]
+          
+          const metricsPromises = campaignsNeedingMetrics.map(async (campaign) => {
             try {
-              const metricsResponse = await fetch(`/api/analytics/campaign?campaign_id=${campaign.id}&start_date=${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}&end_date=${new Date().toISOString().split('T')[0]}`, {
+              const metricsResponse = await fetch(`/api/analytics/campaign?campaign_id=${campaign.id}&start_date=${startDate}&end_date=${endDate}`, {
                 credentials: "include"
               })
               
@@ -298,33 +294,31 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
             return null
           })
           
-          const batchResults = await Promise.all(batchPromises)
+          // Process all metrics requests in parallel
+          const allResults = await Promise.all(metricsPromises)
+          const validResults = allResults.filter(result => result !== null)
           
-          // Update campaigns with metrics as they become available
-          let updatedCampaigns: any[] = []
-          setCampaigns(prevCampaigns => {
-            updatedCampaigns = prevCampaigns.map(campaign => {
-              const metricsResult = batchResults.find(result => 
-                result && result.campaignId === campaign.id
-              )
-              return metricsResult 
-                ? { ...campaign, sendgridMetrics: metricsResult.sendgridMetrics }
-                : campaign
+          // Single batch update for all metrics
+          if (validResults.length > 0) {
+            setCampaigns(prevCampaigns => {
+              const updated = prevCampaigns.map(campaign => {
+                const metricsResult = validResults.find(result => 
+                  result && result.campaignId === campaign.id
+                )
+                return metricsResult 
+                  ? { ...campaign, sendgridMetrics: metricsResult.sendgridMetrics }
+                  : campaign
+              })
+              
+              // Single dispatch after all updates
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('campaigns-updated', { 
+                  detail: { campaigns: updated } 
+                }))
+              }, 0)
+              
+              return updated
             })
-            
-            return updatedCampaigns
-          })
-          
-          // Dispatch event after state update, outside render cycle
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('campaigns-updated', { 
-              detail: { campaigns: updatedCampaigns } 
-            }))
-          }, 0)
-          
-          // Small delay between batches to avoid overwhelming the API
-          if (campaignBatches.indexOf(batch) < campaignBatches.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 100))
           }
         }
       } else {
@@ -345,29 +339,44 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
       })
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchCampaigns()
     
-    // Delay warmup progress fetch to not block initial loading
+    // Fetch warming progress only after campaigns load and only if needed
     setTimeout(() => {
-      fetchWarmingProgress()
-    }, 2000)
+      // Only fetch if there are warming campaigns
+      if (campaigns.some(c => c.status === 'Warming')) {
+        fetchWarmingProgress()
+      }
+    }, 3000)
     
-    // Auto-refresh warming progress every 2 minutes
+    // Less frequent warming progress updates (every 5 minutes instead of 2)
     const warmingInterval = setInterval(() => {
-      fetchWarmingProgress()
-    }, 120000)
+      // Only fetch if there are warming campaigns
+      if (campaigns.some(c => c.status === 'Warming')) {
+        fetchWarmingProgress()
+      }
+    }, 300000) // 5 minutes
     
     return () => clearInterval(warmingInterval)
   }, [])
 
+  // Debounce search query for better performance
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
   // Refresh campaigns when returning to list view from analytics/dashboard
   useEffect(() => {
-    console.log('🔄 currentView changed to:', currentView)
-    if (currentView === "list") {
-      console.log('🔄 Returning to campaign list - refreshing data...')
+    // Only refresh if we have data and are switching back to list view
+    if (currentView === "list" && campaigns.length > 0) {
+      console.log('🔄 Returning to campaign list - light refresh...')
+      // Light refresh - only fetch campaigns data, skip metrics initially
       fetchCampaigns()
     }
   }, [currentView])
@@ -891,24 +900,25 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     return { percentage, sent, totalPlanned: totalPlannedSequences }
   }
 
-  const filteredCampaigns = campaigns.filter((campaign) => {
-    const matchesSearch = campaign.name?.toLowerCase().includes(searchQuery.toLowerCase()) || false
-    const matchesStatus = statusFilter === "all" || campaign.status?.toLowerCase() === statusFilter
-    const matchesType = typeFilter === "all" || campaign.type?.toLowerCase() === typeFilter
-    
-    // Filter by active sub-tab
-    let matchesSubTab = true
-    if (activeSubTab === "campaigns-email") {
-      matchesSubTab = campaign.outreachStrategy === "email" || !campaign.outreachStrategy
-    } else if (activeSubTab === "campaigns-linkedin") {
-      matchesSubTab = campaign.outreachStrategy === "linkedin"
-    } else if (activeSubTab === "campaigns-multi-channel") {
-      matchesSubTab = campaign.outreachStrategy === "email-linkedin"
-    }
-    
-    
-    return matchesSearch && matchesStatus && matchesType && matchesSubTab
-  })
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter((campaign) => {
+      const matchesSearch = campaign.name?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || false
+      const matchesStatus = statusFilter === "all" || campaign.status?.toLowerCase() === statusFilter
+      const matchesType = typeFilter === "all" || campaign.type?.toLowerCase() === typeFilter
+      
+      // Filter by active sub-tab
+      let matchesSubTab = true
+      if (activeSubTab === "campaigns-email") {
+        matchesSubTab = campaign.outreachStrategy === "email" || !campaign.outreachStrategy
+      } else if (activeSubTab === "campaigns-linkedin") {
+        matchesSubTab = campaign.outreachStrategy === "linkedin"
+      } else if (activeSubTab === "campaigns-multi-channel") {
+        matchesSubTab = campaign.outreachStrategy === "email-linkedin"
+      }
+      
+      return matchesSearch && matchesStatus && matchesType && matchesSubTab
+    })
+  }, [campaigns, debouncedSearchQuery, statusFilter, typeFilter, activeSubTab])
 
   if (currentView === "analytics" && selectedCampaign) {
     return (
