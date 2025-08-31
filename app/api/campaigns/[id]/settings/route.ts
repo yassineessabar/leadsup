@@ -35,10 +35,11 @@ async function getUserIdFromSession(): Promise<string | null> {
 // GET - Retrieve campaign settings
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('🔍 Campaign settings API called with ID:', params.id)
+    const { id } = await params
+    console.log('🔍 Campaign settings API called with ID:', id)
     
     const userId = await getUserIdFromSession()
     if (!userId) {
@@ -46,7 +47,7 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
     }
 
-    const campaignId = params.id
+    const campaignId = id
     console.log('🔍 Looking for campaign:', campaignId, 'for user:', userId)
 
     // First verify campaign belongs to user
@@ -100,7 +101,7 @@ export async function GET(
 // POST - Update campaign settings
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = await getUserIdFromSession()
@@ -108,7 +109,8 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
     }
 
-    const campaignId = params.id
+    const { id } = await params
+    const campaignId = id
     const body = await request.json()
 
     // Get existing campaign settings
