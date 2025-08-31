@@ -188,19 +188,34 @@ export async function POST(request: NextRequest) {
           }
           
           // Check if sequence has actual content (not just placeholders)
-          if (!sequenceTemplate.content || sequenceTemplate.content.trim() === '') {
-            console.log(`❌ Sequence step ${nextStep} has no content - skipping email send`)
+          const hasValidContent = sequenceTemplate.content && 
+                                  typeof sequenceTemplate.content === 'string' && 
+                                  sequenceTemplate.content.trim().length > 0
+          
+          const hasValidSubject = sequenceTemplate.subject && 
+                                  typeof sequenceTemplate.subject === 'string' && 
+                                  sequenceTemplate.subject.trim().length > 0
+          
+          if (!hasValidContent) {
+            console.log(`❌ Sequence step ${nextStep} has no valid content - skipping email send`)
             continue
           }
           
-          if (!sequenceTemplate.subject || sequenceTemplate.subject.trim() === '') {
-            console.log(`❌ Sequence step ${nextStep} has no subject - skipping email send`)
+          if (!hasValidSubject) {
+            console.log(`❌ Sequence step ${nextStep} has no valid subject - skipping email send`)
             continue
           }
           
           console.log(`✅ Using sequence template for step ${nextStep}:`)
           console.log(`   Subject: "${sequenceTemplate.subject}"`)
-          console.log(`   Content: "${sequenceTemplate.content.substring(0, 100)}${sequenceTemplate.content.length > 100 ? '...' : ''}"`)
+          try {
+            const contentPreview = sequenceTemplate.content.length > 100 
+              ? sequenceTemplate.content.substring(0, 100) + '...'
+              : sequenceTemplate.content
+            console.log(`   Content: "${contentPreview}"`)
+          } catch (error) {
+            console.log(`   Content: [Error displaying content]`)
+          }
           console.log(`   For contact: ${contact.email}`)
           
           // Get sender for this campaign

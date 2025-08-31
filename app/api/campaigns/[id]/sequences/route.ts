@@ -204,6 +204,9 @@ export async function POST(
         return NextResponse.json({ success: false, error: insertError.message }, { status: 500 })
       }
 
+      // Update all contacts' sequence_schedule to reflect the new sequences
+      await updateContactSequenceSchedules(campaignId, newSequences)
+
       // Note: Email rescheduling disabled until scheduled_emails table is created
       // await triggerSequenceReschedule(campaignId)
 
@@ -271,5 +274,85 @@ async function triggerSequenceReschedule(campaignId: string) {
     
   } catch (error) {
     console.error('❌ Error triggering sequence reschedule:', error)
+  }
+}
+
+// Helper function to update contacts' sequence_schedule when sequences change
+async function updateContactSequenceSchedules(campaignId: string, newSequences: any[]) {
+  try {
+    console.log(`🔄 Updating sequence_schedule for all contacts in campaign ${campaignId}`)
+    
+    // Get all contacts for this campaign that have sequence_schedule
+    const { data: contacts, error: contactsError } = await supabaseServer
+      .from('contacts')
+      .select('id, email, sequence_step, sequence_schedule')
+      .eq('campaign_id', campaignId)
+      .not('sequence_schedule', 'is', null)
+    
+    if (contactsError) {
+      console.error('❌ Error fetching contacts:', contactsError)
+      return
+    }
+    
+    if (!contacts || contacts.length === 0) {
+      console.log('ℹ️ No contacts with sequence_schedule found')
+      return
+    }
+    
+    console.log(`📧 Updating sequence_schedule for ${contacts.length} contacts`)
+    
+    // Update each contact's sequence_schedule
+    for (const contact of contacts) {
+      try {
+        const currentSchedule = contact.sequence_schedule
+        if (!currentSchedule || !currentSchedule.steps) continue
+        
+        // Rebuild the schedule based on new sequences
+        const newSteps = newSequences.map((seq, index) => {
+          const stepNumber = index + 1
+          const oldStep = currentSchedule.steps.find((s: any) => s.step === stepNumber)
+          
+          // Keep existing scheduled_date if step exists, or calculate new one
+          let scheduledDate = oldStep?.scheduled_date
+          if (!scheduledDate) {
+            // Calculate new date based on timing_days
+            const baseDate = contact.sequence_step === 0 ? new Date() : new Date(contact.sequence_schedule?.created_at || new Date())
+            const timingDays = seq.timing_days || 0
+            scheduledDate = new Date(baseDate.getTime() + (timingDays * 24 * 60 * 60 * 1000)).toISOString()
+          }
+          
+          return {
+            step: stepNumber,
+            scheduled_date: scheduledDate
+          }
+        })
+        
+        const updatedSchedule = {
+          ...currentSchedule,
+          steps: newSteps,
+          updated_at: new Date().toISOString()
+        }
+        
+        // Update the contact
+        const { error: updateError } = await supabaseServer
+          .from('contacts')
+          .update({ sequence_schedule: updatedSchedule })
+          .eq('id', contact.id)
+        
+        if (updateError) {
+          console.error(`❌ Error updating contact ${contact.email}:`, updateError)
+        } else {
+          console.log(`✅ Updated sequence_schedule for ${contact.email}`)
+        }
+        
+      } catch (contactError) {
+        console.error(`❌ Error processing contact ${contact.email}:`, contactError)
+      }
+    }
+    
+    console.log(`✅ Finished updating sequence_schedule for campaign ${campaignId}`)
+    
+  } catch (error) {
+    console.error('❌ Error updating contact sequence schedules:', error)
   }
 }

@@ -2320,7 +2320,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
           status: status,
           timezone: schedule.timezone, // Use schedule timezone consistently
           sender: assignedSender,
-          content: `Email content for step ${step.step}`,
+          content: step.content || '',
           label: step.timing_days === 0 ? 'Immediate' : `${step.timing_days} day${step.timing_days === 1 ? '' : 's'}`
         }
       })
@@ -2624,16 +2624,31 @@ Sequence Info:
   } 
   // Open sequence modal
   const openSequenceModal = async (contact: Contact) => {
-    console.log('🔄 Fetching fresh contact data for sequence modal...')
+    console.log('🔄 Fetching fresh contact and sequence data for sequence modal...')
     
     try {
-      // Fetch fresh contact data with sequence_schedule
-      const response = await fetch(`/api/contacts?campaign_id=${campaign.id}`, {
-        credentials: "include"
-      })
+      // Fetch both fresh contact data and fresh sequences in parallel
+      const [contactResponse, sequenceResponse] = await Promise.all([
+        fetch(`/api/contacts?campaign_id=${campaign.id}`, {
+          credentials: "include"
+        }),
+        fetch(`/api/campaigns/${campaign.id}/sequences`, {
+          credentials: "include"
+        })
+      ])
       
-      if (response.ok) {
-        const contactsData = await response.json()
+      // Update sequences first
+      if (sequenceResponse.ok) {
+        const sequenceResult = await sequenceResponse.json()
+        if (sequenceResult.success && sequenceResult.data) {
+          console.log('✅ Refreshed campaign sequences for modal')
+          setCampaignSequences(sequenceResult.data)
+        }
+      }
+      
+      // Update contact data
+      if (contactResponse.ok) {
+        const contactsData = await contactResponse.json()
         const freshContact = contactsData.contacts?.find((c: Contact) => c.id === contact.id)
         
         if (freshContact) {
@@ -2648,36 +2663,38 @@ Sequence Info:
         setSequenceModalContact(contact)
       }
     } catch (error) {
-      console.error('❌ Error fetching fresh contact data:', error)
+      console.error('❌ Error fetching fresh data:', error)
       setSequenceModalContact(contact)
-    }
-    
-    // Refresh sequences when modal opens to ensure we have latest data
-    if (campaignSequences.length === 0) {
-      console.log('🔄 No sequences loaded, fetching...')
-      fetchCampaignSequences()
     }
   }
 
   // Open email content preview modal
   const openEmailPreview = (contact: Contact, step: any) => {
-    console.log('🔍 Opening email preview with step:', step)
+    console.log('🔍 Opening email preview for step:', step.step)
     console.log('📧 Available campaign sequences:', campaignSequences.length)
-    console.log('📝 Step subject:', step.subject)
-    console.log('📄 Step content length:', step.content?.length || 0)
-    console.log('📄 Step has content:', step.hasContent)
-    console.log('📄 Step originalContent length:', step.originalContent?.length || 0)
-    console.log('🆔 Sequence metadata:', {
-      sequenceId: step.sequenceId,
-      sequenceNumber: step.sequenceNumber,
-      sequenceStep: step.sequenceStep
-    })
-    if (step.content) {
-      console.log('✅ Content preview:', step.content.substring(0, 200) + '...')
+    
+    // Find the actual sequence content from campaignSequences database
+    const actualSequence = campaignSequences.find(seq => 
+      seq.id === step.step || seq._stepNumber === step.step || seq.sequenceStep === step.step
+    )
+    
+    if (actualSequence) {
+      console.log('✅ Found actual sequence content:', {
+        subject: actualSequence.subject,
+        contentLength: actualSequence.content?.length || 0
+      })
+      
+      const actualStep = {
+        ...step,
+        subject: actualSequence.subject,
+        content: actualSequence.content
+      }
+      setEmailPreviewModal({ contact, step: actualStep })
     } else {
-      console.log('❌ No content found, showing fallback')
+      console.log('❌ No matching sequence found for step:', step.step)
+      console.log('Available sequences:', campaignSequences.map(s => ({ id: s.id, stepNumber: s._stepNumber })))
+      setEmailPreviewModal({ contact, step })
     }
-    setEmailPreviewModal({ contact, step })
   }
 
   // Filter contacts
@@ -4259,7 +4276,6 @@ Sequence Info:
                         <Mail className="w-4 h-4 text-blue-600" />
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-700">From: [Your Email]</div>
                         <div className="text-sm text-gray-600">To: {emailPreviewModal.contact.email}</div>
                       </div>
                     </div>
@@ -4285,7 +4301,19 @@ Sequence Info:
                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Subject</span>
                   </div>
                   <div className="text-lg font-semibold text-gray-900">
-                    {emailPreviewModal.step.subject}
+                    {(() => {
+                      // Personalize the subject for preview
+                      let personalizedSubject = emailPreviewModal.step.subject || ''
+                      const contact = emailPreviewModal.contact
+                      
+                      personalizedSubject = personalizedSubject
+                        .replace(/\{\{firstName\}\}/g, contact.first_name || 'there')
+                        .replace(/\{\{lastName\}\}/g, contact.last_name || '')
+                        .replace(/\{\{companyName\}\}/g, contact.company || 'your company')
+                        .replace(/\{\{title\}\}/g, contact.title || '')
+                      
+                      return personalizedSubject
+                    })()}
                   </div>
                 </div>
 
@@ -4293,7 +4321,25 @@ Sequence Info:
                 <div className="px-6 py-6 bg-white dark:bg-gray-900 overflow-y-auto flex-1">
                   <div className="prose prose-sm max-w-none">
                     <div className="text-gray-800 leading-relaxed whitespace-pre-wrap font-sans">
-                      {emailPreviewModal.step.content}
+                      {(() => {
+                        // Personalize the content for preview
+                        let personalizedContent = emailPreviewModal.step.content || ''
+                        const contact = emailPreviewModal.contact
+                        
+                        personalizedContent = personalizedContent
+                          .replace(/\{\{firstName\}\}/g, contact.first_name || 'there')
+                          .replace(/\{\{lastName\}\}/g, contact.last_name || '')
+                          .replace(/\{\{companyName\}\}/g, contact.company || 'your company')
+                          .replace(/\{\{title\}\}/g, contact.title || '')
+                        
+                        // Convert HTML line breaks to actual line breaks for display
+                        personalizedContent = personalizedContent
+                          .replace(/<br\s*\/?>/gi, '\n')
+                          .replace(/<\/p><p>/gi, '\n\n')
+                          .replace(/<\/?p>/gi, '')
+                        
+                        return personalizedContent
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -4316,20 +4362,6 @@ Sequence Info:
                 </div>
               </div>
 
-              {/* Personalization Info */}
-              <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <Users className="w-4 h-4 text-green-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-green-900 mb-1">Smart Personalization</h4>
-                    <p className="text-sm text-green-700 leading-relaxed">
-                      This email is automatically personalized with <strong>{emailPreviewModal.contact.first_name}'s</strong> details including their name, company (<strong>{emailPreviewModal.contact.company}</strong>), and role (<strong>{emailPreviewModal.contact.title}</strong>). The content adapts to create a natural, personalized conversation.
-                    </p>
-                  </div>
-                </div>
-              </div>
 
               {/* Quick Actions */}
               <div className="flex items-center justify-between pt-4 border-t border-gray-200">
