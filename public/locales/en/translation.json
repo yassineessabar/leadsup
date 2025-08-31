@@ -266,7 +266,9 @@
     "totalContacts": "{{count}} contacts",
     "loading": "Loading campaigns...",
     "notStarted": "Not Started",
-    "readyToStart": "Ready to Start"
+    "readyToStart": "Ready to Start",
+    "noCampaigns": "No campaigns yet",
+    "createFirstCampaign": "Create your first campaign to start prospecting"
   },
   "campaignManagement": {
     "targetTab": {

@@ -387,7 +387,7 @@ export default function Home() {
           }}
         />
       case "billing":
-        return <BillingSubscriptionPage />
+        return <BillingSubscriptionPage onTabChange={handleTabChange} />
       case "settings":
         return <SettingsPage onSectionChange={handleTabChange} />
       case "language-preferences":

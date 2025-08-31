@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { useCompanyLogo } from "@/hooks/useCompanyLogo"
 import { UpgradeProDialog } from "@/components/upgrade-pro-dialog"
@@ -493,13 +492,10 @@ export function DashboardSidebar({
               isCollapsed ? "justify-center px-2" : "justify-start gap-3 px-4 py-3"
             )}
             onClick={() => onTabChange("settings")}
-            title={isCollapsed ? `@${companyName.toLowerCase().replace(/\s+/g, '')}` : undefined}
+            title={isCollapsed ? "Settings" : undefined}
           >
-            <Avatar className="h-7 w-7 min-w-[1.75rem]">
-              <AvatarImage src={logoUrl || "/placeholder.svg?height=24&width=24"} alt="Company Logo" />
-              <AvatarFallback className="text-xs font-medium">{companyName ? companyName[0].toUpperCase() : 'C'}</AvatarFallback>
-            </Avatar>
-            {!isCollapsed && <span className="text-base truncate font-medium">@{companyName.toLowerCase().replace(/\s+/g, '')}</span>}
+            <Settings className="h-4 w-4" />
+            {!isCollapsed && <span className="text-base truncate font-medium">Settings</span>}
           </Button>
         </div>
 
@@ -721,11 +717,8 @@ export function DashboardSidebar({
           className="w-full justify-start gap-3 rounded-2xl border-gray-200/50 bg-gray-50/50 px-4 py-3 h-12 text-base text-gray-700 hover:bg-gray-100/60 transition-all duration-300 font-medium"
           onClick={() => onTabChange("settings")}
         >
-          <Avatar className="h-7 w-7">
-            <AvatarImage src={logoUrl || "/placeholder.svg?height=24&width=24"} alt="Company Logo" />
-            <AvatarFallback className="text-xs font-medium">{companyName ? companyName[0].toUpperCase() : 'C'}</AvatarFallback>
-          </Avatar>
-          <span className="truncate">@{companyName.toLowerCase().replace(/\s+/g, '')}</span>
+          <Settings className="h-4 w-4" />
+          <span className="truncate">Settings</span>
         </Button>
         </div>
       </div>

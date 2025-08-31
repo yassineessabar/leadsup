@@ -153,7 +153,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
               if (onTabChange) {
                 onTabChange("settings")
               } else {
-                window.history.back()
+                router.push("/?tab=settings")
               }
             }}
             className="text-gray-600 hover:text-gray-900 p-2 h-auto"
