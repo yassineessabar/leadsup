@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
                 console.log(`✅ Email sent successfully via SendGrid - Message ID: ${result[0]?.headers?.['x-message-id']}`)
                 
                 // Log email tracking
-                await supabaseServer
+                const { error: trackingError } = await supabaseServer
                   .from('email_tracking')
                   .insert({
                     id: trackingId,
@@ -317,6 +317,10 @@ export async function POST(request: NextRequest) {
                     sent_at: new Date().toISOString(),
                     category: ['campaign', 'automation']
                   })
+                
+                if (trackingError) {
+                  console.log(`❌ Error inserting email tracking for ${contact.email}:`, trackingError)
+                }
                 
                 // Only increment totalSent if email was actually sent
                 emailSent = true
@@ -365,6 +369,7 @@ export async function POST(request: NextRequest) {
           }
           
           // Update the contact
+          console.log(`🔄 Updating contact ${contact.email} with:`, updateData)
           const { error: updateError } = await supabaseServer
             .from('contacts')
             .update(updateData)
@@ -372,6 +377,9 @@ export async function POST(request: NextRequest) {
           
           if (updateError) {
             console.log(`❌ Error updating ${contact.email}:`, updateError.message)
+            console.log(`❌ Full update error:`, updateError)
+          } else {
+            console.log(`✅ Successfully updated ${contact.email} to step ${updateData.sequence_step}`)
           }
         }
         
