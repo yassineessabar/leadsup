@@ -1366,7 +1366,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           activeDays,
           sendingStartTime,
           sendingEndTime,
-          signature: {
+          signature_data: {
             firstName,
             lastName,
             companyName,
@@ -1413,7 +1413,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           activeDays,
           sendingStartTime,
           sendingEndTime,
-          signature: {
+          signature_data: {
             firstName,
             lastName,
             companyName,
@@ -1602,15 +1602,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           setSendingStartTime(data.settings.sendingStartTime || '08:00 AM')
           setSendingEndTime(data.settings.sendingEndTime || '05:00 PM')
           
-          // Load signature data
-          if (data.settings.signature) {
-            setFirstName(data.settings.signature.firstName || '')
-            setLastName(data.settings.signature.lastName || '')
-            setCompanyName(data.settings.signature.companyName || campaign?.company_name || '')
-            setCompanyWebsite(data.settings.signature.companyWebsite || campaign?.website || '')
+          // Load signature data from signature_data column
+          if (data.settings.signature_data) {
+            setFirstName(data.settings.signature_data.firstName || '')
+            setLastName(data.settings.signature_data.lastName || '')
+            setCompanyName(data.settings.signature_data.companyName || campaign?.company_name || '')
+            setCompanyWebsite(data.settings.signature_data.companyWebsite || campaign?.website || '')
             
             // Use saved emailSignature if it exists, otherwise generate from campaign data
-            const signatureHtml = data.settings.signature.emailSignature || 
+            const signatureHtml = data.settings.signature_data.emailSignature || 
               `<br/><br/>Best regards,<br/><strong>${campaign?.company_name || ''}</strong><br/><br/><a href="${campaign?.website || ''}" target="_blank">${campaign?.website || ''}</a>`
             
             setEmailSignature(signatureHtml)

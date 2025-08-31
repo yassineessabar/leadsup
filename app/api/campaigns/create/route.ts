@@ -145,12 +145,12 @@ export async function POST(request: NextRequest) {
         
         const defaultSettings = {
           campaign_id: campaign.id,
-          dailyContactsLimit: 35,
-          dailySequenceLimit: 100,
-          activeDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-          sendingStartTime: '08:00 AM',
-          sendingEndTime: '05:00 PM',
-          signature: {
+          daily_contacts_limit: 35,
+          daily_sequence_limit: 100,
+          active_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+          sending_start_time: '08:00 AM',
+          sending_end_time: '05:00 PM',
+          signature_data: {
             firstName: '',
             lastName: '',
             companyName: formData.companyName.trim(),
