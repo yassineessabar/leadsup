@@ -144,6 +144,18 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   try {
     const customerId = subscription.customer as string
+    const priceId = subscription.items.data[0]?.price.id
+    const priceAmount = subscription.items.data[0]?.price.unit_amount
+    const interval = subscription.items.data[0]?.price.recurring?.interval
+
+    console.log('🔄 Processing subscription update:', {
+      id: subscription.id,
+      customer: customerId,
+      priceId,
+      priceAmount,
+      interval,
+      status: subscription.status
+    })
 
     // Check if subscription is canceled or will be canceled
     const isCanceled = subscription.status === 'canceled' || subscription.cancel_at_period_end
@@ -356,21 +368,42 @@ async function handleBillingPortalSessionCreated(session: Stripe.BillingPortal.S
 }
 
 function getSubscriptionTypeFromSubscription(subscription: Stripe.Subscription): 'basic' | 'pro' | 'enterprise' {
-  // Check the payment links in URL metadata or product metadata
   const priceId = subscription.items.data[0]?.price.id
-  const productId = subscription.items.data[0]?.price.product as string
-
-  // Map based on price amounts or product metadata
   const price = subscription.items.data[0]?.price
+  
+  // First try to map by price ID if we have specific test price IDs
+  if (priceId) {
+    // Map specific test price IDs to subscription types
+    // Note: These would need to be updated with actual price IDs from your Stripe dashboard
+    const priceIdToType: Record<string, 'basic' | 'pro' | 'enterprise'> = {
+      // Add your actual test price IDs here when available
+      // 'price_1234567890abcdef': 'basic',
+      // 'price_0987654321fedcba': 'pro',
+      // 'price_enterprise_test': 'enterprise',
+    }
+    
+    if (priceIdToType[priceId]) {
+      return priceIdToType[priceId]
+    }
+  }
+
+  // Fallback to price amount mapping
   if (price) {
     const monthlyAmount = price.unit_amount || 0
+    const interval = price.recurring?.interval
+    
+    // Convert yearly amounts to monthly equivalents for comparison
+    let effectiveMonthlyAmount = monthlyAmount
+    if (interval === 'year') {
+      effectiveMonthlyAmount = Math.round(monthlyAmount / 12)
+    }
 
     // Basic: $39/month = 3900 cents
-    if (monthlyAmount >= 2900 && monthlyAmount <= 3900) return 'basic'
-    // Pro: $79/month = 7900 cents
-    if (monthlyAmount >= 6900 && monthlyAmount <= 7900) return 'pro'
+    if (effectiveMonthlyAmount >= 2900 && effectiveMonthlyAmount <= 4200) return 'basic'
+    // Pro: $79/month = 7900 cents  
+    if (effectiveMonthlyAmount >= 6900 && effectiveMonthlyAmount <= 8500) return 'pro'
     // Enterprise: $180/month = 18000 cents
-    if (monthlyAmount >= 16000) return 'enterprise'
+    if (effectiveMonthlyAmount >= 15000) return 'enterprise'
   }
 
   // Default to basic if we can't determine
