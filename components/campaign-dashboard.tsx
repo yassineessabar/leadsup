@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from "react"
 import { useRouter } from "next/navigation"
 import { useDebouncedAutoSave } from "@/hooks/useDebounce"
 import { useOptimizedPolling } from "@/hooks/useOptimizedPolling"
@@ -215,18 +215,29 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }, [campaign?.status, activeTab])
   
-  // Load sequences when component mounts or campaign changes
+  // Load sequences when component mounts or campaign changes with staggered loading
   useEffect(() => {
     if (campaign?.id) {
-      console.log('🔄 Component mounted, loading sequences for campaign:', campaign.id)
-      loadSequences()
-      // Also validate requirements when component mounts
-      validateCampaignRequirements()
+      console.log('🔄 Component mounted, loading data for campaign:', campaign.id)
+      
+      // Load critical data immediately only if on sequences tab
+      if (activeTab === 'sequences' || activeTab === 'automation') {
+        loadSequences()
+      }
+      
+      // Stagger non-critical validation to improve perceived performance
+      const validationTimeout = setTimeout(() => {
+        validateCampaignRequirements()
+      }, 500)
+      
+      return () => {
+        clearTimeout(validationTimeout)
+      }
     }
-  }, [campaign?.id])
+  }, [campaign?.id, activeTab])
   
-  // Validation functions
-  const validateCampaignRequirements = async () => {
+  // Validation functions with memoization
+  const validateCampaignRequirements = useCallback(async () => {
     if (!campaign?.id) return { hasContacts: false, hasAutoScraping: false, hasDomains: false }
     
     setValidationLoading(true)
@@ -281,7 +292,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     } finally {
       setValidationLoading(false)
     }
-  }
+  }, [campaign?.id])
   
   const checkProgressionRequirements = (currentStep: number, nextStep?: number): { canProceed: boolean; errors: string[] } => {
     const errors: string[] = []
@@ -716,6 +727,23 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   const pageSize = 20
 
+  // Memoize frequently used filtered data for performance optimization
+  const sequence1Steps = useMemo(() => {
+    return steps.filter(s => s.sequence === 1)
+  }, [steps])
+  
+  const sequence2Steps = useMemo(() => {
+    return steps.filter(s => s.sequence === 2)
+  }, [steps])
+  
+  const allConnectedAccounts = useMemo(() => {
+    return [
+      ...connectedGmailAccounts,
+      ...connectedMicrosoft365Accounts, 
+      ...connectedSmtpAccounts
+    ]
+  }, [connectedGmailAccounts, connectedMicrosoft365Accounts, connectedSmtpAccounts])
+
   // Sequence status colors for contact table
   const sequenceStatusColors = {
     'Valid': 'bg-green-100 text-green-800',
@@ -877,8 +905,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   const updateGap = (newGap: number) => {
-    const seq1Steps = steps.filter(s => s.sequence === 1)
-    const seq2Steps = steps.filter(s => s.sequence === 2)
+    const seq1Steps = sequence1Steps
+    const seq2Steps = sequence2Steps
     
     if (seq1Steps.length > 0 && seq2Steps.length > 0) {
       const seq1End = Math.max(...seq1Steps.map(s => s.timing))
@@ -1317,8 +1345,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }
 
-  // Comprehensive campaign save function
-  const saveCampaignData = async (dataType = 'all') => {
+  // Comprehensive campaign save function with memoization
+  const saveCampaignData = useCallback(async (dataType = 'all') => {
     if (!campaign?.id) return
 
     try {
@@ -1362,7 +1390,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     } catch (error) {
       console.error("❌ Error saving campaign:", error)
     }
-  }
+  }, [campaign?.id, steps, activeDays, sendingStartTime, sendingEndTime, selectedSenderAccounts, firstName, lastName, companyName, companyWebsite, emailSignature, dailyContactsLimit, dailySequenceLimit, connectedGmailAccounts, connectedMicrosoft365Accounts, connectedSmtpAccounts])
 
   // Helper function for saving with custom sender selection
   const saveCampaignDataWithSenders = async (dataType = 'all', customSenderAccounts = null) => {
@@ -1503,7 +1531,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const saveSenders = () => saveCampaignData('senders')
 
   // Load essential campaign data using quick API for fast loading
-  const loadQuickCampaignData = async () => {
+  const loadQuickCampaignData = useCallback(async () => {
     if (!campaign?.id) return
     
     setIsLoadingCampaignData(true)
@@ -1548,7 +1576,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     } finally {
       setIsLoadingCampaignData(false)
     }
-  }
+  }, [campaign?.id])
   
   // Load full campaign data when needed (tab-specific)
   const loadCampaignData = async () => {
@@ -1602,7 +1630,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   // Lazy load sequences when needed
-  const loadSequences = async () => {
+  const loadSequences = useCallback(async () => {
     console.log('🔍 loadSequences called, campaign.id:', campaign?.id)
     if (!campaign?.id) {
       console.log('❌ No campaign ID, skipping sequence load')
@@ -1648,10 +1676,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     } catch (error) {
       console.error('❌ Error loading sequences:', error)
     }
-  }
+  }, [campaign?.id])
 
-  // Lazy load connected accounts when needed
-  const loadConnectedAccounts = async () => {
+  // Lazy load connected accounts when needed with memoization
+  const loadConnectedAccounts = useCallback(async () => {
     if (!campaign?.id) return
     
     try {
@@ -1668,10 +1696,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     } catch (error) {
       console.error('Error loading connected accounts:', error)
     }
-  }
+  }, [campaign?.id])
 
-  // Load selected sender accounts
-  const loadSelectedSenders = async () => {
+  // Load selected sender accounts with memoization
+  const loadSelectedSenders = useCallback(async () => {
     console.log('🔍 loadSelectedSenders called, campaign.id:', campaign?.id)
     if (!campaign?.id) {
       console.log('❌ No campaign ID, skipping sender selection load')
@@ -1704,7 +1732,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     } catch (error) {
       console.error('❌ Error loading selected senders:', error)
     }
-  }
+  }, [campaign?.id])
 
   // Handle tab changes with lazy loading
   const handleTabChange = async (tabId: string) => {
@@ -1726,21 +1754,27 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     }
     
-    // Lazy load data when specific tabs are accessed
+    // Lazy load data when specific tabs are accessed with staggered loading
     if (tabId === 'sequence' || tabId === 'automation') {
       console.log('🔄 Loading sequences for sequence/automation tab...')
       loadSequences()
     }
     
     if (tabId === 'sender') {
-      console.log('🔄 Loading sender data...')
+      console.log('🔄 Loading sender data with staggered timing...')
+      // Load connected accounts first (lighter operation)
       loadConnectedAccounts()
-      loadSelectedSenders()
+      // Stagger the selected senders load to improve perceived performance
+      setTimeout(() => {
+        loadSelectedSenders()
+      }, 200)
     }
     
-    // Re-validate requirements when tab changes
+    // Stagger validation to improve perceived performance
     if (isGuidedFlow && campaign?.id) {
-      validateCampaignRequirements()
+      setTimeout(() => {
+        validateCampaignRequirements()
+      }, 300)
     }
   }
   
@@ -1749,8 +1783,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     if (campaign?.id && !campaignDataLoaded) {
       // Use the new quick API for fast initial loading
       loadQuickCampaignData()
+      
+      // Only load sequences if we're already on sequence tab or if it's critical
+      if (activeTab === 'sequence' || activeTab === 'automation') {
+        loadSequences()
+      }
     }
-  }, [campaign?.id])
+  }, [campaign?.id, activeTab])
 
   // Listen for create campaign event from sidebar
   useEffect(() => {
@@ -1762,6 +1801,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     return () => window.removeEventListener('create-campaign', handleCreateCampaign)
   }, [])
 
+  // Lazy load sequences when sequence tab is accessed
+  useEffect(() => {
+    if (activeTab === 'sequence' && campaign?.id && campaignDataLoaded && steps.length === 0) {
+      console.log('🔄 Lazy loading sequences for sequence tab...')
+      loadSequences()
+    }
+  }, [activeTab, campaign?.id, campaignDataLoaded, steps.length])
+
   // Auto-save functionality (only after data is loaded)
   useEffect(() => {
     if (!campaignDataLoaded) return
@@ -1772,7 +1819,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         console.log('🔄 Auto-saving sequences after change...', steps.length, 'steps')
         saveSequence()
       }
-    }, 5000) // Auto-save after 5 seconds of inactivity
+    }, 10000) // Auto-save after 10 seconds of inactivity for better performance
 
     return () => clearTimeout(autoSaveTimer)
   }, [steps, campaignDataLoaded])
@@ -1783,7 +1830,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     const autoSaveTimer = setTimeout(() => {
       // Auto-save settings when they change
       saveCampaignData('settings')
-    }, 3000) // Auto-save after 3 seconds of inactivity
+    }, 8000) // Auto-save after 8 seconds for better performance
 
     return () => clearTimeout(autoSaveTimer)
   }, [dailyContactsLimit, dailySequenceLimit, activeDays, sendingStartTime, sendingEndTime, firstName, lastName, companyName, companyWebsite, emailSignature, campaignDataLoaded])
@@ -2051,12 +2098,24 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     setFilterCount(count)
   }, [locationFilter, keywordFilter, industryFilter])
 
-  // Re-fetch contacts when filters change
+  // Re-fetch contacts when filters change (debounced for performance)
+  useEffect(() => {
+    if (activeTab === 'target' && campaign?.id) {
+      // Debounce filter changes to avoid excessive API calls
+      const timer = setTimeout(() => {
+        fetchContacts()
+      }, 500) // 500ms debounce for filter changes
+      
+      return () => clearTimeout(timer)
+    }
+  }, [locationFilter, keywordFilter, industryFilter, searchQuery, campaign?.id, activeTab])
+
+  // Separate effect for page changes (no debounce needed)
   useEffect(() => {
     if (activeTab === 'target' && campaign?.id) {
       fetchContacts()
     }
-  }, [locationFilter, keywordFilter, industryFilter, searchQuery, currentPage, campaign?.id, activeTab])
+  }, [currentPage])
 
   // Gmail OAuth functions
   const initiateGmailOAuth = async () => {
@@ -2626,7 +2685,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   // Contact table functions (fetch contacts for the campaign)
-  const fetchContacts = async () => {
+  const fetchContacts = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
@@ -2676,9 +2735,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchQuery, campaign?.id, locationFilter, keywordFilter, industryFilter, currentPage])
 
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = useCallback(async () => {
     try {
       const response = await fetch('/api/campaigns', {
         credentials: "include"
@@ -2694,7 +2753,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       console.error('Error fetching campaigns:', error)
       setCampaigns([])
     }
-  }
+  }, [])
 
   const handleCampaignAssignment = async (campaignId) => {
     if (selectedContacts.length === 0) return
@@ -2969,8 +3028,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     fetchContacts()
   }, [currentPage])
 
+  // Lazy load campaigns list only when needed for campaign switching
   useEffect(() => {
-    fetchCampaigns()
+    // Only fetch campaigns if we don't have them yet and user might need to switch
+    if (campaigns.length === 0) {
+      // Delay this to not block initial rendering
+      setTimeout(() => {
+        fetchCampaigns()
+      }, 1000)
+    }
   }, [])
 
   useEffect(() => {
@@ -2982,13 +3048,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }, [searchQuery])
 
   // Combine all connected accounts for sender tab
-  const allConnectedAccounts = [
-    ...connectedGmailAccounts,
-    ...connectedMicrosoft365Accounts,
-    ...connectedSmtpAccounts
-  ]
-
-  // Calculate statistics for sender tab
+  // Calculate statistics for sender tab with memoized data
   const totalAccounts = allConnectedAccounts.length
   const activeWarmupCount = connectedGmailAccounts.filter(acc => acc.warmup_status === 'active').length
   const needAttentionCount = connectedGmailAccounts.filter(acc => acc.warmup_status === 'error' || acc.health_score < 60).length
@@ -3425,7 +3485,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         </div>
                       </div>
                       <div className="flex items-center space-x-1">
-                        {steps.filter(s => s.sequence === 2).length > 0 && (
+                        {sequence2Steps.length > 0 && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -3440,7 +3500,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                     </div>
                     
                     <div className="space-y-4">
-                      {steps.filter(step => step.sequence === 1).map((step, index) => (
+                      {sequence1Steps.map((step, index) => (
                         <div key={step.id} className="relative group">
                           <div
                             onClick={() => selectStep(step.id)}
@@ -3464,7 +3524,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               <div className="flex items-center space-x-2">
                                 {/* Hover Actions */}
                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                  {steps.filter(s => s.sequence === 1).length > 1 && (
+                                  {sequence1Steps.length > 1 && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -3508,12 +3568,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   </div>
 
                   {/* Gap Indicator - only show if both sequences exist */}
-                  {steps.filter(s => s.sequence === 1).length > 0 && steps.filter(s => s.sequence === 2).length > 0 && (
+                  {sequence1Steps.length > 0 && sequence2Steps.length > 0 && (
                     <div 
                       className="text-center my-6 py-4 border-t border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors group"
                       onClick={() => {
-                        const seq1End = Math.max(...steps.filter(s => s.sequence === 1).map(s => s.timing))
-                        const seq2Start = Math.min(...steps.filter(s => s.sequence === 2).map(s => s.timing))
+                        const seq1End = Math.max(...sequence1Steps.map(s => s.timing))
+                        const seq2Start = Math.min(...sequence2Steps.map(s => s.timing))
                         const currentGap = seq2Start - seq1End
                         const newGap = prompt(`Enter waiting period (days):`, currentGap.toString())
                         if (newGap && !isNaN(parseInt(newGap)) && parseInt(newGap) >= 0) {
@@ -3526,8 +3586,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         <Clock className="h-4 w-4 text-gray-500" />
                         <div className="text-sm text-gray-600">
                           {(() => {
-                            const seq1End = Math.max(...steps.filter(s => s.sequence === 1).map(s => s.timing))
-                            const seq2Start = Math.min(...steps.filter(s => s.sequence === 2).map(s => s.timing))
+                            const seq1End = Math.max(...sequence1Steps.map(s => s.timing))
+                            const seq2Start = Math.min(...sequence2Steps.map(s => s.timing))
                             const gap = seq2Start - seq1End
                             return t('campaignManagement.sequence.gap.waitingPeriod').replace('{gap}', gap)
                           })()}
@@ -3541,7 +3601,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   )}
 
                   {/* Add Sequence 2 button - only show if sequence 2 doesn't exist */}
-                  {steps.filter(s => s.sequence === 2).length === 0 && (
+                  {sequence2Steps.length === 0 && (
                     <div className="text-center my-8 py-6 border-t border-gray-200">
                       <Button
                         variant="outline"
@@ -3556,7 +3616,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   )}
 
                   {/* Sequence 2 - only show if it has steps */}
-                  {steps.filter(s => s.sequence === 2).length > 0 && (
+                  {sequence2Steps.length > 0 && (
                     <div>
                       <div className="mb-4 flex items-center justify-between">
                         <div className="flex-1">
@@ -3589,7 +3649,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                       </div>
                       
                       <div className="space-y-4">
-                        {steps.filter(step => step.sequence === 2).map((step, index) => (
+                        {sequence2Steps.map((step, index) => (
                           <div key={step.id} className="relative group">
                             <div
                               onClick={() => selectStep(step.id)}
@@ -3613,7 +3673,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                 <div className="flex items-center space-x-2">
                                   {/* Hover Actions */}
                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                                    {steps.filter(s => s.sequence === 2).length > 1 && (
+                                    {sequence2Steps.length > 1 && (
                                       <Button
                                         variant="ghost"
                                         size="sm"

@@ -11,6 +11,7 @@ export async function POST(
 ) {
   try {
     const { contactUpdates } = await request.json()
+    const { id } = await params
     
     if (!contactUpdates || !Array.isArray(contactUpdates)) {
       return NextResponse.json({ error: 'contactUpdates array is required' }, { status: 400 })
@@ -25,7 +26,7 @@ export async function POST(
         .from('contacts')
         .update({ email_status })
         .eq('id', contactId)
-        .eq('campaign_id', params.id)
+        .eq('campaign_id', id)
       
       if (error) {
         console.error(`Error updating contact ${contactId}:`, error)
