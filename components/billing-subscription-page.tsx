@@ -349,10 +349,21 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
                     {t('billingPage.changePlan')}
                   </Button>
                   <Button
-                    className="flex-1 bg-gray-400 text-white h-12 px-6 rounded-2xl font-medium"
-                    disabled={true}
+                    onClick={handleManageSubscription}
+                    disabled={managingSubscription}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-12 px-6 rounded-2xl font-medium transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
-                    Manage Subscription (Test Mode)
+                    {managingSubscription ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Opening...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <ExternalLink className="w-4 h-4" />
+                        <span>{t('billingPage.manageSubscription')}</span>
+                      </div>
+                    )}
                   </Button>
                 </div>
               </>
