@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     return await checkDomainConnect(domain)
   } catch (error) {
-    console.error('Domain Connect GET check failed:', error)
+    // console.error('Domain Connect GET check failed:', error)
     return NextResponse.json(
       { error: 'Failed to check Domain Connect support' },
       { status: 500 }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     return await checkDomainConnect(domain)
   } catch (error) {
-    console.error('Domain Connect POST check failed:', error)
+    // console.error('Domain Connect POST check failed:', error)
     return NextResponse.json(
       { error: 'Failed to check Domain Connect support' },
       { status: 500 }
@@ -47,9 +47,11 @@ export async function POST(request: NextRequest) {
 
 async function checkDomainConnect(domain: string) {
   try {
-    // Simplified domain connect check - always fallback to manual for now
-    // TODO: Implement actual domain connect checking when service is available
-
+    // TEMPORARILY DISABLED: Auto domain detection commented out until full testing is complete
+    // All domains will use manual setup process for now
+    // TODO: Re-enable automatic domain connect after testing with real API credentials
+    
+    /* 
     // Check for direct API support
     const directApiSupport = await checkDirectApiSupport(domain)
     if (directApiSupport.supported) {
@@ -62,8 +64,9 @@ async function checkDomainConnect(domain: string) {
         requiresAuth: true
       })
     }
+    */
 
-    // Fallback to manual setup
+    // Always fallback to manual setup until auto-detection is fully tested
     return NextResponse.json({
       success: true,
       supported: false,
@@ -72,7 +75,7 @@ async function checkDomainConnect(domain: string) {
     })
 
   } catch (error) {
-    console.error('Domain Connect check failed:', error)
+    // console.error('Domain Connect check failed:', error)
     return NextResponse.json({
       success: true,
       supported: false,

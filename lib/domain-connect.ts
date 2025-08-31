@@ -41,6 +41,11 @@ export class DomainConnectService {
     setupUrl?: string
   }> {
     try {
+      // TEMPORARILY DISABLED: Auto domain detection commented out until full testing
+      // All domains will use manual setup process for now
+      // TODO: Re-enable after testing with real registrar API credentials
+      
+      /*
       // Step 1: Check for Domain Connect discovery
       const discoveryUrl = `https://_domainconnect.${domain}/v2/${DomainConnectService.LEADSUP_PROVIDER_ID}/${DomainConnectService.SERVICE_ID}`
       
@@ -62,14 +67,18 @@ export class DomainConnectService {
         }
       } catch (fetchError) {
         // Domain Connect discovery failed, continue to fallback
-        console.log(`Domain Connect discovery failed for ${domain}:`, fetchError.message)
+        // console.log(`Domain Connect discovery failed for ${domain}:`, fetchError.message)
       }
 
       // Step 2: Fallback - check common registrar patterns
       return await this.checkRegistrarSupport(domain)
+      */
+
+      // Always return not supported until properly tested
+      return { supported: false }
 
     } catch (error) {
-      console.log('Domain Connect check failed:', error.message)
+      // console.log('Domain Connect check failed:', error.message)
       return { supported: false }
     }
   }
