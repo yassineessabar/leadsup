@@ -2769,6 +2769,32 @@ Sequence Info:
                 {t('analytics.refresh')}
               </Button>
               
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Navigate back to campaigns tab and open edit campaign page
+                  onBack()
+                  
+                  // Use setTimeout to ensure the campaigns tab loads first
+                  setTimeout(() => {
+                    const url = new URL(window.location.href)
+                    url.searchParams.set('campaignId', campaign.id.toString())
+                    url.searchParams.set('campaign', campaign.id.toString())
+                    url.searchParams.set('openCampaign', 'true')
+                    url.searchParams.set('subtab', 'target')
+                    window.history.pushState({}, '', url.toString())
+                    
+                    // Dispatch a custom event to trigger the campaign tab to process URL params
+                    const event = new CustomEvent('url-params-changed')
+                    window.dispatchEvent(event)
+                  }, 100)
+                }}
+                className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Campaign
+              </Button>
+              
               <select 
                 value={`${dateRange.start.toISOString().split('T')[0]}_${dateRange.end.toISOString().split('T')[0]}`}
                 onChange={(e) => {
