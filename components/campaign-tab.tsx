@@ -363,6 +363,14 @@ export default function CampaignsList({ activeSubTab }: CampaignsListProps) {
     return () => clearInterval(warmingInterval)
   }, [])
 
+  // Refresh campaigns when returning to list view from analytics/dashboard
+  useEffect(() => {
+    if (currentView === "list") {
+      console.log('🔄 Returning to campaign list - refreshing data...')
+      fetchCampaigns()
+    }
+  }, [currentView])
+
   // Clear URL parameters when campaigns tab is first mounted to ensure clean state
   useEffect(() => {
     // Only clear params if we're in the campaigns tab and don't have explicit intent to open a specific campaign
