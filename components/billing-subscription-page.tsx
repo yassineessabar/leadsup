@@ -72,6 +72,7 @@ export function BillingSubscriptionPage({ onTabChange }: BillingSubscriptionPage
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include"
       })
 
       const data = await response.json()

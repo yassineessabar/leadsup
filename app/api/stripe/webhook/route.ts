@@ -79,6 +79,18 @@ export async function POST(request: NextRequest) {
         await handleBillingPortalSessionCreated(event.data.object as Stripe.BillingPortal.Session)
         break
 
+      case 'invoice.paid':
+      case 'invoice.finalized':
+      case 'invoice.created':
+        console.log(`📄 Invoice event: ${event.type}`)
+        break
+
+      case 'payment_intent.succeeded':
+      case 'payment_method.attached':
+      case 'charge.succeeded':
+        console.log(`💳 Payment event: ${event.type}`)
+        break
+
       default:
         console.log(`🔔 Unhandled event type: ${event.type}`)
         break
