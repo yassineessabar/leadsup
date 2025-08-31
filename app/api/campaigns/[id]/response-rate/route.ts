@@ -33,21 +33,18 @@ async function getUserIdFromSession(): Promise<string | null> {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('🔍 Response rate API called with campaignId:', params.id)
+    const { id } = await params
     
     const userId = await getUserIdFromSession()
-    console.log('👤 User ID from session:', userId)
 
     if (!userId) {
-      console.log('❌ Not authenticated')
       return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
     }
 
-    const campaignId = params.id
-    console.log('📊 Starting response rate calculation for campaign:', campaignId)
+    const campaignId = id
 
     // Get actual inbound messages for debugging
     const { data: inboundMessages, count: inboundCount } = await supabaseServer
@@ -85,34 +82,8 @@ export async function GET(
     const responseRate = uniqueEmailsSent > 0 ? 
       Math.round(((inboundCount || 0) / uniqueEmailsSent) * 100 * 10) / 10 : 0
 
-    console.log(`🔍 Inbox debugging for campaign ${campaignId}:`, {
-      campaignId,
-      userId,
-      totalInboxMessagesForUser: anyInboxMessages || 0,
-      totalInboxMessagesForCampaign: totalInboxMessages || 0,
-      inboundForCampaign: inboundCount || 0,
-      sendgridEmailsSent: uniqueEmailsSent,
-      responseRate,
-      allUserMessages: allUserMessages?.map(m => ({ 
-        id: m.id,
-        campaign_id: m.campaign_id,
-        direction: m.direction,
-        subject: m.subject 
-      })),
-      campaignMessages: campaignMessages?.map(m => ({ 
-        id: m.id,
-        campaign_id: m.campaign_id,
-        direction: m.direction,
-        subject: m.subject 
-      }))
-    })
 
     // If no inbox messages exist, this suggests inbox integration isn't working
-    if ((anyInboxMessages || 0) === 0) {
-      console.log('⚠️ No inbox_messages found for user - inbox integration may not be working')
-    } else if ((totalInboxMessages || 0) === 0) {
-      console.log('⚠️ No inbox_messages found for this campaign - emails may not be tagged with campaign_id')
-    }
 
     return NextResponse.json({
       success: true,
@@ -137,7 +108,6 @@ export async function GET(
     })
 
   } catch (error) {
-    console.error('❌ Error fetching response rate:', error)
     return NextResponse.json({ 
       success: false, 
       error: "Internal server error",

@@ -24,13 +24,11 @@ async function getUserIdFromSession(): Promise<string | null> {
       .single()
 
     if (error || !data) {
-      console.error("Error fetching user from session:", error)
       return null
     }
 
     return data.user_id
   } catch (error) {
-    console.error("Error in getUserIdFromSession:", error)
     return null
   }
 }
@@ -69,10 +67,8 @@ async function fetchSendGridAuthenticatedDomains() {
       return altResponse.json()
     }
 
-    console.error('SendGrid API error - both endpoints failed')
     return []
   } catch (error) {
-    console.error('SendGrid API error:', error)
     return []
   }
 }
@@ -191,7 +187,6 @@ async function getSendGridDNSRecords(domain: string, replySubdomain: string = 'r
     // If no authenticated domain found in SendGrid, return default records
     return getDefaultDNSRecords(domain, replySubdomain)
   } catch (error) {
-    console.error('Error fetching SendGrid DNS records:', error)
     // Fallback to default records if SendGrid API fails
     return getDefaultDNSRecords(domain, replySubdomain)
   }
@@ -328,13 +323,11 @@ export async function GET(
       }
     }
     
-    console.log(`Using reply subdomain '${replySubdomain}' for domain ${domain}`)
     
     // Use stored DNS records from domain creation first, fallback to SendGrid
     let dnsRecords = domainRecord.dns_records || []
     let source = 'stored'
     
-    console.log(`📋 Stored DNS records for ${domain}:`, JSON.stringify(dnsRecords, null, 2))
     
     // Check if stored records are FAKE (contain fake placeholders)
     const hasFakeRecords = dnsRecords.some(record => 
@@ -343,14 +336,11 @@ export async function GET(
       (record.value && record.value.includes('u1234567.wl123.sendgrid.net'))
     )
     
-    console.log(`🔍 Fake records detection for ${domain}: ${hasFakeRecords}`)
     
     // If no stored records OR stored records are fake, fetch from SendGrid
     if (!dnsRecords || dnsRecords.length === 0 || hasFakeRecords) {
       if (hasFakeRecords) {
-        console.log(`🔄 Detected fake DNS records for ${domain}, fetching real ones from SendGrid`)
       }
-      console.log(`No stored DNS records for ${domain}, fetching from SendGrid`)
       dnsRecords = await getSendGridDNSRecords(domain, replySubdomain)
       source = 'sendgrid'
       
@@ -363,7 +353,6 @@ export async function GET(
         })
         .eq('id', domainRecord.id)
     } else {
-      console.log(`Using stored DNS records for ${domain} (${dnsRecords.length} records)`)
     }
 
     return NextResponse.json({
@@ -373,7 +362,6 @@ export async function GET(
       source
     })
   } catch (error) {
-    console.error("Error in GET /api/domains/[domain]/dns-records:", error)
     return NextResponse.json(
       { success: false, error: "Failed to fetch DNS records" },
       { status: 500 }

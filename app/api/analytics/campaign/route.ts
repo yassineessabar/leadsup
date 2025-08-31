@@ -72,11 +72,10 @@ export async function GET(request: NextRequest) {
       .eq('campaign_id', campaignId)
     
     if (sendersError) {
-      console.error("❌ Error fetching campaign senders:", sendersError)
+      // Error fetching senders
     }
     
     const selectedSenderEmails = campaignSenders?.map(s => s.email).filter(Boolean) || []
-    console.log(`📧 Campaign ${campaignId} selected senders:`, selectedSenderEmails)
 
     // Use campaign-specific email tracking analytics
     let metrics
@@ -90,19 +89,10 @@ export async function GET(request: NextRequest) {
         endDate || new Date().toISOString().split('T')[0]
       )
       
-      console.log('📊 Campaign-specific analytics - tracking metrics:', trackingMetrics)
       
       if (trackingMetrics && trackingMetrics.emailsSent > 0) {
-        console.log('✅ Using campaign-specific email tracking metrics:', {
-          campaignId: campaignId,
-          emailsSent: trackingMetrics.emailsSent,
-          openRate: trackingMetrics.openRate,
-          clickRate: trackingMetrics.clickRate,
-          deliveryRate: trackingMetrics.deliveryRate
-        })
         metrics = trackingMetrics
       } else if (trackingMetrics) {
-        console.log('⚠️ No emails found for this specific campaign')
         metrics = trackingMetrics // Return empty metrics for this campaign
       } else {
         // Fallback to SendGrid service if no local tracking data
@@ -114,7 +104,6 @@ export async function GET(request: NextRequest) {
         })
       }
     } catch (error) {
-      console.error('Error getting tracking metrics, using SendGrid service:', error)
       // Fallback to SendGrid service
       metrics = await SendGridAnalyticsService.getCampaignMetrics({
         campaignId,
@@ -151,7 +140,6 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("❌ Error fetching campaign analytics:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

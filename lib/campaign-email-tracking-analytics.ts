@@ -27,7 +27,6 @@ export async function getCampaignEmailTrackingMetrics(
   endDate: string
 ): Promise<EmailTrackingMetrics | null> {
   try {
-    console.log(`📊 Fetching campaign-specific email tracking metrics for campaign ${campaignId} from ${startDate} to ${endDate}`)
     
     // Get all email tracking records for this specific campaign in the date range
     // Use sendgrid_events since that's where webhook data is stored
@@ -39,12 +38,10 @@ export async function getCampaignEmailTrackingMetrics(
       .lte('timestamp', endDate + 'T23:59:59Z')
     
     if (trackingError) {
-      console.error('❌ Error fetching campaign email tracking records:', trackingError)
       return null
     }
     
     if (!trackingRecords || trackingRecords.length === 0) {
-      console.log('⚠️ No email tracking records found for this campaign')
       return {
         emailsSent: 0,
         emailsDelivered: 0,
@@ -64,7 +61,6 @@ export async function getCampaignEmailTrackingMetrics(
       }
     }
     
-    console.log(`📧 Found ${trackingRecords.length} email tracking records for campaign ${campaignId}`)
     
     // Calculate metrics from sendgrid_events records
     // Group by sg_message_id to avoid counting the same email multiple times
@@ -138,20 +134,10 @@ export async function getCampaignEmailTrackingMetrics(
       unsubscribeRate: 0
     }
     
-    console.log('📊 Campaign email tracking metrics calculated:', {
-      campaignId: campaignId,
-      emailsSent: metrics.emailsSent,
-      openRate: metrics.openRate,
-      clickRate: metrics.clickRate,
-      uniqueOpens: metrics.uniqueOpens,
-      uniqueClicks: metrics.uniqueClicks,
-      deliveryRate: metrics.deliveryRate
-    })
     
     return metrics
     
   } catch (error) {
-    console.error('❌ Error calculating campaign email tracking metrics:', error)
     return null
   }
 }

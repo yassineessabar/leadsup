@@ -28,7 +28,6 @@ async function getUserIdFromSession(): Promise<string | null> {
 
     return session.user_id
   } catch (err) {
-    console.error("Error in getUserIdFromSession:", err)
     return null
   }
 }
@@ -62,10 +61,6 @@ export async function GET(request: NextRequest) {
     const view = searchParams.get('view') || 'threads' // 'threads' or 'messages'
     const conversationId = searchParams.get('conversation_id') // for fetching thread messages
 
-    console.log('📧 Inbox API called with filters:', {
-      campaigns, senders, leadStatuses, folder, channel, search, dateFrom, dateTo, status, view, conversationId,
-      rawParams: Object.fromEntries(searchParams.entries())
-    })
 
     if (conversationId) {
       // Fetch all messages for a specific conversation/thread
@@ -85,7 +80,6 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error("❌ Error fetching inbox data:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
@@ -93,7 +87,6 @@ export async function GET(request: NextRequest) {
 // Helper function to get all messages for a specific thread/conversation
 async function getThreadMessages(userId: string, conversationId: string) {
   try {
-    console.log(`📧 Fetching all messages for conversation: ${conversationId}`)
 
     // Fetch all messages for this conversation (exclude trashed messages)
     const { data: messages, error } = await supabaseServer
@@ -110,7 +103,6 @@ async function getThreadMessages(userId: string, conversationId: string) {
       .order('created_at', { ascending: true })
 
     if (error) {
-      console.error('❌ Error fetching thread messages:', error)
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
 
@@ -166,7 +158,6 @@ async function getThreadMessages(userId: string, conversationId: string) {
       content: message.body_text || message.body_html || 'No content'
     }))
 
-    console.log(`✅ Found ${formattedMessages.length} messages in thread`)
 
     return NextResponse.json({
       success: true,
@@ -174,7 +165,6 @@ async function getThreadMessages(userId: string, conversationId: string) {
     })
 
   } catch (error) {
-    console.error('❌ Error in getThreadMessages:', error)
     return NextResponse.json({ 
       success: false, 
       error: "Internal server error",
@@ -273,7 +263,6 @@ async function getThreadedMessages(userId: string, filters: any) {
       
       if (folder === 'trash') {
         // For trash folder, show only fully trashed conversations
-        console.log('🗑️ Showing trash conversations')
         
         if (fullyTrashedConversations.length > 0) {
           query = query.in('conversation_id', fullyTrashedConversations);
@@ -285,7 +274,6 @@ async function getThreadedMessages(userId: string, filters: any) {
         }
       } else {
         // For inbox and sent folders, exclude fully trashed conversations
-        console.log(`📁 Showing ${folder} conversations (excluding trash)`)
         
         if (fullyTrashedConversations.length > 0) {
           // Use multiple .neq() calls to exclude trashed conversations
@@ -297,7 +285,6 @@ async function getThreadedMessages(userId: string, filters: any) {
         // Apply folder-specific logic
         if (folder === 'inbox') {
           // Show only conversations that have inbound messages (emails received)
-          console.log('📥 + filtering for conversations with inbound messages');
           
           if (inboundConversationIds.length > 0) {
             query = query.in('conversation_id', inboundConversationIds);
@@ -307,7 +294,6 @@ async function getThreadedMessages(userId: string, filters: any) {
           }
         } else if (folder === 'sent') {
           // For sent folder, filter threads that have outbound messages
-          console.log('📤 + filtering for threads with outbound messages');
           
           if (outboundConversationIds.length > 0) {
             query = query.in('conversation_id', outboundConversationIds);
@@ -359,7 +345,6 @@ async function getThreadedMessages(userId: string, filters: any) {
     const { data: threads, error, count } = await query
 
     if (error) {
-      console.error('❌ Error fetching threads:', error)
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
 
@@ -461,7 +446,6 @@ async function getThreadedMessages(userId: string, filters: any) {
           }
         } catch (e) {
           // If message fetch fails, we'll use thread data as fallback
-          console.log(`📝 Using thread data as fallback for ${thread.conversation_id}`)
         }
         
         return {
@@ -508,7 +492,6 @@ async function getThreadedMessages(userId: string, filters: any) {
       })
     ).then(results => results.filter(thread => thread !== null)) // Filter out null threads
 
-    console.log(`✅ Returning ${formattedThreads.length} threads for folder '${folder}'`)
     
     return NextResponse.json({
       success: true,
@@ -523,7 +506,6 @@ async function getThreadedMessages(userId: string, filters: any) {
     })
 
   } catch (error) {
-    console.error('❌ Error in getThreadedMessages:', error)
     throw error
   }
 }
@@ -597,7 +579,6 @@ async function getIndividualMessages(userId: string, filters: any) {
     const { data: messages, error } = await query
 
     if (error) {
-      console.error('❌ Error fetching messages:', error)
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
 
@@ -685,7 +666,6 @@ async function getIndividualMessages(userId: string, filters: any) {
     })
 
   } catch (error) {
-    console.error('❌ Error in getIndividualMessages:', error)
     throw error
   }
 }
@@ -721,7 +701,6 @@ export async function POST(request: NextRequest) {
       received_at
     } = body
 
-    console.log('📧 Creating inbox message:', { message_id, campaign_id, direction, contact_email })
 
     // Generate conversation_id deterministically
     const { data: conversationResult, error: convError } = await supabaseServer
@@ -732,7 +711,6 @@ export async function POST(request: NextRequest) {
       })
 
     if (convError) {
-      console.error('❌ Error generating conversation ID:', convError)
       return NextResponse.json({ success: false, error: "Failed to generate conversation ID" }, { status: 500 })
     }
 
@@ -767,7 +745,6 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (messageError) {
-      console.error('❌ Error creating message:', messageError)
       return NextResponse.json({ success: false, error: messageError.message }, { status: 500 })
     }
 
@@ -788,7 +765,6 @@ export async function POST(request: NextRequest) {
       })
 
     if (threadError) {
-      console.error('❌ Error creating/updating thread:', threadError)
       // Don't fail message creation if thread fails
     }
 
@@ -798,7 +774,6 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("❌ Error creating inbox message:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

@@ -53,7 +53,6 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Error fetching warming progress:', error)
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch warming progress'
@@ -63,7 +62,6 @@ export async function GET(request: NextRequest) {
 
 // Get warming progress for a specific campaign
 async function getCampaignWarmingProgress(campaignId: string, userId: string) {
-  console.log(`🔍 Fetching warming progress for campaign ${campaignId}`)
 
   // Verify campaign ownership
   const { data: campaign, error: campaignError } = await supabase
@@ -82,7 +80,6 @@ async function getCampaignWarmingProgress(campaignId: string, userId: string) {
     .rpc('get_warming_progress', { p_campaign_id: campaignId })
 
   if (progressError) {
-    console.error('Error fetching warming progress:', progressError)
     return NextResponse.json({ success: false, error: 'Failed to fetch progress' }, { status: 500 })
   }
 
@@ -141,41 +138,72 @@ async function getCampaignWarmingProgress(campaignId: string, userId: string) {
 
 // Get warming progress for all user's campaigns
 async function getAllWarmingProgress(userId: string) {
-  console.log(`🔍 Fetching all warming progress for user ${userId}`)
 
-  // Get all campaigns with warming status
+  // Get all warming campaigns first
   const { data: campaigns, error: campaignsError } = await supabase
     .from('campaigns')
-    .select(`
-      id,
-      name,
-      status,
-      warmup_campaigns (
-        id,
-        sender_email,
-        phase,
-        day_in_phase,
-        total_warming_days,
-        daily_target,
-        emails_sent_today,
-        opens_today,
-        replies_today,
-        current_health_score,
-        target_health_score,
-        status,
-        last_activity_at,
-        created_at
-      )
-    `)
+    .select('id, name, status')
     .eq('user_id', userId)
     .eq('status', 'Warming')
 
   if (campaignsError) {
-    console.error('Error fetching warming campaigns:', campaignsError)
     return NextResponse.json({ success: false, error: 'Failed to fetch campaigns' }, { status: 500 })
   }
 
-  const warmingCampaigns = (campaigns || []).filter(c => c.warmup_campaigns && c.warmup_campaigns.length > 0)
+  if (!campaigns || campaigns.length === 0) {
+    return NextResponse.json({
+      success: true,
+      data: {
+        campaigns: [],
+        summary: {
+          totalCampaigns: 0,
+          totalSenders: 0,
+          activeWarmups: 0,
+          totalEmailsSentToday: 0,
+          totalOpensToday: 0,
+          totalRepliesToday: 0,
+          averageHealthScore: 0,
+          openRate: 0,
+          replyRate: 0
+        }
+      }
+    })
+  }
+
+  // Get warmup campaigns for these campaigns
+  const campaignIds = campaigns.map(c => c.id)
+  const { data: warmupCampaigns, error: warmupError } = await supabase
+    .from('warmup_campaigns')
+    .select(`
+      id,
+      campaign_id,
+      sender_email,
+      phase,
+      day_in_phase,
+      total_warming_days,
+      daily_target,
+      emails_sent_today,
+      opens_today,
+      replies_today,
+      current_health_score,
+      target_health_score,
+      status,
+      last_activity_at,
+      created_at
+    `)
+    .in('campaign_id', campaignIds)
+
+  if (warmupError) {
+    return NextResponse.json({ success: false, error: 'Failed to fetch warmup campaigns' }, { status: 500 })
+  }
+
+  // Combine campaigns with their warmup data
+  const campaignsWithWarmup = campaigns.map(campaign => ({
+    ...campaign,
+    warmup_campaigns: warmupCampaigns?.filter(w => w.campaign_id === campaign.id) || []
+  }))
+
+  const warmingCampaigns = campaignsWithWarmup.filter(c => c.warmup_campaigns && c.warmup_campaigns.length > 0)
 
   // Calculate summary statistics
   let totalSenders = 0
@@ -328,11 +356,9 @@ export async function POST(request: NextRequest) {
       .eq('id', warmupCampaign.id)
 
     if (updateError) {
-      console.error('Error updating warming campaign:', updateError)
       return NextResponse.json({ success: false, error: 'Failed to update warming campaign' }, { status: 500 })
     }
 
-    console.log(`✅ Updated warming campaign ${warmupCampaign.id}: ${action}`)
 
     return NextResponse.json({
       success: true,
@@ -340,7 +366,6 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error updating warming progress:', error)
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update warming progress'

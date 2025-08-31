@@ -61,7 +61,6 @@ export class SendGridAnalyticsService {
       
       // If we have selected sender emails, filter metrics by those senders
       if (selectedSenderEmails && selectedSenderEmails.length > 0) {
-        console.log(`📧 Filtering campaign metrics by selected senders:`, selectedSenderEmails)
         
         // Get aggregated metrics filtered by selected sender emails
         const { data, error } = await supabase.rpc('get_sendgrid_campaign_metrics_by_senders', {
@@ -73,8 +72,6 @@ export class SendGridAnalyticsService {
         })
         
         if (error) {
-          console.error("❌ Error fetching filtered campaign metrics:", error)
-          console.log("🔄 Falling back to original method...")
         } else if (data && data.length > 0) {
           const metrics = data[0]
           return this.formatMetrics(metrics)
@@ -90,12 +87,10 @@ export class SendGridAnalyticsService {
       })
       
       if (error) {
-        console.error("❌ Error fetching campaign metrics:", error)
         return this.getEmptyMetrics()
       }
       
       if (!data || data.length === 0) {
-        console.log("📊 No data from sendgrid metrics, trying fallback calculation from email_tracking...")
         return this.calculateMetricsFromEmailTracking(campaignId, userId, dateRange)
       }
       
@@ -103,7 +98,6 @@ export class SendGridAnalyticsService {
       return this.formatMetrics(metrics)
       
     } catch (error) {
-      console.error("❌ Error in getCampaignMetrics:", error)
       return this.getEmptyMetrics()
     }
   }
@@ -124,7 +118,6 @@ export class SendGridAnalyticsService {
       })
       
       if (error) {
-        console.error("❌ Error fetching user metrics:", error)
         return this.getEmptyMetrics()
       }
       
@@ -136,7 +129,6 @@ export class SendGridAnalyticsService {
       return this.formatMetrics(metrics)
       
     } catch (error) {
-      console.error("❌ Error in getUserMetrics:", error)
       return this.getEmptyMetrics()
     }
   }
@@ -175,10 +167,8 @@ export class SendGridAnalyticsService {
       const { data, error } = await query
       
       if (error) {
-        console.error("❌ Error fetching campaign time series:", error)
         // If the error is about missing sender_email column, retry without the filter
         if (error.code === '42703' && error.message.includes('sender_email')) {
-          console.warn("⚠️ sender_email column doesn't exist yet - returning unfiltered results")
           let retryQuery = supabase
             .from('campaign_metrics')
             .select('*')
@@ -194,7 +184,6 @@ export class SendGridAnalyticsService {
           
           const { data: retryData, error: retryError } = await retryQuery
           if (retryError) {
-            console.error("❌ Retry also failed:", retryError)
             return []
           }
           return retryData || []
@@ -205,7 +194,6 @@ export class SendGridAnalyticsService {
       return data || []
       
     } catch (error) {
-      console.error("❌ Error in getCampaignMetricsTimeSeries:", error)
       return []
     }
   }
@@ -233,14 +221,12 @@ export class SendGridAnalyticsService {
       const { data, error } = await query
       
       if (error) {
-        console.error("❌ Error fetching user time series:", error)
         return []
       }
       
       return data || []
       
     } catch (error) {
-      console.error("❌ Error in getUserMetricsTimeSeries:", error)
       return []
     }
   }
@@ -259,22 +245,24 @@ export class SendGridAnalyticsService {
       const supabase = getSupabaseClient()
       
       // Check if sender_email column exists by attempting a simple query first
-      let hasSenderEmailColumn = true
+      let hasSenderEmailColumn = false
       try {
         await supabase
           .from('email_tracking')
           .select('sender_email')
           .limit(1)
+        hasSenderEmailColumn = true
       } catch (e: any) {
         if (e.code === '42703' && e.message.includes('sender_email')) {
           hasSenderEmailColumn = false
-          console.warn("⚠️ sender_email column doesn't exist in email_tracking table")
+        } else {
+          throw e // Re-throw other errors
         }
       }
 
       let query = supabase
         .from('email_tracking')
-        .select(hasSenderEmailColumn ? '*' : 'id, campaign_id, user_id, email, event_type, timestamp, sent_at, delivered_at, opened_at, clicked_at, bounced_at, status, sendgrid_message_id, created_at, updated_at')
+        .select(hasSenderEmailColumn ? '*' : 'id, campaign_id, user_id, email, status, sent_at, delivered_at, first_opened_at, first_clicked_at, bounced_at, sg_message_id, created_at, updated_at')
         .eq('campaign_id', campaignId)
         .order('sent_at', { ascending: false })
         .range(offset, offset + limit - 1)
@@ -291,14 +279,12 @@ export class SendGridAnalyticsService {
       const { data, error } = await query
       
       if (error) {
-        console.error("❌ Error fetching email tracking details:", error)
         // If the error is about missing sender_email column, return empty data instead of failing
         if (error.code === '42703' && error.message.includes('sender_email')) {
-          console.warn("⚠️ sender_email column doesn't exist yet - returning unfiltered results")
           // Retry without sender_email filter
           let retryQuery = supabase
             .from('email_tracking')
-            .select('id, campaign_id, user_id, email, event_type, timestamp, sent_at, delivered_at, opened_at, clicked_at, bounced_at, status, sendgrid_message_id, created_at, updated_at')
+            .select('id, campaign_id, user_id, email, status, sent_at, delivered_at, first_opened_at, first_clicked_at, bounced_at, sg_message_id, created_at, updated_at')
             .eq('campaign_id', campaignId)
             .order('sent_at', { ascending: false })
             .range(offset, offset + limit - 1)
@@ -309,7 +295,6 @@ export class SendGridAnalyticsService {
           
           const { data: retryData, error: retryError } = await retryQuery
           if (retryError) {
-            console.error("❌ Retry also failed:", retryError)
             return { data: [], total: 0 }
           }
           return { data: retryData || [], total: retryData?.length || 0 }
@@ -323,13 +308,12 @@ export class SendGridAnalyticsService {
         .select('*', { count: 'exact', head: true })
         .eq('campaign_id', campaignId)
       
-      // Filter by selected sender emails if provided
-      // Skip sender_email filter if column doesn't exist
-      if (selectedSenderEmails && selectedSenderEmails.length > 0 && !error?.message?.includes('sender_email')) {
+      // Filter by selected sender emails if provided and column exists
+      if (selectedSenderEmails && selectedSenderEmails.length > 0 && hasSenderEmailColumn) {
         try {
           countQuery = countQuery.in('sender_email', selectedSenderEmails)
         } catch (e) {
-          console.warn("⚠️ Skipping sender_email filter for count query")
+          // Skip sender_email filter
         }
       }
       
@@ -342,7 +326,6 @@ export class SendGridAnalyticsService {
       return { data: data || [], total: count || 0 }
       
     } catch (error) {
-      console.error("❌ Error in getEmailTrackingDetails:", error)
       return { data: [], total: 0 }
     }
   }
@@ -379,7 +362,6 @@ export class SendGridAnalyticsService {
       return { success: true }
       
     } catch (error) {
-      console.error("❌ Error recalculating metrics:", error)
       return { success: false, error }
     }
   }
@@ -414,14 +396,12 @@ export class SendGridAnalyticsService {
       const { data, error } = await query
       
       if (error) {
-        console.error("❌ Error fetching recent events:", error)
         return []
       }
       
       return data || []
       
     } catch (error) {
-      console.error("❌ Error in getRecentEvents:", error)
       return []
     }
   }
@@ -435,7 +415,6 @@ export class SendGridAnalyticsService {
     dateRange?: { start: Date; end: Date }
   ): Promise<SendGridMetrics> {
     try {
-      console.log("📊 Calculating metrics from email_tracking table...")
       const supabase = getSupabaseClient()
       
       // Build query for email_tracking - use user_id instead of campaign_id if campaign_id is null
@@ -460,16 +439,13 @@ export class SendGridAnalyticsService {
       const { data: emailTracking, error } = await query
       
       if (error) {
-        console.error("❌ Error fetching email tracking data:", error)
         return this.getEmptyMetrics()
       }
       
       if (!emailTracking || emailTracking.length === 0) {
-        console.log("📧 No email tracking data found")
         return this.getEmptyMetrics()
       }
       
-      console.log(`📧 Found ${emailTracking.length} email tracking records`)
       
       // Calculate metrics from email_tracking data using correct field names
       const emailsSent = emailTracking.filter(email => email.status === 'sent' || email.sent_at).length
@@ -487,7 +463,6 @@ export class SendGridAnalyticsService {
       const clickRate = emailsSent > 0 ? (uniqueClicks / emailsSent) * 100 : 0
       const unsubscribeRate = emailsSent > 0 ? (unsubscribes / emailsSent) * 100 : 0
       
-      console.log(`✅ Calculated metrics: ${emailsSent} sent, ${emailsDelivered} delivered, ${uniqueOpens} opened, ${uniqueClicks} clicked`)
       
       return {
         emailsSent,
@@ -508,7 +483,6 @@ export class SendGridAnalyticsService {
       }
       
     } catch (error) {
-      console.error("❌ Error calculating metrics from email_tracking:", error)
       return this.getEmptyMetrics()
     }
   }

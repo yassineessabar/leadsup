@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json()
     } catch (error) {
-      console.error('❌ Error parsing request body:', error)
       return NextResponse.json({ success: false, error: "Invalid JSON in request body" }, { status: 400 })
     }
 
@@ -75,7 +74,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    console.log(`📝 Received feedback from ${name} (${email})`)
 
     // Store feedback in database (optional - for tracking)
     try {
@@ -91,13 +89,10 @@ export async function POST(request: NextRequest) {
         })
 
       if (dbError) {
-        console.error('❌ Error storing feedback in database:', dbError)
         // Continue with email sending even if DB storage fails
       } else {
-        console.log('✅ Feedback stored in database')
       }
     } catch (dbError) {
-      console.error('❌ Database error (continuing with email):', dbError)
       // Continue with email sending even if DB storage fails
     }
 
@@ -112,7 +107,6 @@ export async function POST(request: NextRequest) {
       })
 
       if (feedbackEmailResponse.success) {
-        console.log('✅ Feedback email sent successfully')
         
         return NextResponse.json({
           success: true,
@@ -122,7 +116,6 @@ export async function POST(request: NextRequest) {
         throw new Error(feedbackEmailResponse.error || "Failed to send feedback email")
       }
     } catch (emailError) {
-      console.error('❌ Error sending feedback email:', emailError)
       
       return NextResponse.json({
         success: false,
@@ -131,7 +124,6 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error("❌ Error processing feedback:", error)
     return NextResponse.json({ 
       success: false, 
       error: "Internal server error" 
@@ -191,14 +183,12 @@ Timestamp: ${new Date().toISOString()}
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ SendGrid API error:', response.status, errorText)
       throw new Error(`SendGrid API error: ${response.status}`)
     }
 
     return { success: true }
 
   } catch (error) {
-    console.error('❌ Error in sendFeedbackEmail:', error)
     return { 
       success: false, 
       error: error instanceof Error ? error.message : "Unknown error occurred" 

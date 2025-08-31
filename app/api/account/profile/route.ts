@@ -8,10 +8,8 @@ async function getUserIdFromSession(): Promise<string | null> {
     const cookieStore = await cookies()
     const sessionToken = cookieStore.get("session")?.value
 
-    console.log("🔍 Session token from cookies:", sessionToken ? "exists" : "missing")
 
     if (!sessionToken) {
-      console.log("❌ No session token found in cookies")
       return null
     }
 
@@ -21,17 +19,13 @@ async function getUserIdFromSession(): Promise<string | null> {
       .eq("session_token", sessionToken)
       .single()
 
-    console.log("🔍 Session query result:", { session, error })
 
     if (error || !session) {
-      console.log("❌ Session not found or error:", error?.message)
       return null
     }
 
-    console.log("✅ User ID found:", session.user_id)
     return session.user_id
   } catch (err) {
-    console.log("❌ Error in getUserIdFromSession:", err)
     return null
   }
 }
@@ -51,7 +45,6 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error("Error fetching user profile:", error)
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
 
@@ -80,7 +73,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: mappedProfile })
   } catch (error) {
-    console.error("Error in GET /api/account/profile:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
@@ -114,7 +106,6 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error("Error updating user profile:", error)
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
 
@@ -124,7 +115,6 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true, data })
   } catch (error) {
-    console.error("Error in PUT /api/account/profile:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

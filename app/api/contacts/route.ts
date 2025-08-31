@@ -64,7 +64,6 @@ async function fetchAllContactsForDemo(request: Request) {
     const { data: contacts, error } = await query
 
     if (error) {
-      console.error('Demo query error:', error)
       return NextResponse.json({ error: 'Failed to fetch contacts' }, { status: 500 })
     }
 
@@ -116,7 +115,6 @@ async function fetchAllContactsForDemo(request: Request) {
       hasMore: contacts && contacts.length === limit
     })
   } catch (error) {
-    console.error('💥 Demo fetch error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -172,7 +170,6 @@ export async function GET(request: Request) {
     const { data: contacts, error } = await query
 
     if (error) {
-      console.error('Error fetching contacts:', error)
       // If table doesn't exist, return sample data
       if (error.code === 'PGRST205' || error.message?.includes('contacts')) {
         const sampleContacts = [
@@ -350,7 +347,6 @@ export async function GET(request: Request) {
       hasMore: contacts && contacts.length === limit
     })
   } catch (error) {
-    console.error('Error in contacts GET:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -396,7 +392,6 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error('Error creating contact:', error)
       return NextResponse.json({ error: 'Failed to create contact' }, { status: 500 })
     }
 
@@ -417,7 +412,6 @@ export async function POST(request: Request) {
           .single()
         
         if (sequences && sequences.length > 0) {
-          console.log(`🎯 Generating sequence schedule for ${contact.email}`)
           
           // Derive timezone from location
           const deriveTimezoneFromLocation = (location: string | null) => {
@@ -516,10 +510,8 @@ export async function POST(request: Request) {
             })
             .eq('id', contact.id)
           
-          console.log(`✅ Generated sequence schedule for ${contact.email} with ${steps.length} steps`)
         }
       } catch (error) {
-        console.error('❌ Error generating sequence schedule:', error)
         // Don't fail the contact creation if scheduling fails
       }
     }
@@ -529,7 +521,6 @@ export async function POST(request: Request) {
       scheduling_triggered: !!contact.campaign_id
     })
   } catch (error) {
-    console.error('Error in contacts POST:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

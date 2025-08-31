@@ -66,17 +66,13 @@ export async function GET(
       .order("step_number", { ascending: true })
 
     if (sequenceError) {
-      console.error("❌ Error fetching sequences:", sequenceError)
       return NextResponse.json({ success: false, error: sequenceError.message }, { status: 500 })
     }
 
     if (!sequences || sequences.length === 0) {
-      console.log("ℹ️ No sequences found for campaign:", campaignId)
       return NextResponse.json({ success: true, data: [] })
     }
 
-    console.log(`📖 Fetched ${sequences.length} sequences from database for campaign ${campaignId}`)
-    console.log('🔍 Raw database data:', JSON.stringify(sequences, null, 2))
 
     // Transform database format back to component format
     const transformedSequences = sequences.map((seq) => ({
@@ -95,19 +91,10 @@ export async function GET(
       _stepNumber: seq.step_number
     }))
 
-    console.log('🔄 Transformed sequences for frontend:', JSON.stringify(transformedSequences.map(s => ({
-      id: s.id,
-      title: s.title,
-      subject: s.subject,
-      timing: s.timing,
-      sequence: s.sequence,
-      sequenceStep: s.sequenceStep
-    })), null, 2))
 
     return NextResponse.json({ success: true, data: transformedSequences })
 
   } catch (error) {
-    console.error("❌ Error fetching sequences:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
@@ -142,15 +129,6 @@ export async function POST(
 
     // Process sequences for saving
     if (sequences && sequences.length > 0) {
-      console.log('💾 Processing sequences for database save:', JSON.stringify(sequences.map(s => ({
-        id: s.id,
-        title: s.title,
-        subject: s.subject,
-        sequence: s.sequence,
-        sequenceStep: s.sequenceStep,
-        timing: s.timing,
-        type: s.type
-      })), null, 2))
 
       // Sort sequences by their intended order before saving
       const sortedSequences = sequences.sort((a: any, b: any) => {
@@ -159,11 +137,6 @@ export async function POST(
         return aStep - bStep
       })
 
-      console.log('🔄 Sorted sequences before save:', JSON.stringify(sortedSequences.map(s => ({
-        id: s.id,
-        sequenceStep: s.sequenceStep,
-        subject: s.subject?.substring(0, 30)
-      })), null, 2))
 
       const sequenceData = sortedSequences.map((seq: any, index: number) => ({
         campaign_id: campaignId,
@@ -189,7 +162,6 @@ export async function POST(
         .eq("campaign_id", campaignId)
 
       if (deleteError) {
-        console.error("❌ Error deleting existing sequences:", deleteError)
         return NextResponse.json({ success: false, error: deleteError.message }, { status: 500 })
       }
 
@@ -200,7 +172,6 @@ export async function POST(
         .select()
 
       if (insertError) {
-        console.error("❌ Error inserting sequences:", insertError)
         return NextResponse.json({ success: false, error: insertError.message }, { status: 500 })
       }
 
@@ -216,7 +187,6 @@ export async function POST(
     return NextResponse.json({ success: true, data: [] })
 
   } catch (error) {
-    console.error("❌ Error saving sequences:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
@@ -224,7 +194,6 @@ export async function POST(
 // Helper function to trigger email rescheduling after sequence changes
 async function triggerSequenceReschedule(campaignId: string) {
   try {
-    console.log(`🔄 Triggering email reschedule for campaign ${campaignId} after sequence change`)
     
     // Import and call the reschedule function directly to avoid URL/port issues
     try {
@@ -245,13 +214,10 @@ async function triggerSequenceReschedule(campaignId: string) {
       const result = await response.json()
       
       if (response.ok) {
-        console.log(`✅ Successfully triggered reschedule: ${result.message || 'Reschedule completed'}`)
       } else {
-        console.error(`❌ Reschedule failed: ${result.error || 'Unknown error'}`)
       }
       
     } catch (importError) {
-      console.error('❌ Failed to import reschedule module, falling back to fetch:', importError.message)
       
       // Fallback to fetch approach
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -266,21 +232,17 @@ async function triggerSequenceReschedule(campaignId: string) {
 
       if (rescheduleResponse.ok) {
         const result = await rescheduleResponse.json()
-        console.log(`✅ Successfully triggered reschedule via fetch: ${result.message}`)
       } else {
-        console.error('❌ Failed to trigger reschedule via fetch:', rescheduleResponse.statusText)
       }
     }
     
   } catch (error) {
-    console.error('❌ Error triggering sequence reschedule:', error)
   }
 }
 
 // Helper function to update contacts' sequence_schedule when sequences change
 async function updateContactSequenceSchedules(campaignId: string, newSequences: any[]) {
   try {
-    console.log(`🔄 Updating sequence_schedule for all contacts in campaign ${campaignId}`)
     
     // Get all contacts for this campaign that have sequence_schedule
     const { data: contacts, error: contactsError } = await supabaseServer
@@ -290,16 +252,13 @@ async function updateContactSequenceSchedules(campaignId: string, newSequences: 
       .not('sequence_schedule', 'is', null)
     
     if (contactsError) {
-      console.error('❌ Error fetching contacts:', contactsError)
       return
     }
     
     if (!contacts || contacts.length === 0) {
-      console.log('ℹ️ No contacts with sequence_schedule found')
       return
     }
     
-    console.log(`📧 Updating sequence_schedule for ${contacts.length} contacts`)
     
     // Update each contact's sequence_schedule
     for (const contact of contacts) {
@@ -340,19 +299,14 @@ async function updateContactSequenceSchedules(campaignId: string, newSequences: 
           .eq('id', contact.id)
         
         if (updateError) {
-          console.error(`❌ Error updating contact ${contact.email}:`, updateError)
         } else {
-          console.log(`✅ Updated sequence_schedule for ${contact.email}`)
         }
         
       } catch (contactError) {
-        console.error(`❌ Error processing contact ${contact.email}:`, contactError)
       }
     }
     
-    console.log(`✅ Finished updating sequence_schedule for campaign ${campaignId}`)
     
   } catch (error) {
-    console.error('❌ Error updating contact sequence schedules:', error)
   }
 }

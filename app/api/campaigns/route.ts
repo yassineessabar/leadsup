@@ -111,7 +111,6 @@ export async function GET(request: NextRequest) {
     
     return response
   } catch (error) {
-    console.error("❌ Error fetching campaign data:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
@@ -142,8 +141,6 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (campaignError) {
-      console.error("❌ Error creating campaign:", campaignError)
-      console.error("❌ Full error details:", JSON.stringify(campaignError, null, 2))
       return NextResponse.json({ 
         success: false, 
         error: campaignError.message,
@@ -186,7 +183,6 @@ export async function POST(request: NextRequest) {
       .select()
 
     if (sequenceError) {
-      console.error("❌ Error creating sequences:", sequenceError)
       // Don't fail campaign creation if sequences fail, we can add them later
     }
 
@@ -212,7 +208,6 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (scheduleError) {
-      console.error("❌ Error creating schedule:", scheduleError)
       // Don't fail campaign creation if schedule fails
     }
 
@@ -229,7 +224,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, data: campaignWithData })
 
   } catch (error) {
-    console.error("❌ Error creating campaign:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
@@ -243,7 +237,6 @@ export async function POST(request: NextRequest) {
  */
 async function attachDefaultSenderAccount(userId: string, newCampaignId: string) {
   try {
-    console.log(`🔗 Checking for default sender account for user ${userId}, campaign ${newCampaignId}`)
 
     // Find the most recently used sender account from user's existing campaigns
     // Check Gmail accounts first
@@ -355,17 +348,13 @@ async function attachDefaultSenderAccount(userId: string, newCampaignId: string)
         .insert(defaultSenderData)
 
       if (insertError) {
-        console.error("❌ Error attaching default sender account:", insertError)
         // Don't fail campaign creation if sender attachment fails
       } else {
-        console.log(`✅ Successfully attached default sender account ${defaultSenderData.email} to campaign ${newCampaignId}`)
       }
     } else {
-      console.log(`ℹ️ No existing sender accounts found for user ${userId} - skipping default sender attachment`)
     }
 
   } catch (error) {
-    console.error("❌ Error in attachDefaultSenderAccount:", error)
     // Don't fail campaign creation if sender attachment fails
   }
 }
@@ -395,7 +384,6 @@ async function triggerAutomationForExistingCustomers(
       .limit(50) // Limit to 50 most recent reviews
 
     if (reviewsError) {
-      console.error("Error fetching recent reviews:", reviewsError)
       return
     }
 
@@ -439,11 +427,9 @@ async function triggerAutomationForExistingCustomers(
             scheduledCount++
             }
         } else {
-          console.error('Failed to schedule automation for review ' + review.id + ':', await schedulerResponse.text())
         }
 
       } catch (reviewError) {
-        console.error('Error processing review ' + review.id + ':', reviewError)
         continue
       }
     }
@@ -455,12 +441,10 @@ async function triggerAutomationForExistingCustomers(
       if (processResponse.ok) {
         const processResult = await processResponse.json()
       } else {
-        console.error('❌ Failed to process immediate automation jobs:', await processResponse.text())
       }
     }
 
   } catch (error) {
-    console.error(`❌ Error triggering automation for existing customers:`, error)
   }
 }
 
@@ -499,7 +483,6 @@ export async function DELETE(request: NextRequest) {
       .eq("campaign_id", campaignId)
 
     if (sequencesError) {
-      console.error("❌ Error deleting campaign sequences:", sequencesError)
       // Continue with deletion even if sequences fail to delete
     }
 
@@ -510,7 +493,6 @@ export async function DELETE(request: NextRequest) {
       .eq("campaign_id", campaignId)
 
     if (schedulesError) {
-      console.error("❌ Error deleting campaign schedules:", schedulesError)
       // Continue with deletion even if schedules fail to delete
     }
 
@@ -521,7 +503,6 @@ export async function DELETE(request: NextRequest) {
       .eq("campaign_id", campaignId)
 
     if (sendersError) {
-      console.error("❌ Error deleting campaign senders:", sendersError)
       // Continue with deletion even if senders fail to delete
     }
 
@@ -532,7 +513,6 @@ export async function DELETE(request: NextRequest) {
       .eq("campaign_id", campaignId)
 
     if (leadsError) {
-      console.error("❌ Error deleting campaign leads:", leadsError)
       // Continue with deletion even if leads fail to delete
     }
 
@@ -544,7 +524,6 @@ export async function DELETE(request: NextRequest) {
       .eq("user_id", userId)
 
     if (campaignError) {
-      console.error("❌ Error deleting campaign:", campaignError)
       return NextResponse.json({ success: false, error: campaignError.message }, { status: 500 })
     }
 
@@ -554,7 +533,6 @@ export async function DELETE(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("❌ Error deleting campaign:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const autoMode = searchParams.get('autoMode') === 'true'
     
-    console.log('🔥 Processing auto warm-up emails... (v2)')
     
     // Get all active campaigns with auto warm-up enabled
     const { data: campaigns, error: campaignsError } = await supabaseServer
@@ -17,17 +16,12 @@ export async function GET(request: NextRequest) {
       .in('status', ['Active', 'Warming'])
     
     if (campaignsError) {
-      console.error('Error fetching campaigns:', campaignsError)
       return NextResponse.json({ 
         success: false, 
         error: 'Failed to fetch campaigns' 
       }, { status: 500 })
     }
     
-    console.log(`📊 Found ${campaigns?.length || 0} active campaigns`)
-    campaigns?.forEach(campaign => {
-      console.log(`📋 Campaign: ${campaign.name} (${campaign.status}) - Settings:`, campaign.settings)
-    })
     
     let totalWarmupSent = 0
     let totalProcessed = 0
@@ -36,9 +30,7 @@ export async function GET(request: NextRequest) {
     for (const campaign of campaigns || []) {
       // Check if auto warm-up is enabled for this campaign
       const settings = campaign.settings as any || {}
-      console.log(`🔍 Campaign ${campaign.name}: auto_warmup = ${settings.auto_warmup}, autoMode = ${autoMode}`)
       if (!settings.auto_warmup && autoMode) {
-        console.log(`⏭️ Skipping ${campaign.name} - auto_warmup disabled in auto mode`)
         continue // Skip campaigns without auto warm-up in auto mode
       }
       
@@ -50,19 +42,13 @@ export async function GET(request: NextRequest) {
         .eq('is_selected', true)
       
       if (sendersError) {
-        console.error(`Error fetching senders for campaign ${campaign.id}:`, sendersError)
         continue
       }
       
       if (!senders || senders.length === 0) {
-        console.log(`⚠️ Campaign ${campaign.name}: No selected senders found`)
         continue
       }
       
-      console.log(`👥 Campaign ${campaign.name}: Found ${senders?.length || 0} selected senders`)
-      senders?.forEach(sender => {
-        console.log(`📧 Sender: ${sender.email} - Health: ${sender.health_score}%, Status: ${sender.warmup_status}`)
-      })
       
       // Process each sender for warm-up
       for (const sender of senders || []) {
@@ -70,13 +56,11 @@ export async function GET(request: NextRequest) {
         
         // Skip if health score is already good (>= 90)
         if (sender.health_score >= 90) {
-          console.log(`⏭️ Skipping ${sender.email} - health score ${sender.health_score}% is already good`)
           continue
         }
         
         // Initialize inactive senders for warm-up
         if (!sender.warmup_status || sender.warmup_status === 'inactive') {
-          console.log(`🚀 Initializing warm-up for ${sender.email} (health: ${sender.health_score}%)`)
         }
         
         // Get current values first to make cumulative updates
@@ -140,13 +124,8 @@ export async function GET(request: NextRequest) {
         const newDailyCount = currentDailyCount + warmupVolume
         
         // Send warm-up emails with tracking integration
-        console.log(`📧 Sending ${warmupVolume} warm-up emails for ${sender.email} (Phase ${warmupPhase}, Health: ${healthScore}%, Day ${daysCompleted}, Daily: ${currentDailyCount} -> ${newDailyCount})`)
         
         // Actually send warmup emails through SendGrid
-        console.log(`🔍 DEBUG - Environment check:`)
-        console.log(`   SENDGRID_API_KEY exists: ${!!process.env.SENDGRID_API_KEY}`)
-        console.log(`   EMAIL_SIMULATION_MODE: "${process.env.EMAIL_SIMULATION_MODE}"`)
-        console.log(`   Will send real emails: ${process.env.SENDGRID_API_KEY && process.env.EMAIL_SIMULATION_MODE !== 'true'}`)
         
         if (process.env.SENDGRID_API_KEY && process.env.EMAIL_SIMULATION_MODE !== 'true') {
           try {
@@ -165,7 +144,6 @@ export async function GET(request: NextRequest) {
               warmupRecipients = recipientData
                 .filter(r => (r.emails_received_today || 0) < (r.max_daily_emails || 10))
                 .map(r => r.email)
-              console.log(`📧 Using ${warmupRecipients.length} real recipients from database`)
             } else {
               // Fallback to hardcoded recipients if database not available
               warmupRecipients = [
@@ -173,7 +151,6 @@ export async function GET(request: NextRequest) {
                 `yassineessabar+warmup2@gmail.com`, 
                 `yassineessabar+warmup3@gmail.com`
               ]
-              console.log(`⚠️ Using fallback recipients - database error: ${recipientError?.message}`)
             }
             
             for (let i = 0; i < Math.min(warmupVolume, 3); i++) {
@@ -231,22 +208,13 @@ export async function GET(request: NextRequest) {
               
               if (response.ok) {
                 const messageId = response.headers.get('x-message-id') || 'unknown'
-                console.log(`📤 Sent warmup email ${i + 1} from ${sender.email} to ${recipient}`)
-                console.log(`📨 SendGrid Message ID: ${messageId}`)
-                console.log(`🏷️  Custom Args: ${JSON.stringify(emailData.custom_args)}`)
               } else {
                 const errorText = await response.text()
-                console.error(`❌ SendGrid API error for email ${i + 1}:`, response.status, errorText)
               }
             }
           } catch (emailError) {
-            console.error(`❌ Error sending warmup emails for ${sender.email}:`, emailError)
           }
         } else {
-          console.log(`🧪 Warmup email simulation mode - no real emails sent`)
-          console.log(`🔍 DEBUG - Simulation reason:`)
-          console.log(`   SENDGRID_API_KEY exists: ${!!process.env.SENDGRID_API_KEY}`)
-          console.log(`   EMAIL_SIMULATION_MODE: "${process.env.EMAIL_SIMULATION_MODE}"`)
         }
         
         // Update warmup tracking data in the new columns
@@ -271,10 +239,7 @@ export async function GET(request: NextRequest) {
             .eq('campaign_id', campaign.id)
             .eq('email', sender.email)
           
-          console.log(`✅ Updated warmup tracking for ${sender.email}: Phase ${warmupPhase}, Day ${daysCompleted}, Daily total: ${newDailyCount} (+${warmupVolume})`)
         } catch (trackingError) {
-          console.warn(`⚠️ Could not update warmup tracking columns for ${sender.email}:`, trackingError.message)
-          console.log('💡 This is expected if the warmup tracking migration has not been applied yet')
           
           // Fallback: just update basic status and timestamp
           await supabaseServer
@@ -305,7 +270,6 @@ export async function GET(request: NextRequest) {
       // Recalculate health scores for campaign senders
       const senderEmails = senders?.map(s => s.email) || []
       if (senderEmails.length > 0) {
-        console.log(`📊 Recalculating health scores for campaign ${campaign.id}...`)
         
         try {
           // Get sender account IDs from emails
@@ -328,11 +292,9 @@ export async function GET(request: NextRequest) {
                 .eq('campaign_id', campaign.id)
                 .eq('email', account.email)
               
-              console.log(`✅ Updated health score for ${account.email}: ${newScore}%`)
             }
           }
         } catch (error) {
-          console.error(`Error recalculating health scores for campaign ${campaign.id}:`, error)
         }
       }
     }
@@ -346,7 +308,6 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Error in warm-up processing:', error)
     return NextResponse.json({ 
       success: false, 
       error: 'Internal server error' 

@@ -62,14 +62,12 @@ export async function POST(request: NextRequest) {
     // Initialize SendGrid
     const sendGridApiKey = process.env.SENDGRID_API_KEY
     if (!sendGridApiKey) {
-      console.error("SendGrid API key missing")
       return NextResponse.json({ success: false, error: "Email service not configured" }, { status: 500 })
     }
     
     sgMail.setApiKey(sendGridApiKey)
 
     // Skip database storage for now - just send email directly
-    console.log('📧 Sending support request directly via email for user:', userId)
 
     // Send email to support team
     const emailContent = {
@@ -126,7 +124,6 @@ Sent: ${new Date().toLocaleString()}
     })
 
   } catch (error) {
-    console.error("❌ Error in support-email API:", error)
     return NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 }

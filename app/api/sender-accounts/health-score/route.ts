@@ -169,10 +169,6 @@ function calculateHealthScore(stats: SenderStats): { score: number; breakdown: H
   )
 
   // Debug logging for health score calculation
-  console.log('🔍 HEALTH SCORE CALCULATION DEBUG:')
-  console.log(`📊 Breakdown: warmup=${breakdown.warmupScore}, deliv=${breakdown.deliverabilityScore}, eng=${breakdown.engagementScore}, vol=${breakdown.volumeScore}, rep=${breakdown.reputationScore}`)
-  console.log(`🧮 Calculation: (${breakdown.warmupScore}*0.25) + (${breakdown.deliverabilityScore}*0.30) + (${breakdown.engagementScore}*0.25) + (${breakdown.volumeScore}*0.10) + (${breakdown.reputationScore}*0.10) = ${finalScore}`)
-  console.log(`📈 Input stats: sent=${stats.totalSent}, bounced=${stats.totalBounced}, opened=${stats.totalOpened}, clicked=${stats.totalClicked}, recent=${stats.recentSent}, warmupDays=${stats.warmupDays}, warmupStatus=${stats.warmupStatus}, accountAge=${stats.accountAge}`)
 
   return { score: Math.min(100, Math.max(0, finalScore)), breakdown }
 }
@@ -193,7 +189,6 @@ export async function GET(request: NextRequest) {
 
     // If no sender IDs or emails provided, return empty result
     if (senderIds.length === 0 && emails.length === 0) {
-      console.log('⚠️ No sender IDs or emails provided - returning empty result')
       return NextResponse.json({
         success: true,
         healthScores: {},
@@ -201,11 +196,6 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    console.log('🔍 HEALTH SCORE API DEBUG:')
-    console.log('📧 Emails received:', emails)
-    console.log('🆔 Sender IDs received:', senderIds)
-    console.log('🏷️ Campaign ID:', campaignId)
-    console.log('👤 User ID:', userId)
 
     // Get sender accounts for the user - try different query approaches
     let senderAccounts: any[] = []
@@ -220,13 +210,10 @@ export async function GET(request: NextRequest) {
         .select('id, email, created_at, user_id')
 
       if (senderIds.length > 0) {
-        console.log('🔍 Filtering by sender IDs:', senderIds)
         senderQuery = senderQuery.in('id', senderIds)
       } else if (emails.length > 0) {
-        console.log('🔍 Filtering by emails:', emails)
         senderQuery = senderQuery.in('email', emails)
       } else {
-        console.log('⚠️ No filtering applied - this should not happen!')
         // Return empty result instead of querying all accounts
         return NextResponse.json({
           success: true,
@@ -252,13 +239,10 @@ export async function GET(request: NextRequest) {
       campaignSenders = campaignSenderResult.data || []
       sendersError = senderResult.error
       
-      console.log(`📋 Found ${senderAccounts.length} sender accounts`)
 
       // Now process health scores from campaign_senders table
       if (senderAccounts.length > 0) {
         const senderEmails = senderAccounts.map(s => s.email)
-        console.log('🔍 Processing health scores for emails:', senderEmails)
-        console.log(`📊 Found ${campaignSenders?.length || 0} campaign senders with health data`)
         
         // Build health scores mapping sender_account_id -> health_score_data
         const healthScores: Record<string, any> = {}
@@ -288,10 +272,8 @@ export async function GET(request: NextRequest) {
                 lastUpdated: new Date().toISOString(),
                 cached: true
               }
-              console.log(`✅ Cached health score for ${senderAccount.email}: ${score}% (forceRefresh: ${forceRefresh})`)
             } else {
               // Calculate health score for this sender using real data
-              console.log(`🔄 Calculating real health score for ${senderAccount.email}...`)
               
               try {
                 // Calculate real health score using the imported function
@@ -299,10 +281,8 @@ export async function GET(request: NextRequest) {
                 
                 if (realHealthScores[senderAccount.id]) {
                   healthScores[senderAccount.id] = realHealthScores[senderAccount.id]
-                  console.log(`📊 Calculated real health score for ${senderAccount.email}: ${realHealthScores[senderAccount.id].score}%`)
                 } else {
                   // Fallback to manual calculation if the function fails
-                  console.log(`⚠️ Real calculation failed, using manual calculation for ${senderAccount.email}`)
                   const stats = await getRealSenderStats(userId, senderAccount.email, 30)
                   const { score, breakdown } = calculateRealHealthScore(stats)
                   
@@ -311,10 +291,8 @@ export async function GET(request: NextRequest) {
                     breakdown,
                     lastUpdated: new Date().toISOString()
                   }
-                  console.log(`📊 Manual calculation health score for ${senderAccount.email}: ${score}%`)
                 }
               } catch (error) {
-                console.error(`❌ Error calculating health score for ${senderAccount.email}:`, error)
                 // Only use default as final fallback
                 const defaultScore = 75
                 healthScores[senderAccount.id] = {
@@ -328,7 +306,6 @@ export async function GET(request: NextRequest) {
                   },
                   lastUpdated: new Date().toISOString()
                 }
-                console.log(`📊 Fallback health score for ${senderAccount.email}: ${defaultScore}%`)
               }
             }
           }))
@@ -350,7 +327,6 @@ export async function GET(request: NextRequest) {
           return response
       }
     } catch (error) {
-      console.error('❌ Error fetching sender accounts:', error)
       return NextResponse.json({ 
         success: false, 
         error: `Failed to fetch sender accounts: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -365,7 +341,6 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Error in health score calculation:', error)
     return NextResponse.json({ 
       success: false, 
       error: 'Internal server error',
@@ -402,7 +377,6 @@ export async function POST(request: NextRequest) {
     return response
 
   } catch (error) {
-    console.error('Error in health score update:', error)
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
   }
 }

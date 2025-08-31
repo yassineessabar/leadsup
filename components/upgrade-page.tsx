@@ -203,18 +203,18 @@ export function UpgradePage({ onTabChange }: UpgradePageProps = {}) {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid lg:grid-cols-3 gap-8 pt-12">
+        <div className="grid lg:grid-cols-3 gap-8 pt-8">
           {plans.map((plan, index) => (
             <div
               key={plan.name}
-              className={`relative bg-white/80 backdrop-blur-xl border rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02] ${
+              className={`relative bg-white/80 backdrop-blur-xl border rounded-3xl transition-all duration-300 hover:shadow-xl hover:scale-[1.02] ${
                 plan.highlighted
                   ? "border-gray-200/50 shadow-2xl ring-2 ring-gray-100/50"
                   : "border-gray-100/20 shadow-lg"
-              }`}
+              } ${plan.popular ? 'mt-6' : ''}`}
             >
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
+                <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 z-10">
                   <div className="bg-gray-900 text-white px-4 py-2 rounded-2xl text-xs font-medium flex items-center gap-2 shadow-lg whitespace-nowrap">
                     <Star className="w-3 h-3 fill-white" />
                     {t('upgrade.plans.pro.mostPopular')}

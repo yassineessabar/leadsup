@@ -43,29 +43,20 @@ export async function GET(request: NextRequest) {
 
     // Debug: if no session, use hardcoded user for testing
     if (!userId) {
-      console.log('⚠️ No session found, using hardcoded user for debugging')
       userId = '37a70a5f-1f9a-4d2e-a76f-f303a85bc535'
     } else {
-      console.log('✅ Session found, user:', userId)
     }
 
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('start_date')
     const endDate = searchParams.get('end_date')
 
-    console.log('🔍 Fetching account-level SendGrid analytics...')
-    console.log(`📅 Date range: ${startDate} to ${endDate}`)
-    console.log(`👤 User ID: ${userId}`)
-    console.log('🔑 SendGrid API Key available:', !!process.env.SENDGRID_API_KEY)
 
     // Skip campaign verification - we want to show SendGrid data regardless
-    console.log('📊 Attempting to fetch real SendGrid metrics...')
 
     // Skip Method 1 (local email tracking) - use campaign aggregation instead
-    console.log('⚠️ Skipping local email tracking, using campaign aggregation method')
 
     // Skip Method 2 - go directly to campaign aggregation
-    console.log('⚠️ Skipping user-specific analytics, using campaign aggregation method')
 
     // Fallback: Initialize empty metrics for other methods
     let accountMetrics = {
@@ -88,7 +79,6 @@ export async function GET(request: NextRequest) {
 
     // Method 3: Aggregate metrics across all campaigns using same logic as campaign analytics
     try {
-      console.log('📡 Method 3: Aggregating metrics across all user campaigns...')
       
       // Get all campaigns for this user
       const { data: userCampaigns } = await supabase
@@ -97,7 +87,6 @@ export async function GET(request: NextRequest) {
         .eq('user_id', userId)
       
       if (!userCampaigns || userCampaigns.length === 0) {
-        console.log('⚠️ No campaigns found for user')
         return NextResponse.json({
           success: true,
           data: {
@@ -109,7 +98,6 @@ export async function GET(request: NextRequest) {
         })
       }
       
-      console.log(`📊 Found ${userCampaigns.length} campaigns for user ${userId}`)
       
       // Use the same campaign analytics logic for all campaigns
       const { getCampaignEmailTrackingMetrics } = await import('@/lib/campaign-email-tracking-analytics')
@@ -163,7 +151,6 @@ export async function GET(request: NextRequest) {
         ? (aggregatedMetrics.uniqueClicks / aggregatedMetrics.emailsDelivered) * 100 
         : 0
       
-      console.log('✅ Aggregated metrics across all campaigns:', aggregatedMetrics)
       
       if (aggregatedMetrics.emailsSent > 0) {
         return NextResponse.json({
@@ -178,14 +165,8 @@ export async function GET(request: NextRequest) {
         })
       }
 
-      console.log(`🔍 Webhook events query result:`, { 
-        error: null, 
-        eventCount: 0,
-        events: webhookEvents?.slice(0, 3) // Show first 3 events for debugging
-      })
 
       if (!webhookError && webhookEvents && webhookEvents.length > 0) {
-        console.log(`📊 Found ${webhookEvents.length} webhook events for aggregation`)
         
         // Aggregate events into metrics
         const eventCounts = webhookEvents.reduce((acc, event) => {
@@ -275,11 +256,9 @@ export async function GET(request: NextRequest) {
           unsubscribeRate: Math.round(unsubscribeRate * 100) / 100
         }
 
-        console.log('✅ Webhook aggregation successful:', accountMetrics)
 
         // Return metrics if we have any email activity
         if (accountMetrics.emailsSent > 0 || accountMetrics.emailsDelivered > 0) {
-          console.log('✅ Email activity detected, returning metrics:', accountMetrics)
           return NextResponse.json({
             success: true,
             data: {
@@ -291,19 +270,15 @@ export async function GET(request: NextRequest) {
             }
           })
         } else {
-          console.log('⚠️ No email activity detected, counts:', accountMetrics)
         }
       } else {
-        console.log('⚠️ No webhook events found for this period')
       }
     } catch (webhookAggError) {
-      console.warn('⚠️ Webhook aggregation failed:', webhookAggError)
     }
 
     // All methods failed - SendGrid API should have worked
 
     // If no real data found anywhere, return empty metrics
-    console.log('⚠️ No real email activity found from any source, returning empty metrics')
     
     return NextResponse.json({
       success: true,
@@ -316,7 +291,6 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('❌ Error fetching account analytics:', error)
     
     return NextResponse.json({
       success: false,

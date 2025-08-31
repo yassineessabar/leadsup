@@ -97,7 +97,6 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("❌ Error fetching user analytics:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
@@ -136,7 +135,6 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error("❌ Error recalculating metrics:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

@@ -28,7 +28,6 @@ async function getUserIdFromSession(): Promise<string | null> {
 
     return session.user_id
   } catch (err) {
-    console.error("Error in getUserIdFromSession:", err)
     return null
   }
 }
@@ -48,7 +47,6 @@ export async function GET(request: NextRequest) {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - parseInt(dateRange))
 
-    console.log('📊 Fetching inbox stats for user:', userId, 'range:', dateRange)
 
     // Parallel queries for better performance
     const [
@@ -221,7 +219,6 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("❌ Error fetching inbox stats:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

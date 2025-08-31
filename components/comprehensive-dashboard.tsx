@@ -89,7 +89,6 @@ export function ComprehensiveDashboard() {
     try {
       setMetricsLoading(true)
       
-      console.log('🔍 Checking for real email activity in inbox...')
       
       // First, check if user has any real emails in their inbox
       const inboxResponse = await fetch('/api/inbox/stats', {
@@ -97,7 +96,6 @@ export function ComprehensiveDashboard() {
       })
       
       if (!inboxResponse.ok) {
-        console.warn('Failed to fetch inbox stats, skipping email metrics')
         setSendGridMetrics(null)
         setMetricsLoading(false)
         return
@@ -107,23 +105,14 @@ export function ComprehensiveDashboard() {
       const hasRealEmails = inboxData.success && 
         inboxData.data?.summary?.total_messages > 0
       
-      console.log('📊 Inbox stats:', {
-        hasRealEmails,
-        totalMessages: inboxData.data?.summary?.total_messages || 0,
-        unreadMessages: inboxData.data?.summary?.unread_messages || 0
-      })
       
       // Skip fake email check - always try to fetch SendGrid metrics
-      console.log('📡 Proceeding to fetch SendGrid metrics...')
       
       // Always try to fetch SendGrid metrics, even if inbox appears empty
       // The inbox might be empty but SendGrid could still have sent emails
-      console.log('📡 Attempting to fetch SendGrid metrics...')
       
       if (!hasRealEmails) {
-        console.log('⚠️ No emails in inbox, but checking SendGrid API anyway...')
       } else {
-        console.log('✅ Real emails found in inbox - fetching SendGrid metrics...')
       }
       
       // Build query parameters for last 30 days
@@ -144,42 +133,26 @@ export function ComprehensiveDashboard() {
       })
       
       if (!response.ok) {
-        console.warn("Failed to fetch account metrics:", response.statusText)
         setSendGridMetrics(null)
         return
       }
       
       const result = await response.json()
-      console.log('🔍 Full Analytics API response:', result)
-      console.log('🔍 Analytics source used:', result.data?.source)
-      console.log('🔍 Analytics debug info:', result.data?.debug)
       
       if (result.success && result.data?.metrics) {
         const metrics = result.data.metrics
         
-        console.log('📊 Metrics data received:', metrics)
         
         // Only set metrics if there's actual email activity that matches inbox data
         if (metrics.emailsSent > 0) {
-          console.log('✅ Real SendGrid metrics loaded:', {
-            source: result.data.source,
-            period: result.data.period,
-            emailsSent: metrics.emailsSent,
-            openRate: metrics.openRate,
-            clickRate: metrics.clickRate,
-            deliveryRate: metrics.deliveryRate
-          })
           setSendGridMetrics(metrics)
         } else {
-          console.log('⚠️ SendGrid reports no emails sent - showing no metrics')
           setSendGridMetrics(null)
         }
       } else {
-        console.log('⚠️ No SendGrid metrics available:', result)
         setSendGridMetrics(null)
       }
     } catch (error) {
-      console.error('Error fetching SendGrid metrics:', error)
       setSendGridMetrics(null)
     } finally {
       setMetricsLoading(false)
@@ -198,7 +171,6 @@ export function ComprehensiveDashboard() {
       const result = await response.json()
       
       if (!result.success) {
-        console.error('❌ Dashboard stats failed:', result)
         return
       }
       
@@ -223,9 +195,7 @@ export function ComprehensiveDashboard() {
       // Animate the numbers
       animateNumbers(newStats)
       
-      console.log('✅ Comprehensive dashboard stats loaded:', result.data)
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error)
     } finally {
       setIsLoading(false)
     }

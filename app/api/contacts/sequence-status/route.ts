@@ -51,8 +51,6 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    console.log(`📊 Fetching sequence status for campaign ${campaignId}${contactEmail ? ` and contact ${contactEmail}` : ''}`)
-    console.log(`🔍 Campaign ID type: ${typeof campaignId}, value: "${campaignId}"`)
 
     // Try prospects table first (UUID-based)
     let prospectsQuery = supabaseServer
@@ -67,7 +65,6 @@ export async function GET(request: NextRequest) {
     let { data: prospects, error: prospectsError } = await prospectsQuery
     
     // Always check contacts table as well (integer-based) and merge results
-    console.log(`📋 Found ${prospects?.length || 0} prospects in prospects table, now checking contacts table...`)
     
     // Use same approach as /api/contacts endpoint which works successfully
     let contactsQuery = supabaseServer
@@ -81,11 +78,8 @@ export async function GET(request: NextRequest) {
     
     const { data: contacts, error: contactsError } = await contactsQuery
     
-    console.log(`🔍 Contacts query result: found ${contacts?.length || 0} contacts, error: ${contactsError?.message || 'none'}`)
-    console.log(`🔍 First few contacts:`, contacts?.slice(0, 3)?.map(c => ({ id: c.id, email: c.email, campaign_id: c.campaign_id })))
     
     if (!contactsError && contacts && contacts.length > 0) {
-      console.log(`📋 Found ${contacts.length} contacts in contacts table`)
       
       // Convert contacts to prospect format
       const convertedContacts = contacts.map(contact => ({
@@ -102,13 +96,10 @@ export async function GET(request: NextRequest) {
         const existingEmails = new Set(prospects.map(p => p.email_address))
         const newContacts = convertedContacts.filter(c => !existingEmails.has(c.email_address))
         prospects = [...prospects, ...newContacts]
-        console.log(`📋 Added ${newContacts.length} new contacts from legacy table, total: ${prospects.length}`)
       } else {
         prospects = convertedContacts
-        console.log(`📋 Using ${prospects.length} contacts from legacy table`)
       }
     } else {
-      console.log('📋 No contacts found in contacts table')
     }
 
     if (!prospects || prospects.length === 0) {
@@ -141,7 +132,6 @@ export async function GET(request: NextRequest) {
         .order('created_at', { ascending: true })
       
       if (progressError) {
-        console.error('Error fetching UUID progress:', progressError)
       } else {
         allProgress = uuidProgress || []
       }
@@ -150,11 +140,9 @@ export async function GET(request: NextRequest) {
     // For integer contacts, try to get from email_tracking table 
     const integerContacts = prospects.filter(p => !p.id.includes('-'))
     if (integerContacts.length > 0) {
-      console.log(`📋 Found ${integerContacts.length} integer contacts - checking email_tracking table`)
       
       // Try to get sent emails from email_tracking table
       const integerIds = integerContacts.map(p => p.id)
-      console.log(`🔍 Searching for email tracking with contact IDs: ${integerIds.join(', ')} and campaign ${campaignId}`)
       
       const { data: emailTracking, error: trackingError } = await supabaseServer
         .from('email_tracking')
@@ -170,14 +158,8 @@ export async function GET(request: NextRequest) {
         .eq('status', 'sent')
         .order('created_at', { ascending: true })
       
-      console.log(`🔍 Email tracking query result:`, {
-        found: emailTracking?.length || 0,
-        error: trackingError?.message || 'none',
-        sampleRecord: emailTracking?.[0]
-      })
       
       if (!trackingError && emailTracking && emailTracking.length > 0) {
-        console.log(`📧 Found ${emailTracking.length} sent emails in email_tracking for integer contacts`)
         
         // Convert email_tracking records to progress format
         const integerProgress = emailTracking.map(record => ({
@@ -190,10 +172,7 @@ export async function GET(request: NextRequest) {
         }))
         
         allProgress = [...allProgress, ...integerProgress]
-        console.log(`📊 Added ${integerProgress.length} progress records from email_tracking`)
       } else {
-        console.log(`📋 No email tracking found for integer contacts. Error: ${trackingError?.message || 'none'}`)
-        console.log('📋 Will use sequence_step from contacts table as fallback')
       }
     }
 
@@ -206,7 +185,6 @@ export async function GET(request: NextRequest) {
       .order('step_number')
 
     if (sequencesError) {
-      console.error('Error fetching sequences:', sequencesError)
     }
 
     // Process each prospect's sequence status
@@ -231,9 +209,6 @@ export async function GET(request: NextRequest) {
         }
       }) || []
       
-      console.log(`🔍 DEBUG: Processing contact ${prospect.email_address} (${prospect.id}) - isInteger: ${isIntegerID}`)
-      console.log(`🔍 DEBUG: Found ${prospectProgress.length} progress records`)
-      console.log(`🔍 DEBUG: Progress record IDs: ${prospectProgress.map(p => p.prospect_id).join(', ')}`)
       
       if (prospectProgress.length > 0) {
         // Use progress records if available
@@ -242,15 +217,12 @@ export async function GET(request: NextRequest) {
         failedCount = prospectProgress.filter(p => p.status === 'failed').length
         currentStep = sentCount
         
-        console.log(`🔍 DEBUG: From progress records - Sent: ${sentCount}, Scheduled: ${scheduledCount}, Failed: ${failedCount}`)
       } else if (isIntegerID && prospect.sequence_step !== undefined) {
         // Fallback to sequence_step for integer contacts without progress records
         currentStep = prospect.sequence_step || 0
         sentCount = currentStep
-        console.log(`📋 Fallback: Using sequence_step from contacts table: ${currentStep} for ${prospect.email_address}`)
       } else {
         // No progress data available
-        console.log(`⚠️ No progress data found for ${prospect.email_address}`)
       }
       
       // Determine status
@@ -349,8 +321,6 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log(`✅ Calculated sequence status for ${contactStatuses.length} contacts`)
-    console.log(`🔍 DEBUG: First contact status data:`, contactStatuses[0])
 
     return NextResponse.json({
       success: true,
@@ -358,7 +328,6 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Error fetching sequence status:', error)
     return NextResponse.json({
       success: false,
       error: 'Internal server error'
@@ -384,7 +353,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    console.log(`🔄 Batch updating sequence status for ${updates.length} contacts`)
 
     const results = []
 
@@ -402,7 +370,6 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (checkError && checkError.code !== 'PGRST116') {
-          console.error('Error checking existing progress:', checkError)
           results.push({ prospectId, success: false, error: checkError.message })
           continue
         }
@@ -421,7 +388,6 @@ export async function POST(request: NextRequest) {
             .eq('id', existing.id)
 
           if (updateError) {
-            console.error('Error updating progress:', updateError)
             results.push({ prospectId, success: false, error: updateError.message })
           } else {
             results.push({ prospectId, success: true, action: 'updated' })
@@ -441,20 +407,17 @@ export async function POST(request: NextRequest) {
             })
 
           if (insertError) {
-            console.error('Error creating progress:', insertError)
             results.push({ prospectId, success: false, error: insertError.message })
           } else {
             results.push({ prospectId, success: true, action: 'created' })
           }
         }
       } catch (error) {
-        console.error(`Error processing update for prospect ${prospectId}:`, error)
         results.push({ prospectId, success: false, error: error.message })
       }
     }
 
     const successCount = results.filter(r => r.success).length
-    console.log(`✅ Batch update completed: ${successCount}/${updates.length} successful`)
 
     return NextResponse.json({
       success: true,
@@ -463,7 +426,6 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Error in batch sequence status update:', error)
     return NextResponse.json({
       success: false,
       error: 'Internal server error'

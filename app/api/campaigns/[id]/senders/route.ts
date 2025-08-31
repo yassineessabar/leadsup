@@ -21,13 +21,11 @@ async function getUserIdFromSession(): Promise<string | null> {
       .single()
 
     if (error || !data) {
-      console.error("Error fetching user from session:", error)
       return null
     }
 
     return data.user_id
   } catch (error) {
-    console.error("Error in getUserIdFromSession:", error)
     return null
   }
 }
@@ -64,9 +62,6 @@ export async function GET(
     }
 
     // Get all sender assignments for this campaign from the existing campaign_senders table
-    console.log('📖 DEBUGGING CAMPAIGN SENDERS API:')
-    console.log(`🏷️ Campaign ID: ${campaignId}`)
-    console.log(`👤 User ID: ${userId}`)
     
     const { data: assignmentsData, error: assignmentsError } = await getSupabaseServerClient()
       .from('campaign_senders')
@@ -76,7 +71,6 @@ export async function GET(
       .order('email', { ascending: true })
 
     if (assignmentsError) {
-      console.error('Error fetching campaign senders:', assignmentsError)
       return NextResponse.json(
         { success: false, error: 'Failed to fetch campaign senders' },
         { status: 500 }
@@ -84,7 +78,6 @@ export async function GET(
     }
 
     const assignments = assignmentsData || []
-    console.log(`📋 Found ${assignments.length} assignments for campaign ${campaignId}`)
     
     // Use existing health scores from database - they're already stored in campaign_senders table
     // Health scores are calculated and updated by:
@@ -101,7 +94,6 @@ export async function GET(
       return assignment
     })
     
-    console.log(`📊 Returning ${assignmentsWithScores.length} assignments with cached health scores`)
 
     return NextResponse.json({
       success: true,
@@ -109,7 +101,6 @@ export async function GET(
     })
 
   } catch (error) {
-    console.error('Error in GET /api/campaigns/[id]/senders:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
@@ -123,13 +114,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('🔄 POST /api/campaigns/[id]/senders called')
     
     const userId = await getUserIdFromSession()
-    console.log('👤 User ID:', userId)
     
     if (!userId) {
-      console.log('❌ No user ID found - unauthorized')
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
@@ -137,13 +125,10 @@ export async function POST(
     }
 
     const { id: campaignId } = await params
-    console.log('📋 Campaign ID:', campaignId)
     
     const body = await request.json()
-    console.log('📦 Request body:', body)
     
     const { selectedSenderIds } = body
-    console.log('📋 Selected sender IDs:', selectedSenderIds)
 
     if (!Array.isArray(selectedSenderIds)) {
       return NextResponse.json(
@@ -185,7 +170,6 @@ export async function POST(
         .in('id', selectedSenderIds)
 
       if (sendersError) {
-        console.error('Error verifying sender accounts:', sendersError)
         return NextResponse.json(
           { success: false, error: 'Failed to verify sender accounts' },
           { status: 500 }
@@ -208,7 +192,6 @@ export async function POST(
     }
 
     // Use the existing campaign_senders table instead of campaign_sender_assignments
-    console.log('📝 Using existing campaign_senders table...')
     
     // First, remove all existing assignments for this campaign
     const { error: deleteError } = await getSupabaseServerClient()
@@ -217,7 +200,6 @@ export async function POST(
       .eq('campaign_id', campaignId)
 
     if (deleteError) {
-      console.error('Error deleting existing campaign senders:', deleteError)
       return NextResponse.json(
         { success: false, error: 'Failed to update sender assignments' },
         { status: 500 }
@@ -226,7 +208,6 @@ export async function POST(
 
     // Add new assignments if any senders are selected
     if (selectedSenderIds.length > 0) {
-      console.log('📝 Inserting new sender assignments...')
       
       // Since campaign_senders table doesn't have sender_id column, we need to get the sender details first
       const { data: senderAccounts, error: senderError } = await getSupabaseServerClient()
@@ -235,7 +216,6 @@ export async function POST(
         .in('id', selectedSenderIds)
 
       if (senderError || !senderAccounts) {
-        console.error('❌ Error fetching sender accounts:', senderError)
         return NextResponse.json(
           { success: false, error: 'Failed to fetch sender account details' },
           { status: 500 }
@@ -257,7 +237,6 @@ export async function POST(
         expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year from now
       }))
 
-      console.log('📋 Attempting email-based insert:', emailBasedAssignments)
 
       const { data: insertData, error: insertError } = await getSupabaseServerClient()
         .from('campaign_senders')
@@ -268,14 +247,12 @@ export async function POST(
         .select()
 
       if (insertError) {
-        console.error('❌ Error with email-based insert:', insertError)
         return NextResponse.json(
           { success: false, error: `Failed to assign senders: ${insertError.message}` },
           { status: 500 }
         )
       }
 
-      console.log('✅ Email-based insert successful:', insertData)
     }
 
     const successResponse = {
@@ -284,13 +261,10 @@ export async function POST(
       assignedCount: selectedSenderIds.length
     }
     
-    console.log('✅ Returning success response:', successResponse)
     return NextResponse.json(successResponse)
 
   } catch (error) {
-    console.error('❌ Caught error in POST /api/campaigns/[id]/senders:', error)
     const errorResponse = { success: false, error: 'Internal server error' }
-    console.log('❌ Returning error response:', errorResponse)
     return NextResponse.json(errorResponse, { status: 500 })
   }
 }
@@ -343,7 +317,6 @@ export async function DELETE(
       .eq('sender_account_id', senderId)
 
     if (deleteError) {
-      console.error('Error removing sender assignment:', deleteError)
       return NextResponse.json(
         { success: false, error: 'Failed to remove sender from campaign' },
         { status: 500 }
@@ -356,7 +329,6 @@ export async function DELETE(
     })
 
   } catch (error) {
-    console.error('Error in DELETE /api/campaigns/[id]/senders:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

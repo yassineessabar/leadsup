@@ -39,16 +39,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    console.log('🔍 Campaign settings API called with ID:', id)
     
     const userId = await getUserIdFromSession()
     if (!userId) {
-      console.log('❌ User not authenticated')
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 })
     }
 
     const campaignId = id
-    console.log('🔍 Looking for campaign:', campaignId, 'for user:', userId)
 
     // First verify campaign belongs to user
     const { data: campaign, error: campaignError } = await supabaseServer
@@ -59,14 +56,12 @@ export async function GET(
       .single()
 
     if (campaignError || !campaign) {
-      console.log('❌ Campaign not found:', { campaignError, campaign })
       return NextResponse.json({ 
         success: false, 
         error: 'Campaign not found' 
       }, { status: 404 })
     }
     
-    console.log('✅ Campaign found:', campaign)
 
     // Fetch settings from campaigns table (settings column)
     const { data: campaignData, error: settingsError } = await supabaseServer
@@ -77,7 +72,6 @@ export async function GET(
       .single()
 
     if (settingsError) {
-      console.error('Error fetching campaign settings:', settingsError)
       return NextResponse.json({
         success: true,
         settings: {} // Return empty settings if none found
@@ -90,7 +84,6 @@ export async function GET(
     })
 
   } catch (error) {
-    console.error('Error fetching campaign settings:', error)
     return NextResponse.json({ 
       success: false, 
       error: 'Internal server error' 
@@ -143,14 +136,12 @@ export async function POST(
       .eq('user_id', userId)
 
     if (updateError) {
-      console.error('Error updating campaign settings:', updateError)
       return NextResponse.json({ 
         success: false, 
         error: 'Failed to update settings' 
       }, { status: 500 })
     }
 
-    console.log(`✅ Updated settings for campaign ${campaignId}:`, updatedSettings)
 
     return NextResponse.json({
       success: true,
@@ -159,7 +150,6 @@ export async function POST(
     })
 
   } catch (error) {
-    console.error('Error updating campaign settings:', error)
     return NextResponse.json({ 
       success: false, 
       error: 'Internal server error' 
