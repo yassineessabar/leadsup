@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import Stripe from "stripe"
-import { supabase } from "@/lib/supabase"
+import { supabaseServer } from "@/lib/supabase"
 
 // Initialize Stripe only when needed to avoid build-time errors
 const getStripe = () => {
@@ -111,7 +111,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     if (customerEmail || userId) {
       // Update user with Stripe customer ID
-      const { data, error } = await supabase
+      const { data, error } = await supabaseServer
         .from('users')
         .update({
           stripe_customer_id: customerId,
@@ -145,6 +145,29 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   try {
     const customerId = subscription.customer as string
 
+    // Check if subscription is canceled or will be canceled
+    const isCanceled = subscription.status === 'canceled' || subscription.cancel_at_period_end
+    
+    // If canceled, handle as cancellation
+    if (isCanceled) {
+      console.log(`🚫 Subscription canceled or set to cancel at period end: ${subscription.id}`)
+      const { error } = await supabaseServer
+        .from('users')
+        .update({
+          subscription_status: subscription.cancel_at_period_end ? 'cancelled' : 'cancelled',
+          subscription_type: subscription.cancel_at_period_end ? getSubscriptionTypeFromSubscription(subscription) : 'free',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('stripe_customer_id', customerId)
+      
+      if (error) {
+        console.error('❌ Error updating canceled subscription:', error)
+      } else {
+        console.log('✅ Subscription cancellation updated successfully')
+      }
+      return
+    }
+
     // Get subscription type from price ID or product metadata
     const subscriptionType = getSubscriptionTypeFromSubscription(subscription)
 
@@ -153,7 +176,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     const trialEndDate = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null
 
     // First, check if the user exists with this stripe_customer_id
-    let { data: existingUser, error: findError } = await supabase
+    let { data: existingUser, error: findError } = await supabaseServer
       .from('users')
       .select('id, email, stripe_customer_id')
       .eq('stripe_customer_id', customerId)
@@ -167,7 +190,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
         const customer = await stripe.customers.retrieve(customerId)
         if (customer && !customer.deleted && customer.email) {
           // Try to find user by email
-          const { data: userByEmail, error: emailError } = await supabase
+          const { data: userByEmail, error: emailError } = await supabaseServer
             .from('users')
             .select('id, email, stripe_customer_id')
             .eq('email', customer.email)
@@ -175,7 +198,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
 
           if (!emailError && userByEmail) {
             // Update the user with the stripe_customer_id for future webhooks
-            await supabase
+            await supabaseServer
               .from('users')
               .update({ stripe_customer_id: customerId })
               .eq('id', userByEmail.id)
@@ -194,7 +217,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     }
 
     // Update user subscription information
-    const { data: updateResult, error } = await supabase
+    const { data: updateResult, error } = await supabaseServer
       .from('users')
       .update({
         stripe_subscription_id: subscription.id,
@@ -218,23 +241,28 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
 async function handleSubscriptionCanceled(subscription: Stripe.Subscription) {
   try {
     const customerId = subscription.customer as string
+    
+    console.log(`🚫 Processing subscription.deleted for customer: ${customerId}`)
 
-    const { error } = await supabase
+    const { data, error } = await supabaseServer
       .from('users')
       .update({
         subscription_type: 'free',
-        subscription_status: 'canceled',
+        subscription_status: 'cancelled',
+        stripe_subscription_id: null,
         trial_end_date: null,
         updated_at: new Date().toISOString(),
       })
       .eq('stripe_customer_id', customerId)
+      .select()
 
     if (error) {
-      console.error('Error:', error)
+      console.error('❌ Error canceling subscription:', error)
     } else {
-      }
+      console.log('✅ Subscription canceled successfully:', data)
+    }
   } catch (error) {
-    console.error('Error:', error)
+    console.error('❌ Error in handleSubscriptionCanceled:', error)
   }
 }
 
@@ -243,7 +271,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
     const customerId = invoice.customer as string
 
     // Update subscription status to active on successful payment
-    const { error } = await supabase
+    const { error } = await supabaseServer
       .from('users')
       .update({
         subscription_status: 'active',
@@ -265,7 +293,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     const customerId = invoice.customer as string
 
     // Update subscription status to past_due on failed payment
-    const { error } = await supabase
+    const { error } = await supabaseServer
       .from('users')
       .update({
         subscription_status: 'past_due',
@@ -288,7 +316,7 @@ async function handleTrialWillEnd(subscription: Stripe.Subscription) {
     const trialEndDate = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
 
     // Update user with trial ending notification (using existing schema)
-    const { error } = await supabase
+    const { error } = await supabaseServer
       .from('users')
       .update({
         updated_at: new Date().toISOString(),
