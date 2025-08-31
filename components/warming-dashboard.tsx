@@ -22,6 +22,7 @@ import {
   BarChart3
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useI18n } from '@/hooks/use-i18n'
 
 interface WarmingSender {
   sender_email: string
@@ -61,6 +62,7 @@ interface WarmingProgress {
 }
 
 export default function WarmingDashboard() {
+  const { t } = useI18n()
   const [warmingData, setWarmingData] = useState<WarmingProgress | null>(null)
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -278,7 +280,7 @@ export default function WarmingDashboard() {
                   <Eye className="w-6 h-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Open Rate</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{t('analytics.openRate')}</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {warmingData.summary.openRate}%
                   </p>

@@ -54,6 +54,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/hooks/use-toast"
+import { useI18n } from "@/hooks/use-i18n"
 import { deriveTimezoneFromLocation, getCurrentTimeInTimezone, getBusinessHoursStatus } from "@/lib/timezone-utils"
 
 interface CampaignSenderInfo {
@@ -162,6 +163,7 @@ interface GitHubStats {
 }
 
 export function AutomationLogs() {
+  const { t } = useI18n()
   const [logs, setLogs] = useState<AutomationLog[]>([])
   const [stats, setStats] = useState<LogStats>({ sent: 0, skipped: 0, errors: 0, campaigns: 0, contacts: 0, senders: 0, avgHealthScore: 0 })
   const [githubRuns, setGithubRuns] = useState<GitHubWorkflowRun[]>([])
@@ -638,7 +640,7 @@ export function AutomationLogs() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Emails Sent</p>
+                <p className="text-sm text-gray-600">{t('analytics.emailsSent')}</p>
                 <p className="text-2xl font-semibold text-gray-900">{stats.sent.toLocaleString()}</p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
@@ -1281,7 +1283,7 @@ export function AutomationLogs() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Emails Sent</p>
+                    <p className="text-sm text-gray-600">{t('analytics.emailsSent')}</p>
                     <p className="text-2xl font-semibold text-gray-900">{githubStats.total_emails_sent.toLocaleString()}</p>
                   </div>
                   <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">

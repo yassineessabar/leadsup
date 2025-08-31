@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { RefreshCw, Activity, Mail, Users, TrendingUp, LogOut, Clock } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
+import { useI18n } from '@/hooks/use-i18n'
 
 interface AccountActivity {
   user_id: string
@@ -84,6 +85,7 @@ interface GitHubAutomationData {
 }
 
 export default function AdminPanel() {
+  const { t } = useI18n()
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [accounts, setAccounts] = useState<AccountActivity[]>([])
@@ -641,8 +643,8 @@ export default function AdminPanel() {
                     <TableHead>Opened</TableHead>
                     <TableHead>Bounced</TableHead>
                     <TableHead>Failed</TableHead>
-                    <TableHead>Delivery Rate</TableHead>
-                    <TableHead>Open Rate</TableHead>
+                    <TableHead>{t('analytics.deliveryRate')}</TableHead>
+                    <TableHead>{t('analytics.openRate')}</TableHead>
                     <TableHead>Health Score</TableHead>
                   </TableRow>
                 </TableHeader>

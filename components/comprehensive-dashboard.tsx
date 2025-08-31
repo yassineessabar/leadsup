@@ -283,7 +283,7 @@ export function ComprehensiveDashboard() {
   // Performance metrics with real SendGrid data - only show if we have actual email activity
   const performanceMetrics = sendGridMetrics ? [
     { 
-      title: 'Open Rate', 
+      title: t('analytics.openRate'), 
       value: `${sendGridMetrics.openRate.toFixed(1)}%`, 
       change: `${sendGridMetrics.uniqueOpens} unique opens`, 
       trend: 'up',
@@ -293,7 +293,7 @@ export function ComprehensiveDashboard() {
       iconColor: 'text-blue-600'
     },
     { 
-      title: 'Click Rate', 
+      title: t('analytics.clickRate'), 
       value: `${sendGridMetrics.clickRate.toFixed(1)}%`, 
       change: `${sendGridMetrics.uniqueClicks} unique clicks`, 
       trend: 'up',
@@ -303,7 +303,7 @@ export function ComprehensiveDashboard() {
       iconColor: 'text-emerald-600'
     },
     { 
-      title: 'Delivery Rate', 
+      title: t('analytics.deliveryRate'), 
       value: `${sendGridMetrics.deliveryRate.toFixed(1)}%`, 
       change: sendGridMetrics.emailsBounced > 0 ? `${sendGridMetrics.emailsBounced} bounced` : 'No bounces', 
       trend: sendGridMetrics.deliveryRate > 95 ? 'up' : 'down',
@@ -313,7 +313,7 @@ export function ComprehensiveDashboard() {
       iconColor: 'text-orange-600'
     },
     { 
-      title: 'Emails Sent', 
+      title: t('analytics.emailsSent'), 
       value: sendGridMetrics.emailsSent.toLocaleString(), 
       change: `${sendGridMetrics.emailsDelivered} delivered`, 
       trend: 'up',
@@ -604,7 +604,7 @@ export function ComprehensiveDashboard() {
                           stroke="#6b7280"
                           strokeWidth={3}
                           dot={{ fill: '#6b7280', strokeWidth: 2, r: 5 }}
-                          name="Emails Sent"
+                          name={t('analytics.emailsSent')}
                         />
                         <Line
                           type="monotone"
