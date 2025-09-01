@@ -90,11 +90,15 @@ const ContentEditableDiv = ({
     }
   }
 
-  // Update content only when step changes, not on every content update
+  // Initialize content when component mounts or step changes
   useEffect(() => {
-    if (editorRef.current && (lastStepId.current !== stepId || !editorRef.current.innerHTML)) {
+    if (!editorRef.current) return
+    
+    // Only update if step changed
+    if (lastStepId.current !== stepId) {
       lastStepId.current = stepId
-      editorRef.current.innerHTML = content
+      // Set the content, even if empty
+      editorRef.current.innerHTML = content || ''
     }
   }, [stepId, content])
 
@@ -139,7 +143,12 @@ const ContentEditableDiv = ({
       className={className}
       style={style}
       suppressContentEditableWarning={true}
-      dangerouslySetInnerHTML={lastStepId.current !== stepId ? { __html: content } : undefined}
+      data-placeholder="Hi {{firstName}},
+
+I hope this email finds you well! I wanted to reach out because...
+
+Best regards,
+{{senderName}}"
     />
   )
 }
@@ -4222,25 +4231,35 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               {showCodeView ? (
                                 // HTML Source View
                                 <Textarea
-                                  value={activeStep.content || 'Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because...<br/><br/>Best regards,<br/>{{senderName}}'}
+                                  value={activeStep.content || ''}
                                   onChange={(e) => updateStepContent(e.target.value)}
                                   className="min-h-[300px] p-4 border-0 focus:ring-0 focus:outline-none resize-none text-sm font-mono leading-relaxed bg-gray-50"
-                                  placeholder="HTML source code..."
+                                  placeholder="Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because...<br/><br/>Best regards,<br/>{{senderName}}"
                                 />
                               ) : (
                                 // Rich Text View
-                                <ContentEditableDiv
-                                  editorRef={editorRef}
-                                  content={activeStep.content || 'Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because...<br/><br/>Best regards,<br/>{{senderName}}'}
-                                  onContentChange={updateStepContent}
-                                  stepId={activeStepId}
-                                  className="min-h-[300px] p-4 border-0 focus:ring-0 focus:outline-none resize-none text-sm leading-relaxed"
-                                  style={{
-                                    whiteSpace: 'pre-wrap',
-                                    wordWrap: 'break-word'
-                                  }}
-                                  setLastCursorPosition={setLastCursorPosition}
-                                />
+                                (() => {
+                                  // Debug logging
+                                  console.log('ActiveStep content:', activeStep.content)
+                                  console.log('ActiveStep content type:', typeof activeStep.content)
+                                  console.log('ActiveStep content is null?', activeStep.content === null)
+                                  console.log('ActiveStep content is undefined?', activeStep.content === undefined)
+                                  
+                                  return (
+                                    <ContentEditableDiv
+                                      editorRef={editorRef}
+                                      content={activeStep.content || ''}
+                                      onContentChange={updateStepContent}
+                                      stepId={activeStepId}
+                                      className="min-h-[300px] p-4 border-0 focus:ring-0 focus:outline-none resize-none text-sm leading-relaxed empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
+                                      style={{
+                                        whiteSpace: 'pre-wrap',
+                                        wordWrap: 'break-word'
+                                      }}
+                                      setLastCursorPosition={setLastCursorPosition}
+                                    />
+                                  )
+                                })()
                               )}
                             </div>
                             

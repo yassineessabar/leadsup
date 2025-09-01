@@ -40,7 +40,7 @@ function getDefaultDnsRecords(domain: string, replySubdomain: string = 'reply') 
   }
 
   // Generate default records for other domains
-  const sendgridSubdomain = `u${Math.random().toString(36).substring(2, 10)}.wl${Math.floor(Math.random() * 900) + 100}.sendgrid.net`
+  const sendgridSubdomain = 'u55053564.wl065.sendgrid.net' // Use actual SendGrid account
   const emPrefix = `em${Math.floor(Math.random() * 9000) + 1000}`
   
   return [

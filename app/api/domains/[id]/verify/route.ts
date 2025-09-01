@@ -463,41 +463,41 @@ async function verifyCNAMERecord(record: any, domainName: string): Promise<Verif
   console.log(`🔍 Checking CNAME record for: ${hostname}`)
   
   try {
-    // For link tracking records, try to find any existing em* subdomain that works
+    // For link tracking records, check the exact hostname from the database
     if (record.purpose?.includes('Link tracking') || record.purpose?.includes('tracking')) {
-      // Try common em prefixes that might be configured (prioritize known leadsup.io prefixes)
-      const emPrefixes = ['em7895', 'em1487', 'em6012', 'em27056635']
+      console.log(`🔍 Checking exact link tracking record: ${hostname}`)
       
-      for (const prefix of emPrefixes) {
-        const testHost = `${prefix}.${domainName}`
-        console.log(`🔍 Trying link tracking subdomain: ${testHost}`)
+      try {
+        const cnameRecords = await withTimeout(resolveCname(hostname), 3000)
+        const foundRecord = cnameRecords[0] || null
         
-        try {
-          const cnameRecords = await withTimeout(resolveCname(testHost), 3000)
-          const foundRecord = cnameRecords[0] || null
-          
-          if (foundRecord && foundRecord.includes('u55053564.wl065.sendgrid.net')) {
-            console.log(`✅ Found working link tracking record: ${testHost} → ${foundRecord}`)
-            return {
-              record: `CNAME (${record.purpose})`,
-              expected: record.value,
-              found: `${testHost} → ${foundRecord}`,
-              verified: true
-            }
+        if (foundRecord && foundRecord.includes('u55053564.wl065.sendgrid.net')) {
+          console.log(`✅ Found working link tracking record: ${hostname} → ${foundRecord}`)
+          return {
+            record: `CNAME (${record.purpose})`,
+            expected: record.value,
+            found: foundRecord,
+            verified: true
           }
-        } catch (err) {
-          // Continue trying other prefixes
-          console.log(`⚠️  ${testHost} not found, trying next...`)
+        } else {
+          console.log(`❌ Link tracking record found but incorrect: ${hostname} → ${foundRecord}`)
+          return {
+            record: `CNAME (${record.purpose})`,
+            expected: record.value,
+            found: foundRecord,
+            verified: false,
+            error: `Link tracking record points to wrong SendGrid account`
+          }
         }
-      }
-      
-      // If none of the common prefixes work, return failed
-      return {
-        record: `CNAME (${record.purpose})`,
-        expected: record.value,
-        found: null,
-        verified: false,
-        error: `No working link tracking subdomain found. Tried: ${emPrefixes.map(p => `${p}.${domainName}`).join(', ')}`
+      } catch (err) {
+        console.log(`❌ Link tracking record not found: ${hostname}`)
+        return {
+          record: `CNAME (${record.purpose})`,
+          expected: record.value,
+          found: null,
+          verified: false,
+          error: `Link tracking record not found: ${hostname}`
+        }
       }
     }
     
@@ -679,19 +679,98 @@ async function setupSendGridIntegration(domain: any) {
     // Import SendGrid functions
     const { createSenderIdentity, getDomainAuthentication, createDomainAuthentication, validateDomainAuthentication, configureInboundParse } = await import('@/lib/sendgrid')
     
-    // Step 1: Force SendGrid domain authentication
-    await forceSendGridDomainAuthentication(domain.domain, getDomainAuthentication, createDomainAuthentication, validateDomainAuthentication)
+    // Step 1: FIRST create and validate domain authentication in SendGrid
+    console.log(`🔐 Setting up SendGrid domain authentication for ${domain.domain}`)
+    let domainAuthId = null
     
-    // Step 2: Configure Inbound Parse for reply handling
-    await setupInboundParseConfiguration(domain, configureInboundParse)
+    try {
+      // Check if domain auth already exists
+      const existingAuth = await getDomainAuthentication(domain.domain)
+      
+      if (existingAuth.domain) {
+        console.log(`✅ Domain authentication already exists for ${domain.domain}`)
+        domainAuthId = existingAuth.domain.id
+        
+        // Force validation of existing domain
+        try {
+          const validationResult = await validateDomainAuthentication(domainAuthId)
+          console.log(`🔄 Domain validation result: ${validationResult.valid ? 'VALID' : 'PENDING'}`)
+        } catch (validationError) {
+          console.log(`⚠️ Domain validation pending: ${validationError.message}`)
+        }
+      } else {
+        // Create new domain authentication
+        console.log(`📝 Creating domain authentication for ${domain.domain}`)
+        const authResult = await createDomainAuthentication({
+          domain: domain.domain,
+          subdomain: 'mail'
+        })
+        
+        if (authResult.success) {
+          domainAuthId = authResult.id
+          console.log(`✅ Domain authentication created for ${domain.domain}`)
+          
+          // Immediately validate
+          try {
+            const validationResult = await validateDomainAuthentication(domainAuthId)
+            console.log(`🔄 Domain validation result: ${validationResult.valid ? 'VALID' : 'PENDING'}`)
+          } catch (validationError) {
+            console.log(`⚠️ Domain validation pending: ${validationError.message}`)
+          }
+        }
+      }
+    } catch (domainAuthError) {
+      console.log(`⚠️ Domain authentication setup failed: ${domainAuthError.message}`)
+    }
     
-    // Step 3: Get all existing sender accounts for this domain
-    // Process all senders, including those with failed status (to retry)
+    // Step 2: Configure Inbound Parse (now that domain auth exists)
+    try {
+      const replyHostname = `reply.${domain.domain}`
+      const webhookUrl = 'https://app.leadsup.io/api/webhooks/sendgrid'
+      
+      console.log(`📧 Configuring Inbound Parse: ${replyHostname} → ${webhookUrl}`)
+      
+      const parseResult = await configureInboundParse({
+        hostname: replyHostname,
+        url: webhookUrl,
+        spam_check: true,
+        send_raw: false
+      })
+      
+      if (parseResult.success) {
+        console.log(`✅ Inbound Parse configured successfully for ${replyHostname}`)
+        
+        // Update domain record
+        await supabase
+          .from('domains')
+          .update({
+            inbound_parse_configured: true,
+            inbound_parse_hostname: replyHostname,
+            inbound_parse_webhook_id: parseResult.webhook_id || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', domain.id)
+      }
+    } catch (parseError) {
+      console.log(`⚠️ Inbound parse setup failed: ${parseError.message}`)
+      if (parseError.message?.includes('duplicate entry')) {
+        console.log(`✅ Inbound parse already configured for ${domain.domain}`)
+        await supabase
+          .from('domains')
+          .update({
+            inbound_parse_configured: true,
+            inbound_parse_hostname: `reply.${domain.domain}`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', domain.id)
+      }
+    }
+    
+    // Step 3: NOW create sender identities (after domain auth is set up)
     const { data: senderAccounts, error: fetchError } = await supabase
       .from('sender_accounts')
       .select('*')
       .eq('domain_id', domain.id)
-      .or('sendgrid_status.is.null,sendgrid_status.eq.failed,sendgrid_status.eq.pending')
     
     if (fetchError) {
       console.error('Error fetching sender accounts:', fetchError)
@@ -705,7 +784,7 @@ async function setupSendGridIntegration(domain: any) {
     
     console.log(`📧 Creating SendGrid identities for ${senderAccounts.length} sender accounts`)
     
-    // Create sender identities for each sender account
+    // Create sender identities AFTER domain auth (they should auto-verify)
     for (const sender of senderAccounts) {
       try {
         console.log(`  Creating identity for ${sender.email}...`)
@@ -727,26 +806,25 @@ async function setupSendGridIntegration(domain: any) {
           country: 'US'
         })
         
-        // Update sender account with SendGrid info
-        if (result.success) {
-          await supabase
-            .from('sender_accounts')
-            .update({
-              sendgrid_sender_id: result.sender_id,
-              sendgrid_status: result.verification_status || 'verified',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', sender.id)
-          
-          console.log(`  ✅ Created identity for ${sender.email}`)
-        }
+        // Use actual SendGrid verification status (should be auto-verified)
+        const verificationStatus = result.verification_status || 'pending'
+        
+        await supabase
+          .from('sender_accounts')
+          .update({
+            sendgrid_sender_id: result.sender_id,
+            sendgrid_status: verificationStatus,
+            sendgrid_created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', sender.id)
+        
+        console.log(`  ✅ Identity created for ${sender.email} - Status: ${verificationStatus}`)
         
       } catch (error: any) {
-        // Handle "already exists" error gracefully
         if (error.message?.includes('already exists')) {
-          console.log(`  ✅ Identity already exists for ${sender.email} - marking as verified`)
+          console.log(`  ✅ Identity already exists for ${sender.email}`)
           
-          // Mark as verified since it exists and domain is authenticated
           await supabase
             .from('sender_accounts')
             .update({
@@ -761,20 +839,6 @@ async function setupSendGridIntegration(domain: any) {
     }
     
     console.log(`✅ SendGrid integration complete for ${domain.domain}`)
-    
-    // Auto-verify any unverified senders for this domain
-    try {
-      console.log(`🔄 Running auto-verification for ${domain.domain}`)
-      const { autoVerifyDomainSenders } = await import('@/lib/auto-verify-senders')
-      const verifyResult = await autoVerifyDomainSenders(domain.domain)
-      
-      if (verifyResult.success && verifyResult.processed > 0) {
-        console.log(`✅ Auto-verified ${verifyResult.processed} senders for ${domain.domain}`)
-      }
-    } catch (autoVerifyError) {
-      console.error('Auto-verification failed:', autoVerifyError)
-      // Don't fail domain verification if auto-verify fails
-    }
     
   } catch (error) {
     console.error('SendGrid setup failed:', error)

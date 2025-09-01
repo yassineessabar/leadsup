@@ -835,7 +835,7 @@ export default function DomainsPage() {
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
                                 <code className="text-sm font-mono text-gray-700">
-                                  {record.host}
+                                  {record.host.startsWith('em') ? `${record.host}.${selectedDomain}` : record.host}
                                 </code>
                                 <Button
                                   variant="ghost"
@@ -905,7 +905,7 @@ export default function DomainsPage() {
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
                                 <code className="text-sm font-mono text-gray-700">
-                                  {record.host}
+                                  {record.host.startsWith('em') ? `${record.host}.${selectedDomain}` : record.host}
                                 </code>
                                 <Button
                                   variant="ghost"

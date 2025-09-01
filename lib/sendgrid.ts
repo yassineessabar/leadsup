@@ -102,6 +102,8 @@ export async function configureInboundParse(settings: InboundParseSettings) {
   try {
     console.log(`🔧 Configuring SendGrid inbound parse for ${settings.hostname}`)
     
+    const SENDGRID_API_KEY = getSendGridApiKey()
+    
     const response = await fetch('https://api.sendgrid.com/v3/user/webhooks/parse/settings', {
       method: 'POST',
       headers: {
@@ -152,6 +154,8 @@ export async function getInboundParseSettings() {
   try {
     console.log('🔍 Fetching SendGrid inbound parse settings')
     
+    const SENDGRID_API_KEY = getSendGridApiKey()
+    
     const response = await fetch('https://api.sendgrid.com/v3/user/webhooks/parse/settings', {
       method: 'GET',
       headers: {
@@ -192,6 +196,8 @@ export async function deleteInboundParse(hostname: string) {
       return { success: true, message: 'Setting not found (already deleted)' }
     }
 
+    const SENDGRID_API_KEY = getSendGridApiKey()
+    
     const response = await fetch(`https://api.sendgrid.com/v3/user/webhooks/parse/settings/${setting.id}`, {
       method: 'DELETE',
       headers: {
@@ -231,6 +237,8 @@ export interface DomainAuthSettings {
 export async function createDomainAuthentication(settings: DomainAuthSettings) {
   try {
     console.log(`🔐 Creating SendGrid domain authentication for ${settings.domain}`)
+    
+    const SENDGRID_API_KEY = getSendGridApiKey()
     
     const response = await fetch('https://api.sendgrid.com/v3/whitelabel/domains', {
       method: 'POST',
@@ -273,6 +281,8 @@ export async function getDomainAuthentication(domain?: string) {
   try {
     console.log(`🔍 Fetching SendGrid domain authentication${domain ? ` for ${domain}` : ''}`)
     
+    const SENDGRID_API_KEY = getSendGridApiKey()
+    
     const response = await fetch('https://api.sendgrid.com/v3/whitelabel/domains', {
       method: 'GET',
       headers: {
@@ -312,6 +322,8 @@ export async function getDomainAuthentication(domain?: string) {
 export async function validateDomainAuthentication(domainId: string) {
   try {
     console.log(`✅ Validating SendGrid domain authentication ${domainId}`)
+    
+    const SENDGRID_API_KEY = getSendGridApiKey()
     
     const response = await fetch(`https://api.sendgrid.com/v3/whitelabel/domains/${domainId}/validate`, {
       method: 'POST',
@@ -364,6 +376,8 @@ export interface SenderIdentitySettings {
 export async function createSenderIdentity(settings: SenderIdentitySettings) {
   try {
     console.log(`🆔 Creating SendGrid sender identity for ${settings.from.email}`)
+    
+    const SENDGRID_API_KEY = getSendGridApiKey()
     
     // SendGrid expects flat structure with from_email, not nested from.email
     const payload: any = {
@@ -462,6 +476,8 @@ export async function getSenderIdentities() {
   try {
     console.log('🔍 Fetching SendGrid sender identities')
     
+    const SENDGRID_API_KEY = getSendGridApiKey()
+    
     const response = await fetch('https://api.sendgrid.com/v3/verified_senders', {
       method: 'GET',
       headers: {
@@ -493,6 +509,8 @@ export async function resendSenderIdentityVerification(senderId: string) {
   try {
     console.log(`📧 Resending verification for sender identity ${senderId}`)
     
+    const SENDGRID_API_KEY = getSendGridApiKey()
+    
     const response = await fetch(`https://api.sendgrid.com/v3/verified_senders/${senderId}/resend`, {
       method: 'POST',
       headers: {
@@ -522,6 +540,8 @@ export async function resendSenderIdentityVerification(senderId: string) {
 export async function deleteSenderIdentity(senderId: string) {
   try {
     console.log(`🗑️ Deleting sender identity ${senderId}`)
+    
+    const SENDGRID_API_KEY = getSendGridApiKey()
     
     const response = await fetch(`https://api.sendgrid.com/v3/verified_senders/${senderId}`, {
       method: 'DELETE',

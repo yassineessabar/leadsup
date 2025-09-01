@@ -110,8 +110,67 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Helper function to convert SendGrid DNS format to our format
+function convertSendGridDNSToOurFormat(sendgridDns: any, domainName: string) {
+  const records = []
+  
+  // Add mail CNAME (link tracking)
+  if (sendgridDns.mail_cname) {
+    records.push({
+      type: 'CNAME',
+      host: sendgridDns.mail_cname.host.replace(`.${domainName}`, ''),
+      value: sendgridDns.mail_cname.data,
+      purpose: 'Link tracking and email branding'
+    })
+  }
+  
+  // Add DKIM records
+  if (sendgridDns.dkim1) {
+    records.push({
+      type: 'CNAME',
+      host: sendgridDns.dkim1.host.replace(`.${domainName}`, ''),
+      value: sendgridDns.dkim1.data,
+      purpose: 'DKIM authentication (key 1)'
+    })
+  }
+  
+  if (sendgridDns.dkim2) {
+    records.push({
+      type: 'CNAME',
+      host: sendgridDns.dkim2.host.replace(`.${domainName}`, ''),
+      value: sendgridDns.dkim2.data,
+      purpose: 'DKIM authentication (key 2)'
+    })
+  }
+  
+  // Add standard SPF, DMARC, and MX records
+  records.push(
+    {
+      type: 'TXT',
+      host: '@',
+      value: 'v=spf1 include:sendgrid.net ~all',
+      purpose: 'SPF - Authorizes SendGrid to send emails'
+    },
+    {
+      type: 'TXT',
+      host: '_dmarc',
+      value: 'v=DMARC1; p=none; rua=mailto:dmarc@leadsup.io; ruf=mailto:dmarc@leadsup.io; pct=100; sp=none;',
+      purpose: 'DMARC policy'
+    },
+    {
+      type: 'MX',
+      host: 'reply',
+      value: 'mx.sendgrid.net',
+      priority: 10,
+      purpose: `Route replies from reply.${domainName} back to LeadsUp`
+    }
+  )
+  
+  return records
+}
+
 // Helper function to get default DNS records for a domain
-function getDefaultDnsRecords(domain: string, replySubdomain: string = 'reply') {
+async function getDefaultDnsRecords(domain: string, replySubdomain: string = 'reply') {
   // For leadsup.io, use SendGrid verified records only
   if (domain === 'leadsup.io' || domain.includes('leadsup.io')) {
     return [
@@ -150,7 +209,27 @@ function getDefaultDnsRecords(domain: string, replySubdomain: string = 'reply') 
   }
 
   // Generate default records for other domains
-  const sendgridSubdomain = `u${Math.random().toString(36).substring(2, 10)}.wl${Math.floor(Math.random() * 900) + 100}.sendgrid.net`
+  // First create domain authentication in SendGrid to get real DNS records
+  try {
+    const { createDomainAuthentication } = await import('@/lib/sendgrid')
+    
+    const authResult = await createDomainAuthentication({
+      domain: domain,
+      subdomain: 'mail'
+    })
+    
+    if (authResult.success && authResult.dns_records) {
+      // Use actual DNS records from SendGrid
+      return convertSendGridDNSToOurFormat(authResult.dns_records, domain)
+    }
+  } catch (sgError) {
+    console.log('⚠️ Could not create SendGrid domain auth, using fallback')
+    console.log('❌ SendGrid error details:', sgError.message)
+    console.log('🔍 Full error:', sgError)
+  }
+  
+  // Fallback: use known working SendGrid account
+  const sendgridSubdomain = 'u55053564.wl065.sendgrid.net'
   const emPrefix = `em${Math.floor(Math.random() * 9000) + 1000}`
   
   return [
@@ -274,7 +353,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         domain: transformedDomain,
-        dnsRecords: existingDomain.dns_records || getDefaultDnsRecords(domain, replySubdomain),
+        dnsRecords: existingDomain.dns_records || await getDefaultDnsRecords(domain, replySubdomain),
         message: "Domain already exists - redirecting to setup",
         existingDomain: true
       })
@@ -370,19 +449,19 @@ export async function POST(request: NextRequest) {
         console.log(`✅ Generated ${realDnsRecords.length} real DNS records from SendGrid`)
       } else {
         console.log(`⚠️ No DNS records found in domainAuthResult, using defaults`)
-        realDnsRecords = getDefaultDnsRecords(domain, replySubdomain)
+        realDnsRecords = await getDefaultDnsRecords(domain, replySubdomain)
       }
       
     } catch (sendgridError) {
       console.error(`⚠️ SendGrid setup failed, using default records:`, sendgridError)
       // Fallback to default records if SendGrid fails
-      realDnsRecords = getDefaultDnsRecords(domain, replySubdomain)
+      realDnsRecords = await getDefaultDnsRecords(domain, replySubdomain)
     }
     
     // If no real records were generated, use defaults as fallback
     if (realDnsRecords.length === 0) {
       console.log(`⚠️ No real DNS records generated, using defaults as final fallback`)
-      realDnsRecords = getDefaultDnsRecords(domain, replySubdomain)
+      realDnsRecords = await getDefaultDnsRecords(domain, replySubdomain)
     }
     
     console.log(`✅ Generated ${realDnsRecords.length} DNS records for ${domain}`)

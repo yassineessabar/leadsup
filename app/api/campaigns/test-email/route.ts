@@ -256,6 +256,67 @@ export async function POST(request: NextRequest) {
       `
     }
 
+    // Auto-create sender identity if needed
+    try {
+      const { getSenderIdentities, createSenderIdentity, configureInboundParse } = await import('@/lib/sendgrid')
+      
+      console.log(`🔍 Checking if sender identity exists for ${senderEmail}`)
+      
+      try {
+        const identitiesResult = await getSenderIdentities()
+        const existingIdentity = identitiesResult.senders.find((s: any) => s.from_email === senderEmail)
+        
+        if (!existingIdentity) {
+          console.log(`🆔 Creating sender identity for ${senderEmail}`)
+          
+          const senderDomain = senderEmail.split('@')[1]
+          
+          // Create sender identity with default values
+          await createSenderIdentity({
+            nickname: `LeadsUp Sender - ${senderEmail}`,
+            from: {
+              email: senderEmail,
+              name: senderData.name || senderEmail.split('@')[0]
+            },
+            reply_to: {
+              email: senderEmail,
+              name: senderData.name || senderEmail.split('@')[0]
+            },
+            address: "123 Business St",
+            city: "Business City", 
+            state: "CA",
+            zip: "12345",
+            country: "United States"
+          })
+          
+          console.log(`✅ Sender identity created for ${senderEmail}`)
+        } else {
+          console.log(`✅ Sender identity already exists for ${senderEmail}`)
+        }
+        
+        // Auto-configure inbound parse for the domain
+        const senderDomain = senderEmail.split('@')[1]
+        const inboundParseUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsup.io'}/api/webhooks/sendgrid`
+        
+        try {
+          await configureInboundParse({
+            hostname: senderDomain,
+            url: inboundParseUrl,
+            spam_check: true,
+            send_raw: false
+          })
+          console.log(`✅ Inbound parse configured for ${senderDomain}`)
+        } catch (parseError) {
+          console.log(`⚠️ Inbound parse setup failed (may already exist): ${parseError.message}`)
+        }
+        
+      } catch (identityError) {
+        console.log(`⚠️ Sender identity setup failed: ${identityError.message}`)
+      }
+    } catch (importError) {
+      console.log(`⚠️ Could not import SendGrid functions: ${importError.message}`)
+    }
+
     try {
       // Get dynamic Reply-To address based on sender domain
       const senderDomain = senderEmail.split('@')[1]
@@ -311,6 +372,26 @@ export async function POST(request: NextRequest) {
       console.log(`🔍 HTML after tracking (last 500 chars):`, trackedHtmlContent.substring(trackedHtmlContent.length - 500))
       console.log(`✅ Tracking pixel present:`, trackedHtmlContent.includes(`/api/track/open?id=${trackingId}`))
       
+      // Check if sender is verified in SendGrid - fail if not verified
+      try {
+        const { getSenderIdentities } = await import('@/lib/sendgrid')
+        const identitiesResult = await getSenderIdentities()
+        const senderIdentity = identitiesResult.senders.find((s: any) => s.from_email === senderEmail)
+        
+        if (!senderIdentity) {
+          throw new Error(`Sender identity for ${senderEmail} not found in SendGrid. Please verify the domain and sender first.`)
+        }
+        
+        if (!senderIdentity.verified) {
+          throw new Error(`Sender ${senderEmail} is not verified in SendGrid. Please check your email for verification link or contact support.`)
+        }
+        
+        console.log(`✅ Sender ${senderEmail} is verified in SendGrid`)
+      } catch (identityCheckError) {
+        console.log(`❌ Sender verification check failed: ${identityCheckError.message}`)
+        throw new Error(`Cannot send test email: ${identityCheckError.message}`)
+      }
+
       // Send email via SendGrid WITH TRACKING
       const result = await sendEmailWithSendGrid({
         to: testEmail,

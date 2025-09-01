@@ -812,6 +812,29 @@ export default function CampaignSenderSelection({
 
     setTestModalLoading(true)
     try {
+      // First, try to setup the sender identity automatically
+      console.log(`🔧 Setting up SendGrid configuration for ${testModalSender.email}`)
+      try {
+        const setupResponse = await fetch('/api/sendgrid/setup-sender', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            senderEmail: testModalSender.email,
+            senderName: testModalSender.name
+          })
+        })
+        
+        const setupData = await setupResponse.json()
+        console.log('🔧 SendGrid setup result:', setupData)
+        
+        if (setupData.success) {
+          console.log('✅ SendGrid setup completed successfully')
+        } else {
+          console.log('⚠️ SendGrid setup had issues:', setupData.results?.errors)
+        }
+      } catch (setupError) {
+        console.log('⚠️ SendGrid setup failed, continuing with test email:', setupError)
+      }
       const response = await fetch('/api/campaigns/test-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
