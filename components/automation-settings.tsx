@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { X, ChevronDown, Save } from 'lucide-react'
+import { X, ChevronDown, Save, RefreshCw } from 'lucide-react'
 import { toast } from "@/hooks/use-toast"
 
 const emailAccounts = [
@@ -32,6 +32,8 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
   const [selectedAccounts, setSelectedAccounts] = useState(emailAccounts)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [emailsSentToday, setEmailsSentToday] = useState(0)
+  const [loadingDailyCount, setLoadingDailyCount] = useState(false)
 
   // Load existing settings when component mounts
   useEffect(() => {
@@ -61,10 +63,33 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
     }
 
     loadSettings()
+    fetchTodaysEmailCount()
   }, [campaignId])
 
   const removeAccount = (accountToRemove: string) => {
     setSelectedAccounts(prev => prev.filter(account => account !== accountToRemove))
+  }
+
+  // Fetch today's email count
+  const fetchTodaysEmailCount = async () => {
+    if (!campaignId) return
+    
+    try {
+      setLoadingDailyCount(true)
+      const today = new Date().toISOString().split('T')[0]
+      const response = await fetch(`/api/campaigns/${campaignId}/daily-email-count?date=${today}`, {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        setEmailsSentToday(result.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching daily email count:', error)
+    } finally {
+      setLoadingDailyCount(false)
+    }
   }
 
   const handleSave = async () => {
@@ -272,9 +297,50 @@ export default function AutomationSettings({ campaignId }: AutomationSettingsPro
         {/* Daily Limit */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Daily Limit</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Max number of emails to send per day for this campaign</p>
+              
+              {/* Today's usage */}
+              <div className="mt-3 flex items-center space-x-2">
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  Today's usage: {loadingDailyCount ? (
+                    <span className="inline-flex items-center">
+                      <div className="animate-spin rounded-full h-3 w-3 border-b border-gray-400 mr-1"></div>
+                      Loading...
+                    </span>
+                  ) : (
+                    <span className={`font-medium ${
+                      emailsSentToday >= parseInt(dailyLimit) 
+                        ? 'text-red-600' 
+                        : emailsSentToday >= parseInt(dailyLimit) * 0.8 
+                          ? 'text-orange-600' 
+                          : 'text-green-600'
+                    }`}>
+                      {emailsSentToday} / {dailyLimit}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={fetchTodaysEmailCount}
+                  disabled={loadingDailyCount}
+                  className="h-6 w-6 p-0"
+                >
+                  <RefreshCw className={`h-3 w-3 ${loadingDailyCount ? 'animate-spin' : ''}`} />
+                </Button>
+                {emailsSentToday >= parseInt(dailyLimit) && (
+                  <Badge variant="destructive" className="text-xs">
+                    Limit Reached
+                  </Badge>
+                )}
+                {emailsSentToday >= parseInt(dailyLimit) * 0.8 && emailsSentToday < parseInt(dailyLimit) && (
+                  <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800">
+                    Approaching Limit
+                  </Badge>
+                )}
+              </div>
             </div>
             
             <div className="w-32">

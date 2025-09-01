@@ -94,10 +94,49 @@ export async function GET(
       return assignment
     })
     
+    // Add today's email count for each sender
+    const today = new Date().toISOString().split('T')[0]
+    const startOfDay = `${today}T00:00:00Z`
+    const endOfDay = `${today}T23:59:59Z`
+    
+    // Get today's email counts for all senders in this campaign
+    const assignmentsWithEmailCounts = await Promise.all(
+      assignmentsWithScores.map(async (assignment) => {
+        try {
+          // Try sendgrid_events first (most accurate)
+          const { data: events } = await getSupabaseServerClient()
+            .from('sendgrid_events')
+            .select('id')
+            .eq('campaign_id', campaignId)
+            .eq('event_type', 'processed')
+            .eq('sender_email', assignment.email)
+            .gte('timestamp', startOfDay)
+            .lte('timestamp', endOfDay)
+
+          if (events) {
+            return { ...assignment, emails_sent_today: events.length }
+          }
+
+          // Fallback to email_tracking
+          const { data: tracking } = await getSupabaseServerClient()
+            .from('email_tracking')
+            .select('id')
+            .eq('campaign_id', campaignId)
+            .eq('sender_email', assignment.email)
+            .gte('sent_at', startOfDay)
+            .lte('sent_at', endOfDay)
+
+          return { ...assignment, emails_sent_today: tracking?.length || 0 }
+        } catch (error) {
+          console.error(`Error fetching email count for ${assignment.email}:`, error)
+          return { ...assignment, emails_sent_today: 0 }
+        }
+      })
+    )
 
     return NextResponse.json({
       success: true,
-      assignments: assignmentsWithScores
+      assignments: assignmentsWithEmailCounts
     })
 
   } catch (error) {

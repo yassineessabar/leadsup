@@ -91,6 +91,10 @@ export async function POST(request: NextRequest) {
 
     const sender = senders[0]
     
+    // Extract domain from sender email and create reply-to address
+    const senderDomain = sender.email.split('@')[1]
+    const replyToAddress = `reply@reply.${senderDomain}`
+    
     const sgMail = require('@sendgrid/mail')
     sgMail.setApiKey(process.env.SENDGRID_API_KEY)
     
@@ -100,6 +104,7 @@ export async function POST(request: NextRequest) {
         email: sender.email,
         name: sender.name || sender.email.split('@')[0]
       },
+      replyTo: replyToAddress,
       subject: subject || 'Test Email from LeadsUp',
       html: content || `
         <h2>Test Email from LeadsUp</h2>

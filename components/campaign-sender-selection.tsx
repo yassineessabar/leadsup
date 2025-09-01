@@ -1796,6 +1796,9 @@ export default function CampaignSenderSelection({
                                     <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t('senderManagement.dailyLimit')}</div>
                                     <div className="font-semibold text-gray-900 dark:text-gray-100 text-lg">{sender.daily_limit || 50}</div>
                                     <div className="text-xs text-gray-500 dark:text-gray-400">{t('senderManagement.emailsPerDay')}</div>
+                                    <div className="text-xs text-blue-600 mt-1">
+                                      Today: {sender.emails_sent_today || 0} sent
+                                    </div>
                                   </div>
                                   <div className="text-center">
                                     <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t('senderManagement.healthScore')}</div>
