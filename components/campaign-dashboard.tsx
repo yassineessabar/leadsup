@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useDebouncedAutoSave } from "@/hooks/useDebounce"
 import { useOptimizedPolling } from "@/hooks/useOptimizedPolling"
 
-import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, AlertCircle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, ExternalLink, Archive, Reply, Forward, Rocket, Square, TrendingUp, Shield, ArrowUp, Brain, ShieldCheck, CheckCircle2, Flame } from "lucide-react"
+import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, AlertCircle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, ExternalLink, Archive, Reply, Forward, Rocket, Square, TrendingUp, Shield, ArrowUp, Brain, ShieldCheck, CheckCircle2, Flame, TestTube } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -26,6 +26,7 @@ import { TargetTab } from "./campaign-dashboard-target"
 import { DomainSetupModal } from "@/components/domain-setup-modal"
 import { toast } from "sonner"
 import { useI18n } from "@/hooks/use-i18n"
+import { useAuth } from "@/hooks/use-auth"
 
 // ContentEditable component that preserves cursor position
 const ContentEditableDiv = ({ 
@@ -159,6 +160,7 @@ interface CampaignDashboardProps {
 
 export default function CampaignDashboard({ campaign, onBack, onDelete, onStatusUpdate, onNameUpdate, initialTab = "target" }: CampaignDashboardProps) {
   const { t, ready: translationsReady } = useI18n()
+  const { user } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState(initialTab)
   
@@ -377,6 +379,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [activeStepId, setActiveStepId] = useState(1)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [showTestModal, setShowTestModal] = useState(false)
+  const [testEmailModal, setTestEmailModal] = useState<{stepId: number, stepData: any} | null>(null)
+  const [testEmailAddress, setTestEmailAddress] = useState("")
+  const [sendingTestEmail, setSendingTestEmail] = useState(false)
   const [showCodeView, setShowCodeView] = useState(false)
   const [lastCursorPosition, setLastCursorPosition] = useState<number>(0)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -1603,7 +1608,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           setSendingEndTime(data.settings.sendingEndTime || '05:00 PM')
           
           // Load signature data from signature_data column
-          if (data.settings.signature_data) {
+          console.log('🔍 Loading signature data:', {
+            hasSignatureData: !!data.settings.signature_data,
+            signatureDataKeys: data.settings.signature_data ? Object.keys(data.settings.signature_data) : [],
+            emailSignature: data.settings.signature_data?.emailSignature
+          })
+          
+          if (data.settings.signature_data && data.settings.signature_data.emailSignature) {
             setFirstName(data.settings.signature_data.firstName || '')
             setLastName(data.settings.signature_data.lastName || '')
             setCompanyName(data.settings.signature_data.companyName || campaign?.company_name || '')
@@ -1613,12 +1624,20 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             const signatureHtml = data.settings.signature_data.emailSignature || 
               `<br/><br/>Best regards,<br/><strong>${campaign?.company_name || ''}</strong><br/><br/><a href="${campaign?.website || ''}" target="_blank">${campaign?.website || ''}</a>`
             
+            console.log('📝 Setting signature from database:', signatureHtml)
             setEmailSignature(signatureHtml)
-            if (signatureEditorRef.current) {
-              signatureEditorRef.current.innerHTML = signatureHtml
-            }
+            
+            // Use setTimeout to ensure DOM is ready
+            setTimeout(() => {
+              if (signatureEditorRef.current) {
+                signatureEditorRef.current.innerHTML = signatureHtml
+                console.log('✅ Signature editor updated with:', signatureHtml)
+              } else {
+                console.log('❌ Signature editor ref not available')
+              }
+            }, 100)
           } else {
-            // No saved signature data, initialize with campaign data
+            // No saved signature data OR empty signature_data {}, initialize with campaign data
             const campaignCompany = campaign?.company_name || ""
             const campaignWebsite = campaign?.website || ""
             if (campaignCompany || campaignWebsite) {
@@ -1629,6 +1648,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               if (signatureEditorRef.current) {
                 signatureEditorRef.current.innerHTML = signatureHtml
               }
+              console.log('📝 Initialized signature with campaign data:', {
+                company: campaignCompany,
+                website: campaignWebsite,
+                signature: signatureHtml.substring(0, 50) + '...'
+              })
             }
           }
         }
@@ -1678,9 +1702,18 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       // Only update if the editor content is different from the state
       if (signatureEditorRef.current.innerHTML !== emailSignature) {
         signatureEditorRef.current.innerHTML = emailSignature
+        console.log('🔄 Signature editor updated from state:', emailSignature)
       }
     }
   }, [emailSignature])
+
+  // Ensure signature is loaded when switching to settings tab
+  useEffect(() => {
+    if (activeTab === 'settings' && !emailSignature && campaign?.company_name) {
+      console.log('🔄 Settings tab active, reloading signature if empty')
+      loadCampaignData()
+    }
+  }, [activeTab])
 
   // Lazy load sequences when needed
   const loadSequences = useCallback(async () => {
@@ -1895,6 +1928,125 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   const previewSequence = () => {
     setShowPreviewModal(!showPreviewModal)
+  }
+
+  // Helper function to replace variables with first contact data
+  const replaceVariablesWithContact = (text: string, contact: any) => {
+    if (!contact || !text) return text
+    
+    return text
+      .replace(/\{\{firstName\}\}/g, contact.first_name || '[First Name]')
+      .replace(/\{\{lastName\}\}/g, contact.last_name || '[Last Name]')
+      .replace(/\{\{companyName\}\}/g, contact.company || '[Company Name]')
+      .replace(/\{\{company\}\}/g, contact.company || '[Company Name]')
+      .replace(/\{\{title\}\}/g, contact.title || '[Title]')
+      .replace(/\{\{location\}\}/g, contact.location || '[Location]')
+  }
+
+  // State for first contact data for preview
+  const [firstContactForPreview, setFirstContactForPreview] = useState(null)
+
+  // Load first contact when preview modal opens
+  useEffect(() => {
+    if (showPreviewModal && campaign?.id && !firstContactForPreview) {
+      const loadFirstContact = async () => {
+        try {
+          const contactsParams = new URLSearchParams()
+          contactsParams.append('campaign_id', campaign.id.toString())
+          contactsParams.append('limit', '1')
+          contactsParams.append('offset', '0')
+          contactsParams.append('sort', 'created_at')
+          contactsParams.append('order', 'asc')
+
+          const response = await fetch(`/api/contacts?${contactsParams.toString()}`, {
+            credentials: 'include'
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            setFirstContactForPreview(data.contacts?.[0] || null)
+          }
+        } catch (error) {
+          console.error('Error loading first contact for preview:', error)
+        }
+      }
+      loadFirstContact()
+    }
+  }, [showPreviewModal, campaign?.id, firstContactForPreview])
+
+  // Send test email with variables replaced by first contact data
+  const sendSequenceTestEmail = async () => {
+    if (!testEmailModal || !testEmailAddress.trim()) return
+
+    setSendingTestEmail(true)
+    try {
+      // Get oldest contact from campaign to use for variable replacement
+      const contactsParams = new URLSearchParams()
+      if (campaign?.id) contactsParams.append('campaign_id', campaign.id.toString())
+      contactsParams.append('limit', '1')
+      contactsParams.append('offset', '0')
+      contactsParams.append('sort', 'created_at')
+      contactsParams.append('order', 'asc')
+
+      const contactsResponse = await fetch(`/api/contacts?${contactsParams.toString()}`, {
+        credentials: 'include'
+      })
+
+      let firstContact = null
+      if (contactsResponse.ok) {
+        const contactsData = await contactsResponse.json()
+        firstContact = contactsData.contacts?.[0]
+      }
+
+      // Replace variables in email content with first contact data
+      let emailContent = testEmailModal.stepData.content || ''
+      let emailSubject = testEmailModal.stepData.subject || ''
+
+      if (firstContact) {
+        emailContent = replaceVariablesWithContact(emailContent, firstContact)
+        emailSubject = replaceVariablesWithContact(emailSubject, firstContact)
+      }
+
+      // Convert newlines to HTML breaks and add signature
+      emailContent = emailContent.replace(/\n/g, '<br/>')
+      emailContent += emailSignature
+
+      // Send test email via API
+      const response = await fetch('/api/test-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          to: testEmailAddress.trim(),
+          subject: emailSubject,
+          content: emailContent,
+          campaignId: campaign?.id
+        })
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Test email sent!",
+          description: `Test email sent to ${testEmailAddress}`
+        })
+        setTestEmailModal(null)
+        setTestEmailAddress("")
+      } else {
+        throw new Error('Failed to send test email')
+      }
+
+    } catch (error) {
+      console.error('Error sending test email:', error)
+      toast({
+        title: "Failed to send test email",
+        description: "Please try again later.",
+        variant: "destructive"
+      })
+    } finally {
+      setSendingTestEmail(false)
+    }
   }
 
   // Load leads (prospects) from database
@@ -4435,18 +4587,37 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 <div key={step.id} className="border border-gray-200 rounded-2xl p-6">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium">{step.title}</h3>
-                    <span className="text-sm text-gray-500">
-                      {step.timing === 0 ? t('campaignManagement.dialogs.preview.immediately') : t('campaignManagement.dialogs.preview.waitDays').replace('{timing}', step.timing)}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setTestEmailModal({stepId: step.id, stepData: step})
+                          setTestEmailAddress(user?.email || "")
+                        }}
+                        className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                      >
+                        <TestTube className="h-4 w-4 mr-1" />
+                        Send Test
+                      </Button>
+                      <span className="text-sm text-gray-500">
+                        {step.timing === 0 ? t('campaignManagement.dialogs.preview.immediately') : t('campaignManagement.dialogs.preview.waitDays').replace('{timing}', step.timing)}
+                      </span>
+                    </div>
                   </div>
                   <div className="text-sm text-gray-600 mb-2">
-                    {t('campaignManagement.dialogs.preview.subject').replace('{subject}', step.subject || '')}
+                    {t('campaignManagement.dialogs.preview.subject').replace('{subject}', 
+                      firstContactForPreview ? replaceVariablesWithContact(step.subject || '', firstContactForPreview) : step.subject || ''
+                    )}
                   </div>
                   <div 
                     className="prose prose-sm max-w-none"
                     style={{ whiteSpace: 'pre-wrap' }}
                     dangerouslySetInnerHTML={{ 
-                      __html: step.content?.replace(/\n/g, '<br/>') || '' 
+                      __html: (firstContactForPreview ? 
+                        replaceVariablesWithContact(step.content || '', firstContactForPreview) : 
+                        step.content || ''
+                      ).replace(/\n/g, '<br/>') 
                     }}
                   />
                 </div>
@@ -4488,6 +4659,62 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           </DialogContent>
         </Dialog>
 
+        {/* Test Email Modal */}
+        <Dialog open={!!testEmailModal} onOpenChange={() => setTestEmailModal(null)}>
+          <DialogContent className="max-w-md rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-blue-600">
+                <TestTube className="h-5 w-5" />
+                Send Test Email
+              </DialogTitle>
+              <DialogDescription>
+                Send a test email for: <strong>{testEmailModal?.stepData?.title}</strong>
+                <br />
+                Variables will be replaced with data from your first contact.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Test Email Address
+                </label>
+                <Input
+                  type="email"
+                  placeholder="Enter email address..."
+                  value={testEmailAddress}
+                  onChange={(e) => setTestEmailAddress(e.target.value)}
+                  className="rounded-2xl"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setTestEmailModal(null)}
+                className="border-gray-300 hover:bg-gray-50 text-gray-700 rounded-2xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={sendSequenceTestEmail}
+                disabled={!testEmailAddress.trim() || sendingTestEmail}
+                className="bg-blue-600 hover:bg-blue-700 rounded-2xl"
+              >
+                {sendingTestEmail ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Test
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Advanced Campaign Popup */}
         <AddCampaignPopup 
