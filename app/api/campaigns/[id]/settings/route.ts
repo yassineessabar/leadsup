@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { supabaseServer } from '@/lib/supabase'
+import { getSupabaseServerClient } from '@/lib/supabase'
 
 async function getUserIdFromSession(): Promise<string | null> {
   try {
@@ -11,7 +11,7 @@ async function getUserIdFromSession(): Promise<string | null> {
       return null
     }
 
-    const { data: session, error } = await supabaseServer
+    const { data: session, error } = await getSupabaseServerClient()
       .from('user_sessions')
       .select('user_id, expires_at')
       .eq('session_token', sessionToken)
@@ -48,7 +48,7 @@ export async function GET(
     const campaignId = id
 
     // First verify campaign belongs to user
-    const { data: campaign, error: campaignError } = await supabaseServer
+    const { data: campaign, error: campaignError } = await getSupabaseServerClient()
       .from('campaigns')
       .select('id')
       .eq('id', campaignId)
@@ -64,7 +64,7 @@ export async function GET(
     
 
     // Fetch settings from campaigns table (settings column)
-    const { data: campaignData, error: settingsError } = await supabaseServer
+    const { data: campaignData, error: settingsError } = await getSupabaseServerClient()
       .from('campaigns')
       .select('settings')
       .eq('id', campaignId)
@@ -107,7 +107,7 @@ export async function POST(
     const body = await request.json()
 
     // Get existing campaign settings
-    const { data: campaign, error: fetchError } = await supabaseServer
+    const { data: campaign, error: fetchError } = await getSupabaseServerClient()
       .from('campaigns')
       .select('settings')
       .eq('id', campaignId)
@@ -129,7 +129,7 @@ export async function POST(
     }
 
     // Update campaign settings
-    const { error: updateError } = await supabaseServer
+    const { error: updateError } = await getSupabaseServerClient()
       .from('campaigns')
       .update({ settings: updatedSettings })
       .eq('id', campaignId)

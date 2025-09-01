@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from "next/headers"
-import { supabaseServer } from "@/lib/supabase"
+import { getSupabaseServerClient } from "@/lib/supabase"
 
 async function getUserIdFromSession(): Promise<string | null> {
   try {
@@ -11,7 +11,7 @@ async function getUserIdFromSession(): Promise<string | null> {
       return null
     }
 
-    const { data: session, error } = await supabaseServer
+    const { data: session, error } = await getSupabaseServerClient()
       .from("user_sessions")
       .select("user_id, expires_at")
       .eq("session_token", sessionToken)
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify campaign belongs to user
-    const { data: campaign, error: campaignError } = await supabaseServer
+    const { data: campaign, error: campaignError } = await getSupabaseServerClient()
       .from("campaigns")
       .select("id, name, user_id")
       .eq("id", campaignId)
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get campaign sender (first active sender)
-    const { data: senders, error: sendersError } = await supabaseServer
+    const { data: senders, error: sendersError } = await getSupabaseServerClient()
       .from("campaign_senders")
       .select("email, name")
       .eq("campaign_id", campaignId)
