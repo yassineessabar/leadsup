@@ -391,6 +391,9 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   const [testEmailModal, setTestEmailModal] = useState<{stepId: number, stepData: any} | null>(null)
   const [testEmailAddress, setTestEmailAddress] = useState("")
   const [sendingTestEmail, setSendingTestEmail] = useState(false)
+  const [availableSenders, setAvailableSenders] = useState<Array<{email: string, name: string, is_primary?: boolean}>>([])
+  const [selectedTestSender, setSelectedTestSender] = useState<string>("")
+  const [loadingSenders, setLoadingSenders] = useState(false)
   const [showCodeView, setShowCodeView] = useState(false)
   const [lastCursorPosition, setLastCursorPosition] = useState<number>(0)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -1993,6 +1996,103 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }, [showPreviewModal, campaign?.id, firstContactForPreview])
 
+  // Load available senders when test email modal opens
+  useEffect(() => {
+    if (testEmailModal && campaign?.id) {
+      const loadSenders = async () => {
+        setLoadingSenders(true)
+        try {
+          let senders = []
+          
+          console.log('🔍 Loading senders for campaign:', campaign.id)
+          console.log('🔍 Current selectedSenderAccounts state:', selectedSenderAccounts)
+          
+          // Get campaign senders from the existing API endpoint
+          try {
+            const response = await fetch(`/api/campaigns/${campaign.id}/senders`, {
+              credentials: 'include'
+            })
+            
+            if (response.ok) {
+              const sendersData = await response.json()
+              console.log('📧 Direct query result:', sendersData)
+              
+              if (sendersData.assignments && sendersData.assignments.length > 0) {
+                senders = sendersData.assignments
+                  .filter((s: any) => s && s.email)
+                  .map((s: any) => ({
+                    email: s.email,
+                    name: s.name || s.email.split('@')[0],
+                    is_campaign_sender: true,
+                    is_selected: s.is_selected || s.is_active
+                  }))
+                console.log('✅ Found campaign senders:', senders)
+              }
+            } else {
+              console.log('❌ Campaign senders API failed:', response.status, response.statusText)
+            }
+          } catch (directError) {
+            console.log('❌ Direct query failed:', directError)
+          }
+          
+          // If direct query failed, try using state data
+          if (senders.length === 0 && selectedSenderAccounts && selectedSenderAccounts.length > 0) {
+            console.log('📧 Using state data for senders:', selectedSenderAccounts)
+            senders = selectedSenderAccounts
+              .filter((s: any) => s && s.email)
+              .map((s: any) => ({
+                email: s.email,
+                name: s.name || (s.email ? s.email.split('@')[0] : 'Unknown'),
+                is_campaign_sender: true,
+                is_selected: s.is_selected
+              }))
+          }
+          
+          // Last resort: get user's sender accounts
+          if (senders.length === 0) {
+            console.log('🔍 No campaign senders found, trying sender accounts...')
+            try {
+              const senderAccountsResponse = await fetch('/api/sender-accounts', {
+                credentials: 'include'
+              })
+              
+              if (senderAccountsResponse.ok) {
+                const senderAccountsData = await senderAccountsResponse.json()
+                if (senderAccountsData.senders) {
+                  console.log('📧 Loaded sender accounts:', senderAccountsData.senders)
+                  senders = senderAccountsData.senders
+                    .filter((s: any) => s && s.email)
+                    .map((s: any) => ({
+                      email: s.email,
+                      name: s.display_name || (s.email ? s.email.split('@')[0] : 'Unknown'),
+                      is_primary: s.is_primary
+                    }))
+                }
+              }
+            } catch (accountError) {
+              console.log('❌ Could not load sender accounts:', accountError)
+            }
+          }
+          
+          console.log('Final senders list:', senders)
+          setAvailableSenders(senders)
+          
+          // Select the primary/selected sender or first available sender
+          if (senders.length > 0) {
+            const selectedSender = senders.find((s: any) => s.is_selected)
+            const primarySender = senders.find((s: any) => s.is_primary)
+            setSelectedTestSender(selectedSender?.email || primarySender?.email || senders[0].email)
+          }
+        } catch (error) {
+          console.error('Error loading senders:', error)
+        } finally {
+          setLoadingSenders(false)
+        }
+      }
+      loadSenders()
+    }
+  }, [testEmailModal, campaign?.id, selectedSenderAccounts])
+
   // Send test email with variables replaced by first contact data
   const sendSequenceTestEmail = async () => {
     if (!testEmailModal || !testEmailAddress.trim()) return
@@ -2041,7 +2141,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           to: testEmailAddress.trim(),
           subject: emailSubject,
           content: emailContent,
-          campaignId: campaign?.id
+          campaignId: campaign?.id,
+          senderEmail: selectedTestSender // Include the selected sender
         })
       })
 
@@ -2053,14 +2154,43 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         setTestEmailModal(null)
         setTestEmailAddress("")
       } else {
-        throw new Error('Failed to send test email')
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.error || `HTTP ${response.status}: Failed to send test email`
+        console.error('❌ Test email API error:', errorData)
+        
+        // Check if sender setup is required
+        if (errorData.requiresSetup) {
+          toast({
+            title: "Sender Account Required",
+            description: "Please configure a sender account in Settings before sending test emails.",
+            variant: "destructive",
+            action: (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  // Navigate to settings/sender tab
+                  window.location.href = '/?tab=settings&subtab=sender'
+                }}
+              >
+                Go to Settings
+              </Button>
+            )
+          })
+          setTestEmailModal(null)
+          setTestEmailAddress("")
+          return
+        }
+        
+        throw new Error(errorMessage)
       }
 
     } catch (error) {
       console.error('Error sending test email:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       toast({
         title: "Failed to send test email",
-        description: "Please try again later.",
+        description: errorMessage,
         variant: "destructive"
       })
     } finally {
@@ -4799,13 +4929,50 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Sender Selection */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1 block">
-                  Test Email Address
+                  Send From
+                </label>
+                {loadingSenders ? (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                    <span className="ml-2 text-sm text-gray-500">Loading senders...</span>
+                  </div>
+                ) : availableSenders.length > 0 ? (
+                  <Select value={selectedTestSender} onValueChange={setSelectedTestSender}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a sender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSenders.map((sender) => (
+                        <SelectItem key={sender.email} value={sender.email}>
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-gray-400" />
+                            <div>
+                              <span className="font-medium">{sender.name}</span>
+                              <span className="text-gray-500 ml-2">({sender.email})</span>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="text-sm text-red-600 p-2 bg-red-50 rounded-lg">
+                    No senders configured. Please configure a sender account in Settings first.
+                  </div>
+                )}
+              </div>
+              
+              {/* Recipient Email */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Send To
                 </label>
                 <Input
                   type="email"
-                  placeholder="Enter email address..."
+                  placeholder="Enter recipient email address..."
                   value={testEmailAddress}
                   onChange={(e) => setTestEmailAddress(e.target.value)}
                   className="rounded-2xl"
@@ -4822,7 +4989,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
               </Button>
               <Button
                 onClick={sendSequenceTestEmail}
-                disabled={!testEmailAddress.trim() || sendingTestEmail}
+                disabled={!testEmailAddress.trim() || !selectedTestSender || sendingTestEmail || availableSenders.length === 0}
                 className="bg-blue-600 hover:bg-blue-700 rounded-2xl"
               >
                 {sendingTestEmail ? (

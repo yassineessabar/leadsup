@@ -37,10 +37,16 @@ export async function POST(request: NextRequest) {
     const userId = await getUserIdFromSession()
 
     if (!userId) {
-      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
+      console.log('❌ No user session found in /api/test-email')
+      return NextResponse.json({ 
+        success: false, 
+        error: "Not authenticated. Please log in to send test emails." 
+      }, { status: 401 })
     }
+    
+    console.log('✅ User authenticated in /api/test-email:', userId)
 
-    const { to, subject, content, campaignId } = await request.json()
+    const { to, subject, content, campaignId, senderEmail } = await request.json()
     
     if (!to) {
       return NextResponse.json({ success: false, error: 'Email recipient required' }, { status: 400 })
@@ -73,23 +79,85 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get campaign sender (first active sender)
-    const { data: senders, error: sendersError } = await getSupabaseServerClient()
-      .from("campaign_senders")
-      .select("email, name")
-      .eq("campaign_id", campaignId)
-      .eq("is_selected", true)
-      .eq("is_active", true)
-      .limit(1)
+    // Use provided sender email or fallback to primary/any sender
+    let sender = null
+    
+    if (senderEmail) {
+      // If sender email is provided, try to find it in campaign senders or sender accounts
+      console.log('🔍 Looking for specified sender:', senderEmail)
+      
+      // First check campaign senders
+      const { data: campaignSender } = await getSupabaseServerClient()
+        .from("campaign_senders")
+        .select("email, name")
+        .eq("campaign_id", campaignId)
+        .eq("email", senderEmail)
+        .single()
+      
+      if (campaignSender) {
+        sender = { email: campaignSender.email, name: campaignSender.name }
+        console.log('✅ Found sender in campaign senders:', sender.email)
+      } else {
+        // Check sender accounts
+        const { data: senderAccount } = await getSupabaseServerClient()
+          .from("sender_accounts")
+          .select("email, display_name")
+          .eq("user_id", userId)
+          .eq("email", senderEmail)
+          .single()
+        
+        if (senderAccount) {
+          sender = { email: senderAccount.email, name: senderAccount.display_name }
+          console.log('✅ Found sender in sender accounts:', sender.email)
+        }
+      }
+      
+      if (!sender) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: `Sender ${senderEmail} not found in your accounts.`
+          },
+          { status: 400 }
+        )
+      }
+    } else {
+      // No sender specified, use primary or any available sender
+      const { data: primarySender, error: senderError } = await getSupabaseServerClient()
+        .from("sender_accounts")
+        .select("email, display_name")
+        .eq("user_id", userId)
+        .eq("is_primary", true)
+        .single()
 
-    if (sendersError || !senders || senders.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "No active sender found for this campaign" },
-        { status: 400 }
-      )
+      if (senderError || !primarySender) {
+        // If no primary sender, try to get any sender account
+        const { data: anySender, error: anySenderError } = await getSupabaseServerClient()
+          .from("sender_accounts")
+          .select("email, display_name")
+          .eq("user_id", userId)
+          .limit(1)
+          .single()
+
+        if (anySenderError || !anySender) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: "No sender account configured. Please configure a sender account in Settings first.",
+              requiresSetup: true 
+            },
+            { status: 400 }
+          )
+        }
+        
+        // Use the first available sender if no primary is set
+        sender = { email: anySender.email, name: anySender.display_name }
+        console.log('⚠️ No primary sender found, using first available sender:', sender.email)
+      } else {
+        sender = { email: primarySender.email, name: primarySender.display_name }
+        console.log('✅ Using primary sender account:', sender.email)
+      }
     }
-
-    const sender = senders[0]
     
     // Extract domain from sender email and create reply-to address
     const senderDomain = sender.email.split('@')[1]
@@ -113,6 +181,26 @@ export async function POST(request: NextRequest) {
       `
     }
     
+    // Check if sender is verified in SendGrid - fail if not verified
+    try {
+      const { getSenderIdentities } = await import('@/lib/sendgrid')
+      const identitiesResult = await getSenderIdentities()
+      const senderIdentity = identitiesResult.senders.find((s: any) => s.from_email === sender.email)
+      
+      if (!senderIdentity) {
+        throw new Error(`Sender identity for ${sender.email} not found in SendGrid. Please verify the domain and sender first.`)
+      }
+      
+      if (!senderIdentity.verified) {
+        throw new Error(`Sender ${sender.email} is not verified in SendGrid. Please check your email for verification link or contact support.`)
+      }
+      
+      console.log(`✅ Sender ${sender.email} is verified in SendGrid`)
+    } catch (identityCheckError) {
+      console.log(`❌ Sender verification check failed: ${identityCheckError.message}`)
+      throw new Error(`Cannot send test email: ${identityCheckError.message}`)
+    }
+
     console.log(`📧 Sending test email from ${sender.email} to ${to}`)
     
     const result = await sgMail.send(msg)

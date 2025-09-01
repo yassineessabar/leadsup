@@ -40,8 +40,14 @@ export async function POST(request: NextRequest) {
     const userId = await getUserIdFromSession()
 
     if (!userId) {
-      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
+      console.log('❌ No user session found in /api/campaigns/test-email')
+      return NextResponse.json({ 
+        success: false, 
+        error: "Not authenticated. Please log in to send test emails." 
+      }, { status: 401 })
     }
+    
+    console.log('✅ User authenticated in /api/campaigns/test-email:', userId)
 
     const body = await request.json()
     const { senderEmail, testEmail, campaignId } = body
