@@ -140,10 +140,47 @@ export async function POST(
 
     console.log(`🚀 Starting verification for domain: ${domain.domain}`)
     
-    // Verify DNS records
+    // Step 1: FIRST verify SendGrid domain authentication status
+    let sendgridDomainValid = false
+    let sendgridValidationError = null
+    
+    try {
+      const { getDomainAuthentication, validateDomainAuthentication } = await import('@/lib/sendgrid')
+      
+      console.log(`🔐 Checking SendGrid domain authentication for ${domain.domain}`)
+      const authResult = await getDomainAuthentication(domain.domain)
+      
+      if (authResult.domain) {
+        console.log(`📋 Found domain auth (ID: ${authResult.domain.id}, Valid: ${authResult.domain.valid})`)
+        
+        if (!authResult.domain.valid) {
+          console.log(`🔄 Attempting to validate domain authentication...`)
+          const validationResult = await validateDomainAuthentication(authResult.domain.id.toString())
+          sendgridDomainValid = validationResult.valid
+          
+          if (!sendgridDomainValid) {
+            sendgridValidationError = `SendGrid domain authentication failed validation: ${JSON.stringify(validationResult.validation_results)}`
+            console.log(`❌ SendGrid validation failed:`, validationResult.validation_results)
+          } else {
+            console.log(`✅ SendGrid domain authentication validated successfully`)
+          }
+        } else {
+          sendgridDomainValid = true
+          console.log(`✅ SendGrid domain authentication already valid`)
+        }
+      } else {
+        sendgridValidationError = `No SendGrid domain authentication found for ${domain.domain}`
+        console.log(`❌ No SendGrid domain authentication found`)
+      }
+    } catch (sendgridError) {
+      sendgridValidationError = `SendGrid error: ${sendgridError.message}`
+      console.log(`❌ SendGrid check failed:`, sendgridError.message)
+    }
+    
+    // Step 2: Verify DNS records
     const verificationResults = await verifyDNSRecords(domain)
     
-    // Calculate domain readiness - only DKIM is required (matches SendGrid verified records)
+    // Calculate domain readiness - requires BOTH DNS records AND SendGrid domain authentication
     const requiredRecords = verificationResults.filter(r => 
       r.record.includes('DKIM')
     )
@@ -153,16 +190,23 @@ export async function POST(
     )
     const passedOptionalRecords = optionalRecords.filter(r => r.verified)
     
-    // Domain is ready if all required records pass (DKIM only - matches SendGrid)
-    const domainReady = requiredRecords.length > 0 && passedRequiredRecords.length === requiredRecords.length
+    // Domain is ready ONLY if:
+    // 1. All required DNS records pass (DKIM)
+    // 2. SendGrid domain authentication is validated
+    const dnsReady = requiredRecords.length > 0 && passedRequiredRecords.length === requiredRecords.length
+    const domainReady = dnsReady && sendgridDomainValid
     const allVerified = verificationResults.every(result => result.verified)
     const newStatus = domainReady ? 'verified' : 'failed'
 
-    // Create detailed verification report
+    // Create detailed verification report including SendGrid status
     const verificationReport = {
       domain: domain.domain,
       timestamp: new Date().toISOString(),
       domainReady,
+      sendgridAuthentication: {
+        validated: sendgridDomainValid,
+        error: sendgridValidationError
+      },
       summary: {
         totalRecords: verificationResults.length,
         passedRecords: verificationResults.filter(r => r.verified).length,
@@ -170,20 +214,26 @@ export async function POST(
         requiredRecords: requiredRecords.length,
         passedRequiredRecords: passedRequiredRecords.length,
         optionalRecords: optionalRecords.length,
-        passedOptionalRecords: passedOptionalRecords.length
+        passedOptionalRecords: passedOptionalRecords.length,
+        sendgridDomainValid
       },
       records: verificationResults.map(result => ({
         ...result,
         status: result.verified ? 'pass' : (result.error ? 'fail' : 'pending'),
         required: result.record.includes('DKIM')
       })),
-      recommendations: generateRecommendations(verificationResults, domainReady)
+      recommendations: generateRecommendations(verificationResults, domainReady, sendgridDomainValid, sendgridValidationError)
     }
 
     console.log(`📊 Final Verification Report:`)
     console.log(`   Domain Ready: ${domainReady}`)
+    console.log(`   DNS Ready: ${dnsReady}`)
+    console.log(`   SendGrid Domain Valid: ${sendgridDomainValid}`)
     console.log(`   Required Records Passed: ${passedRequiredRecords.length}/${requiredRecords.length}`)
     console.log(`   Optional Records Passed: ${passedOptionalRecords.length}/${optionalRecords.length}`)
+    if (sendgridValidationError) {
+      console.log(`   SendGrid Error: ${sendgridValidationError}`)
+    }
 
     // Update domain status
     const { error: updateError } = await supabase
@@ -192,7 +242,7 @@ export async function POST(
         status: newStatus,
         last_verification_attempt: new Date().toISOString(),
         verified_at: domainReady ? new Date().toISOString() : null,
-        verification_error: domainReady ? null : 'Required DNS records not found or incorrect'
+        verification_error: domainReady ? null : (sendgridValidationError || 'Required DNS records not found or incorrect')
       })
       .eq('id', domainId)
 
@@ -207,7 +257,7 @@ export async function POST(
         domain_id: domainId,
         verification_type: 'manual',
         status: domainReady ? 'success' : 'failed',
-        error_message: domainReady ? null : 'Required DNS records not found or incorrect',
+        error_message: domainReady ? null : (sendgridValidationError || 'Required DNS records not found or incorrect'),
         dns_records_checked: verificationResults,
         verification_details: { report: verificationReport }
       })
@@ -642,15 +692,29 @@ function getLeadsUpDNSRecords(domain: string) {
   return []
 }
 
-function generateRecommendations(verificationResults: VerificationResult[], domainReady: boolean): string[] {
+function generateRecommendations(verificationResults: VerificationResult[], domainReady: boolean, sendgridDomainValid: boolean, sendgridValidationError: string | null): string[] {
   const recommendations: string[] = []
   
   if (domainReady) {
     recommendations.push("✅ Domain is ready for email sending!")
-    recommendations.push("All required DNS records (DKIM) are properly configured and verified by SendGrid.")
+    recommendations.push("All required DNS records (DKIM) are properly configured and SendGrid domain authentication is validated.")
   } else {
     recommendations.push("❌ Domain is not ready for email sending.")
     
+    // Check SendGrid domain authentication first
+    if (!sendgridDomainValid) {
+      if (sendgridValidationError?.includes('No SendGrid domain authentication found')) {
+        recommendations.push("🔴 SendGrid Domain Authentication Missing: Domain authentication not created in SendGrid.")
+      } else {
+        recommendations.push("🔴 SendGrid Domain Authentication Invalid: Domain authentication exists but validation failed.")
+        if (sendgridValidationError) {
+          recommendations.push(`📋 SendGrid Error: ${sendgridValidationError}`)
+        }
+      }
+      recommendations.push("💡 SendGrid domain authentication must be validated before inbound parse and sender identities can be configured.")
+    }
+    
+    // Then check DNS records
     const failedRecords = verificationResults.filter(r => !r.verified)
     
     for (const record of failedRecords) {
@@ -662,6 +726,8 @@ function generateRecommendations(verificationResults: VerificationResult[], doma
         recommendations.push(`🟡 DMARC Record Missing: Add TXT record for email authentication policy (optional but recommended).`)
       } else if (record.record.includes('MX')) {
         recommendations.push(`🟡 MX Record Missing: Add MX record for reply handling (optional).`)
+      } else if (record.record.includes('Link tracking')) {
+        recommendations.push(`🟡 Link Tracking Record Missing: Add CNAME record "${record.record}" pointing to "${record.expected}" (optional).`)
       }
     }
     
@@ -675,6 +741,7 @@ function generateRecommendations(verificationResults: VerificationResult[], doma
 async function setupSendGridIntegration(domain: any) {
   try {
     console.log(`🚀 Setting up SendGrid integration for ${domain.domain}`)
+    console.log(`⚠️ Note: This function only runs when SendGrid domain authentication is already validated`)
     
     // Import SendGrid functions
     const { createSenderIdentity, getDomainAuthentication, createDomainAuthentication, validateDomainAuthentication, configureInboundParse } = await import('@/lib/sendgrid')
