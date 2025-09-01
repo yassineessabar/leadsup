@@ -94,17 +94,26 @@ const ContentEditableDiv = ({
   useEffect(() => {
     if (!editorRef.current) return
     
-    // Only update if step changed
-    if (lastStepId.current !== stepId) {
+    // Only update if step changed OR if we're loading content for the first time (empty editor)
+    if (lastStepId.current !== stepId || (editorRef.current.innerHTML === '' && content)) {
       lastStepId.current = stepId
-      // Set the content, even if empty
-      editorRef.current.innerHTML = content || ''
+      // Set the content, converting \n to <br/> for HTML display
+      const htmlContent = (content || '').replace(/\n/g, '<br/>')
+      console.log('🔄 ContentEditableDiv updating:', {
+        stepId,
+        contentPreview: content?.substring(0, 50) + '...',
+        htmlPreview: htmlContent?.substring(0, 50) + '...',
+        reason: lastStepId.current !== stepId ? 'step changed' : 'initial content load'
+      })
+      editorRef.current.innerHTML = htmlContent
     }
   }, [stepId, content])
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     const htmlContent = e.currentTarget.innerHTML
-    onContentChange(htmlContent)
+    // Convert <br/> tags back to \n for consistent storage
+    const normalizedContent = htmlContent.replace(/<br\s*\/?>/gi, '\n')
+    onContentChange(normalizedContent)
     
     // Save cursor position for variable insertion
     const position = saveCursorPosition()
@@ -1749,11 +1758,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       })
       
       if (result.success && result.data && result.data.length > 0) {
-        console.log('✅ Setting sequences in state:', result.data.length, 'sequences')
+        console.log('✅ Loading actual sequences from database:', result.data.length, 'sequences')
+        console.log('📧 First sequence content preview:', result.data[0]?.content?.substring(0, 100))
+        console.log('📧 Sequence IDs:', result.data.map(s => ({ id: s.id, title: s.title })))
         setSteps(result.data)
         setActiveStepId(result.data[0]?.id || 1)
+        console.log('📧 Set activeStepId to:', result.data[0]?.id || 1)
       } else {
-        // No sequences found in database, create a default sequence
+        // No sequences found in database, create a default sequence ONLY for new campaigns
         console.log('ℹ️ No existing sequences found, creating default sequence')
         const defaultSequence = [
           { 
@@ -1902,13 +1914,20 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     return () => window.removeEventListener('create-campaign', handleCreateCampaign)
   }, [])
 
-  // Lazy load sequences when sequence tab is accessed
+  // Always load sequences when sequence tab is accessed (remove steps.length === 0 condition)
   useEffect(() => {
-    if (activeTab === 'sequence' && campaign?.id && campaignDataLoaded && steps.length === 0) {
-      console.log('🔄 Lazy loading sequences for sequence tab...')
+    console.log('🔄 Sequence tab useEffect triggered:', {
+      activeTab,
+      campaignId: campaign?.id,
+      campaignDataLoaded,
+      shouldLoad: activeTab === 'sequence' && campaign?.id && campaignDataLoaded
+    })
+    
+    if (activeTab === 'sequence' && campaign?.id && campaignDataLoaded) {
+      console.log('🔄 Loading sequences for sequence tab...')
       loadSequences()
     }
-  }, [activeTab, campaign?.id, campaignDataLoaded, steps.length])
+  }, [activeTab, campaign?.id, campaignDataLoaded])
 
   // Auto-save functionality (only after data is loaded)
   useEffect(() => {
@@ -2444,6 +2463,17 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }
 
   const activeStep = steps.find((s) => s.id === activeStepId)
+  
+  // Debug activeStep resolution
+  if (activeTab === 'sequence') {
+    console.log('🔍 ActiveStep debug:', {
+      activeStepId,
+      stepsLength: steps.length,
+      stepIds: steps.map(s => s.id),
+      activeStepFound: !!activeStep,
+      activeStepContent: activeStep?.content?.substring(0, 50) + '...'
+    })
+  }
 
 
   // Update filter count when filters change
@@ -4361,8 +4391,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               {showCodeView ? (
                                 // HTML Source View
                                 <Textarea
-                                  value={activeStep.content || ''}
-                                  onChange={(e) => updateStepContent(e.target.value)}
+                                  value={activeStep.content?.replace(/\n/g, '<br/>') || ''}
+                                  onChange={(e) => updateStepContent(e.target.value.replace(/<br\/?>/g, '\n'))}
                                   className="min-h-[300px] p-4 border-0 focus:ring-0 focus:outline-none resize-none text-sm font-mono leading-relaxed bg-gray-50"
                                   placeholder="Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because...<br/><br/>Best regards,<br/>{{senderName}}"
                                 />
