@@ -12,6 +12,7 @@
     "email": "Email",
     "password": "Password",
     "signup": "Sign Up",
+    "creatingAccount": "Creating Account...",
     "alreadyHaveAccount": "Already have an account?",
     "login": "Log In",
     "bySigningUp": "By signing up, you agree to our",
