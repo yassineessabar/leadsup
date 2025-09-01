@@ -247,6 +247,12 @@ async function saveSequences(campaignId: string, sequences: any[]) {
 async function saveSettings(campaignId: string, settings: any) {
   if (!settings) return
 
+  console.log('📝 Saving settings with signature_data:', {
+    hasSignatureData: !!settings.signature_data,
+    signatureDataKeys: settings.signature_data ? Object.keys(settings.signature_data) : [],
+    emailSignature: settings.signature_data?.emailSignature?.substring(0, 50) + '...'
+  })
+
   // Update or insert campaign settings
   const settingsData = {
     campaign_id: campaignId,
@@ -255,7 +261,7 @@ async function saveSettings(campaignId: string, settings: any) {
     active_days: settings.activeDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
     sending_start_time: settings.sendingStartTime || '08:00 AM',
     sending_end_time: settings.sendingEndTime || '05:00 PM',
-    signature_data: settings.signature || {},
+    signature_data: settings.signature_data || settings.signature || {},
     updated_at: new Date().toISOString()
   }
 
@@ -275,6 +281,7 @@ async function saveSettings(campaignId: string, settings: any) {
     if (updateError) {
       throw new Error(`Failed to update settings: ${updateError.message}`)
     }
+    console.log('✅ Updated settings with signature_data successfully')
   } else {
     const { error: insertError } = await supabaseServer
       .from("campaign_settings")
@@ -283,6 +290,7 @@ async function saveSettings(campaignId: string, settings: any) {
     if (insertError) {
       throw new Error(`Failed to create settings: ${insertError.message}`)
     }
+    console.log('✅ Inserted new settings with signature_data successfully')
   }
 }
 
@@ -635,7 +643,7 @@ async function fetchSettings(campaignId: string) {
     activeDays: data.active_days,
     sendingStartTime: data.sending_start_time,
     sendingEndTime: data.sending_end_time,
-    signature: data.signature_data || {}
+    signature_data: data.signature_data || {}
   }
 }
 

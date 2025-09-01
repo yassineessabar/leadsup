@@ -358,7 +358,8 @@
         "subjectPlaceholder": "Enter email subject line..."
       },
       "buttons": {
-        "addFollowUpSequence": "Add Follow-Up Sequence"
+        "addFollowUpSequence": "Add Follow-Up Sequence",
+        "addEmail": "Add Email"
       }
     },
     "loading": {
