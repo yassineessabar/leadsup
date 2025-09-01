@@ -1943,6 +1943,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       .replace(/\{\{location\}\}/g, contact.location || '[Location]')
   }
 
+  // Function to insert variables into subject field
+  const insertVariableIntoSubject = (variable: string) => {
+    const activeStep = steps.find(step => step.id === activeStepId)
+    if (!activeStep) return
+
+    const currentSubject = activeStep.subject || ''
+    const newSubject = currentSubject + variable
+    updateSequenceSubject(activeStep.sequence, newSubject)
+  }
+
   // State for first contact data for preview
   const [firstContactForPreview, setFirstContactForPreview] = useState(null)
 
@@ -3943,12 +3953,48 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               <label className="block text-sm font-semibold text-gray-800 mb-3">
                                  {t('campaignManagement.sequence.editor.sequenceSubjectLine')}
                               </label>
-                              <Input
-                                value={activeStep.subject || ''}
-                                onChange={(e) => updateSequenceSubject(activeStep.sequence, e.target.value)}
-                                placeholder={t('campaignManagement.sequence.editor.subjectPlaceholder')}
-                                className="w-full h-11 text-sm border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
-                              />
+                              <div className="flex gap-2">
+                                <Input
+                                  value={activeStep.subject || ''}
+                                  onChange={(e) => updateSequenceSubject(activeStep.sequence, e.target.value)}
+                                  placeholder={t('campaignManagement.sequence.editor.subjectPlaceholder')}
+                                  className="flex-1 h-11 text-sm border-gray-200 focus:border-[rgb(87,140,255)] focus:ring-[rgb(87,140,255)]"
+                                />
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-11 px-3 border-gray-200 hover:bg-gray-50"
+                                    >
+                                      <Plus className="h-4 w-4 mr-1" />
+                                      Variable
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => insertVariableIntoSubject('{{firstName}}')}>
+                                      <User className="h-4 w-4 mr-2" />
+                                      First Name
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => insertVariableIntoSubject('{{lastName}}')}>
+                                      <User className="h-4 w-4 mr-2" />
+                                      Last Name
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => insertVariableIntoSubject('{{company}}')}>
+                                      <Building2 className="h-4 w-4 mr-2" />
+                                      Company Name
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => insertVariableIntoSubject('{{title}}')}>
+                                      <UserCog className="h-4 w-4 mr-2" />
+                                      Job Title
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => insertVariableIntoSubject('{{location}}')}>
+                                      <MapPin className="h-4 w-4 mr-2" />
+                                      Location
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
                               <p className="text-xs text-gray-500 mt-2 flex items-center space-x-1">
                                 <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
                                 <span>{t('campaignManagement.sequence.editor.sharedAcrossEmails').replace('{sequence}', activeStep.sequence === 1 ? t('campaignManagement.sequence.sequences.initialOutreach') : t('campaignManagement.sequence.sequences.followUpOutreach'))}</span>
