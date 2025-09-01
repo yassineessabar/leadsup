@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useDebouncedAutoSave } from "@/hooks/useDebounce"
 import { useOptimizedPolling } from "@/hooks/useOptimizedPolling"
 
-import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, AlertCircle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, ExternalLink, Archive, Reply, Forward, Rocket, Square, TrendingUp, Shield, ArrowUp, Brain, ShieldCheck, CheckCircle2, Flame, TestTube } from "lucide-react"
+import { Calendar, ChevronDown, Eye, Play, Pause, MoreHorizontal, Plus, Zap, Search, Download, Upload, Mail, Phone, ChevronLeft, ChevronRight, Send, Trash2, Edit2, Check, X, Settings, Users, FileText, Filter, Building2, User, Target, Database, Linkedin, MapPin, Tag, UserCheck, Users2, UserCog, AlertTriangle, AlertCircle, Clock, Cog, CheckCircle, XCircle, Bold, Italic, Underline, Type, Link, Image, Smile, Code, ExternalLink, Archive, Reply, Forward, Rocket, Square, TrendingUp, Shield, ArrowUp, Brain, ShieldCheck, CheckCircle2, Flame, TestTube, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -235,17 +235,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     }
   }, [campaign?.status, activeTab])
   
-  // Load sequences when component mounts or campaign changes with staggered loading
+  // Load sequences when component mounts with intelligent caching
   useEffect(() => {
     if (campaign?.id) {
-      console.log('🔄 Component mounted, loading data for campaign:', campaign.id)
-      
-      // Load critical data immediately only if on sequences tab
-      if (activeTab === 'sequences' || activeTab === 'automation') {
-        loadSequences()
-      }
-      
-      // Stagger non-critical validation to improve perceived performance
+      // Stagger validation for better performance
       const validationTimeout = setTimeout(() => {
         validateCampaignRequirements()
       }, 500)
@@ -254,7 +247,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
         clearTimeout(validationTimeout)
       }
     }
-  }, [campaign?.id, activeTab])
+  }, [campaign?.id])
   
   // Validation functions with memoization
   const validateCampaignRequirements = useCallback(async () => {
@@ -1542,6 +1535,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
       if (result.success) {
         setHasSequenceSaved(true)
+        // Invalidate cache after successful save to ensure fresh data on next load
+        if (campaign?.id) {
+          delete sequenceCache.current[campaign.id]
+        }
         console.log('✅ Sequences saved successfully via dedicated endpoint')
       } else {
         console.error('❌ Save failed via sequences endpoint:', result.error)
@@ -1737,36 +1734,42 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
   }, [activeTab])
 
   // Lazy load sequences when needed
+  // Cache for sequence data to prevent redundant loads
+  const sequenceCache = useRef<{[campaignId: string]: any[]}>({})
+  const [isLoadingSequences, setIsLoadingSequences] = useState(false)
+
   const loadSequences = useCallback(async () => {
-    console.log('🔍 loadSequences called, campaign.id:', campaign?.id)
-    if (!campaign?.id) {
-      console.log('❌ No campaign ID, skipping sequence load')
+    if (!campaign?.id) return
+    
+    // Check cache first
+    if (sequenceCache.current[campaign.id] && !isLoadingSequences) {
+      console.log('⚡ Using cached sequences for campaign:', campaign.id)
+      const cachedData = sequenceCache.current[campaign.id]
+      setSteps(cachedData)
+      setActiveStepId(cachedData[0]?.id || 1)
       return
     }
     
+    if (isLoadingSequences) {
+      console.log('⏳ Sequence loading already in progress, skipping duplicate call')
+      return
+    }
+    
+    setIsLoadingSequences(true)
+    
     try {
-      console.log('📡 Fetching sequences from API...')
       const response = await fetch(`/api/campaigns/${campaign.id}/sequences`, {
         credentials: "include"
       })
       const result = await response.json()
       
-      console.log('📥 Sequences API response:', {
-        success: result.success,
-        dataLength: result.data?.length,
-        data: result.data
-      })
-      
       if (result.success && result.data && result.data.length > 0) {
-        console.log('✅ Loading actual sequences from database:', result.data.length, 'sequences')
-        console.log('📧 First sequence content preview:', result.data[0]?.content?.substring(0, 100))
-        console.log('📧 Sequence IDs:', result.data.map(s => ({ id: s.id, title: s.title })))
+        // Cache the result
+        sequenceCache.current[campaign.id] = result.data
         setSteps(result.data)
         setActiveStepId(result.data[0]?.id || 1)
-        console.log('📧 Set activeStepId to:', result.data[0]?.id || 1)
       } else {
-        // No sequences found in database, create a default sequence ONLY for new campaigns
-        console.log('ℹ️ No existing sequences found, creating default sequence')
+        // Create default sequence for new campaigns
         const defaultSequence = [
           { 
             id: 1, 
@@ -1780,13 +1783,16 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             variants: 1 
           }
         ]
+        sequenceCache.current[campaign.id] = defaultSequence
         setSteps(defaultSequence)
         setActiveStepId(1)
       }
     } catch (error) {
       console.error('❌ Error loading sequences:', error)
+    } finally {
+      setIsLoadingSequences(false)
     }
-  }, [campaign?.id])
+  }, [campaign?.id, isLoadingSequences])
 
   // Lazy load connected accounts when needed with memoization
   const loadConnectedAccounts = useCallback(async () => {
@@ -1864,11 +1870,8 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       }
     }
     
-    // Lazy load data when specific tabs are accessed with staggered loading
-    if (tabId === 'sequence' || tabId === 'automation') {
-      console.log('🔄 Loading sequences for sequence/automation tab...')
-      loadSequences()
-    } else if (tabId === 'settings') {
+    // Tab-specific data loading will be handled by useEffect after tab change
+    if (tabId === 'settings') {
       console.log('🔄 Loading settings data for settings tab...')
       loadCampaignData() // Load full campaign data including signature
     }
@@ -1914,18 +1917,18 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     return () => window.removeEventListener('create-campaign', handleCreateCampaign)
   }, [])
 
-  // Always load sequences when sequence tab is accessed (remove steps.length === 0 condition)
+  // Load sequences only when switching to sequence tab (with caching)
   useEffect(() => {
-    console.log('🔄 Sequence tab useEffect triggered:', {
-      activeTab,
-      campaignId: campaign?.id,
-      campaignDataLoaded,
-      shouldLoad: activeTab === 'sequence' && campaign?.id && campaignDataLoaded
-    })
-    
     if (activeTab === 'sequence' && campaign?.id && campaignDataLoaded) {
-      console.log('🔄 Loading sequences for sequence tab...')
-      loadSequences()
+      // Check if we already have cached data
+      if (!sequenceCache.current[campaign.id]) {
+        loadSequences()
+      } else {
+        // Use cached data immediately
+        const cachedData = sequenceCache.current[campaign.id]
+        setSteps(cachedData)
+        setActiveStepId(cachedData[0]?.id || 1)
+      }
     }
   }, [activeTab, campaign?.id, campaignDataLoaded])
 
@@ -3805,7 +3808,15 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             
           </div>
         );
-      
+
+      case 'target':
+        return (
+          <TargetTab
+            campaignId={campaign?.id || 0}
+            onContactsImported={validateCampaignRequirements}
+          />
+        );
+
       case 'sender':
         return (
           <CampaignSenderSelection
@@ -3843,20 +3854,22 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           />
         );
 
-      case 'target':
-        return (
-          <TargetTab
-            campaignId={campaign?.id || 0}
-            onContactsImported={validateCampaignRequirements}
-          />
-        );
-
-
       case 'sequence':
         return (
           <div className="w-full animate-in fade-in duration-500">
-            {/* Clean Header */}
-            <div className="flex justify-between items-start mb-8">
+            {/* Show loading indicator while sequences are being fetched */}
+            {isLoadingSequences && (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                  <span className="text-gray-600">Loading email sequences...</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Clean Header - only show when not loading */}
+            {!isLoadingSequences && (
+              <div className="flex justify-between items-start mb-8">
               <div>
                 <h1 className="text-4xl font-light text-gray-900 dark:text-gray-100 tracking-tight">{t('campaignManagement.sequence.title')}</h1>
                 <p className="text-gray-500 dark:text-gray-400 mt-2 font-light">{t('campaignManagement.sequence.subtitle')}</p>
@@ -3871,8 +3884,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   {isSavingSequences ? t('campaignManagement.sequence.saving') : t('campaignManagement.sequence.saveSequence')}
                 </Button>
               </div>
-            </div>
+              </div>
+            )}
 
+            {/* Main sequence content - only show when not loading */}
+            {!isLoadingSequences && (
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
               {/* Sequence Timeline Sidebar */}
               <div className="lg:col-span-2">
@@ -4520,6 +4536,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                 )}
               </div>
             </div>
+            )}
 
             {/* Preview Modal */}
             <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
