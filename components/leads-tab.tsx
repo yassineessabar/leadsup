@@ -1038,6 +1038,13 @@ export function LeadsTab() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rounded-xl border-gray-200">
                             <DropdownMenuItem 
+                              onClick={() => handleEditContact(contact)}
+                              className="text-gray-700"
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              {t('button.edit')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
                               onClick={() => {
                                 setContactToDelete(contact)
                                 setShowDeleteModal(true)
@@ -1297,14 +1304,14 @@ export function LeadsTab() {
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">{t('leads.campaign')}</label>
               <Select 
-                value={editingContact.campaign_id?.toString() || ''} 
-                onValueChange={(value) => setEditingContact({...editingContact, campaign_id: value ? parseInt(value) : undefined})}
+                value={editingContact.campaign_id?.toString() || 'none'} 
+                onValueChange={(value) => setEditingContact({...editingContact, campaign_id: value === 'none' ? undefined : parseInt(value)})}
               >
                 <SelectTrigger className="border-gray-200/50 rounded-2xl bg-white dark:bg-gray-900/50 h-11">
                   <SelectValue placeholder={t('leads.selectCampaign')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">{t('leads.noCampaign')}</SelectItem>
+                  <SelectItem value="none">{t('leads.noCampaign')}</SelectItem>
                   {campaigns.map(campaign => (
                     <SelectItem key={campaign.id} value={campaign.id.toString()}>{campaign.name}</SelectItem>
                   ))}
@@ -1347,21 +1354,12 @@ export function LeadsTab() {
                 className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white dark:bg-gray-900/50 h-11"
               />
             </div>
-            <div className="col-span-1">
+            <div className="col-span-2">
               <label className="text-sm font-medium text-gray-700 mb-2 block">{t('leads.linkedin')}</label>
               <Input
                 value={editingContact.linkedin || ''}
                 onChange={(e) => setEditingContact({...editingContact, linkedin: e.target.value})}
                 placeholder={t('leads.linkedinPlaceholder')}
-                className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white dark:bg-gray-900/50 h-11"
-              />
-            </div>
-            <div className="col-span-1">
-              <label className="text-sm font-medium text-gray-700 mb-2 block">{t('leads.avatarURL')}</label>
-              <Input
-                value={editingContact.image_url || ''}
-                onChange={(e) => setEditingContact({...editingContact, image_url: e.target.value})}
-                placeholder={t('leads.avatarPlaceholder')}
                 className="border-gray-200/50 rounded-2xl focus:border-blue-600 focus:ring-blue-600 bg-white dark:bg-gray-900/50 h-11"
               />
             </div>
@@ -1409,7 +1407,7 @@ export function LeadsTab() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {contactToDelete 
                     ? t('leads.contactWillBeRemoved')
-                    : t('leads.contactsWillBeRemoved')
+                    : t('leads.contactsWillBeRemoved', { count: selectedContacts.length })
                   }
                 </p>
               </div>

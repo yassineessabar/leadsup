@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { deriveTimezoneFromLocation, getCurrentTimeInTimezone, getBusinessHoursStatus, getBusinessHoursStatusWithActiveDays } from "@/lib/timezone-utils"
 import { fetchHealthScores, getHealthScoreColor, type HealthScoreResult } from "@/lib/health-score"
 // Remove direct import of SendGrid service since it's server-side only
@@ -130,6 +130,17 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [sequenceModalContact, setSequenceModalContact] = useState<Contact | null>(null)
   const [emailPreviewModal, setEmailPreviewModal] = useState<{contact: Contact, step: any} | null>(null)
   const [contactDetailsModal, setContactDetailsModal] = useState<Contact | null>(null)
+  const [editContactModal, setEditContactModal] = useState<Contact | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    company: '',
+    title: '',
+    location: '',
+    linkedin: ''
+  })
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [displayLimit, setDisplayLimit] = useState(20) // Track how many contacts to display
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ type: 'single' | 'bulk' | 'all', contactId?: string, count?: number } | null>(null)
@@ -865,6 +876,67 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       console.error('Error deleting all contacts:', error)
     } finally {
       setIsDeleting(null)
+    }
+  }
+
+  // Populate edit form when modal opens
+  useEffect(() => {
+    if (editContactModal) {
+      setEditFormData({
+        first_name: editContactModal.first_name || '',
+        last_name: editContactModal.last_name || '',
+        email: editContactModal.email || '',
+        company: editContactModal.company || '',
+        title: editContactModal.title || '',
+        location: editContactModal.location || '',
+        linkedin: editContactModal.linkedin || ''
+      })
+    }
+  }, [editContactModal])
+
+  // Save edited contact
+  const saveEditedContact = async () => {
+    if (!editContactModal) return
+
+    setIsSavingEdit(true)
+    try {
+      const response = await fetch(`/api/contacts/${editContactModal.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(editFormData)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update contact')
+      }
+
+      // Update the contact in the local state
+      setContacts(prevContacts => 
+        prevContacts.map(contact => 
+          contact.id === editContactModal.id 
+            ? { ...contact, ...editFormData }
+            : contact
+        )
+      )
+
+      setEditContactModal(null)
+      toast({
+        title: "Contact updated",
+        description: "Contact information has been saved successfully"
+      })
+
+    } catch (error) {
+      console.error('Error updating contact:', error)
+      toast({
+        title: "Failed to update contact",
+        description: "Please try again later",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSavingEdit(false)
     }
   }
 
@@ -4072,6 +4144,10 @@ Sequence Info:
                                   <DropdownMenuItem onClick={() => setContactDetailsModal(contact)}>
                                     View Details
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setEditContactModal(contact)}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     onClick={() => showDeleteConfirmation(contact.id)} 
                                     className="text-red-600"
@@ -5100,6 +5176,130 @@ Sequence Info:
               {t('leads.backToContacts')}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Contact Modal */}
+      <Dialog open={editContactModal !== null} onOpenChange={(open) => !open && setEditContactModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5" />
+              Edit Contact
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  First Name
+                </label>
+                <Input
+                  value={editFormData.first_name}
+                  onChange={(e) => setEditFormData({...editFormData, first_name: e.target.value})}
+                  placeholder="First name"
+                  className="rounded-2xl"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Last Name
+                </label>
+                <Input
+                  value={editFormData.last_name}
+                  onChange={(e) => setEditFormData({...editFormData, last_name: e.target.value})}
+                  placeholder="Last name"
+                  className="rounded-2xl"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <Input
+                type="email"
+                value={editFormData.email}
+                onChange={(e) => setEditFormData({...editFormData, email: e.target.value})}
+                placeholder="email@company.com"
+                className="rounded-2xl"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Company
+              </label>
+              <Input
+                value={editFormData.company}
+                onChange={(e) => setEditFormData({...editFormData, company: e.target.value})}
+                placeholder="Company name"
+                className="rounded-2xl"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Job Title
+              </label>
+              <Input
+                value={editFormData.title}
+                onChange={(e) => setEditFormData({...editFormData, title: e.target.value})}
+                placeholder="Job title"
+                className="rounded-2xl"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Location
+              </label>
+              <Input
+                value={editFormData.location}
+                onChange={(e) => setEditFormData({...editFormData, location: e.target.value})}
+                placeholder="City, Country"
+                className="rounded-2xl"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                LinkedIn URL
+              </label>
+              <Input
+                value={editFormData.linkedin}
+                onChange={(e) => setEditFormData({...editFormData, linkedin: e.target.value})}
+                placeholder="https://linkedin.com/in/username"
+                className="rounded-2xl"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setEditContactModal(null)}
+              className="rounded-2xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={saveEditedContact}
+              disabled={isSavingEdit || !editFormData.email.trim()}
+              className="rounded-2xl"
+            >
+              {isSavingEdit ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

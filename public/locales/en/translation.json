@@ -74,7 +74,8 @@
     "completed": "Completed",
     "paused": "Paused",
     "ready": "Ready",
-    "scheduled": "Scheduled"
+    "scheduled": "Scheduled",
+    "actions": "Actions"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -199,6 +200,8 @@
     "company": "Company",
     "location": "Location",
     "industry": "Industry",
+    "title": "Title",
+    "linkedin": "LinkedIn",
     "contactsPagination": "Contacts Pagination",
     "clearSelection": "Clear Selection",
     "selectAll": "Select All",
@@ -207,7 +210,8 @@
     "exportCSV": "Export CSV",
     "confirmDeletion": "Confirm Deletion",
     "deleteSelectedContactsConfirm": "Delete Selected Contacts",
-    "contactsWillBeRemoved": "{{count}} contact will be removed from your database.|{{count}} contacts will be removed from your database.",
+    "contactsWillBeRemoved": "{{count}} contact will be removed from your database.",
+    "contactsWillBeRemoved_plural": "{{count}} contacts will be removed from your database.",
     "noContactsFound": "No contacts found",
     "tryAdjustingFilters": "Try adjusting your search filters or import new contacts.",
     "notContacted": "Not Contacted",
@@ -231,11 +235,20 @@
     "readyToSend": "Ready to send",
     "noCampaign": "No campaign",
     "awaitingStart": "Awaiting start",
-    "scheduled": "Scheduled"
+    "scheduled": "Scheduled",
+    "firstNamePlaceholder": "Enter first name",
+    "lastNamePlaceholder": "Enter last name",
+    "emailPlaceholder": "Enter email address",
+    "industryPlaceholder": "Enter industry",
+    "linkedinPlaceholder": "Enter LinkedIn URL",
+    "saveChanges": "Save Changes",
+    "contactUpdated": "Contact Updated",
+    "contactUpdatedSuccessfully": "Contact updated successfully"
   },
   "button": {
     "cancel": "Cancel",
     "delete": "Delete",
+    "edit": "Edit",
     "save": "Save",
     "close": "Close",
     "ok": "OK",
