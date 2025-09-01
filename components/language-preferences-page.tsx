@@ -92,7 +92,8 @@ export function LanguagePreferencesPage({ onBack }: LanguagePreferencesPageProps
                 <Button 
                   variant={theme === 'dark' ? 'default' : 'outline'} 
                   onClick={() => setTheme('dark')}
-                  className="flex-1 h-12 border-gray-200 dark:border-gray-700 rounded-2xl"
+                  disabled={true}
+                  className="flex-1 h-12 border-gray-200 dark:border-gray-700 rounded-2xl opacity-50 cursor-not-allowed"
                 >
                   <Moon className="h-4 w-4 mr-2" />
                   {t('settings.theme.dark')}
@@ -100,7 +101,8 @@ export function LanguagePreferencesPage({ onBack }: LanguagePreferencesPageProps
                 <Button 
                   variant={theme === 'system' ? 'default' : 'outline'} 
                   onClick={() => setTheme('system')}
-                  className="flex-1 h-12 border-gray-200 dark:border-gray-700 rounded-2xl"
+                  disabled={true}
+                  className="flex-1 h-12 border-gray-200 dark:border-gray-700 rounded-2xl opacity-50 cursor-not-allowed"
                 >
                   <Monitor className="h-4 w-4 mr-2" />
                   {t('settings.theme.system')}
