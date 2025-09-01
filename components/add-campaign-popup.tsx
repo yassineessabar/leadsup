@@ -328,21 +328,10 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
   // Note: Target Audience data (industries/locations) is now loaded from campaign table, not AI assets
   // AI assets contain the AI-generated ICP data which is different from user-selected Target Audience
 
-  // Initialize AI-generated defaults when component mounts (only for new campaigns)
+  // Initialize campaign data (only location defaults for new campaigns)
   useEffect(() => {
-    // Only set defaults if we don't have an existing campaign
+    // Only set location default if we don't have an existing campaign
     if (!existingCampaignId) {
-      // Set default industry if none selected
-      if (mainICPIndustries.length === 0) {
-        const defaultIndustries = ["Software"]
-        setMainICPIndustries(defaultIndustries)
-        
-        // Save to database if campaign exists
-        if (campaignId) {
-          updateCampaignIndustriesAndLocations(defaultIndustries, mainICPLocations);
-        }
-      }
-      
       // Set default location if none selected  
       if (mainICPLocations.length === 0) {
         const defaultLocations = ["United States"]
@@ -351,17 +340,6 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
         // Save to database if campaign exists
         if (campaignId) {
           updateCampaignIndustriesAndLocations(mainICPIndustries, defaultLocations);
-        }
-      }
-      
-      // Set default role if none selected
-      if (formData.keywords.length === 0) {
-        const defaultKeywords = ["CEO"]
-        setFormData(prev => ({ ...prev, keywords: defaultKeywords }))
-        
-        // Save to database if campaign exists
-        if (campaignId) {
-          updateCampaignKeywords(defaultKeywords);
         }
       }
     }
