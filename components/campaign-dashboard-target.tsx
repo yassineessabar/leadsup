@@ -221,7 +221,7 @@ export function TargetTab({
 
   // Show confirmation popup before saving
   const handleSaveScrapingClick = () => {
-    if (icpIndustries.length === 0 || scrappingKeywords.length === 0 || icpLocations.length === 0) {
+    if (scrappingKeywords.length === 0 || icpLocations.length === 0) {
       toast.error("Please fill in all required fields")
       return
     }
@@ -1091,7 +1091,7 @@ export function TargetTab({
                     ) : scrapingStatus === 'completed' ? (
                       <Button
                         onClick={handleSaveScrapingClick}
-                        disabled={icpIndustries.length === 0 || scrappingKeywords.length === 0 || icpLocations.length === 0}
+                        disabled={scrappingKeywords.length === 0 || icpLocations.length === 0}
                         className="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3"
                       >
                         <Play className="w-4 h-4 mr-2" />
@@ -1100,9 +1100,9 @@ export function TargetTab({
                     ) : (
                       <Button
                         onClick={handleSaveScrapingClick}
-                        disabled={icpIndustries.length === 0 || scrappingKeywords.length === 0 || icpLocations.length === 0}
+                        disabled={scrappingKeywords.length === 0 || icpLocations.length === 0}
                         className={`bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-2xl px-6 py-3 transition-all duration-200 ${
-                          icpIndustries.length > 0 && scrappingKeywords.length > 0 && icpLocations.length > 0 
+                          scrappingKeywords.length > 0 && icpLocations.length > 0 
                             ? 'animate-bounce hover:animate-none' 
                             : ''
                         }`}

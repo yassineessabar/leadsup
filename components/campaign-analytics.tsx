@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useI18n } from '@/hooks/use-i18n'
 import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, RefreshCw, Pause, Play, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Upload, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit, MessageSquare, Plus, FileText, ChevronLeft, AlertCircle } from "lucide-react"
+import { ArrowLeft, RefreshCw, Pause, Play, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Upload, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit, MessageSquare, Plus, FileText, ChevronLeft, AlertCircle, Unlink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -132,7 +132,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [contactDetailsModal, setContactDetailsModal] = useState<Contact | null>(null)
   const [displayLimit, setDisplayLimit] = useState(20) // Track how many contacts to display
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
-  const [deleteConfirmation, setDeleteConfirmation] = useState<{ type: 'single' | 'bulk' | 'removeAll', contactId?: string, count?: number } | null>(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ type: 'single' | 'bulk' | 'all', contactId?: string, count?: number } | null>(null)
+  const [detachConfirmation, setDetachConfirmation] = useState<{ count?: number } | null>(null)
   const [campaignSenders, setCampaignSenders] = useState<string[]>([])
   const [campaignSequences, setCampaignSequences] = useState<any[]>([])
   const [sequencesLastUpdated, setSequencesLastUpdated] = useState<number>(Date.now())
@@ -772,7 +773,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       setSelectedContacts([])
       setAllContactsSelected(false)
       
-      console.log(`Successfully removed ${result.removed} contacts from campaign`)
+      console.log(`Successfully detached ${result.detached || result.removed} contacts from campaign`)
       
       // Show success message (you can add a toast here if you have a toast library)
       
@@ -819,6 +820,145 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       // You might want to show an error toast here
     } finally {
       setIsDeleting(null)
+    }
+  }
+
+  // Delete all contacts in the campaign
+  const deleteAllContacts = async () => {
+    if (!campaign?.id) return
+
+    setIsDeleting('deleteAll')
+    try {
+      // Get all contact IDs in the campaign
+      const allIds = await getAllContactIds()
+      
+      if (allIds.length === 0) {
+        console.log('No contacts to delete')
+        return
+      }
+
+      console.log(`Deleting all ${allIds.length} contacts from campaign ${campaign.id}`)
+      
+      // Delete all contacts in parallel
+      const deletePromises = allIds.map(contactId => 
+        fetch(`/api/contacts/${contactId}`, { method: 'DELETE' })
+      )
+      
+      const responses = await Promise.all(deletePromises)
+      
+      // Check if all deletions were successful
+      const failedDeletions = responses.filter(r => !r.ok)
+      
+      if (failedDeletions.length > 0) {
+        console.error(`Failed to delete ${failedDeletions.length} contacts`)
+      }
+
+      // Clear all contacts from the UI
+      setContacts([])
+      setSelectedContacts([])
+      setAllContactsSelected(false)
+      setTotalContactsCount(0)
+      
+      console.log(`Successfully deleted all ${allIds.length} contacts from campaign`)
+      
+    } catch (error) {
+      console.error('Error deleting all contacts:', error)
+    } finally {
+      setIsDeleting(null)
+    }
+  }
+
+  // Export contacts to CSV
+  const exportContactsToCSV = async () => {
+    try {
+      // Show loading toast
+      toast({
+        title: "Preparing export...",
+        description: "Fetching all contacts for export"
+      })
+
+      // Fetch ALL contacts for export (not just displayed ones)
+      const contactsParams = new URLSearchParams()
+      if (campaign?.id) contactsParams.append('campaign_id', campaign.id.toString())
+      contactsParams.append('limit', '10000') // Get all contacts
+      contactsParams.append('offset', '0')
+
+      const response = await fetch(`/api/contacts?${contactsParams.toString()}`, {
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch contacts')
+      }
+
+      const data = await response.json()
+      const allContacts = data.contacts || []
+
+      if (allContacts.length === 0) {
+        toast({
+          title: "No contacts to export",
+          description: "There are no contacts in this campaign to export.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Prepare CSV data
+      const csvData = allContacts.map((contact: Contact) => ({
+      'First Name': contact.first_name || '',
+      'Last Name': contact.last_name || '',
+      'Email': contact.email || '',
+      'Company': contact.company || '',
+      'Title': contact.title || '',
+      'Location': contact.location || '',
+      'Industry': contact.industry || '',
+      'LinkedIn': contact.linkedin || '',
+      'Status': contact.status || '',
+      'Email Status': contact.email_status || '',
+      'Next Email': contact.nextEmailIn || '',
+      'Sequence Step': contact.sequence_step || 0,
+      'Last Contacted': contact.last_contacted_at || '',
+      'Created': contact.created_at || ''
+    }))
+
+    // Convert to CSV string
+    const headers = Object.keys(csvData[0])
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => 
+        headers.map(header => {
+          const value = row[header as keyof typeof row]
+          // Escape quotes and wrap in quotes if contains comma or quote
+          const stringValue = String(value || '')
+          return stringValue.includes(',') || stringValue.includes('"') 
+            ? `"${stringValue.replace(/"/g, '""')}"` 
+            : stringValue
+        }).join(',')
+      )
+    ].join('\n')
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `${campaign.name}_contacts_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    toast({
+      title: "Export successful",
+      description: `Exported ${allContacts.length} contacts to CSV file.`
+    })
+    } catch (error) {
+      console.error('Error exporting contacts:', error)
+      toast({
+        title: "Export failed",
+        description: "Failed to export contacts. Please try again.",
+        variant: "destructive"
+      })
     }
   }
 
@@ -1124,8 +1264,13 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               nextEmailIn = t('analytics.sequenceComplete')
               console.log(`   ✅ PATH 1 RESULT: Setting "Sequence Complete"`)
             } else {
-              nextEmailIn = isDue ? t('analytics.dueNext') : t('analytics.pendingStart')
-              console.log(`   📧 PATH 1 RESULT: Setting "${nextEmailIn}" (isDue: ${isDue})`)
+              // Check campaign status before setting due next
+              if (campaign.status === 'Paused' || contact.email_status === 'Paused') {
+                nextEmailIn = "Paused"
+              } else {
+                nextEmailIn = isDue ? t('analytics.dueNext') : t('analytics.pendingStart')
+              }
+              console.log(`   📧 PATH 1 RESULT: Setting "${nextEmailIn}" (isDue: ${isDue}, campaignStatus: ${campaign.status})`)
             }
             
             // Debug logging for problematic contacts - PATH 1
@@ -1325,8 +1470,13 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                   nextEmailIn = t('analytics.sequenceComplete')
                   console.log(`   ✅ PATH 2 RESULT: Setting "Sequence Complete"`)
                 } else {
-                  nextEmailIn = isDue ? t('analytics.dueNext') : t('analytics.pendingStart')
-                  console.log(`   ❌ PATH 2 RESULT: Setting "${nextEmailIn}"`)
+                  // Check campaign status before setting due next
+                  if (campaign.status === 'Paused' || contact.email_status === 'Paused') {
+                    nextEmailIn = "Paused"
+                  } else {
+                    nextEmailIn = isDue ? t('analytics.dueNext') : t('analytics.pendingStart')
+                  }
+                  console.log(`   ❌ PATH 2 RESULT: Setting "${nextEmailIn}" (campaignStatus: ${campaign.status})`)
                 }
                 
                 // Debug logging for problematic contacts - PATH 2
@@ -1430,8 +1580,13 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               nextEmailIn = t('analytics.sequenceComplete')
               console.log(`   ✅ PATH 3 RESULT: Setting "Sequence Complete"`)
             } else {
-              nextEmailIn = isDue ? t('analytics.dueNext') : t('analytics.pendingStart')
-              console.log(`   ❌ PATH 3 RESULT: Setting "${nextEmailIn}"`)
+              // Check campaign status before setting due next
+              if (campaign.status === 'Paused' || contact.email_status === 'Paused') {
+                nextEmailIn = "Paused"
+              } else {
+                nextEmailIn = isDue ? t('analytics.dueNext') : t('analytics.pendingStart')
+              }
+              console.log(`   ❌ PATH 3 RESULT: Setting "${nextEmailIn}" (campaignStatus: ${campaign.status})`)
             }
             
             // Debug logging for problematic contacts - PATH 3
@@ -1502,7 +1657,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
                 const activeDays = campaign.settings?.[0]?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
                 const businessStatus = getBusinessHoursStatusWithActiveDays(timezone, activeDays, 9, 17)
                 
-                if (businessStatus.isBusinessHours) {
+                // Only set due next if campaign is not paused
+                if (businessStatus.isBusinessHours && campaign.status !== 'Paused' && contact.email_status !== 'Paused') {
                   isDue = true
                   nextEmailIn = t('analytics.dueNext')
                   status = t('analytics.dueNext') as Contact["status"]
@@ -3609,7 +3765,11 @@ Sequence Info:
                     </>
                   )}
                 </Button>
-                <Button variant="outline" className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl">
+                <Button 
+                  variant="outline" 
+                  className="border-gray-300 hover:bg-gray-50 text-gray-700 px-5 py-2.5 font-medium transition-all duration-300 rounded-2xl"
+                  onClick={exportContactsToCSV}
+                >
                   <Download className="h-4 w-4 mr-2" />
                   {t('analytics.export')}
                 </Button>
@@ -3649,11 +3809,20 @@ Sequence Info:
                   <Button 
                     variant="outline" 
                     className="h-10 px-4 border-orange-300 hover:bg-orange-50 text-orange-600 font-medium transition-all duration-300 rounded-2xl"
-                    onClick={() => setDeleteConfirmation({ type: 'removeAll', count: selectedContacts.length })}
+                    onClick={() => setDetachConfirmation({ count: allContactsSelected ? totalContactsCount : selectedContacts.length })}
                     disabled={isDeleting === 'removeAll'}
                   >
-                    <User className="h-4 w-4 mr-2" />
-                    {isDeleting === 'removeAll' ? 'Removing...' : `Remove ${allContactsSelected ? `All (${totalContactsCount})` : `(${selectedContacts.length})`} from Campaign`}
+                    <Unlink className="h-4 w-4 mr-2" />
+                    {isDeleting === 'removeAll' ? 'Detaching...' : `Detach (${allContactsSelected ? totalContactsCount : selectedContacts.length})`}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-10 px-4 border-red-500 hover:bg-red-50 text-red-600 font-medium transition-all duration-300 rounded-2xl"
+                    onClick={() => setDeleteConfirmation({ type: 'all', count: totalContactsCount })}
+                    disabled={isDeleting === 'deleteAll'}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {isDeleting === 'deleteAll' ? 'Deleting All...' : `Delete All (${totalContactsCount})`}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -3662,7 +3831,7 @@ Sequence Info:
                     disabled={isDeleting === 'bulk'}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    {isDeleting === 'bulk' ? t('analytics.deleting') : `${t('analytics.delete')} (${selectedContacts.length})`}
+                    {isDeleting === 'bulk' ? t('analytics.deleting') : `Delete Selected (${selectedContacts.length})`}
                   </Button>
                 </>
               )}
@@ -4719,9 +4888,9 @@ Sequence Info:
             <p className="text-gray-600">
               {deleteConfirmation?.type === 'single' 
                 ? 'Are you sure you want to delete this contact? This action cannot be undone.'
-                : deleteConfirmation?.type === 'removeAll'
-                ? `Are you sure you want to delete ${deleteConfirmation?.count} selected contacts? This action cannot be undone and will permanently remove them from your database.`
-                : `Are you sure you want to delete ${deleteConfirmation?.count} contacts? This action cannot be undone.`
+                : deleteConfirmation?.type === 'all'
+                ? `Are you sure you want to delete ALL ${deleteConfirmation?.count} contacts in this campaign? This action cannot be undone and will permanently remove them from your database.`
+                : `Are you sure you want to delete ${deleteConfirmation?.count} selected contacts? This action cannot be undone.`
               }
             </p>
             
@@ -4740,8 +4909,8 @@ Sequence Info:
                     deleteContact(deleteConfirmation.contactId)
                   } else if (deleteConfirmation?.type === 'bulk') {
                     deleteSelectedContacts()
-                  } else if (deleteConfirmation?.type === 'removeAll') {
-                    deleteSelectedContacts()
+                  } else if (deleteConfirmation?.type === 'all') {
+                    deleteAllContacts()
                   }
                   setDeleteConfirmation(null)
                 }}
@@ -4749,6 +4918,46 @@ Sequence Info:
                 className="flex-1 h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white"
               >
                 {isDeleting !== null ? 'Deleting...' : 'Delete'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detach Confirmation Dialog */}
+      <Dialog open={detachConfirmation !== null} onOpenChange={() => setDetachConfirmation(null)}>
+        <DialogContent className="sm:max-w-lg rounded-2xl border-0 shadow-2xl">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="flex items-center gap-3 text-lg font-semibold text-orange-600">
+              <Unlink className="w-5 h-5" />
+              Confirm Detach
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <p className="text-gray-600">
+              Are you sure you want to detach {detachConfirmation?.count} selected contacts from this campaign? 
+              The contacts will remain in your database but will be removed from this campaign.
+            </p>
+            
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setDetachConfirmation(null)}
+                disabled={isDeleting !== null}
+                className="flex-1 h-10 rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  removeSelectedContactsFromCampaign()
+                  setDetachConfirmation(null)
+                }}
+                disabled={isDeleting !== null}
+                className="flex-1 h-10 rounded-xl bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                {isDeleting === 'removeAll' ? 'Detaching...' : 'Detach'}
               </Button>
             </div>
           </div>

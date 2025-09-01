@@ -33,7 +33,7 @@ async function getUserIdFromSession(): Promise<string | null> {
   }
 }
 
-// DELETE - Completely remove all contacts from campaign and delete them from database
+// DELETE - Remove all contacts from campaign (but keep them in database)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -81,54 +81,57 @@ export async function DELETE(
       .select("*", { count: "exact", head: true })
       .eq("campaign_id", campaignId)
 
-    // Completely delete all contacts from the contacts table
-    const { error: deleteError } = await supabaseServer
+    // Set campaign_id to null to detach contacts from campaign (keep them in database)
+    const { error: detachError, count } = await supabaseServer
       .from("contacts")
-      .delete()
+      .update({ 
+        campaign_id: null,
+        email_status: 'Valid' // Reset email status to Valid (default state)
+      })
       .eq("campaign_id", campaignId)
 
-    if (deleteError) {
-      console.error("Error deleting contacts from campaign:", deleteError)
+    if (detachError) {
+      console.error("Error detaching contacts from campaign:", detachError)
       return NextResponse.json(
         { 
           success: false, 
-          error: "Failed to delete contacts from campaign" 
+          error: "Failed to detach contacts from campaign" 
         },
         { status: 500 }
       )
     }
 
-    // Also remove any related data from other tables
+    // Clean up related data from other tables (set campaign_id to null, don't delete records)
     // Remove from contact_sequence_status
     await supabaseServer
       .from("contact_sequence_status")
       .delete()
       .eq("campaign_id", campaignId)
 
-    // Remove from email_tracking where campaign_id matches
+    // Set campaign_id to null in email_tracking
     await supabaseServer
       .from("email_tracking")
-      .delete()
+      .update({ campaign_id: null })
       .eq("campaign_id", campaignId)
 
-    // Remove from inbox_messages where campaign_id matches
+    // Set campaign_id to null in inbox_messages  
     await supabaseServer
       .from("inbox_messages")
-      .delete()
+      .update({ campaign_id: null })
       .eq("campaign_id", campaignId)
 
-    // Remove from inbox_threads where campaign_id matches
+    // Set campaign_id to null in inbox_threads
     await supabaseServer
       .from("inbox_threads")
-      .delete()
+      .update({ campaign_id: null })
       .eq("campaign_id", campaignId)
 
-    console.log(`✅ Successfully deleted ${contactCount} contacts from campaign ${campaign.name}`)
+    console.log(`✅ Successfully detached ${count} contacts from campaign ${campaign.name}`)
 
     return NextResponse.json({
       success: true,
-      deleted: contactCount || 0,
-      message: `Successfully deleted ${contactCount || 0} contacts from campaign and database`
+      detached: count || 0,
+      message: `Successfully detached ${count || 0} contacts from campaign`
     })
 
   } catch (error) {

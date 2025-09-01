@@ -356,6 +356,9 @@
         "minimumDays": "Minimum Days",
         "editSubjectPrompt": "Enter the subject line for {sequence} sequence:",
         "subjectPlaceholder": "Enter email subject line..."
+      },
+      "buttons": {
+        "addFollowUpSequence": "Add Follow-Up Sequence"
       }
     },
     "loading": {
