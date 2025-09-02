@@ -156,8 +156,7 @@ const ContentEditableDiv = ({
 
 I hope this email finds you well! I wanted to reach out because...
 
-Best regards,
-{{senderName}}"
+Best regards,"
     />
   )
 }
@@ -1786,7 +1785,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             sequenceStep: 1,
             title: 'Email 1',
             subject: 'Introduction - Let\'s connect', 
-            content: 'Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because I believe there might be a great opportunity for us to work together.<br/><br/>Best regards,<br/>{{senderName}}',
+            content: 'Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because I believe there might be a great opportunity for us to work together.<br/><br/>Best regards,',
             timing: 0,
             variants: 1 
           }
@@ -3167,14 +3166,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       ?.replace(/\{\{firstName\}\}/g, contactForPreview?.first_name || variables.firstName)
       ?.replace(/\{\{lastName\}\}/g, contactForPreview?.last_name || 'Doe')
       ?.replace(/\{\{company\}\}/g, contactForPreview?.company || variables.companyName)
-      ?.replace(/\{\{senderName\}\}/g, `${firstName} ${lastName}`)
       ?.replace(/\{\{personalizedHook\}\}/g, contactForPreview?.tags?.startsWith('HOOK: ') ? contactForPreview.tags.replace('HOOK: ', '') : '')
       
     const previewContent = activeStep?.content
       ?.replace(/\{\{firstName\}\}/g, contactForPreview?.first_name || variables.firstName)
       ?.replace(/\{\{lastName\}\}/g, contactForPreview?.last_name || 'Doe')
       ?.replace(/\{\{company\}\}/g, contactForPreview?.company || variables.companyName)
-      ?.replace(/\{\{senderName\}\}/g, `${firstName} ${lastName}`)
       ?.replace(/\{\{personalizedHook\}\}/g, contactForPreview?.tags?.startsWith('HOOK: ') ? contactForPreview.tags.replace('HOOK: ', '') : '')
 
     let emailContent = previewContent?.replace(/\n/g, '<br/>') || ''
@@ -4520,7 +4517,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                   value={activeStep.content?.replace(/\n/g, '<br/>') || ''}
                                   onChange={(e) => updateStepContent(e.target.value.replace(/<br\/?>/g, '\n'))}
                                   className="min-h-[300px] p-4 border-0 focus:ring-0 focus:outline-none resize-none text-sm font-mono leading-relaxed bg-gray-50"
-                                  placeholder="Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because...<br/><br/>Best regards,<br/>{{senderName}}"
+                                  placeholder="Hi {{firstName}},<br/><br/>I hope this email finds you well! I wanted to reach out because...<br/><br/>Best regards,"
                                 />
                               ) : (
                                 // Rich Text View
@@ -4578,13 +4575,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                 onClick={() => insertVariableIntoEditor('{{email}}')}
                               >
                                 {'{{email}}'}
-                              </Badge>
-                              <Badge 
-                                variant="outline" 
-                                className="cursor-pointer text-xs hover:bg-blue-50 hover:border-blue-300 transition-colors"
-                                onClick={() => insertVariableIntoEditor('{{senderName}}')}
-                              >
-                                {'{{senderName}}'}
                               </Badge>
                               <Badge 
                                 variant="outline" 
@@ -4800,7 +4790,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         ?.replace(/\{\{firstName\}\}/g, contactForPreview?.first_name || variables.firstName)
                         ?.replace(/\{\{lastName\}\}/g, contactForPreview?.last_name || 'Doe')
                         ?.replace(/\{\{company\}\}/g, contactForPreview?.company || variables.companyName)
-                        ?.replace(/\{\{senderName\}\}/g, `${firstName} ${lastName}`)
                         ?.replace(/\{\{personalizedHook\}\}/g, contactForPreview?.tags?.startsWith('HOOK: ') ? contactForPreview.tags.replace('HOOK: ', '') : '')
                       
                       const previewContent = activeStep.content
@@ -4808,7 +4797,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                         ?.replace(/\{\{lastName\}\}/g, contactForPreview?.last_name || 'Doe')
                         ?.replace(/\{\{company\}\}/g, contactForPreview?.company || variables.companyName)
                         ?.replace(/\{\{email\}\}/g, contactForPreview?.email || 'john@example.com')
-                        ?.replace(/\{\{senderName\}\}/g, `${firstName} ${lastName}`)
                         ?.replace(/\{\{personalizedHook\}\}/g, contactForPreview?.tags?.startsWith('HOOK: ') ? contactForPreview.tags.replace('HOOK: ', '') : '')
                       
                       return (
