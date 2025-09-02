@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
-import { deriveTimezoneFromLocation } from '@/lib/timezone-utils'
+import { deriveTimezoneFromLocation, getBusinessHoursStatus } from '@/lib/timezone-utils'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -235,6 +235,12 @@ function generateContactSequenceSchedule(contact: any, sequences: any[], campaig
   const steps = []
   let baseDate = new Date() // Start from contact creation
   
+  // Check if we're currently outside business hours - if so, start scheduling from tomorrow
+  const businessHoursStatus = getBusinessHoursStatus(timezone)
+  if (!businessHoursStatus.isBusinessHours) {
+    baseDate.setDate(baseDate.getDate() + 1) // Move to next day if outside business hours
+  }
+  
   for (const seq of sortedSequences) {
     const stepNumber = seq.step_number || 1
     const timingDays = seq.timing_days || 0
@@ -243,30 +249,22 @@ function generateContactSequenceSchedule(contact: any, sequences: any[], campaig
     let scheduledDate = new Date(baseDate)
     scheduledDate.setDate(scheduledDate.getDate() + timingDays)
     
-    // Create the correct time in the contact's timezone
-    // Use a more reliable approach: create date parts and assemble
-    const year = scheduledDate.getFullYear()
-    const month = scheduledDate.getMonth() + 1
-    const day = scheduledDate.getDate()
-    
-    // For Europe/London timezone offset (BST = UTC+1 in summer, GMT = UTC+0 in winter)
-    let offsetHours = 0
-    if (timezone === 'Europe/London') {
-      // BST runs from last Sunday in March to last Sunday in October
-      const tempDate = new Date(year, month - 1, day)
-      const timezoneName = new Intl.DateTimeFormat('en', {
-        timeZone: timezone,
-        timeZoneName: 'short'
-      }).formatToParts(tempDate).find(p => p.type === 'timeZoneName')?.value
-      offsetHours = (timezoneName === 'BST' || timezoneName === 'GMT+1') ? 1 : 0 // BST/GMT+1 = UTC+1, GMT = UTC+0
-    } else if (timezone === 'Australia/Sydney') {
-      // AEST/AEDT - simplified for now
-      offsetHours = 10 // Approximate
+    // For immediate emails (timing_days = 0), ensure we respect business hours
+    if (timingDays === 0 && !businessHoursStatus.isBusinessHours) {
+      // If we're outside business hours, schedule for next business day
+      scheduledDate.setDate(scheduledDate.getDate() + 1)
     }
     
-    // Create UTC time: if timezone is UTC+X, subtract X hours to get UTC
-    // Example: 12:05 PM London (BST, UTC+1) = 11:05 AM UTC
-    scheduledDate = new Date(Date.UTC(year, month - 1, day, consistentHour - offsetHours, consistentMinute, 0, 0))
+    // Convert to proper UTC time for the contact's timezone
+    let utcHour
+    if (timezone === 'Australia/Sydney') {
+      utcHour = consistentHour - 10 // Sydney is UTC+10
+    } else if (timezone === 'Australia/Perth') {
+      utcHour = consistentHour - 8 // Perth is UTC+8
+    } else {
+      utcHour = consistentHour // Default to no offset for other timezones
+    }
+    scheduledDate.setUTCHours(utcHour, consistentMinute, 0, 0)
     
     // Skip inactive days
     let dayOfWeek = scheduledDate.getDay()

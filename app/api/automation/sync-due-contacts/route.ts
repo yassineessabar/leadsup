@@ -220,7 +220,7 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
       const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
       
       isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
-      const isDue = isTimeReached && businessHoursStatus.isBusinessHours
+      const isDue = isTimeReached
       
       console.log(`🔍 IMMEDIATE EMAIL DUE CHECK for ${contact.id}:`)
       console.log(`   Current time: ${currentHourInContactTz}:${currentMinuteInContactTz.toString().padStart(2, '0')} (${currentTimeInMinutes} min)`)
@@ -238,7 +238,7 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
         const scheduledInContactTz = new Date(scheduledDate.toLocaleString("en-US", {timeZone: timezone}))
         
         isTimeReached = nowInContactTz >= scheduledInContactTz
-        const isDue = isTimeReached && businessHoursStatus.isBusinessHours
+        const isDue = isTimeReached
         
         console.log(`🔍 NON-IMMEDIATE EMAIL DUE CHECK for ${contact.id}:`)
         console.log(`   Now in contact TZ: ${nowInContactTz.toISOString()}`)
