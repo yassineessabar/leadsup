@@ -1975,6 +1975,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       .replace(/\{\{company\}\}/g, contact.company || '[Company Name]')
       .replace(/\{\{title\}\}/g, contact.title || '[Title]')
       .replace(/\{\{location\}\}/g, contact.location || '[Location]')
+      .replace(/\{\{personalizedHook\}\}/g, (contact.tags && contact.tags.startsWith('HOOK: ')) ? contact.tags.replace('HOOK: ', '') : '[Generate a personalized hook first]')
   }
 
   // Function to insert variables into subject field
@@ -1987,8 +1988,11 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
     updateSequenceSubject(activeStep.sequence, newSubject)
   }
 
-  // State for first contact data for preview
+  // State for contact data for preview
   const [firstContactForPreview, setFirstContactForPreview] = useState(null)
+  const [previewContactSearch, setPreviewContactSearch] = useState('')
+  const [previewContactResults, setPreviewContactResults] = useState([])
+  const [selectedPreviewContact, setSelectedPreviewContact] = useState(null)
 
   // Load first contact when preview modal opens
   useEffect(() => {
@@ -2017,6 +2021,111 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       loadFirstContact()
     }
   }, [showPreviewModal, campaign?.id, firstContactForPreview])
+
+  // Search contacts for preview
+  const searchContactsForPreview = async (searchTerm: string) => {
+    if (!campaign?.id) {
+      setPreviewContactResults([])
+      return
+    }
+
+    try {
+      const contactsParams = new URLSearchParams()
+      contactsParams.append('campaign_id', campaign.id.toString())
+      if (searchTerm.trim()) {
+        contactsParams.append('search', searchTerm.trim())
+      }
+      contactsParams.append('limit', '10')
+      
+      const response = await fetch(`/api/contacts?${contactsParams.toString()}`, {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        setPreviewContactResults(result.contacts || [])
+        
+        // Auto-select the latest contact when no search term and no contact selected
+        if (!searchTerm.trim() && !selectedPreviewContact && result.contacts && result.contacts.length > 0) {
+          setSelectedPreviewContact(result.contacts[0])
+        }
+      }
+    } catch (error) {
+      console.error('Error searching contacts for preview:', error)
+      setPreviewContactResults([])
+    }
+  }
+
+  // Debounced search for preview contacts
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      searchContactsForPreview(previewContactSearch)
+    }, 300)
+    return () => clearTimeout(timeoutId)
+  }, [previewContactSearch, campaign?.id])
+
+  // Load initial contacts when preview modal opens
+  useEffect(() => {
+    if (showPreviewModal && campaign?.id && previewContactResults.length === 0) {
+      searchContactsForPreview('')
+    }
+  }, [showPreviewModal, campaign?.id])
+  
+  // Load available senders when preview modal opens
+  useEffect(() => {
+    if (showPreviewModal && campaign?.id) {
+      const loadSenders = async () => {
+        setLoadingSenders(true)
+        try {
+          let senders = []
+          
+          console.log('🔍 Loading senders for preview modal:', campaign.id)
+          
+          // Get campaign senders from the existing API endpoint
+          try {
+            const response = await fetch(`/api/campaigns/${campaign.id}/senders`, {
+              credentials: 'include'
+            })
+            
+            if (response.ok) {
+              const sendersData = await response.json()
+              console.log('📧 Preview modal - Direct query result:', sendersData)
+              
+              if (sendersData.assignments && sendersData.assignments.length > 0) {
+                senders = sendersData.assignments
+                  .filter((s: any) => s && s.email)
+                  .map((s: any) => ({
+                    email: s.email,
+                    name: s.name || s.email.split('@')[0],
+                    is_campaign_sender: true,
+                    is_selected: s.is_selected || s.is_active
+                  }))
+                console.log('✅ Found campaign senders for preview:', senders)
+              }
+            } else {
+              console.log('❌ Campaign senders API failed for preview:', response.status, response.statusText)
+            }
+          } catch (directError) {
+            console.log('❌ Direct query failed for preview:', directError)
+          }
+          
+          console.log('Final senders list for preview:', senders)
+          setAvailableSenders(senders)
+          
+          // Select the first available sender
+          if (senders.length > 0) {
+            const selectedSender = senders.find((s: any) => s.is_selected)
+            setSelectedTestSender(selectedSender?.email || senders[0].email)
+          }
+        } catch (error) {
+          console.error('Error loading senders for preview:', error)
+        } finally {
+          setLoadingSenders(false)
+        }
+      }
+      loadSenders()
+    }
+  }, [showPreviewModal, campaign?.id])
 
   // Load available senders when test email modal opens
   useEffect(() => {
@@ -3038,13 +3147,62 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
   // Generic test email function that calls the appropriate service
   const sendTestEmailGeneric = async () => {
-    const accountType = getCurrentTestAccountType()
-    if (accountType === 'gmail') {
-      await sendTestEmail()
-    } else if (accountType === 'microsoft365') {
-      await sendTestMicrosoft365Email()
-    } else if (accountType === 'smtp') {
-      await sendTestSmtpEmail()
+    if (!testModalEmail.trim() || !selectedTestSender) {
+      toast.error('Please enter an email address and select a sender')
+      return
+    }
+
+    // Use the preview content that's currently displayed
+    const contactForPreview = selectedPreviewContact || firstContactForPreview
+    
+    const previewSubject = activeStep?.subject
+      ?.replace(/\{\{firstName\}\}/g, contactForPreview?.first_name || variables.firstName)
+      ?.replace(/\{\{lastName\}\}/g, contactForPreview?.last_name || 'Doe')
+      ?.replace(/\{\{company\}\}/g, contactForPreview?.company || variables.companyName)
+      ?.replace(/\{\{senderName\}\}/g, `${firstName} ${lastName}`)
+      ?.replace(/\{\{personalizedHook\}\}/g, contactForPreview?.tags?.startsWith('HOOK: ') ? contactForPreview.tags.replace('HOOK: ', '') : '')
+      
+    const previewContent = activeStep?.content
+      ?.replace(/\{\{firstName\}\}/g, contactForPreview?.first_name || variables.firstName)
+      ?.replace(/\{\{lastName\}\}/g, contactForPreview?.last_name || 'Doe')
+      ?.replace(/\{\{company\}\}/g, contactForPreview?.company || variables.companyName)
+      ?.replace(/\{\{senderName\}\}/g, `${firstName} ${lastName}`)
+      ?.replace(/\{\{personalizedHook\}\}/g, contactForPreview?.tags?.startsWith('HOOK: ') ? contactForPreview.tags.replace('HOOK: ', '') : '')
+
+    let emailContent = previewContent?.replace(/\n/g, '<br/>') || ''
+    emailContent += emailSignature || ''
+    
+    const emailSubject = previewSubject || 'Test Email from LeadsUp'
+
+    setTestModalLoading(true)
+    try {
+      const response = await fetch('/api/sendgrid/send-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
+        body: JSON.stringify({ 
+          from: selectedTestSender,
+          to: testModalEmail,
+          subject: emailSubject,
+          html: emailContent
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        console.log('✅ Test email sent successfully:', result)
+        toast.success('Test email sent successfully!')
+        setTestModalEmail('')
+      } else {
+        const error = await response.json()
+        console.log('❌ Test email failed:', error)
+        toast.error(`Failed to send test email: ${error.error || error.message || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error sending test email:', error)
+      toast.error('Failed to send test email')
+    } finally {
+      setTestModalLoading(false)
     }
   }
 
@@ -4237,6 +4395,10 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                                       <MapPin className="h-4 w-4 mr-2" />
                                       Location
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => insertVariableIntoSubject('{{personalizedHook}}')}>
+                                      <Brain className="h-4 w-4 mr-2" />
+                                      Personalized Hook
+                                    </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
@@ -4478,6 +4640,13 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                               </Badge>
                               <Badge 
                                 variant="outline" 
+                                className="cursor-pointer text-xs hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                                onClick={() => insertVariableIntoEditor('{{personalizedHook}}')}
+                              >
+                                {'{{personalizedHook}}'}
+                              </Badge>
+                              <Badge 
+                                variant="outline" 
                                 className="cursor-pointer text-xs hover:bg-gray-100 hover:border-gray-400 transition-colors bg-gray-50"
                                 onClick={() => {
                                   // Insert the signature at the end of the current content
@@ -4540,90 +4709,277 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
 
             {/* Preview Modal */}
             <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
-              <DialogContent className="sm:max-w-[500px] rounded-3xl border border-gray-100 p-0 overflow-hidden">
-                <div className="p-6 pb-0">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
-                      <Mail className="w-6 h-6 text-blue-600" />
+              <DialogContent className="sm:max-w-[1200px] h-[85vh] rounded-3xl border border-gray-100/50 dark:border-gray-800 p-0 flex flex-col bg-white dark:bg-gray-900">
+                {/* Header */}
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center">
+                        <Mail className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">Email Preview</DialogTitle>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Test your email with real contact data</p>
+                      </div>
                     </div>
-                    <div>
-                      <DialogTitle className="text-lg font-semibold text-gray-900">
-                        Email Preview
-                      </DialogTitle>
-                      <p className="text-sm text-gray-500">
-                        Preview and test your email
-                      </p>
+                    <div className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-2xl">
+                      Step {activeStepId}
                     </div>
                   </div>
                 </div>
-                
-                <div className="px-6 pb-4">
-                  {(() => {
-                    const activeStep = steps.find(s => s.id === activeStepId)
-                    if (!activeStep) return null
+
+                {/* Main Content */}
+                <div className="flex-1 min-h-0 grid grid-cols-12 gap-0">
+                  {/* Left - Contact Selection */}
+                  <div className="col-span-3 bg-gray-50 dark:bg-gray-800 p-5 flex flex-col border-r border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center">
+                        <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200">Select Contact</h3>
+                    </div>
                     
-                    // Simple variable replacement for preview
-                    const previewSubject = activeStep.subject
-                      ?.replace(/\{\{firstName\}\}/g, variables.firstName)
-                      ?.replace(/\{\{lastName\}\}/g, 'Doe')
-                      ?.replace(/\{\{company\}\}/g, variables.companyName)
-                      ?.replace(/\{\{senderName\}\}/g, `${firstName} ${lastName}`)
-                    
-                    const previewContent = activeStep.content
-                      ?.replace(/\{\{firstName\}\}/g, variables.firstName)
-                      ?.replace(/\{\{lastName\}\}/g, 'Doe')
-                      ?.replace(/\{\{company\}\}/g, variables.companyName)
-                      ?.replace(/\{\{email\}\}/g, 'john@example.com')
-                      ?.replace(/\{\{senderName\}\}/g, `${firstName} ${lastName}`)
-                    
-                    return (
-                      <div className="space-y-4">
-                        {/* Email Preview */}
-                        <div className="bg-gray-50/50 rounded-xl p-4">
-                          <div className="mb-3">
-                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Subject</span>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{previewSubject || 'No subject'}</p>
+                    {selectedPreviewContact ? (
+                      <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-2xl border border-blue-100 dark:border-blue-800">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                            {selectedPreviewContact.first_name?.[0]}{selectedPreviewContact.last_name?.[0]}
                           </div>
-                          <div className="border-t border-gray-200 pt-3">
-                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Content</span>
-                            <div className="whitespace-pre-wrap text-sm text-gray-900 mt-1 max-h-32 overflow-y-auto">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPreviewContact(null)
+                              setPreviewContactSearch('')
+                            }}
+                            className="text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800 h-6 px-2 text-xs rounded-xl"
+                          >
+                            Change
+                          </Button>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {selectedPreviewContact.first_name} {selectedPreviewContact.last_name}
+                          </div>
+                          <div className="text-xs text-blue-700 dark:text-blue-400 font-medium">
+                            {selectedPreviewContact.email}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                            {selectedPreviewContact.title} at {selectedPreviewContact.company}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
+                            placeholder="Search contacts..."
+                            value={previewContactSearch}
+                            onChange={(e) => setPreviewContactSearch(e.target.value)}
+                            onFocus={() => {
+                              if (previewContactResults.length === 0) {
+                                searchContactsForPreview('')
+                              }
+                            }}
+                            className="pl-10 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl text-sm h-9 focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 transition-all duration-300 dark:text-gray-100"
+                          />
+                        </div>
+                        
+                        {previewContactSearch.length > 0 && (
+                          <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-2xl bg-white dark:bg-gray-800">
+                            {previewContactResults.length > 0 ? (
+                              previewContactResults.map((contact: any) => (
+                                <div
+                                  key={contact.id}
+                                  onClick={() => {
+                                    setSelectedPreviewContact(contact)
+                                    setPreviewContactSearch('')
+                                    setPreviewContactResults([])
+                                  }}
+                                  className="p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors"
+                                >
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-6 h-6 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-300">
+                                      {contact.first_name?.[0]}{contact.last_name?.[0]}
+                                    </div>
+                                    <div>
+                                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        {contact.first_name} {contact.last_name}
+                                      </div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        {contact.email}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+                                <Users className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                                No contacts found
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Center - Email Preview */}
+                  <div className="col-span-6 bg-white dark:bg-gray-900 p-5 flex flex-col border-r border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <div className="w-6 h-6 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center">
+                        <Eye className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200">Live Preview</h3>
+                    </div>
+                    
+                    {(() => {
+                      const activeStep = steps.find(s => s.id === activeStepId)
+                      if (!activeStep) return (
+                        <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                          <div className="text-center">
+                            <Mail className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                            <p className="text-sm">No email step selected</p>
+                          </div>
+                        </div>
+                      )
+                      
+                      const contactForPreview = selectedPreviewContact || firstContactForPreview
+                      
+                      const previewSubject = activeStep.subject
+                        ?.replace(/\{\{firstName\}\}/g, contactForPreview?.first_name || variables.firstName)
+                        ?.replace(/\{\{lastName\}\}/g, contactForPreview?.last_name || 'Doe')
+                        ?.replace(/\{\{company\}\}/g, contactForPreview?.company || variables.companyName)
+                        ?.replace(/\{\{senderName\}\}/g, `${firstName} ${lastName}`)
+                        ?.replace(/\{\{personalizedHook\}\}/g, contactForPreview?.tags?.startsWith('HOOK: ') ? contactForPreview.tags.replace('HOOK: ', '') : '')
+                      
+                      const previewContent = activeStep.content
+                        ?.replace(/\{\{firstName\}\}/g, contactForPreview?.first_name || variables.firstName)
+                        ?.replace(/\{\{lastName\}\}/g, contactForPreview?.last_name || 'Doe')
+                        ?.replace(/\{\{company\}\}/g, contactForPreview?.company || variables.companyName)
+                        ?.replace(/\{\{email\}\}/g, contactForPreview?.email || 'john@example.com')
+                        ?.replace(/\{\{senderName\}\}/g, `${firstName} ${lastName}`)
+                        ?.replace(/\{\{personalizedHook\}\}/g, contactForPreview?.tags?.startsWith('HOOK: ') ? contactForPreview.tags.replace('HOOK: ', '') : '')
+                      
+                      return (
+                        <div className="flex-1 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                          {/* Email Header */}
+                          <div className="bg-gray-100 dark:bg-gray-700 px-4 py-3 border-b border-gray-200 dark:border-gray-600">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                                {firstName?.[0]}{lastName?.[0]}
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{firstName} {lastName}</div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400">to {contactForPreview?.email || 'recipient@example.com'}</div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Subject Line */}
+                          <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/30 border-b border-gray-200 dark:border-gray-600">
+                            <div className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1">SUBJECT</div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">
+                              {previewSubject || 'No subject'}
+                            </div>
+                          </div>
+                          
+                          {/* Email Body */}
+                          <div className="p-4 flex-1 overflow-y-auto bg-white dark:bg-gray-800">
+                            <div className="whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100 leading-relaxed break-words">
                               {previewContent || 'No content'}
                             </div>
                           </div>
                         </div>
-                        
-                        {/* Test Email Section */}
-                        <div className="bg-blue-50/50 rounded-xl p-4">
-                          <div className="flex items-center space-x-2 mb-3">
-                            <Send className="w-4 h-4 text-blue-600" />
-                            <span className="text-sm font-semibold text-blue-900">Send Test Email</span>
-                          </div>
-                          <div className="space-y-3">
-                            <div>
-                              <Input
-                                type="email"
-                                value={testModalEmail}
-                                onChange={(e) => setTestModalEmail(e.target.value)}
-                                placeholder="test@example.com"
-                                className="w-full text-sm"
-                              />
-                            </div>
-                            <div className="flex justify-end">
-                              <Button
-                                onClick={sendTestEmailGeneric}
-                                disabled={testModalLoading || !testModalEmail.trim()}
-                                size="sm"
-                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
-                              >
-                                <Send className="w-3 h-3 mr-1.5" />
-                                {testModalLoading ? 'Sending...' : 'Send Test'}
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
+                      )
+                    })()}
+                  </div>
+
+                  {/* Right - Test Email */}
+                  <div className="col-span-3 bg-gray-50 dark:bg-gray-800 p-5 flex flex-col">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <div className="w-6 h-6 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
+                        <Send className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       </div>
-                    )
-                  })()}
+                      <h3 className="text-sm font-medium text-gray-800 dark:text-gray-200">Send Test</h3>
+                    </div>
+                    
+                    <div className="space-y-4 flex-1">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Recipient Email</label>
+                        <Input
+                          type="email"
+                          value={testModalEmail}
+                          onChange={(e) => setTestModalEmail(e.target.value)}
+                          placeholder="your@email.com"
+                          className="w-full text-sm h-9 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 transition-all duration-300 dark:text-gray-100"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Sender Account</label>
+                        {(() => {
+                          const campaignSenders = availableSenders.filter((sender: any) => sender.is_campaign_sender || sender.is_selected || sender.is_active)
+                          
+                          return campaignSenders.length > 0 ? (
+                            <Select value={selectedTestSender} onValueChange={setSelectedTestSender}>
+                              <SelectTrigger className="w-full text-sm h-9 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 transition-all duration-300">
+                                <SelectValue placeholder="Choose sender" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-2xl">
+                                {campaignSenders.map((sender: any) => (
+                                  <SelectItem key={sender.email} value={sender.email} className="rounded-xl">
+                                    <div className="flex items-center space-x-2">
+                                      <div className="w-6 h-6 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        {sender.name?.[0] || sender.email?.[0]}
+                                      </div>
+                                      <div>
+                                        <div className="text-sm font-medium">{sender.name}</div>
+                                        <div className="text-xs text-gray-500">{sender.email}</div>
+                                      </div>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="p-3 text-xs text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/30 rounded-2xl border border-orange-200 dark:border-orange-800 flex items-center space-x-2">
+                              <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                              <span>Configure senders in Sender tab</span>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                      
+                      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <Button
+                          onClick={() => {
+                            console.log('🖱️ Send Test Email button clicked!')
+                            console.log('📧 testModalEmail:', testModalEmail)
+                            console.log('👤 selectedTestSender:', selectedTestSender)
+                            console.log('⏳ testModalLoading:', testModalLoading)
+                            sendTestEmailGeneric()
+                          }}
+                          disabled={testModalLoading || !testModalEmail.trim() || !selectedTestSender}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-10 font-medium transition-all duration-300"
+                        >
+                          {testModalLoading ? (
+                            <div className="flex items-center space-x-2">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Sending...</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <Send className="w-4 h-4" />
+                              <span>Send Test Email</span>
+                            </div>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
@@ -4870,63 +5226,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
           </DialogContent>
         </Dialog>
 
-        {/* Campaign Preview Modal */}
-        <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto rounded-3xl">
-            <DialogHeader>
-              <DialogTitle>{t('campaignManagement.dialogs.preview.title')}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              {steps
-                .sort((a, b) => {
-                  // Sort by timing first (ascending), then by sequence step as secondary sort
-                  if (a.timing !== b.timing) {
-                    return a.timing - b.timing;
-                  }
-                  return (a.sequenceStep || a.id) - (b.sequenceStep || b.id);
-                })
-                .map((step, index) => (
-                <div key={step.id} className="border border-gray-200 rounded-2xl p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium">{step.title}</h3>
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setTestEmailModal({stepId: step.id, stepData: step})
-                          setTestEmailAddress(user?.email || "")
-                        }}
-                        className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                      >
-                        <TestTube className="h-4 w-4 mr-1" />
-                        Send Test
-                      </Button>
-                      <span className="text-sm text-gray-500">
-                        {step.timing === 0 ? t('campaignManagement.dialogs.preview.immediately') : t('campaignManagement.dialogs.preview.waitDays').replace('{timing}', step.timing)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-600 mb-2">
-                    {t('campaignManagement.dialogs.preview.subject').replace('{subject}', 
-                      firstContactForPreview ? replaceVariablesWithContact(step.subject || '', firstContactForPreview) : step.subject || ''
-                    )}
-                  </div>
-                  <div 
-                    className="prose prose-sm max-w-none"
-                    style={{ whiteSpace: 'pre-wrap' }}
-                    dangerouslySetInnerHTML={{ 
-                      __html: (firstContactForPreview ? 
-                        replaceVariablesWithContact(step.content || '', firstContactForPreview) : 
-                        step.content || ''
-                      ).replace(/\n/g, '<br/>') 
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </DialogContent>
-        </Dialog>
 
         {/* Delete Campaign Dialog */}
         <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

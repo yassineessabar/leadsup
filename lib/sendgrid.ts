@@ -51,6 +51,10 @@ export async function sendEmailWithSendGrid(options: SendGridEmailOptions) {
       throw new Error('Sender email is required')
     }
     
+    // Ensure content is never empty
+    const htmlContent = options.html || options.text || '<p>Email content</p>'
+    const textContent = options.text || options.html || 'Email content'
+    
     const msg = {
       to: options.to,
       from: {
@@ -58,8 +62,8 @@ export async function sendEmailWithSendGrid(options: SendGridEmailOptions) {
         name: options.fromName || senderEmail
       },
       subject: options.subject,
-      text: options.text || '',
-      html: options.html || options.text || '',
+      text: textContent,
+      html: htmlContent,
       replyTo: options.replyTo || generateReplyToEmail(senderEmail),
       attachments: options.attachments || []
     }
