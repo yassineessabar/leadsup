@@ -3910,66 +3910,6 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                   </div>
                 </div>
               </div>
-              
-              {/* Daily Limit Section */}
-              <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100/50 dark:border-gray-800 overflow-hidden">
-                <div className="p-8">
-                  <div className="flex items-center space-x-4 mb-8">
-                    <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center">
-                      <Clock className="w-6 h-6 text-gray-400 dark:text-gray-500" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-medium text-gray-900 dark:text-gray-100">Daily Limit</h2>
-                      <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Max number of emails to send per day for this campaign</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Daily Contacts Limit */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-4">Daily Contacts Limit</h4>
-                      <div className="flex items-center space-x-4">
-                        <Input
-                          type="number"
-                          value={dailyContactsLimit}
-                          onChange={(e) => setDailyContactsLimit(parseInt(e.target.value) || 0)}
-                          className="w-24 text-center border-gray-300 dark:border-gray-600 rounded-xl"
-                          min="0"
-                        />
-                        <span className="text-sm text-gray-500">contacts per day</span>
-                      </div>
-                    </div>
-                    
-                    {/* Daily Sequence Limit */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-4">Daily Sequence Limit</h4>
-                      <div className="flex items-center space-x-4">
-                        <Input
-                          type="number"
-                          value={dailySequenceLimit}
-                          onChange={(e) => setDailySequenceLimit(parseInt(e.target.value) || 0)}
-                          className="w-24 text-center border-gray-300 dark:border-gray-600 rounded-xl"
-                          min="0"
-                        />
-                        <span className="text-sm text-gray-500">sequence emails per day</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Today's Usage */}
-                  <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-                    <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-3">Today's Email Usage</h4>
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-700 dark:text-gray-300">
-                        Emails sent today: <span className="font-medium text-blue-600">0 / {dailyContactsLimit}</span>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {new Date().toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
             
           </div>

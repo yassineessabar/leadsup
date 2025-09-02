@@ -143,7 +143,7 @@ function EmailPreview({
 }) {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-lg bg-white dark:bg-gray-900">
-      {/* Email Header */>
+      {/* Email Header */}
       <div className="bg-black p-4 text-white">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">

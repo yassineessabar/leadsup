@@ -58,10 +58,10 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Campaign not found" }, { status: 404 })
     }
 
-    // Fetch sequences
+    // Fetch sequences with optimized select - only get needed fields
     const { data: sequences, error: sequenceError } = await supabaseServer
       .from("campaign_sequences")
-      .select("*")
+      .select("id, step_number, subject, content, timing_days, variants, sequence_number, sequence_step, title, outreach_method")
       .eq("campaign_id", campaignId)
       .order("step_number", { ascending: true })
 
@@ -73,23 +73,22 @@ export async function GET(
       return NextResponse.json({ success: true, data: [] })
     }
 
-
-    // Transform database format back to component format
-    const transformedSequences = sequences.map((seq) => ({
-      id: seq.step_number, // Use step_number as frontend ID for consistency
-      type: seq.outreach_method || "email",
-      subject: seq.subject || "",
-      content: seq.content || "",
-      timing: seq.timing_days || (seq.step_number === 1 ? 0 : 1),
-      variants: seq.variants || 1,
-      sequence: seq.sequence_number || 1,
-      sequenceStep: seq.sequence_step || seq.step_number,
-      title: seq.title || `Email ${seq.sequence_step || seq.step_number}`,
-      outreach_method: seq.outreach_method || "email",
-      // Keep database metadata for debugging
-      _dbId: seq.id,
-      _stepNumber: seq.step_number
-    }))
+    // Optimized transformation - pre-calculate defaults to avoid repeated conditionals
+    const transformedSequences = sequences.map((seq) => {
+      const stepNumber = seq.step_number || 1
+      return {
+        id: stepNumber,
+        type: seq.outreach_method || "email",
+        subject: seq.subject || "",
+        content: seq.content || "",
+        timing: seq.timing_days || (stepNumber === 1 ? 0 : 1),
+        variants: seq.variants || 1,
+        sequence: seq.sequence_number || 1,
+        sequenceStep: seq.sequence_step || stepNumber,
+        title: seq.title || `Email ${seq.sequence_step || stepNumber}`,
+        outreach_method: seq.outreach_method || "email"
+      }
+    })
 
 
     return NextResponse.json({ success: true, data: transformedSequences })

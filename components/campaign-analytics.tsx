@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useI18n } from '@/hooks/use-i18n'
 import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, RefreshCw, Pause, Play, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Upload, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit, MessageSquare, Plus, FileText, ChevronLeft, AlertCircle, Unlink } from "lucide-react"
+import { ArrowLeft, RefreshCw, Pause, Play, Eye, MousePointer, Activity, Target, TrendingUp, MapPin, Linkedin, MoreHorizontal, Trash2, Filter, Search, Download, Upload, Calendar, Users, User, Mail, Clock, BarChart3, ChevronDown, ChevronRight, Heart, Flame, Settings, Zap, Edit, MessageSquare, Plus, FileText, ChevronLeft, AlertCircle, Unlink, Brain, Sparkles, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -101,6 +101,7 @@ interface Contact {
   nextEmailIn?: string
   isDue?: boolean
   created_at?: string
+  tags?: string
 }
 
 interface CampaignAnalyticsProps {
@@ -138,7 +139,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     company: '',
     title: '',
     location: '',
-    linkedin: ''
+    linkedin: '',
+    hook: ''
   })
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [displayLimit, setDisplayLimit] = useState(20) // Track how many contacts to display
@@ -148,6 +150,9 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   const [campaignSenders, setCampaignSenders] = useState<string[]>([])
   const [campaignSequences, setCampaignSequences] = useState<any[]>([])
   const [sequencesLastUpdated, setSequencesLastUpdated] = useState<number>(Date.now())
+  const [hookGenerationModal, setHookGenerationModal] = useState<{contact: Contact, hooks: string[], loading: boolean} | null>(null)
+  const [isEnriching, setIsEnriching] = useState(false)
+  const [enrichmentModal, setEnrichmentModal] = useState<{contacts: Contact[], progress: number, total: number, completed: Contact[]} | null>(null)
   const [sequencesRefreshing, setSequencesRefreshing] = useState(false)
   
   // Sequence status state - stores real progression data from API
@@ -538,6 +543,120 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
     }
   }
 
+  // Generate personalized hook for a contact
+  const generatePersonalizedHook = async (contact: Contact) => {
+    setHookGenerationModal({ contact, hooks: [], loading: true })
+    
+    try {
+      const response = await fetch('/api/contacts/generate-hook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ contactId: contact.id })
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setHookGenerationModal({ contact, hooks: result.data.hooks, loading: false })
+      } else {
+        toast({
+          title: "Failed to generate hook",
+          description: result.error || "Unknown error occurred",
+          variant: "destructive"
+        })
+        setHookGenerationModal(null)
+      }
+    } catch (error) {
+      console.error('Error generating hook:', error)
+      toast({
+        title: "Failed to generate hook",
+        description: "Network error occurred",
+        variant: "destructive"
+      })
+      setHookGenerationModal(null)
+    }
+  }
+
+  // Enrich selected contacts with additional data
+  const enrichSelectedContacts = async () => {
+    if (selectedContacts.length === 0) return
+    
+    setIsEnriching(true)
+    const contactsToEnrich = allContactsSelected ? 
+      await getAllContactIds() : 
+      selectedContacts
+    
+    // Get full contact details for selected IDs
+    const contactDetails = contacts.filter(c => contactsToEnrich.includes(c.id))
+    
+    setEnrichmentModal({
+      contacts: contactDetails,
+      progress: 0,
+      total: contactsToEnrich.length,
+      completed: []
+    })
+    
+    try {
+      const response = await fetch('/api/contacts/enrich-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          contactIds: contactsToEnrich,
+          campaignId: campaign.id 
+        })
+      })
+      
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          
+          const chunk = decoder.decode(value)
+          const lines = chunk.split('\n').filter(line => line.trim())
+          
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line)
+              if (data.type === 'progress') {
+                setEnrichmentModal(prev => prev ? {
+                  ...prev,
+                  progress: data.current,
+                  completed: [...prev.completed, data.contact]
+                } : null)
+              } else if (data.type === 'complete') {
+                toast({
+                  title: "Enrichment Complete",
+                  description: `Successfully enriched ${data.enriched} out of ${data.total} contacts`
+                })
+                // Refresh contacts list
+                fetchCampaignContacts()
+              }
+            } catch (e) {
+              console.error('Error parsing stream data:', e)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error enriching contacts:', error)
+      toast({
+        title: "Enrichment Failed",
+        description: "Failed to enrich contacts. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsEnriching(false)
+      setEnrichmentModal(null)
+      setSelectedContacts([])
+      setAllContactsSelected(false)
+    }
+  }
+
   // Fetch warming metrics for campaigns with auto warm-up
   const fetchWarmingMetrics = async () => {
     // Fetch warm-up data for both Warming status campaigns and Active campaigns with auto warm-up
@@ -882,6 +1001,9 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
   // Populate edit form when modal opens
   useEffect(() => {
     if (editContactModal) {
+      const hookText = editContactModal.tags && editContactModal.tags.startsWith('HOOK: ') 
+        ? editContactModal.tags.replace('HOOK: ', '') 
+        : ''
       setEditFormData({
         first_name: editContactModal.first_name || '',
         last_name: editContactModal.last_name || '',
@@ -889,7 +1011,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
         company: editContactModal.company || '',
         title: editContactModal.title || '',
         location: editContactModal.location || '',
-        linkedin: editContactModal.linkedin || ''
+        linkedin: editContactModal.linkedin || '',
+        hook: hookText
       })
     }
   }, [editContactModal])
@@ -900,6 +1023,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
 
     setIsSavingEdit(true)
     try {
+      console.log('🔧 Saving contact:', editContactModal.id, 'with data:', editFormData)
       const response = await fetch(`/api/contacts/${editContactModal.id}`, {
         method: 'PATCH',
         headers: {
@@ -910,14 +1034,21 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
       })
 
       if (!response.ok) {
-        throw new Error('Failed to update contact')
+        const errorText = await response.text()
+        console.error('❌ API Error:', response.status, errorText)
+        throw new Error(`Failed to update contact: ${response.status} - ${errorText}`)
       }
 
       // Update the contact in the local state
       setContacts(prevContacts => 
         prevContacts.map(contact => 
           contact.id === editContactModal.id 
-            ? { ...contact, ...editFormData }
+            ? { 
+                ...contact, 
+                ...editFormData,
+                // Convert hook field to tags field for display
+                tags: editFormData.hook.trim() ? `HOOK: ${editFormData.hook.trim()}` : contact.tags
+              }
             : contact
         )
       )
@@ -1771,6 +1902,7 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
             nextEmailIn,
             isDue,
             emailStatusForDB,
+            tags: contact.tags,
             created_at: contact.created_at
           }
           
@@ -1803,7 +1935,8 @@ export function CampaignAnalytics({ campaign, onBack, onStatusUpdate }: Campaign
               email_subject: '',
               nextEmailIn: 'ERROR',
               isDue: false,
-              created_at: contact.created_at
+              created_at: contact.created_at,
+              tags: contact.tags
             }
           }
         })
@@ -3699,11 +3832,40 @@ Sequence Info:
                         <p className="text-gray-500 text-sm">{selectedSenderCount} {selectedSenderCount > 1 ? (ready ? t('analytics.selectedSenders') : 'selected senders') : (ready ? t('analytics.selectedSender') : 'selected sender')} • {ready ? t('analytics.variableLimitsPerSender') : 'Variable limits per sender'}</p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-50 text-blue-700">
-                          {totalDailyLimit} emails/day
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-50 text-blue-700">
+                            {totalDailyLimit} emails/day
+                          </div>
                         </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="text-right">
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              Today's Usage
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {new Date().toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Today's Email Usage */}
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                        <div className="text-sm text-gray-700 dark:text-gray-300">
+                          Emails sent today
+                        </div>
+                        <div className="text-sm font-medium text-blue-600">
+                          {(() => {
+                            // Calculate actual emails sent today from metrics if available
+                            const todaysSent = metrics?.total_sent || 0
+                            return `${todaysSent} / ${totalDailyLimit}`
+                          })()}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
                         <Button
                           variant="outline"
                           size="sm"
@@ -3880,6 +4042,15 @@ Sequence Info:
                 <>
                   <Button 
                     variant="outline" 
+                    className="h-10 px-4 border-purple-300 hover:bg-purple-50 text-purple-600 font-medium transition-all duration-300 rounded-2xl"
+                    onClick={() => enrichSelectedContacts()}
+                    disabled={isEnriching}
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {isEnriching ? 'Enriching...' : `Enrich (${allContactsSelected ? totalContactsCount : selectedContacts.length})`}
+                  </Button>
+                  <Button 
+                    variant="outline" 
                     className="h-10 px-4 border-orange-300 hover:bg-orange-50 text-orange-600 font-medium transition-all duration-300 rounded-2xl"
                     onClick={() => setDetachConfirmation({ count: allContactsSelected ? totalContactsCount : selectedContacts.length })}
                     disabled={isDeleting === 'removeAll'}
@@ -3935,6 +4106,7 @@ Sequence Info:
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('analytics.location')}</th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('analytics.timezone')}</th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('analytics.nextEmail')}</th>
+                      <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[200px]">Hook</th>
                       <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('analytics.actions')}</th>
                     </tr>
                   </thead>
@@ -3958,13 +4130,13 @@ Sequence Info:
                           <td className="p-4"><div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div></td>
                           <td className="p-4"><div className="h-3 bg-gray-200 rounded w-20 animate-pulse"></div></td>
                           <td className="p-4"><div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div></td>
-                          <td className="p-4"><div className="h-3 bg-gray-200 rounded w-12 animate-pulse"></div></td>
+                          <td className="p-4"><div className="h-3 bg-gray-200 rounded w-32 animate-pulse"></div></td>
                           <td className="p-4"><div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div></td>
                         </tr>
                       ))
                     ) : filteredContacts.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="p-12 text-center text-gray-500">
+                        <td colSpan={9} className="p-12 text-center text-gray-500">
                           <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                           <p className="text-lg font-medium text-gray-900 mb-2">{t('analytics.noContactsFound')}</p>
                           <p className="text-sm text-gray-500">{t('analytics.tryAdjusting')}</p>
@@ -4122,6 +4294,23 @@ Sequence Info:
                               )}
                             </div>
                           </td>
+                          <td className="p-4 min-w-[200px]">
+                            <div className="space-y-2">
+                              {contact.tags && contact.tags.startsWith('HOOK: ') ? (
+                                <div className="text-xs text-gray-700 bg-purple-50 p-2 rounded-lg border border-purple-200">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Sparkles className="h-3 w-3 text-purple-600" />
+                                    <span className="font-medium text-purple-700">Hook</span>
+                                  </div>
+                                  <p className="text-xs leading-relaxed">{contact.tags.replace('HOOK: ', '')}</p>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-gray-400 italic">
+                                  No hook generated
+                                </div>
+                              )}
+                            </div>
+                          </td>
                           <td className="p-4">
                             <div className="flex items-center gap-2">
                               {contact.linkedin && (
@@ -4147,6 +4336,10 @@ Sequence Info:
                                   <DropdownMenuItem onClick={() => setEditContactModal(contact)}>
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => generatePersonalizedHook(contact)}>
+                                    <Brain className="h-4 w-4 mr-2" />
+                                    Generate Hook
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     onClick={() => showDeleteConfirmation(contact.id)} 
@@ -5275,6 +5468,21 @@ Sequence Info:
                 className="rounded-2xl"
               />
             </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-600" />
+                Personalized Hook
+              </label>
+              <textarea
+                value={editFormData.hook}
+                onChange={(e) => setEditFormData({...editFormData, hook: e.target.value})}
+                placeholder="Enter a personalized hook for this contact..."
+                className="w-full p-3 border border-gray-200 rounded-2xl resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                rows={3}
+              />
+              <p className="text-xs text-gray-500 mt-1">This hook will be available as {'{'}{'{'} personalizedHook {'}'}{'}'}  in email sequences</p>
+            </div>
           </div>
 
           <DialogFooter>
@@ -5299,6 +5507,156 @@ Sequence Info:
                 'Save Changes'
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Enrichment Progress Modal */}
+      <Dialog open={enrichmentModal !== null} onOpenChange={(open) => !open && !isEnriching && setEnrichmentModal(null)}>
+        <DialogContent className="sm:max-w-2xl rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              Enriching Contacts
+            </DialogTitle>
+            <DialogDescription>
+              Fetching additional data from LinkedIn and other sources
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Progress</span>
+                <span className="font-medium">
+                  {enrichmentModal?.progress || 0} / {enrichmentModal?.total || 0}
+                </span>
+              </div>
+              <Progress 
+                value={(enrichmentModal?.progress || 0) / (enrichmentModal?.total || 1) * 100} 
+                className="h-2"
+              />
+            </div>
+            
+            {enrichmentModal?.completed && enrichmentModal.completed.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-700">Recently Enriched:</h4>
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {enrichmentModal.completed.slice(-5).reverse().map((contact, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 bg-green-50 rounded-xl">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {contact.name}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {contact.email}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {isEnriching && (
+              <div className="flex items-center justify-center py-4">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                  <span className="text-sm text-gray-600">
+                    Enriching contact {enrichmentModal?.progress || 0} of {enrichmentModal?.total || 0}...
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {!isEnriching && (
+            <DialogFooter>
+              <Button
+                onClick={() => setEnrichmentModal(null)}
+                className="rounded-2xl"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Hook Generation Modal */}
+      <Dialog open={hookGenerationModal !== null} onOpenChange={(open) => !open && setHookGenerationModal(null)}>
+        <DialogContent className="sm:max-w-2xl rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-purple-600" />
+              Personalized Hook Generator
+            </DialogTitle>
+            <DialogDescription>
+              AI-generated personalized outreach hooks for {hookGenerationModal?.contact?.first_name} {hookGenerationModal?.contact?.last_name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {hookGenerationModal?.loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                  <span className="text-gray-600">Generating personalized hooks...</span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Generated Hooks:</h4>
+                {hookGenerationModal?.hooks.map((hook, index) => (
+                  <div key={index} className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-semibold text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
+                            Option {index + 1}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-800 leading-relaxed">{hook}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(hook)
+                          toast({
+                            title: "Copied to clipboard",
+                            description: "Hook copied successfully"
+                          })
+                        }}
+                        className="text-xs px-3 py-1 h-7"
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setHookGenerationModal(null)}
+              className="rounded-2xl"
+            >
+              Close
+            </Button>
+            {!hookGenerationModal?.loading && (
+              <Button
+                onClick={() => generatePersonalizedHook(hookGenerationModal!.contact)}
+                className="rounded-2xl bg-purple-600 hover:bg-purple-700"
+              >
+                <Brain className="h-4 w-4 mr-2" />
+                Regenerate
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

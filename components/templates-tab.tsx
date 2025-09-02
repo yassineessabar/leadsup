@@ -389,7 +389,7 @@ Best regards!`
             <Button 
               variant="outline"
               onClick={() => setSelectedCategory("all")}
-              className="border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 px-6 py-3 font-medium transition-all duration-300 rounded-2xl">
+              className="border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 px-6 py-3 font-medium transition-all duration-300 rounded-2xl"
             >
               {t('templates.showAllTemplates')}
             </Button>

@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { supabaseServer } from '@/lib/supabase'
 
 async function getUserIdFromSession(): Promise<string | null> {
   try {
@@ -16,7 +11,7 @@ async function getUserIdFromSession(): Promise<string | null> {
       return null
     }
 
-    const { data: session, error } = await supabase
+    const { data: session, error } = await supabaseServer
       .from("user_sessions")
       .select("user_id, expires_at")
       .eq("session_token", sessionToken)
@@ -45,7 +40,7 @@ export async function GET(
     const params = await context.params
     const contactId = params.id
 
-    const { data: contact, error } = await supabase
+    const { data: contact, error } = await supabaseServer
       .from('contacts')
       .select('*')
       .eq('id', contactId)
@@ -91,10 +86,15 @@ export async function PATCH(
     if (body.linkedin !== undefined) updateData.linkedin = body.linkedin
     if (body.image_url !== undefined) updateData.image_url = body.image_url
     if (body.campaign_id !== undefined) updateData.campaign_id = body.campaign_id
+    
+    // Handle hook field - store in tags with HOOK: prefix
+    if (body.hook !== undefined) {
+      updateData.tags = body.hook.trim() ? `HOOK: ${body.hook.trim()}` : null
+    }
 
     updateData.updated_at = new Date().toISOString()
 
-    const { data: contact, error } = await supabase
+    const { data: contact, error } = await supabaseServer
       .from('contacts')
       .update(updateData)
       .eq('id', contactId)
@@ -118,13 +118,13 @@ export async function PATCH(
     if (body.campaign_id !== undefined && contact.campaign_id) {
       try {
         // Get campaign sequences and settings
-        const { data: sequences } = await supabase
+        const { data: sequences } = await supabaseServer
           .from('campaign_sequences')
           .select('*')
           .eq('campaign_id', contact.campaign_id)
           .order('step_number')
         
-        const { data: campaignSettings } = await supabase
+        const { data: campaignSettings } = await supabaseServer
           .from('campaign_settings')
           .select('*')
           .eq('campaign_id', contact.campaign_id)
@@ -220,7 +220,7 @@ export async function PATCH(
           // Update contact with sequence_schedule and next_email_due
           const nextEmailDue = steps[0]?.scheduled_date || null
           
-          const { data: updatedContact } = await supabase
+          const { data: updatedContact } = await supabaseServer
             .from('contacts')
             .update({ 
               sequence_schedule: sequenceSchedule,
@@ -265,7 +265,7 @@ export async function DELETE(
     const params = await context.params
     const contactId = params.id
 
-    const { error } = await supabase
+    const { error } = await supabaseServer
       .from('contacts')
       .delete()
       .eq('id', contactId)
