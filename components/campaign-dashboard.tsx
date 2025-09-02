@@ -4888,9 +4888,12 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
                           
                           {/* Email Body */}
                           <div className="p-4 flex-1 overflow-y-auto bg-white dark:bg-gray-800">
-                            <div className="whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100 leading-relaxed break-words">
-                              {previewContent || 'No content'}
-                            </div>
+                            <div 
+                              className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed break-words"
+                              dangerouslySetInnerHTML={{ 
+                                __html: previewContent?.replace(/\n/g, '<br/>') || 'No content' 
+                              }}
+                            />
                           </div>
                         </div>
                       )
