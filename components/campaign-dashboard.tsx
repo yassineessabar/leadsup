@@ -1632,7 +1632,7 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
             emailSignature: data.settings.signature_data?.emailSignature
           })
           
-          if (data.settings.signature_data && data.settings.signature_data.emailSignature) {
+          if (data.settings.signature_data) {
             setFirstName(data.settings.signature_data.firstName || '')
             setLastName(data.settings.signature_data.lastName || '')
             setCompanyName(data.settings.signature_data.companyName || campaign?.company_name || '')
@@ -1732,6 +1732,14 @@ export default function CampaignDashboard({ campaign, onBack, onDelete, onStatus
       loadCampaignData()
     }
   }, [activeTab])
+
+  // Load campaign data on component mount
+  useEffect(() => {
+    if (campaign?.id && !campaignDataLoaded) {
+      console.log('🔄 Component mounted, loading campaign data')
+      loadCampaignData()
+    }
+  }, [campaign?.id])
 
   // Lazy load sequences when needed
   // Cache for sequence data to prevent redundant loads
