@@ -330,6 +330,101 @@ function extractEmail(emailString: string): string {
   return match ? match[1].toLowerCase() : emailString.toLowerCase()
 }
 
+// Function to detect if an email is an auto-reply
+function isAutoReply(subject: string, textContent: string, headers: string): boolean {
+  // Common autoreply patterns in subject
+  const autoReplySubjectPatterns = [
+    /^auto:/i,
+    /^automatic reply/i,
+    /^autoreply/i,
+    /out of (the )?office/i,
+    /away from (my )?desk/i,
+    /on vacation/i,
+    /on holiday/i,
+    /on leave/i,
+    /absen(t|ce)/i,
+    /away message/i,
+    /automated response/i,
+    /automatic notification/i,
+    /undeliverable/i,
+    /delivery status notification/i,
+    /mail delivery failed/i,
+    /returned mail/i,
+    /failure notice/i
+  ]
+
+  // Common autoreply patterns in content
+  const autoReplyContentPatterns = [
+    /i (am |will be )?(currently )?(out of|away from) (the )?office/i,
+    /i('m| am) on vacation/i,
+    /i('m| am) on holiday/i,
+    /i('m| am) currently unavailable/i,
+    /thank you for your (email|message).*i (am|will)/i,
+    /this is an automated (response|reply|message)/i,
+    /auto(-)?generated (email|message|response)/i,
+    /i will (be )?(back|return|respond)/i,
+    /during my absence/i,
+    /currently on leave/i,
+    /automatic email reply/i,
+    /vacation autoreply/i,
+    /absence notification/i
+  ]
+
+  // Check headers for autoreply indicators
+  const autoReplyHeaders = [
+    'X-Autoreply',
+    'X-Autorespond',
+    'Auto-Submitted',
+    'X-Auto-Response-Suppress',
+    'Precedence: bulk',
+    'Precedence: auto_reply',
+    'X-Vacation',
+    'X-Away-Message'
+  ]
+
+  // Check subject
+  if (subject) {
+    for (const pattern of autoReplySubjectPatterns) {
+      if (pattern.test(subject)) {
+        console.log(`🤖 Autoreply detected in subject: "${subject}" matches pattern ${pattern}`)
+        return true
+      }
+    }
+  }
+
+  // Check content
+  if (textContent) {
+    // Get first 500 characters for checking (autoreplies usually mention it early)
+    const contentToCheck = textContent.substring(0, 500)
+    for (const pattern of autoReplyContentPatterns) {
+      if (pattern.test(contentToCheck)) {
+        console.log(`🤖 Autoreply detected in content: matches pattern ${pattern}`)
+        return true
+      }
+    }
+  }
+
+  // Check headers
+  if (headers) {
+    const headerStr = typeof headers === 'string' ? headers : JSON.stringify(headers)
+    for (const header of autoReplyHeaders) {
+      if (headerStr.includes(header)) {
+        console.log(`🤖 Autoreply detected in headers: found "${header}"`)
+        return true
+      }
+    }
+    
+    // Check for specific header values
+    if (headerStr.includes('Auto-Submitted: auto-replied') || 
+        headerStr.includes('Auto-Submitted: auto-generated')) {
+      console.log(`🤖 Autoreply detected: Auto-Submitted header found`)
+      return true
+    }
+  }
+
+  return false
+}
+
 // Generate deterministic conversation ID
 function generateConversationId(contactEmail: string, senderEmail: string, campaignId?: string): string {
   try {
@@ -560,6 +655,41 @@ export async function POST(request: NextRequest) {
     
     console.log(`📋 Final contactId: ${contactId} (type: ${typeof contactId})`)
     
+    // Check if this is an auto-reply before updating contact status
+    const isAutoReplyEmail = isAutoReply(
+      emailData.subject || '',
+      emailData.text || '',
+      emailData.headers || ''
+    )
+    
+    if (isAutoReplyEmail) {
+      console.log(`🤖 Auto-reply detected - NOT updating contact status to preserve sequence`)
+      console.log(`   Contact ${fromEmail} sent an automated response`)
+      console.log(`   Email sequence will continue as scheduled`)
+    } else {
+      // Update contact status to "Replied" if contact exists to stop the sequence
+      if (contactId) {
+        try {
+          const { error: statusUpdateError } = await supabaseServer
+            .from('contacts')
+            .update({ 
+              email_status: 'Replied',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', contactId)
+          
+          if (statusUpdateError) {
+            console.log(`⚠️ Failed to update contact status:`, statusUpdateError)
+          } else {
+            console.log(`✅ Updated contact ${contactId} status to "Replied" - sequence stopped`)
+            console.log(`   This is a genuine reply from ${fromEmail}`)
+          }
+        } catch (updateError) {
+          console.log(`⚠️ Error updating contact status:`, updateError)
+        }
+      }
+    }
+    
     // Generate conversation ID for threading
     console.log(`🔍 Generating conversation ID for:`)
     console.log(`   fromEmail: ${fromEmail}`)
@@ -649,7 +779,9 @@ export async function POST(request: NextRequest) {
         spam_report: String(emailData.spam_report || ''),
         headers: String(emailData.headers || ''),
         envelope: emailData.envelope || {},
-        charsets: JSON.parse(String(emailData.charsets || '{}'))
+        charsets: JSON.parse(String(emailData.charsets || '{}')),
+        is_autoreply: isAutoReplyEmail,
+        autoreply_detected: isAutoReplyEmail ? 'Auto-reply detected - contact sequence continues' : null
       },
       sent_at: new Date().toISOString(),
       received_at: new Date().toISOString()

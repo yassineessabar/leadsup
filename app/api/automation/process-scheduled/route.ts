@@ -660,6 +660,25 @@ export async function GET(request: NextRequest) {
         console.log(`📊 Sender Distribution Summary: ${senders.length} total selected senders available`)
         console.log(`✅ Selected sender is active: ${selectedSender.is_active}, can send email`)
         
+        // Check if it's business hours before sending
+        const timezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
+        const businessHoursStatus = getBusinessHoursStatus(timezone)
+        
+        if (!businessHoursStatus.isBusinessHours) {
+          console.log(`🕐 BUSINESS HOURS CHECK: Contact in ${timezone} at ${businessHoursStatus.currentTime} - ${businessHoursStatus.text}`)
+          console.log(`🚫 SKIPPING EMAIL: Outside business hours - will retry later`)
+          skippedCount++
+          results.push({
+            contactId: contact.id,
+            contactEmail: contact.email_address || contact.email,
+            status: 'skipped',
+            reason: `Outside business hours in ${timezone} (${businessHoursStatus.currentTime})`
+          })
+          continue
+        }
+        
+        console.log(`🕐 BUSINESS HOURS CHECK: ✅ Currently ${businessHoursStatus.currentTime} in ${timezone} - sending email`)
+        
         // Send the email
         const sendResult = await sendSequenceEmail({
           contact,

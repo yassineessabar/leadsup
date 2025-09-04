@@ -1,0 +1,16 @@
+first_name,last_name,email,company,title,location
+Alice,Brown,alice.brown@newcompany1.com,NewCompany1,Marketing Director,Sydney Australia
+Bob,Johnson,bob.johnson@newcompany1.com,NewCompany1,Sales Manager,Melbourne Australia
+Carol,Smith,carol.smith@newcompany2.com,NewCompany2,VP Growth,Perth Australia
+Dave,Wilson,dave.wilson@newcompany2.com,NewCompany2,CEO,Brisbane Australia
+Eva,Miller,eva.miller@newcompany3.com,NewCompany3,CTO,Adelaide Australia
+Frank,Davis,frank.davis@newcompany3.com,NewCompany3,Product Manager,Sydney Australia
+Grace,Thomas,grace.thomas@newcompany4.com,NewCompany4,Director,Melbourne Australia
+Henry,Garcia,henry.garcia@newcompany4.com,NewCompany4,VP Sales,Perth Australia
+Iris,Martinez,iris.martinez@newcompany5.com,NewCompany5,Founder,Brisbane Australia
+Jack,Lopez,jack.lopez@newcompany5.com,NewCompany5,COO,Sydney Australia
+Kate,Hill,kate.hill@newcompany6.com,NewCompany6,Manager,Melbourne Australia
+Leo,Green,leo.green@newcompany6.com,NewCompany6,Lead Dev,Perth Australia
+Mia,Clark,mia.clark@newcompany7.com,NewCompany7,Senior Manager,Adelaide Australia
+Nick,Lewis,nick.lewis@newcompany7.com,NewCompany7,Product Lead,Brisbane Australia
+Olivia,Walker,olivia.walker@newcompany8.com,NewCompany8,Director Sales,Sydney Australia

@@ -613,18 +613,30 @@ async function calculateContactIsDue(contact: any, campaignSettings: any, campai
     const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM
     const consistentMinute = (seedValue * 7) % 60
     
+    // Get contact's timezone and schedule in their local time
+    const timezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'UTC'
+    
     scheduledDate = new Date()
-    scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+    const scheduledInContactTz = new Date(scheduledDate.toLocaleString("en-US", {timeZone: timezone}))
+    scheduledInContactTz.setHours(consistentHour, consistentMinute, 0, 0)
+    scheduledDate = scheduledInContactTz
   } else {
     // Delayed email - calculate based on last contact date + timing
     if (!contact.last_contacted_at) {
       return false // Can't calculate timing without last contact date
     }
     
+    // Get contact's timezone and schedule in their local time
+    const timezone = contact.timezone || deriveTimezoneFromLocation(contact.location) || 'UTC'
+    
     const lastContactDate = new Date(contact.last_contacted_at)
     scheduledDate = new Date(lastContactDate)
     scheduledDate.setDate(scheduledDate.getDate() + timingDays)
-    scheduledDate.setHours(9, 0, 0, 0) // 9 AM consistent time
+    
+    // Set 9 AM in contact's timezone
+    const scheduledInContactTz = new Date(scheduledDate.toLocaleString("en-US", {timeZone: timezone}))
+    scheduledInContactTz.setHours(9, 0, 0, 0)
+    scheduledDate = scheduledInContactTz
   }
   
   // Check if scheduled time has passed (isTimeReached)

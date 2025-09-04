@@ -56,8 +56,15 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
       const intendedHour = 9 + (seedValue % 8) // 9 AM - 5 PM
       const intendedMinute = (seedValue * 7) % 60
       
-      // Set to intended time today
-      scheduledDate.setHours(intendedHour, intendedMinute, 0, 0)
+      // Create scheduled time that respects contact's timezone business hours
+      // Get today's date in the contact's timezone
+      const todayInContactTz = new Date(now.toLocaleString("en-US", {timeZone: timezone}))
+      
+      // Set the intended time (9 AM - 5 PM in contact's local time)
+      todayInContactTz.setHours(intendedHour, intendedMinute, 0, 0)
+      
+      // This gives us the correct time in contact's timezone
+      scheduledDate = todayInContactTz
       
       // Check if this time has already passed today in the contact's timezone
       const currentHourInContactTz = parseInt(new Intl.DateTimeFormat('en-US', {
@@ -74,7 +81,7 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
       const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
       
       // If the intended time has passed today OR we're outside business hours, schedule for next business day
-      if (currentTimeInMinutes >= intendedTimeInMinutes || !getBusinessHoursStatus(timezone).isBusinessHours) {
+      if (currentTimeInMinutes >= intendedTimeInMinutes || !businessHoursStatus.isBusinessHours) {
         // Move to next business day
         scheduledDate.setDate(scheduledDate.getDate() + 1)
         
@@ -119,7 +126,8 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
     let scheduledDate = new Date(baseDate)
     scheduledDate.setDate(baseDate.getDate() + timingDays)
     
-    // Add consistent business hours
+    // Add consistent business hours in contact's timezone
+    const timezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
     const contactIdString = String(contact.id || '')
     const contactHash = contactIdString.split('').reduce((hash, char) => {
       return ((hash << 5) - hash) + char.charCodeAt(0)
@@ -128,7 +136,10 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[]) => {
     const intendedHour = 9 + (seedValue % 8) // 9 AM - 5 PM
     const intendedMinute = (seedValue * 7) % 60
     
-    scheduledDate.setHours(intendedHour, intendedMinute, 0, 0)
+    // Set time in contact's timezone
+    const scheduledInContactTz = new Date(scheduledDate.toLocaleString("en-US", {timeZone: timezone}))
+    scheduledInContactTz.setHours(intendedHour, intendedMinute, 0, 0)
+    scheduledDate = scheduledInContactTz
     
     // Avoid weekends
     const dayOfWeek = scheduledDate.getDay()
@@ -220,7 +231,36 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
       const intendedTimeInMinutes = intendedHour * 60 + intendedMinute
       
       isTimeReached = currentTimeInMinutes >= intendedTimeInMinutes
-      const isDue = isTimeReached
+      
+      // If time has passed but we're outside business hours, reschedule to next business day
+      if (isTimeReached && !businessHoursStatus.isBusinessHours) {
+        console.log(`🔄 RESCHEDULING: Contact ${contact.id} scheduled time passed but outside business hours`)
+        console.log(`   Moving to next business day...`)
+        
+        // Move to next business day
+        scheduledDate.setDate(scheduledDate.getDate() + 1)
+        
+        // Skip weekends
+        const dayOfWeek = scheduledDate.getDay()
+        if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Skip Sunday
+        if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Skip Saturday
+        
+        // Update the contact's next_email_due in the database
+        await supabase
+          .from('contacts')
+          .update({ 
+            next_email_due: scheduledDate.toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', contact.id)
+        
+        console.log(`✅ RESCHEDULED: Contact ${contact.id} moved to ${scheduledDate.toISOString()}`)
+        
+        // Now this contact is not due anymore (rescheduled for future)
+        return false
+      }
+      
+      const isDue = isTimeReached && businessHoursStatus.isBusinessHours
       
       console.log(`🔍 IMMEDIATE EMAIL DUE CHECK for ${contact.id}:`)
       console.log(`   Current time: ${currentHourInContactTz}:${currentMinuteInContactTz.toString().padStart(2, '0')} (${currentTimeInMinutes} min)`)
@@ -238,7 +278,36 @@ async function isContactDue(contact: any, campaignSequences: any[]) {
         const scheduledInContactTz = new Date(scheduledDate.toLocaleString("en-US", {timeZone: timezone}))
         
         isTimeReached = nowInContactTz >= scheduledInContactTz
-        const isDue = isTimeReached
+        
+        // If time has passed but we're outside business hours, reschedule to next business day
+        if (isTimeReached && !businessHoursStatus.isBusinessHours) {
+          console.log(`🔄 RESCHEDULING: Contact ${contact.id} scheduled time passed but outside business hours`)
+          console.log(`   Moving to next business day...`)
+          
+          // Move to next business day
+          scheduledDate.setDate(scheduledDate.getDate() + 1)
+          
+          // Skip weekends
+          const dayOfWeek = scheduledDate.getDay()
+          if (dayOfWeek === 0) scheduledDate.setDate(scheduledDate.getDate() + 1) // Skip Sunday
+          if (dayOfWeek === 6) scheduledDate.setDate(scheduledDate.getDate() + 2) // Skip Saturday
+          
+          // Update the contact's next_email_due in the database
+          await supabase
+            .from('contacts')
+            .update({ 
+              next_email_due: scheduledDate.toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', contact.id)
+          
+          console.log(`✅ RESCHEDULED: Contact ${contact.id} moved to ${scheduledDate.toISOString()}`)
+          
+          // Now this contact is not due anymore (rescheduled for future)
+          return false
+        }
+        
+        const isDue = isTimeReached && businessHoursStatus.isBusinessHours
         
         console.log(`🔍 NON-IMMEDIATE EMAIL DUE CHECK for ${contact.id}:`)
         console.log(`   Now in contact TZ: ${nowInContactTz.toISOString()}`)
@@ -348,16 +417,12 @@ export async function GET(request: NextRequest) {
     
     console.log(`   ✅ Contacts table: ${contactsData?.length || 0} records found`)
     
-    // Also check prospects table
+    // Also check prospects table (with appropriate columns)
     console.log(`   📊 Query 2: SELECT * FROM prospects WHERE campaign_id = '${campaignId}'`)
     const { data: prospectsData, error: prospectsError } = await supabase
       .from('prospects')
       .select('*')
       .eq('campaign_id', campaignId)
-      .neq('email_status', 'Completed')
-      .neq('email_status', 'Replied')
-      .neq('email_status', 'Unsubscribed')
-      .neq('email_status', 'Bounced')
     
     console.log(`   ✅ Prospects table: ${prospectsData?.length || 0} records found`)
     

@@ -203,8 +203,84 @@ function parseCsvData(csvText: string): any[] {
   return contacts
 }
 
-// Generate complete sequence schedule for a contact
-function generateContactSequenceSchedule(contact: any, sequences: any[], campaignSettings: any) {
+// Find the next available date that doesn't exceed daily limits per sender
+async function findNextAvailableDate({
+  campaignId,
+  selectedSenderId,
+  dailyLimit,
+  startFromDate
+}: {
+  campaignId: string
+  selectedSenderId: number
+  dailyLimit: number
+  startFromDate: Date
+}): Promise<Date> {
+  const currentDate = new Date(startFromDate)
+  currentDate.setHours(0, 0, 0, 0) // Start of day
+  
+  // Start checking from tomorrow (never schedule for today when adding new contacts)
+  currentDate.setDate(currentDate.getDate() + 1)
+  
+  let attempts = 0
+  const maxAttempts = 30 // Don't check more than 30 days ahead
+  
+  while (attempts < maxAttempts) {
+    // Skip weekends
+    const dayOfWeek = currentDate.getDay()
+    if (dayOfWeek === 0 || dayOfWeek === 6) { // Sunday = 0, Saturday = 6
+      currentDate.setDate(currentDate.getDate() + 1)
+      attempts++
+      continue
+    }
+    
+    // Check how many emails are already scheduled for this date for this sender
+    const dayEnd = new Date(currentDate)
+    dayEnd.setHours(23, 59, 59, 999)
+    
+    // Check how many contacts are scheduled for this date for this sender (using contacts table)
+    const { count: scheduledCount } = await supabase
+      .from('contacts')
+      .select('*', { count: 'exact', head: true })
+      // Note: using tag-based sender tracking since scheduled_sender_id column doesn't exist
+      .like('tags', `%SENDER:${selectedSenderId}%`)
+      .gte('next_email_due', currentDate.toISOString())
+      .lte('next_email_due', dayEnd.toISOString())
+      .neq('email_status', 'Completed')
+      .neq('email_status', 'Cancelled')
+    
+    // Also check campaign-wide limit (total contacts for this campaign on this date)
+    const { count: campaignDailyCount } = await supabase
+      .from('contacts')
+      .select('*', { count: 'exact', head: true })
+      .eq('campaign_id', campaignId)
+      .gte('next_email_due', currentDate.toISOString())
+      .lte('next_email_due', dayEnd.toISOString())
+      .neq('email_status', 'Completed')
+      .neq('email_status', 'Cancelled')
+    
+    // If this day has availability for both sender and campaign, use it
+    const senderHasCapacity = (scheduledCount || 0) < dailyLimit
+    const campaignHasCapacity = (campaignDailyCount || 0) < (dailyLimit * 2) // Allow 2x sender limit per campaign
+    
+    if (senderHasCapacity && campaignHasCapacity) {
+      console.log(`📅 Next available date found: ${currentDate.toDateString()} (sender: ${scheduledCount}/${dailyLimit}, campaign: ${campaignDailyCount}/${dailyLimit * 2})`)
+      return new Date(currentDate)
+    }
+    
+    // Try next day
+    currentDate.setDate(currentDate.getDate() + 1)
+    attempts++
+  }
+  
+  // Fallback: if we can't find availability within 30 days, just schedule 7 days from now
+  console.log('⚠️ Could not find optimal date within 30 days, falling back to 7 days from now')
+  const fallbackDate = new Date(startFromDate)
+  fallbackDate.setDate(fallbackDate.getDate() + 7)
+  return fallbackDate
+}
+
+// Generate complete sequence schedule for a contact with daily limit enforcement
+async function generateContactSequenceSchedule(contact: any, sequences: any[], campaignSettings: any, campaignId: string) {
   if (!sequences || sequences.length === 0) {
     return null
   }
@@ -221,6 +297,67 @@ function generateContactSequenceSchedule(contact: any, sequences: any[], campaig
   const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM
   const consistentMinute = (seedValue * 7) % 60
   
+  // Get daily limit from campaign settings
+  const dailyLimit = campaignSettings?.daily_contacts_limit || 35
+  
+  // Get healthy senders with round-robin assignment
+  const { data: campaignSenders } = await supabase
+    .from('campaign_senders')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .eq('is_active', true)
+    .eq('is_selected', true)
+  
+  if (!campaignSenders || campaignSenders.length === 0) {
+    console.error('No active senders available for campaign')
+    return null
+  }
+  
+  // Get sender accounts to get IDs
+  const senderEmails = campaignSenders.map(s => s.email)
+  const { data: senderAccounts } = await supabase
+    .from('sender_accounts')
+    .select('id, email')
+    .in('email', senderEmails)
+  
+  if (!senderAccounts || senderAccounts.length === 0) {
+    console.error('No sender accounts found')
+    return null
+  }
+  
+  // Select sender with least recent assignments (round-robin) using contacts table
+  const { data: recentAssignments } = await supabase
+    .from('contacts')
+    .select('scheduled_sender_id')
+    .eq('campaign_id', campaignId)
+    .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    // Note: contacts table doesn't have scheduled_sender_id - using campaign_senders approach
+    .not('tags', 'is', null)
+  
+  // Count assignments per sender
+  const assignmentCounts = new Map()
+  senderAccounts.forEach(sender => {
+    assignmentCounts.set(sender.id, 0)
+  })
+  
+  if (recentAssignments) {
+    recentAssignments.forEach((assignment: any) => {
+      assignmentCounts.set(assignment.sender_account_id, (assignmentCounts.get(assignment.sender_account_id) || 0) + 1)
+    })
+  }
+  
+  // Select sender with least assignments
+  let selectedSender = senderAccounts[0]
+  let minAssignments = assignmentCounts.get(selectedSender.id)
+  
+  senderAccounts.forEach(sender => {
+    const count = assignmentCounts.get(sender.id)
+    if (count < minAssignments) {
+      selectedSender = sender
+      minAssignments = count
+    }
+  })
+  
   // Get active days for scheduling
   const activeDays = campaignSettings?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
   const dayMap = { 0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat' }
@@ -233,7 +370,16 @@ function generateContactSequenceSchedule(contact: any, sequences: any[], campaig
   const sortedSequences = sequences.sort((a, b) => (a.step_number || 1) - (b.step_number || 1))
   
   const steps = []
-  let baseDate = new Date() // Start from contact creation
+  
+  // Find the next available date that respects daily limits
+  const nextAvailableDate = await findNextAvailableDate({
+    campaignId,
+    selectedSenderId: selectedSender.id,
+    dailyLimit,
+    startFromDate: new Date()
+  })
+  
+  let baseDate = nextAvailableDate
   
   // Check if we're currently outside business hours - if so, start scheduling from tomorrow
   const businessHoursStatus = getBusinessHoursStatus(timezone)
@@ -289,7 +435,8 @@ function generateContactSequenceSchedule(contact: any, sequences: any[], campaig
     consistent_hour: consistentHour,
     consistent_minute: consistentMinute,
     timezone,
-    generated_at: new Date().toISOString()
+    generated_at: new Date().toISOString(),
+    assigned_sender: selectedSender
   }
 }
 
@@ -448,8 +595,8 @@ export async function POST(
         console.log(`📅 Generating sequence schedule for ${insertedBatch.length} contacts...`)
         
         for (const contact of insertedBatch) {
-          // Generate complete sequence schedule
-          const sequenceSchedule = generateContactSequenceSchedule(contact, campaignSequences, campaignSettings)
+          // Generate complete sequence schedule with daily limit enforcement
+          const sequenceSchedule = await generateContactSequenceSchedule(contact, campaignSequences, campaignSettings, campaignId)
           
           if (sequenceSchedule) {
             // Get next_email_due based on current sequence_step (0 for new contacts)
@@ -457,7 +604,10 @@ export async function POST(
             const nextEmailDue = getNextEmailDueFromSchedule(sequenceSchedule, currentStep)
             
             const updateData: any = {
-              sequence_schedule: sequenceSchedule
+              sequence_schedule: sequenceSchedule,
+              tags: `SENDER:${sequenceSchedule.assigned_sender?.id}`,
+              next_email_due: sequenceSchedule.steps[0]?.scheduled_date,
+              updated_at: new Date().toISOString()
             }
             
             if (nextEmailDue) {
@@ -472,9 +622,31 @@ export async function POST(
             if (updateError) {
               console.error(`❌ Error updating schedule for ${contact.email}:`, updateError.message)
             } else {
-              console.log(`✅ Generated schedule for ${contact.email}`)
+              console.log(`✅ Generated schedule for ${contact.email} with sender ${sequenceSchedule.assigned_sender?.email}`)
               if (nextEmailDue) {
                 console.log(`📅 Next email due: ${nextEmailDue.toLocaleString('en-US', { timeZone: sequenceSchedule.timezone })}`)
+              }
+              
+              // Create scheduled_emails records for each step to enforce daily limits
+              const scheduledEmailsToInsert = sequenceSchedule.steps.map((step: any) => ({
+                contact_id: contact.id,
+                campaign_id: campaignId,
+                sender_account_id: sequenceSchedule.assigned_sender.id,
+                sequence_step: step.step,
+                email_subject: step.subject,
+                scheduled_for: step.scheduled_date,
+                status: 'pending'
+              }))
+              
+              // Insert scheduled emails
+              const { error: scheduleError } = await supabase
+                .from('scheduled_emails')
+                .insert(scheduledEmailsToInsert)
+              
+              if (scheduleError) {
+                console.error(`❌ Error creating scheduled emails for ${contact.email}:`, scheduleError.message)
+              } else {
+                console.log(`📧 Created ${scheduledEmailsToInsert.length} scheduled emails for ${contact.email}`)
               }
             }
           }
@@ -486,7 +658,7 @@ export async function POST(
     const { error: updateError } = await supabase
       .from('campaigns')
       .update({ 
-        totalPlanned: insertedCount,
+        updated_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', campaignId)
@@ -516,7 +688,7 @@ export async function POST(
           // Get the newly inserted contacts with their IDs
           const { data: insertedContacts, error: contactsError } = await supabase
             .from('contacts')
-            .select('id, email, first_name, created_at, timezone')
+            .select('id, email, first_name, created_at, location')
             .eq('campaign_id', campaignId)
             .in('email', newContacts.map(c => c.email))
 
@@ -540,7 +712,8 @@ export async function POST(
                 }
 
                 // Set to randomized business hours (9 AM - 5 PM) in contact's timezone
-                scheduledDate = randomizeWithinBusinessHours(scheduledDate, contact.timezone || 'UTC', sequence.step_number)
+                const contactTimezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
+                scheduledDate = randomizeWithinBusinessHours(scheduledDate, contactTimezone, sequence.step_number)
                 
                 // Ensure email is not scheduled for weekend - move to next Monday if needed
                 scheduledDate = avoidWeekends(scheduledDate, sequence.step_number)

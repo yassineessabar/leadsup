@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { deriveTimezoneFromLocation } from '@/lib/timezone-utils'
 
 const supabaseServer = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -51,12 +52,19 @@ const calculateNextEmailDate = (contact: any, campaignSequences: any[], campaign
         const consistentHour = 9 + (seedValue % 8) // 9 AM - 5 PM
         const consistentMinute = (seedValue * 7) % 60
         
-        // Start with today's date
-        scheduledDate = new Date(now)
-        scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+        // Get contact's timezone and set scheduled time in their local timezone
+        const timezone = deriveTimezoneFromLocation(contact.location) || 'UTC'
+        
+        // Start with today's date in contact's timezone
+        const todayInContactTz = new Date(now.toLocaleString("en-US", {timeZone: timezone}))
+        todayInContactTz.setHours(consistentHour, consistentMinute, 0, 0)
+        scheduledDate = todayInContactTz
+        
+        // Compare times properly in the same timezone context
+        const nowInContactTz = new Date(now.toLocaleString("en-US", {timeZone: timezone}))
         
         // If the intended time has passed today, schedule for next business day
-        if (now >= scheduledDate) {
+        if (nowInContactTz >= scheduledDate) {
           scheduledDate.setDate(scheduledDate.getDate() + 1)
           
           // Skip inactive days based on campaign settings

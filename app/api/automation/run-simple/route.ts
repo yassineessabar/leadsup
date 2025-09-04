@@ -32,8 +32,10 @@ function calculateNextEmailDue(
   }
   scheduledDate.setDate(scheduledDate.getDate() + timingDays)
   
-  // Set consistent time (ALWAYS use the hash-based minute for this contact)
-  scheduledDate.setHours(consistentHour, consistentMinute, 0, 0)
+  // Set consistent time in contact's timezone (ALWAYS use the hash-based minute for this contact)
+  const scheduledInContactTz = new Date(scheduledDate.toLocaleString("en-US", {timeZone: timezone}))
+  scheduledInContactTz.setHours(consistentHour, consistentMinute, 0, 0)
+  scheduledDate = scheduledInContactTz
   
   // Handle campaign active days
   const activeDays = campaignSettings?.active_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
