@@ -1419,13 +1419,11 @@ export default function AddCampaignPopup({ isOpen, onClose, onComplete, existing
   const renderTargetAudience = () => {
     // Get AI-generated default values (simulate AI generation for now)
     const getAIGeneratedIndustries = () => {
-      const defaultIndustries = ["Software", "Technology", "SaaS"]
-      return mainICPIndustries.length > 0 ? mainICPIndustries : defaultIndustries.slice(0, 1)
+      return mainICPIndustries
     }
 
     const getAIGeneratedLocations = () => {
-      const defaultLocations = ["United States", "North America", "Europe"]
-      return mainICPLocations.length > 0 ? mainICPLocations : defaultLocations.slice(0, 1)
+      return mainICPLocations
     }
 
     const getAIGeneratedRoles = () => {

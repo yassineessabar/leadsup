@@ -356,7 +356,7 @@ Return JSON in this exact format:
     "preferred_communication": "Communication style"
   }],
   "extracted_keywords": ["CEO", "Director", "Manager", "VP", "President"],
-  "target_industries": ["Software Development"],
+  "target_industries": [],
   "target_locations": []
 }`
         }
@@ -393,8 +393,7 @@ Return JSON in this exact format:
       
       // If no valid industries after filtering, use fallback
       if (result.target_industries.length === 0) {
-        console.warn("⚠️ AI returned invalid industries, using fallback")
-        result.target_industries = ["Software Development"]
+        console.warn("⚠️ AI returned no industries, keeping empty")
       }
     }
     
@@ -857,7 +856,7 @@ function getFallbackICPsAndPersonas() {
       }
     ],
     extracted_keywords: ["CEO", "Director", "Manager", "VP", "President"],
-    target_industries: ["Software Development"],
+    target_industries: [],
     target_locations: []
   }
 }
